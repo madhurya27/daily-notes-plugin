@@ -34,6 +34,78 @@
     line-height: 1.6;
 }
 
+/* Daily Note Properties - Mimic Native Styling with Fixes */
+.daily-notes-stream-container .metadata-container {
+    margin-bottom: 1.5rem;
+    font-size: var(--font-ui-small);
+}
+
+.daily-notes-stream-container .metadata-properties-heading {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    cursor: pointer;
+    color: var(--text-faint);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.8em;
+    user-select: none;
+}
+
+.daily-notes-stream-container .metadata-properties-heading:hover {
+    color: var(--text-muted);
+}
+
+.daily-notes-stream-container .metadata-properties-heading-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+    transition: transform 0.1s ease-in-out;
+}
+
+.daily-notes-stream-container .metadata-properties-heading-icon svg {
+    width: 12px;
+    height: 12px;
+}
+
+.daily-notes-stream-container .metadata-property {
+    display: flex;
+    align-items: flex-start;
+    padding: 4px 0;
+}
+
+.daily-notes-stream-container .metadata-property-key {
+    display: flex;
+    align-items: center;
+    width: 150px;
+    min-width: 100px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.daily-notes-stream-container .metadata-property-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    color: var(--text-faint);
+    opacity: 0.7;
+}
+
+.daily-notes-stream-container .metadata-property-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.daily-notes-stream-container .metadata-property-value {
+    flex-grow: 1;
+    color: var(--text-normal);
+    word-break: break-word;
+}
+
 /* Mobile specific tweaks */
 @media (max-width: 480px) {
     .daily-notes-stream-container {

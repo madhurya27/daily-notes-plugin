@@ -1,5 +1,6 @@
-import { ItemView, WorkspaceLeaf, TFile, MarkdownRenderer } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile, MarkdownRenderer, Notice, setIcon } from "obsidian";
 import { DailyNoteService } from "./DailyNoteService";
+import type DailyNotesStreamPlugin from "./main";
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
 
@@ -8,9 +9,13 @@ export class DailyNotesStreamView extends ItemView {
     private offset: number = 0;
     private readonly BATCH_SIZE = 10;
     private streamContainerEl: HTMLElement;
+    private sentinel: HTMLElement;
+    private isLoading: boolean = false;
+    private plugin: DailyNotesStreamPlugin;
 
-    constructor(leaf: WorkspaceLeaf) {
+    constructor(leaf: WorkspaceLeaf, plugin: DailyNotesStreamPlugin) {
         super(leaf);
+        this.plugin = plugin;
     }
 
     getViewType(): string {
@@ -29,25 +34,53 @@ export class DailyNotesStreamView extends ItemView {
         this.streamContainerEl = this.contentEl.createDiv({ cls: "daily-notes-stream-container" });
         this.offset = 0;
         this.notes = [];
-        await this.loadMoreNotes();
         
+        // Setup sentinel and observer first so renderNote can insert before it
+        // This will also trigger the initial load because the sentinel is visible
         this.setupInfiniteScroll();
+
+        console.log("DailyNotesStreamView: Opening view...");
     }
 
     async loadMoreNotes() {
-        const newBatch = DailyNoteService.getBatch(this.offset, this.BATCH_SIZE);
-        if (newBatch.length === 0) return;
+        if (this.isLoading) return;
+        this.isLoading = true;
 
-        for (const file of newBatch) {
-            await this.renderNote(file);
+        try {
+            console.log(`DailyNotesStreamView: Loading more notes. Offset: ${this.offset}, Batch: ${this.BATCH_SIZE}`);
+            const newBatch = DailyNoteService.getBatch(this.offset, this.BATCH_SIZE);
+            console.log(`DailyNotesStreamView: Found ${newBatch.length} notes in batch.`);
+
+            if (newBatch.length === 0) {
+                if (this.offset === 0) {
+                    // If no notes at all, we can show a message. 
+                    // We insert it before the sentinel so it looks correct.
+                    const emptyState = document.createElement("div");
+                    emptyState.addClass("daily-notes-empty-state");
+                    emptyState.setText("No daily notes found. Please check your Daily Notes settings.");
+                    this.streamContainerEl.insertBefore(emptyState, this.sentinel);
+                }
+                return;
+            }
+
+            for (const file of newBatch) {
+                await this.renderNote(file);
+            }
+
+            this.offset += newBatch.length;
+            this.notes.push(...newBatch);
+        } finally {
+            this.isLoading = false;
         }
-
-        this.offset += newBatch.length;
-        this.notes.push(...newBatch);
     }
 
     async renderNote(file: TFile) {
-        const noteContainer = this.streamContainerEl.createDiv({ cls: "daily-note-block" });
+        // Create the container element manually to avoid auto-appending
+        const noteContainer = document.createElement("div");
+        noteContainer.addClass("daily-note-block");
+        
+        // Insert before the sentinel to ensure sentinel stays at the bottom
+        this.streamContainerEl.insertBefore(noteContainer, this.sentinel);
         
         // Header
         const header = noteContainer.createDiv({ cls: "daily-note-header" });
@@ -59,22 +92,130 @@ export class DailyNotesStreamView extends ItemView {
             this.app.workspace.getLeaf(false).openFile(file);
         });
 
+        // Properties (Frontmatter)
+        this.renderProperties(noteContainer, file);
+
         // Content
         const contentEl = noteContainer.createDiv({ cls: "daily-note-content" });
-        const markdown = await this.app.vault.read(file);
         
-        // Use MarkdownRenderer for high-fidelity rendering
-        await MarkdownRenderer.render(
-            this.app,
-            markdown,
-            contentEl,
-            file.path,
-            this
-        );
+        try {
+            let markdown = await this.app.vault.read(file);
+            
+            // Strip frontmatter if it exists to avoid duplication or raw rendering
+            const cache = this.app.metadataCache.getFileCache(file);
+            if (cache?.frontmatter?.position) {
+                markdown = markdown.slice(cache.frontmatter.position.end.offset).trim();
+            }
+
+            // Use MarkdownRenderer for high-fidelity rendering
+            await MarkdownRenderer.render(
+                this.app,
+                markdown,
+                contentEl,
+                file.path,
+                this
+            );
+        } catch (error) {
+            console.error(`Failed to render note ${file.path}:`, error);
+            contentEl.setText("Error rendering note.");
+        }
+    }
+
+    private renderProperties(container: HTMLElement, file: TFile) {
+        if (!this.plugin.settings.showProperties) return;
+
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (!cache || !cache.frontmatter) return;
+
+        const frontmatter = cache.frontmatter;
+        // Filter out internal Obsidian keys if any (like position)
+        const keys = Object.keys(frontmatter).filter(k => k !== "position");
+
+        if (keys.length === 0) return;
+
+        // Native Obsidian Reading View Properties Structure
+        const metadataContainer = container.createDiv({ cls: "metadata-container" });
+        metadataContainer.style.display = "block"; 
+
+        const metadataContent = metadataContainer.createDiv({ cls: "metadata-content" });
+
+        // Header / Heading
+        const heading = metadataContent.createDiv({ cls: "metadata-properties-heading" });
+        
+        // Collapse Indicator (Icon)
+        const headingIcon = heading.createDiv({ cls: "metadata-properties-heading-icon collapse-indicator" });
+        setIcon(headingIcon, "chevron-right");
+        
+        // Label
+        heading.createDiv({ cls: "metadata-properties-heading-label", text: "Properties" });
+
+        const metadataProperties = metadataContent.createDiv({ cls: "metadata-properties" });
+        
+        // Initial state from settings
+        let isCollapsed = this.plugin.settings.propertiesCollapsed;
+        
+        const updateCollapseState = () => {
+            if (isCollapsed) {
+                metadataContainer.addClass("is-collapsed");
+                metadataProperties.style.display = "none";
+                headingIcon.style.transform = "rotate(0deg)";
+            } else {
+                metadataContainer.removeClass("is-collapsed");
+                metadataProperties.style.display = "block";
+                headingIcon.style.transform = "rotate(90deg)";
+            }
+        };
+
+        // Apply initial state
+        updateCollapseState();
+
+        heading.onClickEvent(() => {
+            isCollapsed = !isCollapsed;
+            updateCollapseState();
+        });
+
+        for (const key of keys) {
+            const propertyRow = metadataProperties.createDiv({ cls: "metadata-property" });
+            
+            // Icon & Key Container
+            const keyContainer = propertyRow.createDiv({ cls: "metadata-property-key" });
+            
+            const iconEl = keyContainer.createDiv({ cls: "metadata-property-icon" });
+            
+            // Basic Icon Mapping
+            let iconName = "file-text"; // default
+            const keyLower = key.toLowerCase();
+            if (keyLower === "tags" || keyLower === "tag" || keyLower === "aliases") iconName = "tags";
+            else if (keyLower.includes("date") || keyLower.includes("time") || keyLower === "created" || keyLower === "updated") iconName = "calendar";
+            else if (keyLower === "link" || keyLower === "url") iconName = "link";
+            else if (keyLower === "image" || keyLower === "cover") iconName = "image";
+            
+            setIcon(iconEl, iconName);
+
+            keyContainer.createSpan({ cls: "metadata-property-key-input", text: key });
+
+            // Value Container
+            const valueEl = propertyRow.createDiv({ cls: "metadata-property-value" });
+            
+            let value = frontmatter[key];
+            let displayValue = "";
+            
+            if (Array.isArray(value)) {
+                // If tags, maybe render as pills? For now, list.
+                displayValue = value.join(", ");
+                // If it's tags, let's try to simulate pills if possible, but text is safer for now.
+            } else if (typeof value === 'object' && value !== null) {
+                displayValue = JSON.stringify(value);
+            } else {
+                displayValue = String(value ?? "");
+            }
+            
+            valueEl.createSpan({ cls: "metadata-property-value-text", text: displayValue });
+        }
     }
 
     private setupInfiniteScroll() {
-        const sentinel = this.streamContainerEl.createDiv({ cls: "daily-notes-stream-sentinel" });
+        this.sentinel = this.streamContainerEl.createDiv({ cls: "daily-notes-stream-sentinel" });
         const observer = new IntersectionObserver((entries) => {
             const firstEntry = entries[0];
             if (firstEntry && firstEntry.isIntersecting) {
@@ -85,7 +226,7 @@ export class DailyNotesStreamView extends ItemView {
             rootMargin: "100px"
         });
         
-        observer.observe(sentinel);
+        observer.observe(this.sentinel);
         this.register(() => observer.disconnect());
     }
 
