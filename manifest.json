@@ -1,0 +1,10 @@
+{
+	"id": "daily-notes-stream",
+	"name": "Daily Notes Stream",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "A single continuous stream of all your daily notes, ordered chronologically.",
+	"author": "Madhurya",
+	"authorUrl": "https://github.com/madhurya",
+	"isDesktopOnly": false
+}
