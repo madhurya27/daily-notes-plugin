@@ -9,6 +9,7 @@ A read-only, infinite-scroll view of all Daily Notes in Obsidian, ordered chrono
 - [x] **Infinite Scroll**: Dynamically load more notes as the user scrolls down.
 - [x] **Rich Rendering**: Full support for markdown, images, embeds, and other Obsidian features.
 - [x] **Mobile Compatibility**: Responsive design and touch-friendly interactions.
+- [x] **Note Properties**: Display collapsible frontmatter metadata with native styling.
 
 ## Development Tasks
 
@@ -39,8 +40,15 @@ A read-only, infinite-scroll view of all Daily Notes in Obsidian, ordered chrono
 ### Phase 5: Infinite Scroll [DONE]
 - [x] Implement `IntersectionObserver` to detect end of scroll.
 - [x] Fetch and append next batch of notes.
+- [x] Fix duplicate initial load race condition.
 
-### Phase 6: Polish & Verification [DONE]
+### Phase 6: Metadata Properties [DONE]
+- [x] Add settings for toggling properties display.
+- [x] Implement native-styled metadata container with icons.
+- [x] Implement collapsible "Properties" header.
+- [x] Strip frontmatter from markdown body rendering.
+
+### Phase 7: Polish & Verification [DONE]
 - [x] Verify image/embed rendering.
 - [x] Check internal link navigation.
 - [x] Create `TESTING.md` with verification steps.

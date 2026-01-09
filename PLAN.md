@@ -8,9 +8,10 @@ Build an Obsidian plugin that provides a read-only, infinite-scroll view of all 
 2.  **Ordering**: Newest note at the top.
 3.  **Interaction**: Initially read-only.
 4.  **Rendering**: High fidelity (must support embedded files, code blocks, images, Dataview, etc.).
-5.  **Tech Stack**: TypeScript, official Obsidian API patterns.
-6.  **Base**: Fork/Clone of `obsidian-sample-plugin`.
-7.  **Mobile Support**: Responsive design and performance optimized for mobile devices.
+5.  **Properties**: Option to display and collapse frontmatter metadata.
+6.  **Tech Stack**: TypeScript, official Obsidian API patterns.
+7.  **Base**: Fork/Clone of `obsidian-sample-plugin`.
+8.  **Mobile Support**: Responsive design and performance optimized for mobile devices.
 
 ## Architecture
 
@@ -27,11 +28,13 @@ Build an Obsidian plugin that provides a read-only, infinite-scroll view of all 
 *   **State**:
     *   `notes`: Array of currently loaded `TFile` objects.
     *   `offset`: Current pagination index.
+    *   `isLoading`: Flag to prevent concurrent batch loads.
 *   **Components**:
     *   **Container**: Main scrollable div.
     *   **Note Block**:
         *   *Header*: Date/Title (clickable link to original file).
-        *   *Body*: Rendered Markdown content.
+        *   *Properties*: Collapsible metadata container (native-styled).
+        *   *Body*: Rendered Markdown content (frontmatter stripped).
     *   **Sentinel**: Invisible element at the bottom to trigger infinite scroll.
 
 ### 3. Rendering Engine
@@ -41,42 +44,45 @@ Build an Obsidian plugin that provides a read-only, infinite-scroll view of all 
 
 ## Implementation Phases
 
-### Phase 1: Scaffolding & Setup
-1.  Clone `obsidianmd/obsidian-sample-plugin`. [DONE]
-2.  Clean up `.git` directory to start fresh. [DONE]
-3.  Update `package.json` and `manifest.json` with new plugin metadata. [DONE]
-4.  Install `obsidian-daily-notes-interface`. [DONE]
-5.  Initialize git repository and commit initial state. [DONE]
+### Phase 1: Scaffolding & Setup [DONE]
+1.  Clone `obsidianmd/obsidian-sample-plugin`.
+2.  Clean up `.git` directory to start fresh.
+3.  Update `package.json` and `manifest.json` with new plugin metadata.
+4.  Install `obsidian-daily-notes-interface`.
+5.  Initialize git repository and commit initial state.
 
-### Phase 2: Core Data Logic
+### Phase 2: Core Data Logic [DONE]
 1.  Implement `DailyNoteService` to gather all daily notes from the vault.
 2.  Implement sorting logic (Newest -> Oldest).
 3.  Ensure compatibility with mobile file system access via Obsidian API.
 
-### Phase 3: The View Skeleton
+### Phase 3: The View Skeleton [DONE]
 1.  Create `DailyNotesStreamView.ts`.
 2.  Register the view in `main.ts`.
 3.  Add a Ribbon Icon and Command to "Open Daily Notes Stream".
 4.  Verify an empty view opens successfully on both Desktop and Mobile.
 
-### Phase 4: Basic Rendering
+### Phase 4: Basic Rendering [DONE]
 1.  Load the first 10 notes.
 2.  Read their content using `app.vault.read(file)`.
 3.  Render them using `MarkdownRenderer`.
 4.  Add basic CSS for separation, ensuring mobile responsiveness.
 
-### Phase 5: Infinite Scroll
+### Phase 5: Infinite Scroll & Polish [DONE]
 1.  Implement `IntersectionObserver` in the View.
 2.  Detect when the user reaches the bottom.
 3.  Fetch the next batch of 10 notes.
-4.  Append them to the DOM and render.
+4.  Fix race conditions/duplicates using `isLoading` flag.
+5.  Append them to the DOM and render.
 
-### Phase 6: Polish & Assets
-1.  Verify embedded images/PDFs work.
-2.  Verify internal links work.
-3.  Clean up styles for both light/dark modes and mobile UI.
+### Phase 6: Metadata Properties [DONE]
+1.  Add settings for `showProperties` and `propertiesCollapsed`.
+2.  Implement native-styled metadata container.
+3.  Add collapsible header for properties section.
+4.  Strip frontmatter from markdown body to avoid duplication.
 
 ## Future Roadmap (Post-MVP)
+*   **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
 *   **Editability**: Allow clicking into the view to edit text directly.
 *   **Date Navigation**: A calendar or timeline sidebar to jump to specific dates.
 *   **Filtering**: Show/Hide specific headers or tags.
