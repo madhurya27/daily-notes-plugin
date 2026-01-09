@@ -1,36 +1,29 @@
-import {App, PluginSettingTab, Setting} from "obsidian";
-import MyPlugin from "./main";
+import { App, PluginSettingTab, Setting } from "obsidian";
+import DailyNotesStreamPlugin from "./main";
 
-export interface MyPluginSettings {
-	mySetting: string;
+export interface DailyNotesStreamSettings {
+	// Add future settings here
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
 }
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class DailyNotesStreamSettingTab extends PluginSettingTab {
+	plugin: DailyNotesStreamPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: DailyNotesStreamPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
+		containerEl.createEl('h2', { text: 'Daily Notes Stream Settings' });
 
 		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName('Placeholder')
+			.setDesc('Currently there are no configurable settings.');
 	}
 }
