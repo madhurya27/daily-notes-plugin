@@ -1,8 +1,52 @@
-/*
+/* Daily Notes Stream Styles */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.daily-notes-stream-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
 
-If your plugin does not need CSS, delete this file.
+.daily-note-block {
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 2rem;
+}
 
-*/
+.daily-note-header {
+    margin-bottom: 1rem;
+}
+
+.daily-note-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-accent);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.daily-note-title:hover {
+    text-decoration: underline;
+}
+
+.daily-note-content {
+    line-height: 1.6;
+}
+
+/* Mobile specific tweaks */
+@media (max-width: 480px) {
+    .daily-notes-stream-container {
+        padding: 0.5rem;
+        gap: 1.5rem;
+    }
+
+    .daily-note-title {
+        font-size: 1.25rem;
+    }
+}
+
+.daily-notes-stream-sentinel {
+    height: 1px;
+    width: 100%;
+}
