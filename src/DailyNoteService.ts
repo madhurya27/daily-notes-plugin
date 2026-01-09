@@ -1,5 +1,5 @@
-import { getAllDailyNotes } from "obsidian-daily-notes-interface";
-import { TFile } from "obsidian";
+import { getAllDailyNotes, getDailyNoteSettings } from "obsidian-daily-notes-interface";
+import { TFile, moment } from "obsidian";
 
 export class DailyNoteService {
     /**
@@ -7,16 +7,32 @@ export class DailyNoteService {
      */
     static getAllNotesSorted(): TFile[] {
         const dailyNotes = getAllDailyNotes();
-        
-        // obsidian-daily-notes-interface returns IDailyNote[] which contains { file: TFile, date: Moment }
-        // Force treat as any[] or properly cast to avoid TFile cast issues if types are mixed
-        const notesArray = Object.values(dailyNotes) as any[];
+        const settings = getDailyNoteSettings();
+        const dateFormat = settings.format || "YYYY-MM-DD";
 
-        notesArray.sort((a, b) => {
+        // getAllDailyNotes often returns a Record<string, TFile> where the values are TFiles.
+        // We extract the files regardless of the container structure.
+        const files = Object.values(dailyNotes) as TFile[];
+
+        const notesWithDates = files.map(file => {
+            // Parse the date from the filename using the user's configured format
+            const date = moment(file.basename, dateFormat, true);
+            return {
+                file,
+                date,
+                isValid: date.isValid()
+            };
+        });
+
+        // Filter out files that didn't match the date format
+        const validNotes = notesWithDates.filter(n => n.isValid);
+
+        // Sort descending
+        validNotes.sort((a, b) => {
             return b.date.valueOf() - a.date.valueOf();
         });
 
-        return notesArray.map(note => note.file);
+        return validNotes.map(n => n.file);
     }
 
     /**

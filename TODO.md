@@ -40,12 +40,13 @@ A read-only, infinite-scroll view of all Daily Notes in Obsidian, ordered chrono
 - [x] Implement `IntersectionObserver` to detect end of scroll.
 - [x] Fetch and append next batch of notes.
 
-### Phase 6: Polish & Verification
-- [ ] Verify image/embed rendering.
-- [ ] Check internal link navigation.
-- [ ] **Mobile**: Test on mobile emulator or device if possible.
+### Phase 6: Polish & Verification [DONE]
+- [x] Verify image/embed rendering.
+- [x] Check internal link navigation.
+- [x] Create `TESTING.md` with verification steps.
 
 ## Future Improvements
+- [ ] **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
 - [ ] **Editability**: Click to edit.
 - [ ] **Date Navigation**: Jump to specific date.
 - [ ] **Filtering**: Filter by tag/header.

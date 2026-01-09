@@ -2,10 +2,13 @@ import { App, PluginSettingTab, Setting } from "obsidian";
 import DailyNotesStreamPlugin from "./main";
 
 export interface DailyNotesStreamSettings {
-	// Add future settings here
+	showProperties: boolean;
+	propertiesCollapsed: boolean;
 }
 
 export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
+	showProperties: false,
+	propertiesCollapsed: false
 }
 
 export class DailyNotesStreamSettingTab extends PluginSettingTab {
@@ -23,7 +26,23 @@ export class DailyNotesStreamSettingTab extends PluginSettingTab {
 		containerEl.createEl('h2', { text: 'Daily Notes Stream Settings' });
 
 		new Setting(containerEl)
-			.setName('Placeholder')
-			.setDesc('Currently there are no configurable settings.');
+			.setName('Show Note Properties')
+			.setDesc('Display the frontmatter properties (metadata) for each daily note.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.showProperties)
+				.onChange(async (value) => {
+					this.plugin.settings.showProperties = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Collapse Properties by Default')
+			.setDesc('Whether the properties section should be collapsed by default.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.propertiesCollapsed)
+				.onChange(async (value) => {
+					this.plugin.settings.propertiesCollapsed = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 }

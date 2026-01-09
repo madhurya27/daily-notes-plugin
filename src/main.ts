@@ -10,7 +10,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
 
 		this.registerView(
 			VIEW_TYPE_DAILY_NOTES_STREAM,
-			(leaf) => new DailyNotesStreamView(leaf)
+			(leaf) => new DailyNotesStreamView(leaf, this)
 		);
 
 		this.addRibbonIcon('calendar-days', 'Open Daily Notes Stream', () => {
