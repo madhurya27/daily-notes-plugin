@@ -23,10 +23,9 @@ export class DailyNotesStreamSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 
 		containerEl.empty();
-		containerEl.createEl('h2', { text: 'Daily Notes Stream Settings' });
-
+		
 		new Setting(containerEl)
-			.setName('Show Note Properties')
+			.setName('Show note properties')
 			.setDesc('Display the frontmatter properties (metadata) for each daily note.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.showProperties)
@@ -36,7 +35,7 @@ export class DailyNotesStreamSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Collapse Properties by Default')
+			.setName('Collapse properties by default')
 			.setDesc('Whether the properties section should be collapsed by default.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.propertiesCollapsed)

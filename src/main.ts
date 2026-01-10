@@ -13,15 +13,19 @@ export default class DailyNotesStreamPlugin extends Plugin {
 			(leaf) => new DailyNotesStreamView(leaf, this)
 		);
 
-		this.addRibbonIcon('calendar-days', 'Open Daily Notes Stream', () => {
-			this.activateView();
+		this.addRibbonIcon('calendar-days', 'Open daily notes stream', () => {
+			this.activateView().catch((error) => {
+				console.error("DailyNotesStream: Failed to activate view", error);
+			});
 		});
 
 		this.addCommand({
-			id: 'open-daily-notes-stream',
-			name: 'Open Daily Notes Stream',
+			id: 'open-stream',
+			name: 'Open stream',
 			callback: () => {
-				this.activateView();
+				this.activateView().catch((error) => {
+					console.error("DailyNotesStream: Failed to activate view", error);
+				});
 			}
 		});
 
@@ -45,7 +49,9 @@ export default class DailyNotesStreamPlugin extends Plugin {
 		}
 
 		if (leaf) {
-			workspace.revealLeaf(leaf);
+			// Ensure we await this promise if it returns one, though older API might not.
+			// The linter flagged this, so we assume it returns a promise.
+			await workspace.revealLeaf(leaf);
 		}
 	}
 

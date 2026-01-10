@@ -38,6 +38,15 @@
 .daily-notes-stream-container .metadata-container {
     margin-bottom: 1.5rem;
     font-size: var(--font-ui-small);
+    display: block;
+}
+
+.daily-notes-stream-container .metadata-properties {
+    display: block;
+}
+
+.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties {
+    display: none;
 }
 
 .daily-notes-stream-container .metadata-properties-heading {
@@ -63,6 +72,11 @@
     justify-content: center;
     margin-right: 4px;
     transition: transform 0.1s ease-in-out;
+    transform: rotate(90deg);
+}
+
+.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading-icon {
+    transform: rotate(0deg);
 }
 
 .daily-notes-stream-container .metadata-properties-heading-icon svg {
