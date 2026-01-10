@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, MarkdownRenderer, Notice, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile, MarkdownRenderer, setIcon } from "obsidian";
 import { DailyNoteService } from "./DailyNoteService";
 import type DailyNotesStreamPlugin from "./main";
 
@@ -23,7 +23,7 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     getDisplayText(): string {
-        return "Daily Notes Stream";
+        return "Daily notes stream";
     }
 
     getIcon(): string {
@@ -39,7 +39,7 @@ export class DailyNotesStreamView extends ItemView {
         // This will also trigger the initial load because the sentinel is visible
         this.setupInfiniteScroll();
 
-        console.log("DailyNotesStreamView: Opening view...");
+        console.debug("DailyNotesStreamView: Opening view...");
     }
 
     async loadMoreNotes() {
@@ -47,9 +47,9 @@ export class DailyNotesStreamView extends ItemView {
         this.isLoading = true;
 
         try {
-            console.log(`DailyNotesStreamView: Loading more notes. Offset: ${this.offset}, Batch: ${this.BATCH_SIZE}`);
+            console.debug(`DailyNotesStreamView: Loading more notes. Offset: ${this.offset}, Batch: ${this.BATCH_SIZE}`);
             const newBatch = DailyNoteService.getBatch(this.offset, this.BATCH_SIZE);
-            console.log(`DailyNotesStreamView: Found ${newBatch.length} notes in batch.`);
+            console.debug(`DailyNotesStreamView: Found ${newBatch.length} notes in batch.`);
 
             if (newBatch.length === 0) {
                 if (this.offset === 0) {
@@ -57,7 +57,7 @@ export class DailyNotesStreamView extends ItemView {
                     // We insert it before the sentinel so it looks correct.
                     const emptyState = document.createElement("div");
                     emptyState.addClass("daily-notes-empty-state");
-                    emptyState.setText("No daily notes found. Please check your Daily Notes settings.");
+                    emptyState.setText("No daily notes found. Please check your daily notes settings.");
                     this.streamContainerEl.insertBefore(emptyState, this.sentinel);
                 }
                 return;
@@ -89,7 +89,9 @@ export class DailyNotesStreamView extends ItemView {
             cls: "daily-note-title"
         });
         dateLink.onClickEvent(() => {
-            this.app.workspace.getLeaf(false).openFile(file);
+            this.app.workspace.getLeaf(false).openFile(file).catch((error) => {
+                console.error("DailyNotesStream: Failed to open file", error);
+            });
         });
 
         // Properties (Frontmatter)
@@ -103,8 +105,9 @@ export class DailyNotesStreamView extends ItemView {
             
             // Strip frontmatter if it exists to avoid duplication or raw rendering
             const cache = this.app.metadataCache.getFileCache(file);
-            if (cache?.frontmatter?.position) {
-                markdown = markdown.slice(cache.frontmatter.position.end.offset).trim();
+            const frontmatterPos = cache?.frontmatterPosition;
+            if (frontmatterPos) {
+                markdown = markdown.slice(frontmatterPos.end.offset).trim();
             }
 
             // Use MarkdownRenderer for high-fidelity rendering
@@ -117,7 +120,7 @@ export class DailyNotesStreamView extends ItemView {
             );
         } catch (error) {
             console.error(`Failed to render note ${file.path}:`, error);
-            contentEl.setText("Error rendering note.");
+            contentEl.setText("Error rendering note");
         }
     }
 
@@ -127,7 +130,7 @@ export class DailyNotesStreamView extends ItemView {
         const cache = this.app.metadataCache.getFileCache(file);
         if (!cache || !cache.frontmatter) return;
 
-        const frontmatter = cache.frontmatter;
+        const frontmatter = cache.frontmatter as unknown as Record<string, unknown>;
         // Filter out internal Obsidian keys if any (like position)
         const keys = Object.keys(frontmatter).filter(k => k !== "position");
 
@@ -135,7 +138,6 @@ export class DailyNotesStreamView extends ItemView {
 
         // Native Obsidian Reading View Properties Structure
         const metadataContainer = container.createDiv({ cls: "metadata-container" });
-        metadataContainer.style.display = "block"; 
 
         const metadataContent = metadataContainer.createDiv({ cls: "metadata-content" });
 
@@ -155,15 +157,7 @@ export class DailyNotesStreamView extends ItemView {
         let isCollapsed = this.plugin.settings.propertiesCollapsed;
         
         const updateCollapseState = () => {
-            if (isCollapsed) {
-                metadataContainer.addClass("is-collapsed");
-                metadataProperties.style.display = "none";
-                headingIcon.style.transform = "rotate(0deg)";
-            } else {
-                metadataContainer.removeClass("is-collapsed");
-                metadataProperties.style.display = "block";
-                headingIcon.style.transform = "rotate(90deg)";
-            }
+            metadataContainer.toggleClass("is-collapsed", isCollapsed);
         };
 
         // Apply initial state
@@ -197,17 +191,18 @@ export class DailyNotesStreamView extends ItemView {
             // Value Container
             const valueEl = propertyRow.createDiv({ cls: "metadata-property-value" });
             
-            let value = frontmatter[key];
+            const value = frontmatter[key];
             let displayValue = "";
             
             if (Array.isArray(value)) {
                 // If tags, maybe render as pills? For now, list.
-                displayValue = value.join(", ");
-                // If it's tags, let's try to simulate pills if possible, but text is safer for now.
+                displayValue = value.map(String).join(", ");
             } else if (typeof value === 'object' && value !== null) {
                 displayValue = JSON.stringify(value);
+            } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                displayValue = String(value);
             } else {
-                displayValue = String(value ?? "");
+                displayValue = "";
             }
             
             valueEl.createSpan({ cls: "metadata-property-value-text", text: displayValue });
@@ -219,7 +214,9 @@ export class DailyNotesStreamView extends ItemView {
         const observer = new IntersectionObserver((entries) => {
             const firstEntry = entries[0];
             if (firstEntry && firstEntry.isIntersecting) {
-                this.loadMoreNotes();
+                this.loadMoreNotes().catch((error) => {
+                    console.error("DailyNotesStream: Failed to load more notes", error);
+                });
             }
         }, {
             root: this.contentEl,
