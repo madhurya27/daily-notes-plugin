@@ -11,6 +11,7 @@ A read-only, infinite-scroll view of all your Daily Notes in Obsidian, displayed
 - **Note Properties**: Option to display frontmatter metadata (tags, dates, etc.) for each note.
   - **Collapsible**: Properties section can be toggled open or closed.
   - **Native Styling**: Designed to match Obsidian's native Reading View aesthetics.
+- **Live Updates**: Automatically detects new, modified, or deleted daily notes and updates the stream in real-time.
 - **Mobile Friendly**: optimized for touch and smaller screens.
 
 ## Installation
