@@ -158,3 +158,37 @@ runTest("Should ignore non-daily notes", async () => {
     const notes = (view as any).notes;
     assert(notes.length === 1, "Should still have 1 note");
 });
+
+runTest("Should refresh view correctly (preserve state)", async () => {
+    const app = new MockApp();
+    const leaf = new WorkspaceLeaf(app);
+    const view = new DailyNotesStreamView(leaf, mockPlugin);
+    
+    await view.onOpen();
+    
+    // Inject scrollTop into contentEl
+    (view.contentEl as any).scrollTop = 100;
+
+    const note1 = new TFile("Notes/2025-01-01.md");
+    (view as any).notes = [note1];
+    (view as any).offset = 1;
+    
+    let containerEmptied = false;
+    (view as any).streamContainerEl.empty = () => { containerEmptied = true; };
+    
+    // Mock findNoteElement to return an element with offset properties
+    (view as any).findNoteElement = (file: TFile) => {
+        return {
+            offsetTop: 50,
+            offsetHeight: 100,
+            closest: () => ({ remove: () => {} })
+        };
+    };
+
+    await view.refresh();
+    
+    assert(containerEmptied === true, "Container should be emptied");
+    assert((view as any).notes.length === 1, "Notes should be preserved");
+    assert((view as any).offset === 1, "Offset should be preserved");
+    assert((view.contentEl as any).scrollTop === 100, "Scroll position should be restored");
+});

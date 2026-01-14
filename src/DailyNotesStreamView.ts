@@ -11,6 +11,7 @@ export class DailyNotesStreamView extends ItemView {
     private readonly BATCH_SIZE = 10;
     private streamContainerEl: HTMLElement;
     private sentinel: HTMLElement;
+    private observer: IntersectionObserver | null = null;
     private isLoading: boolean = false;
     private plugin: DailyNotesStreamPlugin;
 
@@ -372,8 +373,13 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     private setupInfiniteScroll() {
+        if (this.observer) {
+            this.observer.disconnect();
+            this.observer = null;
+        }
+
         this.sentinel = this.streamContainerEl.createDiv({ cls: "daily-notes-stream-sentinel" });
-        const observer = new IntersectionObserver((entries) => {
+        this.observer = new IntersectionObserver((entries) => {
             const firstEntry = entries[0];
             if (firstEntry && firstEntry.isIntersecting) {
                 this.loadMoreNotes().catch((error) => {
@@ -385,11 +391,59 @@ export class DailyNotesStreamView extends ItemView {
             rootMargin: "100px"
         });
         
-        observer.observe(this.sentinel);
-        this.register(() => observer.disconnect());
+        this.observer.observe(this.sentinel);
+    }
+
+    async refresh() {
+        // 1. Capture current scroll position anchor
+        const scrollTop = this.contentEl.scrollTop;
+        let anchorFile: TFile | null = null;
+        let anchorRelativeTop = 0;
+
+        // Find the first visible note
+        for (const note of this.notes) {
+            const el = this.findNoteElement(note);
+            if (el) {
+                const elementTop = el.offsetTop;
+                const elementBottom = elementTop + el.offsetHeight;
+                
+                // Check if this element is visible or just above the viewport
+                if (elementBottom > scrollTop) {
+                    anchorFile = note;
+                    anchorRelativeTop = scrollTop - elementTop;
+                    break;
+                }
+            }
+        }
+
+        // 2. Clear DOM but keep data (notes and offset)
+        this.streamContainerEl.empty();
+
+        // 3. Re-render existing notes
+        for (const note of this.notes) {
+             const el = await this.createNoteElement(note);
+             this.streamContainerEl.appendChild(el);
+        }
+
+        // 4. Re-initialize sentinel
+        this.setupInfiniteScroll();
+
+        // 5. Restore scroll position
+        if (anchorFile) {
+            const newEl = this.findNoteElement(anchorFile);
+            if (newEl) {
+                this.contentEl.scrollTop = newEl.offsetTop + anchorRelativeTop;
+            }
+        } else {
+             // Fallback if no anchor found (e.g. at top)
+             this.contentEl.scrollTop = 0;
+        }
     }
 
     async onClose() {
-        // Cleanup if needed
+        if (this.observer) {
+            this.observer.disconnect();
+            this.observer = null;
+        }
     }
 }
