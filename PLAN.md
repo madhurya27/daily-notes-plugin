@@ -82,6 +82,13 @@ Build an Obsidian plugin that provides a read-only, infinite-scroll view of all 
 3.  Add collapsible header for properties section.
 4.  Strip frontmatter from markdown body to avoid duplication.
 
+### Phase 7: Polish & Verification [DONE]
+1.  Verify image/embed rendering.
+2.  Check internal link navigation.
+3.  Create `TESTING.md` with verification steps.
+4.  **Nested Folders**: Ensure parsing logic handles `YYYY/MM/` structure.
+5.  **Automated Testing**: Implement unit tests for `DailyNoteService`.
+
 ## Future Roadmap (Post-MVP)
 *   **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
 *   **Editability**: Allow clicking into the view to edit text directly.

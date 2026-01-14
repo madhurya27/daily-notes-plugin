@@ -17,18 +17,22 @@ The project includes a suite of automated unit tests to verify core logic (like 
     - Create at least 11 daily notes with filenames matching your date format (default: `YYYY-MM-DD`) to test infinite scroll (batch size is 10).
     - **Add Frontmatter**: Ensure some notes have frontmatter properties (tags, aliases, custom fields) to test the properties display.
 
-## 2. Deployment
-- Run the build command in the project root:
-  ```bash
-  npm run build
-  ```
-- Copy the distribution files to your test vault:
-  ```bash
-  mkdir -p <vault_path>/.obsidian/plugins/daily-notes-stream
-  cp main.js manifest.json styles.css <vault_path>/.obsidian/plugins/daily-notes-stream/
-  ```
+## 3. Deployment
+- **Option A (Manual Build)**:
+  - Run the build command in the project root:
+    ```bash
+    npm run build
+    ```
+  - Copy the distribution files to your test vault:
+    ```bash
+    mkdir -p <vault_path>/.obsidian/plugins/daily-notes-stream
+    cp main.js manifest.json styles.css <vault_path>/.obsidian/plugins/daily-notes-stream/
+    ```
+- **Option B (Dist Package)**:
+  - Run `npm run build`.
+  - Copy the `dist/daily-notes-stream` folder to `<vault_path>/.obsidian/plugins/`.
 
-## 3. Verification Steps
+## 4. Verification Steps
 
 ### Core Functionality
 1. **Plugin Activation**:
@@ -80,7 +84,7 @@ The project includes a suite of automated unit tests to verify core logic (like 
 2. **Mobile**:
    - Use Obsidian's mobile app or emulator to verify the responsive layout and touch scrolling.
 
-## 4. Debugging
+## 5. Debugging
 - Open the Developer Console (`Ctrl+Shift+I` or `Cmd+Opt+I`).
 - Look for logs prefixed with `DailyNotesStreamView:` or `DailyNoteService:`.
 - Check for "No daily notes found" messages if the view is empty.
