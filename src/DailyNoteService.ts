@@ -14,9 +14,13 @@ export class DailyNoteService {
         // We extract the files regardless of the container structure.
         const files = Object.values(dailyNotes) as TFile[];
 
+        // If the format contains slashes, it implies folders.
+        // We only want to match the filename part against file.basename.
+        const basenameFormat = dateFormat.split("/").pop() || "YYYY-MM-DD";
+
         const notesWithDates = files.map(file => {
             // Parse the date from the filename using the user's configured format
-            const date = moment(file.basename, dateFormat, true);
+            const date = moment(file.basename, basenameFormat, true);
             return {
                 file,
                 date,

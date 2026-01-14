@@ -6,6 +6,7 @@ A read-only, infinite-scroll view of all your Daily Notes in Obsidian, displayed
 
 - **Stream View**: See your daily notes in a continuous, infinite-scrolling feed.
 - **Chronological Order**: Notes are sorted by date, with the most recent at the top.
+- **Nested Folder Support**: Automatically handles daily notes organized in subfolders (e.g., `Notes/2025/03/2025-03-04.md`).
 - **Rich Rendering**: Full support for Markdown, images, embeds, and tasks.
 - **Note Properties**: Option to display frontmatter metadata (tags, dates, etc.) for each note.
   - **Collapsible**: Properties section can be toggled open or closed.
@@ -14,8 +15,10 @@ A read-only, infinite-scroll view of all your Daily Notes in Obsidian, displayed
 
 ## Installation
 
-1. Download the latest release from GitHub.
-2. Extract the files (`main.js`, `manifest.json`, `styles.css`) into your vault's plugin folder: `<VaultFolder>/.obsidian/plugins/daily-notes-stream/`.
+1. **From Release**: Download the latest release from GitHub and extract it to `<VaultFolder>/.obsidian/plugins/daily-notes-stream/`.
+2. **From Source**:
+   - Run `npm run build`.
+   - Copy the `dist/daily-notes-stream` folder to `<VaultFolder>/.obsidian/plugins/`.
 3. Reload Obsidian.
 4. Enable "Daily Notes Stream" in Community Plugins settings.
 
