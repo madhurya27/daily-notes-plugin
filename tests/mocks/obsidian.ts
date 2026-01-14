@@ -1,13 +1,151 @@
-import moment from "moment";
+// Mock moment
+class MockMoment {
+    date: Date;
+    _isValid: boolean;
 
-export class TFile {
-    basename: string;
+    constructor(dateStr?: string, format?: string, strict?: boolean) {
+        if (!dateStr) {
+            this.date = new Date();
+            this._isValid = true;
+        } else {
+            // Simple parsing for YYYY-MM-DD or YYYY/MM/DD
+            const parts = dateStr.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
+            // Simple parsing for YYYYMMDD
+            const compact = dateStr.match(/(\d{4})(\d{2})(\d{2})/);
+            
+            if (parts) {
+                this.date = new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
+                this._isValid = true;
+            } else if (compact) {
+                this.date = new Date(parseInt(compact[1]), parseInt(compact[2]) - 1, parseInt(compact[3]));
+                this._isValid = true;
+            } else {
+                this.date = new Date("Invalid");
+                this._isValid = false;
+            }
+        }
+    }
+
+    isValid() { return this._isValid; }
+    isAfter(other: MockMoment) { return this.date.getTime() > other.date.getTime(); }
+    isBefore(other: MockMoment) { return this.date.getTime() < other.date.getTime(); }
+    valueOf() { return this.date.getTime(); }
+    format(fmt: string) { return this.date.toISOString(); } // Simple stub
+}
+
+export function moment(inp?: string, fmt?: string, strict?: boolean) {
+    return new MockMoment(inp, fmt, strict);
+}
+
+export class TAbstractFile {
     path: string;
+    parent: any;
+    name: string;
+    vault: any;
     constructor(path: string) {
         this.path = path;
-        // basename is filename without extension
-        this.basename = path.split("/").pop()?.replace(/\.md$/, "") || "";
+        this.name = path.split("/").pop() || "";
     }
 }
 
-export { moment };
+export class TFile extends TAbstractFile {
+    basename: string;
+    extension: string;
+    stat: any;
+    constructor(path: string) {
+        super(path);
+        // basename is filename without extension
+        this.basename = this.name.replace(/\.md$/, "");
+        this.extension = "md";
+    }
+}
+
+export class WorkspaceLeaf {
+    view: any;
+    app: any;
+    constructor(app: any) {
+        this.app = app;
+    }
+    setViewState() {}
+    openFile() { return Promise.resolve(); }
+}
+
+// Mock DOM elements for Node environment
+class MockHTMLElement {
+    classList = {
+        add: () => {},
+        toggle: () => {},
+        remove: () => {}
+    };
+    style = {};
+    dataset = {};
+    children: MockHTMLElement[] = [];
+    parentNode: MockHTMLElement | null = null;
+
+    createDiv(params?: any) {
+        const div = new MockHTMLElement();
+        this.appendChild(div);
+        return div;
+    }
+    createEl(tag: string, params?: any) {
+        const el = new MockHTMLElement();
+        this.appendChild(el);
+        return el;
+    }
+    createSpan(params?: any) {
+        const span = new MockHTMLElement();
+        this.appendChild(span);
+        return span;
+    }
+    appendChild(child: any) {
+        this.children.push(child);
+        child.parentNode = this;
+        return child;
+    }
+    insertBefore(newNode: any, referenceNode: any) {
+        const index = this.children.indexOf(referenceNode);
+        if (index >= 0) {
+            this.children.splice(index, 0, newNode);
+        } else {
+            this.children.push(newNode);
+        }
+        newNode.parentNode = this;
+        return newNode;
+    }
+    removeChild(child: any) {
+        const index = this.children.indexOf(child);
+        if (index >= 0) {
+            this.children.splice(index, 1);
+            child.parentNode = null;
+        }
+    }
+    remove() {
+        if (this.parentNode) {
+            this.parentNode.removeChild(this);
+        }
+    }
+    addEventListener() {}
+    querySelector() { return null; } // Simple mock
+    closest() { return null; }
+    setText() {}
+    toggleClass() {}
+    onClickEvent() {}
+    get firstChild() { return this.children[0] || null; }
+}
+
+export class ItemView {
+    contentEl: any;
+    app: any;
+    constructor(leaf: WorkspaceLeaf) {
+        this.app = leaf.app;
+        this.contentEl = new MockHTMLElement();
+    }
+    registerEvent() {}
+    register() {}
+}
+
+export const MarkdownRenderer = {
+    render: () => Promise.resolve()
+};
+
+export const setIcon = () => {};
