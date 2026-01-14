@@ -9,6 +9,7 @@
 node_modules
 *.js
 build
+dist/
 /PluginTest/
 
 # Don't include the compiled main.js file in the repo.

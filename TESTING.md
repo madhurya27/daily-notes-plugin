@@ -1,8 +1,15 @@
 # Testing Procedure: Daily Notes Stream Plugin
 
-Follow these steps to verify the plugin is working correctly in a development or test environment.
+## 1. Automated Unit Tests
+The project includes a suite of automated unit tests to verify core logic (like date parsing and sorting) in isolation.
 
-## 1. Test Environment Setup
+- **Run tests**:
+  ```bash
+  npm test
+  ```
+- **Coverage**: Includes legacy root-folder notes and new nested `YYYY/MM/` folder structures.
+
+## 2. Test Environment Setup
 - Ensure you have an Obsidian vault available for testing (e.g., `PluginTest`).
 - In the test vault:
     - Enable the **Daily Notes** core plugin.
@@ -34,6 +41,12 @@ Follow these steps to verify the plugin is working correctly in a development or
    - Verify notes are displayed in descending chronological order (newest at the top).
    - Check that headers show the correct date/filename.
    - Click a header to ensure it opens the original file.
+   - **Link Verification**:
+     - Find the note **2026-02-01**.
+     - Verify the image `test-image.svg` is rendered.
+     - Click the link `[[2026-01-15]]`.
+     - Verify it opens the note **2026-01-15**.
+     - In **2026-01-15**, click `[[2026-02-01]]` to return.
 4. **Infinite Scroll**:
    - Scroll to the bottom of the view.
    - Verify that more notes are loaded automatically when the sentinel is reached.
@@ -51,6 +64,9 @@ Follow these steps to verify the plugin is working correctly in a development or
 3. **Interactivity**:
    - Click the "Properties" header. It should toggle (collapse/expand) the list of properties.
    - Verify the chevron icon rotates correctly.
+   - **Specific Data Check**:
+     - Check **2026-02-01**: Should show `tags: test, image, link`, `aliases: Feb 1st Test`, `mood: productive`.
+     - Check **2026-01-15**: Should show `tags: backlink, test`, `type: daily`, `location: Home Office`.
 4. **Default Collapse State**:
    - Go to **Settings**.
    - Toggle **Collapse Properties by Default** to **ON**.

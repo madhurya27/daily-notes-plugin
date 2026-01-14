@@ -55,6 +55,7 @@ Build an Obsidian plugin that provides a read-only, infinite-scroll view of all 
 1.  Implement `DailyNoteService` to gather all daily notes from the vault.
 2.  Implement sorting logic (Newest -> Oldest).
 3.  Ensure compatibility with mobile file system access via Obsidian API.
+4.  Ensure `DailyNoteService` handles nested folder paths (e.g. `YYYY/MM/YYYY-MM-DD.md`) correctly during date parsing.
 
 ### Phase 3: The View Skeleton [DONE]
 1.  Create `DailyNotesStreamView.ts`.

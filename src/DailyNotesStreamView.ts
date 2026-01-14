@@ -35,6 +35,21 @@ export class DailyNotesStreamView extends ItemView {
         this.offset = 0;
         this.notes = [];
         
+        // Handle internal links
+        this.streamContainerEl.addEventListener("click", (event) => {
+            const target = event.target as HTMLElement;
+            if (target.matches(".internal-link")) {
+                event.preventDefault();
+                const linkText = target.getAttribute("data-href");
+                const sourceContainer = target.closest(".daily-note-content") as HTMLElement;
+                const sourcePath = sourceContainer?.dataset.sourcePath || "";
+                
+                if (linkText) {
+                    this.app.workspace.openLinkText(linkText, sourcePath, false);
+                }
+            }
+        });
+
         // Setup sentinel and observer first so renderNote can insert before it
         // This will also trigger the initial load because the sentinel is visible
         this.setupInfiniteScroll();
@@ -99,6 +114,7 @@ export class DailyNotesStreamView extends ItemView {
 
         // Content
         const contentEl = noteContainer.createDiv({ cls: "daily-note-content" });
+        contentEl.dataset.sourcePath = file.path;
         
         try {
             let markdown = await this.app.vault.read(file);
