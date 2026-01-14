@@ -56,6 +56,23 @@ The project includes a suite of automated unit tests to verify core logic (like 
    - Verify that more notes are loaded automatically when the sentinel is reached.
    - **Fix Verification**: Ensure the first batch of notes does not duplicate upon initial load.
 
+### Live Updates
+1. **New Note Creation**:
+   - While the stream is open, create a new daily note for today (or a future date) via the side panel or command palette.
+   - **Expectation**: The new note should appear immediately at the top of the stream.
+   - Create a note for a past date (between existing displayed notes).
+   - **Expectation**: The note should be inserted correctly in chronological order.
+2. **Note Modification**:
+   - Open a daily note in a separate pane that is currently visible in the stream.
+   - Edit the content (add text, bolding, etc.).
+   - **Expectation**: The content in the stream view should update in real-time to reflect the changes.
+3. **Renaming**:
+   - Rename a daily note file (e.g., change the date).
+   - **Expectation**: The stream should update the header title and re-sort the note if the date changed (or remove it if it no longer matches the daily note format).
+4. **Deletion**:
+   - Delete a daily note file.
+   - **Expectation**: The note should immediately disappear from the stream view.
+
 ### Properties Display
 1. **Enable Properties**:
    - Go to **Settings > Daily Notes Stream**.

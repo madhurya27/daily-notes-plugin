@@ -90,7 +90,7 @@ Build an Obsidian plugin that provides a read-only, infinite-scroll view of all 
 5.  **Automated Testing**: Implement unit tests for `DailyNoteService`.
 
 ## Future Roadmap (Post-MVP)
-*   **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
+*   **Live Updates [DONE]**: Automatically detect new daily notes and insert them into the stream without reloading.
 *   **Editability**: Allow clicking into the view to edit text directly.
 *   **Date Navigation**: A calendar or timeline sidebar to jump to specific dates.
 *   **Filtering**: Show/Hide specific headers or tags.

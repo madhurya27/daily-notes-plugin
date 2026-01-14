@@ -56,7 +56,7 @@ A read-only, infinite-scroll view of all Daily Notes in Obsidian, ordered chrono
 - [x] **Automated Testing**: Unit tests for `DailyNoteService`.
 
 ## Future Improvements
-- [ ] **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
+- [x] **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
 - [ ] **Collapsible Daily Notes**: Ability to collapse/expand individual daily note blocks in the stream.
 - [ ] **Editability**: Click to edit.
 - [ ] **Date Navigation**: Jump to specific date.
