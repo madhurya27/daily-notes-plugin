@@ -23,19 +23,20 @@ const mockPlugin = {
 async function run() {
     try {
         await esbuild.build({
-            entryPoints: ['tests/DailyNoteService.test.ts'],
+            entryPoints: ['tests/DailyNoteService.test.ts', 'tests/DailyNotesStreamView.test.ts'],
             bundle: true,
             platform: 'node',
             format: 'esm',
-            outfile: 'tests/out.test.js',
+            outdir: 'tests/dist', // Changed to outdir for multiple entry points
             plugins: [mockPlugin],
-            external: ['moment'],
+            external: [],
         });
 
         console.log("Build successful. Running tests...");
         
-        // Execute the test
-        await import('./tests/out.test.js');
+        // Execute the tests
+        await import('./tests/dist/DailyNoteService.test.js');
+        await import('./tests/dist/DailyNotesStreamView.test.js');
 
     } catch (e) {
         console.error("Build failed:", e);

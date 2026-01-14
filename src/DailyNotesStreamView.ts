@@ -1,5 +1,6 @@
-import { ItemView, WorkspaceLeaf, TFile, MarkdownRenderer, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile, MarkdownRenderer, setIcon, TAbstractFile } from "obsidian";
 import { DailyNoteService } from "./DailyNoteService";
+import { getDateFromFile } from "obsidian-daily-notes-interface";
 import type DailyNotesStreamPlugin from "./main";
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
@@ -45,16 +46,156 @@ export class DailyNotesStreamView extends ItemView {
                 const sourcePath = sourceContainer?.dataset.sourcePath || "";
                 
                 if (linkText) {
-                    this.app.workspace.openLinkText(linkText, sourcePath, false);
+                    this.app.workspace.openLinkText(linkText, sourcePath, false).catch((error) => {
+                        console.error("DailyNotesStream: Failed to open link", error);
+                    });
                 }
             }
         });
+
+        // Register vault events for live updates
+        this.registerEvent(this.app.vault.on("modify", this.onFileModify.bind(this)));
+        this.registerEvent(this.app.vault.on("create", this.onFileCreate.bind(this)));
+        this.registerEvent(this.app.vault.on("delete", this.onFileDelete.bind(this)));
+        this.registerEvent(this.app.vault.on("rename", this.onFileRename.bind(this)));
 
         // Setup sentinel and observer first so renderNote can insert before it
         // This will also trigger the initial load because the sentinel is visible
         this.setupInfiniteScroll();
 
         console.debug("DailyNotesStreamView: Opening view...");
+    }
+
+    onFileModify(file: TAbstractFile) {
+        if (!(file instanceof TFile)) return Promise.resolve();
+        
+        // Check if this file is currently displayed in the stream
+        const noteElement = this.findNoteElement(file);
+        if (noteElement) {
+            console.debug(`DailyNotesStreamView: Updating modified note: ${file.path}`);
+            return this.refreshNote(file, noteElement).catch(error => {
+                console.error("DailyNotesStream: Failed to refresh note", error);
+            });
+        }
+        return Promise.resolve();
+    }
+
+    onFileCreate(file: TAbstractFile) {
+        if (!(file instanceof TFile)) return Promise.resolve();
+
+        const date = getDateFromFile(file, "day");
+        if (!date) return Promise.resolve(); // Not a daily note
+
+        // If we haven't loaded any notes yet, the infinite scroll will handle it or loadMoreNotes will
+        if (this.notes.length === 0) return Promise.resolve();
+
+        const newestNote = this.notes[0];
+        const oldestNote = this.notes[this.notes.length - 1];
+
+        if (!newestNote || !oldestNote) return Promise.resolve();
+        
+        const newestDate = getDateFromFile(newestNote, "day");
+        const oldestDate = getDateFromFile(oldestNote, "day");
+
+        if (!newestDate || !oldestDate) return Promise.resolve();
+
+        // Check if the new note is newer than the newest loaded note
+        if (date.isAfter(newestDate)) {
+             console.debug(`DailyNotesStreamView: Prepending new daily note: ${file.path}`);
+             return this.insertNote(file, 0).catch(error => {
+                console.error("DailyNotesStream: Failed to insert new note", error);
+             });
+        } 
+        // Check if it fits within the currently loaded range
+        else if (date.isBefore(newestDate) && date.isAfter(oldestDate)) {
+            console.debug(`DailyNotesStreamView: Inserting new daily note in stream: ${file.path}`);
+            // Find insertion index
+            let insertIndex = this.notes.length;
+            for (let i = 0; i < this.notes.length; i++) {
+                const note = this.notes[i];
+                if (!note) continue;
+                
+                const currentNoteDate = getDateFromFile(note, "day");
+                if (currentNoteDate && date.isAfter(currentNoteDate)) {
+                    insertIndex = i;
+                    break;
+                }
+            }
+            return this.insertNote(file, insertIndex).catch(error => {
+                console.error("DailyNotesStream: Failed to insert new note", error);
+            });
+        }
+        return Promise.resolve();
+    }
+
+    onFileDelete(file: TAbstractFile) {
+        if (!(file instanceof TFile)) return Promise.resolve();
+
+        const index = this.notes.findIndex(n => n.path === file.path);
+        if (index !== -1) {
+            console.debug(`DailyNotesStreamView: Removing deleted note: ${file.path}`);
+            const noteElement = this.findNoteElement(file);
+            if (noteElement) {
+                noteElement.remove();
+            }
+            this.notes.splice(index, 1);
+            this.offset--;
+        }
+        return Promise.resolve();
+    }
+
+    onFileRename(file: TAbstractFile) {
+        if (!(file instanceof TFile)) return Promise.resolve();
+        
+        const index = this.notes.findIndex(n => n === file);
+        
+        if (index !== -1) {
+             const date = getDateFromFile(file, "day");
+             if (!date) {
+                 return this.onFileDelete(file);
+             } else {
+                 // Delete then re-create
+                 // onFileDelete is synchronous-ish (returns resolved promise)
+                 // onFileCreate returns a promise.
+                 return this.onFileDelete(file).then(() => this.onFileCreate(file));
+             }
+        } else {
+            return this.onFileCreate(file);
+        }
+    }
+
+    private findNoteElement(file: TFile): HTMLElement | null {
+        const selector = `.daily-note-content[data-source-path="${file.path.replace(/"/g, '\\"')}"]`;
+        const contentEl = this.streamContainerEl.querySelector(selector);
+        return contentEl?.closest(".daily-note-block") as HTMLElement || null;
+    }
+
+    private async refreshNote(file: TFile, oldElement: HTMLElement) {
+        const newElement = await this.createNoteElement(file);
+        this.streamContainerEl.insertBefore(newElement, oldElement);
+        oldElement.remove();
+    }
+
+    private async insertNote(file: TFile, index: number) {
+        const newElement = await this.createNoteElement(file);
+        
+        if (index === 0) {
+             this.streamContainerEl.insertBefore(newElement, this.streamContainerEl.firstChild);
+        } else if (index >= this.notes.length) {
+             this.streamContainerEl.insertBefore(newElement, this.sentinel);
+        } else {
+            const nextNote = this.notes[index];
+            const nextElement = nextNote ? this.findNoteElement(nextNote) : null;
+            
+            if (nextElement) {
+                this.streamContainerEl.insertBefore(newElement, nextElement);
+            } else {
+                this.streamContainerEl.insertBefore(newElement, this.sentinel);
+            }
+        }
+        
+        this.notes.splice(index, 0, file);
+        this.offset++;
     }
 
     async loadMoreNotes() {
@@ -90,12 +231,15 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     async renderNote(file: TFile) {
+        const noteContainer = await this.createNoteElement(file);
+        // Insert before the sentinel to ensure sentinel stays at the bottom
+        this.streamContainerEl.insertBefore(noteContainer, this.sentinel);
+    }
+
+    private async createNoteElement(file: TFile): Promise<HTMLElement> {
         // Create the container element manually to avoid auto-appending
         const noteContainer = document.createElement("div");
         noteContainer.addClass("daily-note-block");
-        
-        // Insert before the sentinel to ensure sentinel stays at the bottom
-        this.streamContainerEl.insertBefore(noteContainer, this.sentinel);
         
         // Header
         const header = noteContainer.createDiv({ cls: "daily-note-header" });
@@ -138,6 +282,8 @@ export class DailyNotesStreamView extends ItemView {
             console.error(`Failed to render note ${file.path}:`, error);
             contentEl.setText("Error rendering note");
         }
+        
+        return noteContainer;
     }
 
     private renderProperties(container: HTMLElement, file: TFile) {
