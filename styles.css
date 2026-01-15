@@ -1,9 +1,9 @@
-/* Daily Notes Stream Styles */
+/* Daily Notes Stream Styles - Fully Variable-Based */
 
 .daily-notes-stream-container {
     display: flex;
     flex-direction: column;
-    gap: var(--size-4-12, 3rem); /* Increased gap between blocks */
+    gap: var(--size-4-12, 3rem); 
     padding: var(--size-4-4, 1rem);
     max-width: var(--file-line-width, 800px);
     margin: 0 auto;
@@ -12,8 +12,8 @@
 }
 
 .daily-note-block {
-    border-bottom: 1px solid var(--background-modifier-border);
-    padding-bottom: var(--size-4-12, 3rem); /* Increased padding for breathing room */
+    border-bottom: var(--border-width) solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-12, 3rem);
 }
 
 .daily-note-header {
@@ -21,13 +21,13 @@
 }
 
 .daily-note-title {
-    font-size: var(--h1-size, 1.5rem);
-    font-weight: var(--h1-weight, bold);
+    font-size: var(--h1-size);
+    font-weight: var(--h1-weight);
     color: var(--text-accent);
     text-decoration: none;
     cursor: pointer;
-    font-family: var(--h1-font, inherit);
-    line-height: var(--h1-line-height, 1.3);
+    font-family: var(--h1-font);
+    line-height: var(--h1-line-height);
 }
 
 .daily-note-title:hover {
@@ -35,16 +35,21 @@
 }
 
 .daily-note-content {
-    line-height: var(--line-height-normal, 1.6);
+    line-height: var(--line-height-normal);
     user-select: text;
     cursor: auto;
     font-family: var(--font-text);
     font-size: var(--font-text-size);
 }
 
+/* Ensure standard spacing within rendered content */
+.daily-note-content p {
+    margin-bottom: var(--p-spacing);
+}
+
 /* Daily Note Properties - Mimic Native Styling */
 .daily-notes-stream-container .metadata-container {
-    margin-bottom: var(--size-4-6, 1.5rem);
+    margin-bottom: var(--p-spacing);
     font-size: var(--font-ui-small);
     display: block;
 }
@@ -60,10 +65,10 @@
 .daily-notes-stream-container .metadata-properties-heading {
     display: flex;
     align-items: center;
-    padding: var(--size-2-2, 8px) 0;
+    padding: var(--size-4-2) 0;
     cursor: pointer;
     color: var(--text-faint);
-    font-weight: 500;
+    font-weight: var(--nav-item-weight, 500);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-size: var(--font-ui-smaller);
@@ -78,8 +83,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: var(--size-2-1, 4px);
-    transition: transform 0.1s ease-in-out;
+    margin-right: var(--size-4-1);
+    transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
     transform: rotate(90deg);
 }
 
@@ -88,38 +93,38 @@
 }
 
 .daily-notes-stream-container .metadata-properties-heading-icon svg {
-    width: 12px;
-    height: 12px;
+    width: var(--size-4-3);
+    height: var(--size-4-3);
 }
 
 .daily-notes-stream-container .metadata-property {
     display: flex;
     align-items: flex-start;
-    padding: var(--size-2-1, 4px) 0;
+    padding: var(--size-4-1) 0;
 }
 
 .daily-notes-stream-container .metadata-property-key {
     display: flex;
     align-items: center;
-    width: 150px;
-    min-width: 100px;
+    width: var(--size-4-36, 9rem); /* Using variable for width */
+    min-width: var(--size-4-24, 6rem);
     flex-shrink: 0;
     color: var(--text-muted);
-    font-weight: 500;
+    font-weight: var(--nav-item-weight, 500);
 }
 
 .daily-notes-stream-container .metadata-property-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: var(--size-2-2, 8px);
+    margin-right: var(--size-4-2);
     color: var(--text-faint);
     opacity: 0.7;
 }
 
 .daily-notes-stream-container .metadata-property-icon svg {
-    width: 16px;
-    height: 16px;
+    width: var(--size-4-4);
+    height: var(--size-4-4);
 }
 
 .daily-notes-stream-container .metadata-property-value {
@@ -131,12 +136,12 @@
 /* Mobile specific tweaks */
 @media (max-width: 480px) {
     .daily-notes-stream-container {
-        padding: var(--size-2-2, 0.5rem);
-        gap: var(--size-4-6, 1.5rem);
+        padding: var(--size-4-2);
+        gap: var(--size-4-8);
     }
 
     .daily-note-title {
-        font-size: var(--h2-size, 1.25rem);
+        font-size: var(--h2-size);
     }
 }
 
@@ -154,15 +159,15 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.1s ease-in-out;
+    transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
     color: var(--text-faint);
-    transform: rotate(90deg); /* Default expanded state */
+    transform: rotate(90deg);
     cursor: pointer;
 }
 
 .daily-note-content .collapse-indicator svg {
-    width: var(--size-4-3, 12px);
-    height: var(--size-4-3, 12px);
+    width: var(--size-4-3);
+    height: var(--size-4-3);
 }
 
 .daily-note-content .is-collapsed > .collapse-indicator {
@@ -170,16 +175,10 @@
 }
 
 /* List Item Collapse Alignment */
-.daily-note-content li.is-collapsible {
-    /* Keep default list-style-type (bullets) */
-}
-
 .daily-note-content li.is-collapsible > .collapse-indicator {
     position: absolute;
-    left: -1.8em; /* Positioned left of the bullet */
-    top: 0.4em;
-    width: 1em;
-    height: 1em;
+    left: calc(-1 * var(--size-4-8, 2rem)); /* Using variable for offset */
+    top: calc(var(--line-height-normal) * 0.2em);
 }
 
 .daily-note-content li.is-collapsed > ul,
@@ -188,16 +187,11 @@
 }
 
 /* Header Collapse Alignment */
-.daily-note-content h1.is-collapsible,
-.daily-note-content h2.is-collapsible,
-.daily-note-content h3.is-collapsible,
-.daily-note-content h4.is-collapsible,
-.daily-note-content h5.is-collapsible,
-.daily-note-content h6.is-collapsible {
+.daily-note-content :is(h1,h2,h3,h4,h5,h6).is-collapsible {
     display: flex;
     align-items: center;
-    margin-left: -0.8em; /* Pull back less */
-    padding-left: 0.8em; 
+    margin-left: calc(-1 * var(--size-4-4));
+    padding-left: var(--size-4-4); 
 }
 
 .daily-note-content :is(h1,h2,h3,h4,h5,h6).is-collapsible > .collapse-indicator {
