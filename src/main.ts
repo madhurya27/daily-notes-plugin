@@ -64,5 +64,15 @@ export default class DailyNotesStreamPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+
+		// Refresh all stream views
+		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_NOTES_STREAM);
+		for (const leaf of leaves) {
+			if (leaf.view instanceof DailyNotesStreamView) {
+				leaf.view.refresh().catch((error) => {
+					console.error("DailyNotesStream: Failed to refresh view on settings change", error);
+				});
+			}
+		}
 	}
 }
