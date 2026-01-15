@@ -54,9 +54,27 @@ The project includes a suite of automated unit tests to verify core logic (like 
 4. **Infinite Scroll**:
    - Scroll to the bottom of the view.
    - Verify that more notes are loaded automatically when the sentinel is reached.
-   - **Fix Verification**: Ensure the first batch of notes does not duplicate upon initial load.
-
-### Live Updates
+       - **Fix Verification**: Ensure the first batch of notes does not duplicate upon initial load.
+   
+   ### Collapsible Content
+   1. **Header Collapse**:
+      - Locate a note with headers (H1-H6).
+      - Click the chevron next to a header.
+      - **Expectation**: The content under the header should collapse. The chevron should rotate.
+   2. **Nested List Collapse**:
+      - Locate a note with nested bullet points.
+      - Click the chevron next to a parent bullet.
+      - **Expectation**: The sub-bullets should collapse.
+   
+   ### Scroll Preservation
+   1. **Refresh on Settings Change**:
+      - Scroll down to a specific note in the stream.
+      - Open **Settings > Daily Notes Stream** and toggle any setting (e.g., "Show Note Properties").
+      - Close settings.
+      - **Expectation**: The view should refresh, but your scroll position should remain on the same note.
+   
+   ### Live Updates
+   
 1. **New Note Creation**:
    - While the stream is open, create a new daily note for today (or a future date) via the side panel or command palette.
    - **Expectation**: The new note should appear immediately at the top of the stream.
