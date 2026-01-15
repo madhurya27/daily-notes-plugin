@@ -58,8 +58,9 @@ A read-only, infinite-scroll view of all Daily Notes in Obsidian, ordered chrono
 
 ## Future Improvements
 - [ ] **Smart Internal Links**: When clicking on an internal link, only open a new tab if the file is not already opened. Otherwise, make the existing tab active.
-- [ ] **Visual Separation**: Add more vertical space between daily notes in the stream view to improve readability.
-- [ ] **Collapsible Daily Notes**: Ability to collapse/expand individual daily note blocks in the stream.
+- [x] **Visual Separation**: Add more vertical space between daily notes in the stream view to improve readability.
+- [x] **Collapsible Content**: Make headers and nested lists collapsible within the stream view.
+- [x] **Refresh on Settings Change**: Automatically refresh the view when settings are updated, preserving scroll position.
 - [ ] **Editability**: Click to edit.
 - [ ] **Date Navigation**: Jump to specific date.
 - [ ] **Filtering**: Filter by tag/header.
