@@ -92,6 +92,12 @@ Build an Obsidian plugin that provides a read-only, infinite-scroll view of all 
 ### Phase 8: Live Updates [DONE]
 1.  **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
 
+### Phase 9: UI Refinement & Collapsibility [DONE]
+1.  **Variable-Based Styling**: Refactor CSS to use native Obsidian variables for spacing, typography, and colors.
+2.  **Collapsible Headers**: Implement collapse/expand logic for H1-H6 headers within the stream.
+3.  **Collapsible Lists**: Implement collapse/expand logic for nested bullet points.
+4.  **Scroll Preservation**: Ensure the stream refreshes correctly when settings change without losing the user's scroll position.
+
 ## Future Roadmap (Post-MVP)
 *   **Editability**: Allow clicking into the view to edit text directly.
 *   **Date Navigation**: A calendar or timeline sidebar to jump to specific dates.
