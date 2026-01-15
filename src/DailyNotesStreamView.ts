@@ -278,12 +278,73 @@ export class DailyNotesStreamView extends ItemView {
                 file.path,
                 this
             );
+
+            // Post-process to add collapsible behavior
+            this.makeCollapsible(contentEl);
         } catch (error) {
             console.error(`Failed to render note ${file.path}:`, error);
             contentEl.setText("Error rendering note");
         }
         
         return noteContainer;
+    }
+
+    private makeCollapsible(contentEl: HTMLElement) {
+        // 1. Headers
+        const headers = contentEl.querySelectorAll("h1, h2, h3, h4, h5, h6");
+        headers.forEach((header: HTMLElement) => {
+            header.addClass("is-collapsible");
+            const indicator = document.createElement("span");
+            indicator.addClass("collapse-indicator");
+            setIcon(indicator, "chevron-right");
+            header.prepend(indicator);
+
+            header.onClickEvent(() => {
+                header.toggleClass("is-collapsed", !header.hasClass("is-collapsed"));
+                this.toggleHeaderSection(header);
+            });
+        });
+
+        // 2. Lists
+        const listItems = contentEl.querySelectorAll("li");
+        listItems.forEach((li: HTMLElement) => {
+            const subList = li.querySelector("ul, ol");
+            if (subList) {
+                li.addClass("is-collapsible");
+                const indicator = document.createElement("span");
+                indicator.addClass("collapse-indicator");
+                setIcon(indicator, "chevron-right");
+                // Insert before the text content of the li
+                li.prepend(indicator);
+
+                indicator.onClickEvent((e) => {
+                    e.stopPropagation();
+                    li.toggleClass("is-collapsed", !li.hasClass("is-collapsed"));
+                });
+            }
+        });
+    }
+
+    private toggleHeaderSection(header: HTMLElement) {
+        const isCollapsed = header.hasClass("is-collapsed");
+        const level = parseInt(header.tagName.substring(1));
+        let nextEl = header.nextElementSibling as HTMLElement;
+
+        while (nextEl) {
+            if (nextEl.tagName.match(/^H[1-6]$/)) {
+                const nextLevel = parseInt(nextEl.tagName.substring(1));
+                if (nextLevel <= level) {
+                    break;
+                }
+            }
+            
+            if (isCollapsed) {
+                nextEl.style.display = "none";
+            } else {
+                nextEl.style.display = "";
+            }
+            nextEl = nextEl.nextElementSibling as HTMLElement;
+        }
     }
 
     private renderProperties(container: HTMLElement, file: TFile) {

@@ -6,30 +6,30 @@ import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface
 if (!global.document) {
     (global as any).document = {
         createElement: (tag: string) => {
-            const el = {
+            const createMockEl = (tagName: string = "div") => ({
+                tagName: tagName.toUpperCase(),
                 addClass: () => {},
-                createDiv: () => {
-                     const div = { 
-                        createEl: () => ({ onClickEvent: () => {} }),
-                        createDiv: () => ({ 
-                            createDiv: () => ({ 
-                                createDiv: () => ({ createSpan: () => {} }),
-                                createSpan: () => {}
-                            }),
-                            createSpan: () => {}
-                        }),
-                        createSpan: () => {},
-                        dataset: {},
-                        setText: () => {}
-                    };
-                    return div;
-                },
-                createEl: () => ({ onClickEvent: () => {} }),
+                hasClass: () => false,
+                toggleClass: () => {},
+                createDiv: (params?: any) => createMockEl("div"),
+                createEl: (tag: string, params?: any) => createMockEl(tag),
+                createSpan: (params?: any) => createMockEl("span"),
                 appendChild: () => {},
-                insertBefore: () => {}, // Mock insertBefore
-                dataset: {}
-            };
-            return el;
+                insertBefore: () => {},
+                removeChild: () => {},
+                remove: () => {},
+                onClickEvent: () => {},
+                prepend: () => {},
+                setText: () => {},
+                closest: () => null,
+                dataset: {},
+                style: {},
+                querySelector: () => null,
+                querySelectorAll: () => [],
+                children: [],
+                nextElementSibling: null
+            });
+            return createMockEl(tag);
         }
     };
 }
