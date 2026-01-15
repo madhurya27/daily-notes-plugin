@@ -89,8 +89,10 @@ Build an Obsidian plugin that provides a read-only, infinite-scroll view of all 
 4.  **Nested Folders**: Ensure parsing logic handles `YYYY/MM/` structure.
 5.  **Automated Testing**: Implement unit tests for `DailyNoteService`.
 
+### Phase 8: Live Updates [DONE]
+1.  **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
+
 ## Future Roadmap (Post-MVP)
-*   **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
 *   **Editability**: Allow clicking into the view to edit text directly.
 *   **Date Navigation**: A calendar or timeline sidebar to jump to specific dates.
 *   **Filtering**: Show/Hide specific headers or tags.

@@ -10,6 +10,7 @@ A read-only, infinite-scroll view of all Daily Notes in Obsidian, ordered chrono
 - [x] **Rich Rendering**: Full support for markdown, images, embeds, and other Obsidian features.
 - [x] **Mobile Compatibility**: Responsive design and touch-friendly interactions.
 - [x] **Note Properties**: Display collapsible frontmatter metadata with native styling.
+- [x] **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
 
 ## Development Tasks
 
@@ -56,7 +57,8 @@ A read-only, infinite-scroll view of all Daily Notes in Obsidian, ordered chrono
 - [x] **Automated Testing**: Unit tests for `DailyNoteService`.
 
 ## Future Improvements
-- [ ] **Live Updates**: Automatically detect new daily notes and insert them into the stream without reloading.
+- [ ] **Smart Internal Links**: When clicking on an internal link, only open a new tab if the file is not already opened. Otherwise, make the existing tab active.
+- [ ] **Visual Separation**: Add more vertical space between daily notes in the stream view to improve readability.
 - [ ] **Collapsible Daily Notes**: Ability to collapse/expand individual daily note blocks in the stream.
 - [ ] **Editability**: Click to edit.
 - [ ] **Date Navigation**: Jump to specific date.
