@@ -6,6 +6,7 @@ A read-only, infinite-scroll view of all your Daily Notes in Obsidian, displayed
 
 - **Stream View**: See your daily notes in a continuous, infinite-scrolling feed.
 - **Chronological Order**: Notes are sorted by date, with the most recent at the top.
+- **Live Updates**: Automatically detects new, modified, or renamed daily notes and updates the stream in real-time without reloading.
 - **Nested Folder Support**: Automatically handles daily notes organized in subfolders (e.g., `Notes/2025/03/2025-03-04.md`).
 - **Rich Rendering**: Full support for Markdown, images, embeds, and tasks.
 - **Note Properties**: Option to display frontmatter metadata (tags, dates, etc.) for each note.
