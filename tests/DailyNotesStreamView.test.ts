@@ -6,24 +6,30 @@ import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface
 if (!global.document) {
     (global as any).document = {
         createElement: (tag: string) => {
-            const createMockEl = () => ({
+            const createMockEl = (tagName: string = "div") => ({
+                tagName: tagName.toUpperCase(),
                 addClass: () => {},
-                createDiv: () => createMockEl(),
-                createEl: () => createMockEl(),
-                createSpan: () => createMockEl(),
+                hasClass: () => false,
+                toggleClass: () => {},
+                createDiv: (params?: any) => createMockEl("div"),
+                createEl: (tag: string, params?: any) => createMockEl(tag),
+                createSpan: (params?: any) => createMockEl("span"),
                 appendChild: () => {},
                 insertBefore: () => {},
                 removeChild: () => {},
                 remove: () => {},
                 onClickEvent: () => {},
+                prepend: () => {},
                 setText: () => {},
                 closest: () => null,
                 dataset: {},
-                style: {}, // Added style property
+                style: {},
                 querySelector: () => null,
-                children: []
+                querySelectorAll: () => [],
+                children: [],
+                nextElementSibling: null
             });
-            return createMockEl();
+            return createMockEl(tag);
         }
     };
 }
