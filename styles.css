@@ -193,6 +193,13 @@
 	margin-left: calc(-1 * var(--size-4-4));
 	padding-left: var(--size-4-4);
 	margin-block-start: 0;
+	margin-block-end: calc(var(--p-spacing) * 0.5);
+}
+
+.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ p),
+.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ ul),
+.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ ol) {
+	margin-block-end: calc(var(--p-spacing) * 0.25);
 }
 
 .daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible > .collapse-indicator {
@@ -206,4 +213,8 @@
 
 .is-hidden {
 	display: none;
+}
+
+.daily-note-content :is(ul, ol) {
+	margin-block-start: 0;
 }

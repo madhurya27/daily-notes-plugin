@@ -91,6 +91,12 @@ The project includes a suite of automated unit tests to verify core logic (like 
    - Delete a daily note file.
    - **Expectation**: The note should immediately disappear from the stream view.
 
+### Visual Spacing
+1. **Header Spacing**:
+   - Locate a header (H1-H6) immediately followed by a paragraph or list.
+   - Locate a header followed by another header or non-text element.
+   - **Expectation**: The header followed by text/list should have tighter bottom spacing than the one followed by other elements.
+
 ### Properties Display
 1. **Enable Properties**:
    - Go to **Settings > Daily Notes Stream**.
