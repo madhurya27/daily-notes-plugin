@@ -203,3 +203,7 @@
 .daily-note-content .is-collapsible:hover > .collapse-indicator {
 	color: var(--text-muted);
 }
+
+.is-hidden {
+	display: none;
+}
