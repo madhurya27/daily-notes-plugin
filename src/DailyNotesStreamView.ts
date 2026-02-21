@@ -339,10 +339,8 @@ export class DailyNotesStreamView extends ItemView {
                 }
             }
             
-            if (isCollapsed) {
-                nextEl.style.display = "none";
-            } else {
-                nextEl.style.display = "";
+            if (nextEl) {
+                nextEl.toggleClass("is-hidden", isCollapsed);
             }
             nextEl = nextEl.nextElementSibling as HTMLElement;
         }
