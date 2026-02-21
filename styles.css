@@ -1,204 +1,220 @@
 /* Daily Notes Stream Styles - Fully Variable-Based */
 
 .daily-notes-stream-container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-12, 3rem); 
-    padding: var(--size-4-4, 1rem);
-    max-width: var(--file-line-width, 800px);
-    margin: 0 auto;
-    user-select: text;
-    cursor: auto;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-12, 3rem);
+	padding: var(--size-4-4, 1rem);
+	max-width: var(--file-line-width, 800px);
+	margin: 0 auto;
+	user-select: text;
+	cursor: auto;
 }
 
 .daily-note-block {
-    border-bottom: var(--border-width) solid var(--background-modifier-border);
-    padding-bottom: var(--size-4-12, 3rem);
+	border-bottom: var(--border-width) solid var(--background-modifier-border);
+	padding-bottom: var(--size-4-12, 3rem);
 }
 
 .daily-note-header {
-    margin-bottom: var(--size-4-4, 1rem);
+	margin-bottom: var(--size-4-4, 1rem);
 }
 
 .daily-note-title {
-    font-size: var(--h1-size);
-    font-weight: var(--h1-weight);
-    color: var(--text-accent);
-    text-decoration: none;
-    cursor: pointer;
-    font-family: var(--h1-font);
-    line-height: var(--h1-line-height);
+	font-size: var(--h1-size);
+	font-weight: var(--h1-weight);
+	color: var(--text-accent);
+	text-decoration: none;
+	cursor: pointer;
+	font-family: var(--h1-font);
+	line-height: var(--h1-line-height);
 }
 
 .daily-note-title:hover {
-    text-decoration: underline;
+	text-decoration: underline;
 }
 
 .daily-note-content {
-    line-height: var(--line-height-normal);
-    user-select: text;
-    cursor: auto;
-    font-family: var(--font-text);
-    font-size: var(--font-text-size);
+	line-height: var(--line-height-normal);
+	user-select: text;
+	cursor: auto;
+	font-family: var(--font-text);
+	font-size: var(--font-text-size);
 }
 
 /* Ensure standard spacing within rendered content */
 .daily-note-content p {
-    margin-bottom: var(--p-spacing);
+	margin-bottom: var(--p-spacing);
 }
 
 /* Daily Note Properties - Mimic Native Styling */
 .daily-notes-stream-container .metadata-container {
-    margin-bottom: var(--p-spacing);
-    font-size: var(--font-ui-small);
-    display: block;
+	margin-bottom: var(--p-spacing);
+	font-size: var(--font-ui-small);
+	display: block;
 }
 
 .daily-notes-stream-container .metadata-properties {
-    display: block;
+	display: block;
 }
 
 .daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties {
-    display: none;
+	display: none;
 }
 
 .daily-notes-stream-container .metadata-properties-heading {
-    display: flex;
-    align-items: center;
-    padding: var(--size-4-2) 0;
-    cursor: pointer;
-    color: var(--text-faint);
-    font-weight: var(--nav-item-weight, 500);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: var(--font-ui-smaller);
-    user-select: none;
+	display: flex;
+	align-items: center;
+	padding: var(--size-4-2) 0;
+	cursor: pointer;
+	color: var(--text-faint);
+	font-weight: var(--nav-item-weight, 500);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	font-size: var(--font-ui-smaller);
+	user-select: none;
 }
 
 .daily-notes-stream-container .metadata-properties-heading:hover {
-    color: var(--text-muted);
+	color: var(--text-muted);
 }
 
 .daily-notes-stream-container .metadata-properties-heading-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: var(--size-4-1);
-    transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
-    transform: rotate(90deg);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: var(--size-4-1);
+	transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
+	transform: rotate(90deg);
 }
 
 .daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading-icon {
-    transform: rotate(0deg);
+	transform: rotate(0deg);
 }
 
 .daily-notes-stream-container .metadata-properties-heading-icon svg {
-    width: var(--size-4-3);
-    height: var(--size-4-3);
+	width: var(--size-4-3);
+	height: var(--size-4-3);
 }
 
 .daily-notes-stream-container .metadata-property {
-    display: flex;
-    align-items: flex-start;
-    padding: var(--size-4-1) 0;
+	display: flex;
+	align-items: flex-start;
+	padding: var(--size-4-1) 0;
 }
 
 .daily-notes-stream-container .metadata-property-key {
-    display: flex;
-    align-items: center;
-    width: var(--size-4-36, 9rem); /* Using variable for width */
-    min-width: var(--size-4-24, 6rem);
-    flex-shrink: 0;
-    color: var(--text-muted);
-    font-weight: var(--nav-item-weight, 500);
+	display: flex;
+	align-items: center;
+	width: var(--size-4-36, 9rem); /* Using variable for width */
+	min-width: var(--size-4-24, 6rem);
+	flex-shrink: 0;
+	color: var(--text-muted);
+	font-weight: var(--nav-item-weight, 500);
 }
 
 .daily-notes-stream-container .metadata-property-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: var(--size-4-2);
-    color: var(--text-faint);
-    opacity: 0.7;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: var(--size-4-2);
+	color: var(--text-faint);
+	opacity: 0.7;
 }
 
 .daily-notes-stream-container .metadata-property-icon svg {
-    width: var(--size-4-4);
-    height: var(--size-4-4);
+	width: var(--size-4-4);
+	height: var(--size-4-4);
 }
 
 .daily-notes-stream-container .metadata-property-value {
-    flex-grow: 1;
-    color: var(--text-normal);
-    word-break: break-word;
+	flex-grow: 1;
+	color: var(--text-normal);
+	word-break: break-word;
 }
 
 /* Mobile specific tweaks */
 @media (max-width: 480px) {
-    .daily-notes-stream-container {
-        padding: var(--size-4-2);
-        gap: var(--size-4-8);
-    }
+	.daily-notes-stream-container {
+		padding: var(--size-4-2);
+		gap: var(--size-4-8);
+	}
 
-    .daily-note-title {
-        font-size: var(--h2-size);
-    }
+	.daily-note-title {
+		font-size: var(--h2-size);
+	}
 }
 
 .daily-notes-stream-sentinel {
-    height: 1px;
-    width: 100%;
+	height: 1px;
+	width: 100%;
 }
 
 /* Collapsible Elements */
 .daily-note-content .is-collapsible {
-    position: relative;
+	position: relative;
 }
 
 .daily-note-content .collapse-indicator {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
-    color: var(--text-faint);
-    transform: rotate(90deg);
-    cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
+	color: var(--text-faint);
+	transform: rotate(90deg);
+	cursor: pointer;
 }
 
 .daily-note-content .collapse-indicator svg {
-    width: var(--size-4-3);
-    height: var(--size-4-3);
+	width: var(--size-4-3);
+	height: var(--size-4-3);
 }
 
 .daily-note-content .is-collapsed > .collapse-indicator {
-    transform: rotate(0deg);
+	transform: rotate(0deg);
 }
 
 /* List Item Collapse Alignment */
 .daily-note-content li.is-collapsible > .collapse-indicator {
-    position: absolute;
-    left: calc(-1 * var(--size-4-8, 2rem)); /* Using variable for offset */
-    top: calc(var(--line-height-normal) * 0.2em);
+	position: absolute;
+	left: calc(-1 * var(--size-4-8, 2rem)); /* Using variable for offset */
+	top: calc(var(--line-height-normal) * 0.2em);
 }
 
 .daily-note-content li.is-collapsed > ul,
 .daily-note-content li.is-collapsed > ol {
-    display: none;
+	display: none;
 }
 
 /* Header Collapse Alignment */
-.daily-note-content :is(h1,h2,h3,h4,h5,h6).is-collapsible {
-    display: flex;
-    align-items: center;
-    margin-left: calc(-1 * var(--size-4-4));
-    padding-left: var(--size-4-4); 
+.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible {
+	display: flex;
+	align-items: center;
+	margin-left: calc(-1 * var(--size-4-4));
+	padding-left: var(--size-4-4);
+	margin-block-start: 0;
+	margin-block-end: calc(var(--p-spacing) * 0.5);
 }
 
-.daily-note-content :is(h1,h2,h3,h4,h5,h6).is-collapsible > .collapse-indicator {
-    position: absolute;
-    left: 0;
+.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ p),
+.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ ul),
+.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ ol) {
+	margin-block-end: calc(var(--p-spacing) * 0.25);
+}
+
+.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible > .collapse-indicator {
+	position: absolute;
+	left: 0;
 }
 
 .daily-note-content .is-collapsible:hover > .collapse-indicator {
-    color: var(--text-muted);
+	color: var(--text-muted);
+}
+
+.is-hidden {
+	display: none;
+}
+
+.daily-note-content :is(ul, ol) {
+	margin-block-start: 0;
 }
