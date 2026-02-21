@@ -1,12 +1,21 @@
 import { Plugin, WorkspaceLeaf } from 'obsidian';
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "./DailyNotesStreamView";
 import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab } from "./settings";
+import { DailyNoteService } from "./DailyNoteService";
+import { CollapsibleStateStore } from "./CollapsibleStateStore";
 
 export default class DailyNotesStreamPlugin extends Plugin {
 	settings: DailyNotesStreamSettings;
+	service: DailyNoteService;
+	collapseStore: CollapsibleStateStore;
 
 	async onload() {
 		await this.loadSettings();
+
+		this.service = new DailyNoteService();
+		this.service.initialize();
+
+		this.collapseStore = new CollapsibleStateStore(this.app);
 
 		this.registerView(
 			VIEW_TYPE_DAILY_NOTES_STREAM,
@@ -49,8 +58,6 @@ export default class DailyNotesStreamPlugin extends Plugin {
 		}
 
 		if (leaf) {
-			// Ensure we await this promise if it returns one, though older API might not.
-			// The linter flagged this, so we assume it returns a promise.
 			await workspace.revealLeaf(leaf);
 		}
 	}
