@@ -39,6 +39,20 @@ export class DailyNotesStreamView extends ItemView {
 
     async onOpen() {
         this.streamContainerEl = this.contentEl.createDiv({ cls: "daily-notes-stream-container" });
+
+        // Initialize the service here, not in onload(), because getAllDailyNotes()
+        // throws if the vault / daily notes folder isn't ready yet at plugin load time.
+        // It also throws if the configured daily notes folder doesn't exist in the vault.
+        try {
+            this.plugin.service.initialize();
+        } catch (e) {
+            console.error("DailyNotesStream: Failed to initialize note service", e);
+            this.streamContainerEl.createDiv({
+                cls: "daily-notes-empty-state",
+                text: "Could not load daily notes. Please check your Daily Notes settings (folder and date format).",
+            });
+            return;
+        }
         this.offset = 0;
         this.state.reset();
 
