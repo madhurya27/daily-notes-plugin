@@ -32,6 +32,7 @@ export default tseslint.config(
 		"main.js",
 		"PluginTest",
 		"run_tests.mjs",
+		"vitest.config.ts",
 		"tests",
 	]),
 );

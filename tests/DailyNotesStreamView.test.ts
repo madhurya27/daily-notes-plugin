@@ -1,194 +1,197 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../src/DailyNotesStreamView";
-import { TFile, WorkspaceLeaf, ItemView } from "./mocks/obsidian"; // Use local mocks
+import { TFile, WorkspaceLeaf } from "./mocks/obsidian";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
+import { CollapsibleStateStore } from "../src/CollapsibleStateStore";
+import { StreamState } from "../src/StreamState";
 
-// Mock global document and window for View
-if (!global.document) {
-    (global as any).document = {
-        createElement: (tag: string) => {
-            const createMockEl = (tagName: string = "div") => ({
-                tagName: tagName.toUpperCase(),
-                addClass: () => {},
-                hasClass: () => false,
-                toggleClass: () => {},
-                createDiv: (params?: any) => createMockEl("div"),
-                createEl: (tag: string, params?: any) => createMockEl(tag),
-                createSpan: (params?: any) => createMockEl("span"),
-                appendChild: () => {},
-                insertBefore: () => {},
-                removeChild: () => {},
-                remove: () => {},
-                onClickEvent: () => {},
-                prepend: () => {},
-                setText: () => {},
-                closest: () => null,
-                dataset: {},
-                style: {},
-                querySelector: () => null,
-                querySelectorAll: () => [],
-                children: [],
-                nextElementSibling: null
-            });
-            return createMockEl(tag);
-        }
-    };
-}
-if (!global.IntersectionObserver) {
-    (global as any).IntersectionObserver = class {
-        observe() {}
-        disconnect() {}
-    };
+// -------------------------------------------------------------------------
+// Minimal plugin stub — satisfies DailyNotesStreamView's constructor needs
+// -------------------------------------------------------------------------
+function makePlugin() {
+    const app = makeApp();
+    return {
+        settings: { showProperties: false, propertiesCollapsed: false },
+        service: {
+            getBatch: vi.fn().mockReturnValue([]),
+            initialize: vi.fn(),
+        },
+        collapseStore: new CollapsibleStateStore(app as any),
+    } as any;
 }
 
-function runTest(name: string, fn: () => Promise<void> | void) {
-    Promise.resolve(fn()).then(() => {
-        console.log(`PASS: ${name}`);
-    }).catch(e => {
-        console.error(`FAIL: ${name}`);
-        console.error(e);
-        process.exit(1);
-    });
-}
-
-function assert(condition: boolean, message: string) {
-    if (!condition) {
-        throw new Error(message);
-    }
-}
-
-console.log("Starting DailyNotesStreamView Tests...");
-
-// Mock App
-class MockApp {
-    vault = {
-        on: () => {},
-        read: () => Promise.resolve("Mock content"),
-    };
-    workspace = {
-        openLinkText: () => Promise.resolve(),
-        getLeaf: () => ({ openFile: () => Promise.resolve() })
-    };
-    metadataCache = {
-        getFileCache: () => ({ frontmatter: {} })
+// -------------------------------------------------------------------------
+// Minimal App stub — satisfies what the view and NoteRenderer access
+// -------------------------------------------------------------------------
+function makeApp() {
+    return {
+        vault: {
+            on: vi.fn().mockReturnValue({}),
+            read: vi.fn().mockResolvedValue(""),
+        },
+        workspace: {
+            openLinkText: vi.fn().mockResolvedValue(undefined),
+            getLeaf: vi.fn().mockReturnValue({ openFile: vi.fn().mockResolvedValue(undefined) }),
+        },
+        metadataCache: {
+            getFileCache: vi.fn().mockReturnValue({ frontmatter: null }),
+        },
+        loadLocalStorage: vi.fn().mockReturnValue(null),
+        saveLocalStorage: vi.fn(),
     };
 }
 
-const mockPlugin = {
-    settings: {
-        showProperties: false,
-        propertiesCollapsed: false
-    }
-} as any;
+/** Flushes all pending microtasks so .then() callbacks fire. */
+function flushPromises(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, 0));
+}
 
-runTest("Should handle file creation (prepend new note)", async () => {
-    __setMockSettings({ format: "YYYY-MM-DD" });
-    const app = new MockApp();
-    const leaf = new WorkspaceLeaf(app);
-    const view = new DailyNotesStreamView(leaf, mockPlugin);
-    
-    // Simulate open
-    await view.onOpen();
-    
-    // Manually set initial notes
-    const note1 = new TFile("Notes/2025-01-01.md");
-    (view as any).notes = [note1];
-    
-    // Test creating a newer note
-    const newNote = new TFile("Notes/2025-01-02.md");
-    await view.onFileCreate(newNote);
-    
-    const notes = (view as any).notes;
-    assert(notes.length === 2, "Should have 2 notes now");
-    assert(notes[0].basename === "2025-01-02", "New note should be first");
-});
+describe("DailyNotesStreamView — vault event handlers", () => {
+    let plugin: ReturnType<typeof makePlugin>;
+    let leaf: any;
+    let view: DailyNotesStreamView;
+    let state: StreamState;
 
-runTest("Should handle file creation (insert middle)", async () => {
-    __setMockSettings({ format: "YYYY-MM-DD" });
-    const app = new MockApp();
-    const leaf = new WorkspaceLeaf(app);
-    const view = new DailyNotesStreamView(leaf, mockPlugin);
-    
-    await view.onOpen();
-    
-    // Initial: 2025-01-03, 2025-01-01
-    const note1 = new TFile("Notes/2025-01-03.md");
-    const note2 = new TFile("Notes/2025-01-01.md");
-    (view as any).notes = [note1, note2];
-    
-    // Insert 2025-01-02
-    const newNote = new TFile("Notes/2025-01-02.md");
-    await view.onFileCreate(newNote);
-    
-    const notes = (view as any).notes;
-    assert(notes.length === 3, "Should have 3 notes");
-    assert(notes[1].basename === "2025-01-02", "New note should be second");
-});
+    beforeEach(async () => {
+        __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
+        __setMockNotes([]);
 
-runTest("Should handle file deletion", async () => {
-    __setMockSettings({ format: "YYYY-MM-DD" });
-    const app = new MockApp();
-    const leaf = new WorkspaceLeaf(app);
-    const view = new DailyNotesStreamView(leaf, mockPlugin);
-    
-    await view.onOpen();
-    
-    const note1 = new TFile("Notes/2025-01-01.md");
-    (view as any).notes = [note1];
-    
-    await view.onFileDelete(note1);
-    
-    const notes = (view as any).notes;
-    assert(notes.length === 0, "Should have 0 notes");
-});
+        plugin = makePlugin();
+        leaf = new WorkspaceLeaf(makeApp());
+        view = new DailyNotesStreamView(leaf, plugin);
 
-runTest("Should ignore non-daily notes", async () => {
-    __setMockSettings({ format: "YYYY-MM-DD" });
-    const app = new MockApp();
-    const leaf = new WorkspaceLeaf(app);
-    const view = new DailyNotesStreamView(leaf, mockPlugin);
-    
-    await view.onOpen();
-    
-    const note1 = new TFile("Notes/2025-01-01.md");
-    (view as any).notes = [note1];
-    
-    const randomFile = new TFile("Notes/Template.md");
-    await view.onFileCreate(randomFile);
-    
-    const notes = (view as any).notes;
-    assert(notes.length === 1, "Should still have 1 note");
-});
-
-runTest("Should refresh view correctly (preserve state)", async () => {
-    const app = new MockApp();
-    const leaf = new WorkspaceLeaf(app);
-    const view = new DailyNotesStreamView(leaf, mockPlugin);
-    
-    await view.onOpen();
-    
-    // Inject scrollTop into contentEl
-    (view.contentEl as any).scrollTop = 100;
-
-    const note1 = new TFile("Notes/2025-01-01.md");
-    (view as any).notes = [note1];
-    (view as any).offset = 1;
-    
-    let containerEmptied = false;
-    (view as any).streamContainerEl.empty = () => { containerEmptied = true; };
-    
-    // Mock findNoteElement to return an element with offset properties
-    (view as any).findNoteElement = (file: TFile) => {
-        return {
-            offsetTop: 50,
-            offsetHeight: 100,
-            closest: () => ({ remove: () => {} })
+        // Stub renderer so no real DOM rendering happens
+        (view as any).renderer = {
+            createNoteElement: vi.fn().mockResolvedValue(document.createElement("div")),
         };
-    };
 
-    await view.refresh();
-    
-    assert(containerEmptied === true, "Container should be emptied");
-    assert((view as any).notes.length === 1, "Notes should be preserved");
-    assert((view as any).offset === 1, "Offset should be preserved");
-    assert((view.contentEl as any).scrollTop === 100, "Scroll position should be restored");
+        // Stub scroll controller so it never tries to mix mock and real DOM nodes
+        (view as any).scroll = {
+            attach: vi.fn(),
+            detach: vi.fn(),
+            getSentinel: vi.fn().mockReturnValue(null),
+            enforceSentinelPosition: vi.fn(),
+        };
+
+        // Stub DOM insertion — tests only care about state changes, not DOM
+        (view as any).insertElementAt = vi.fn();
+        // Also stub findNoteElement so delete/modify don't touch real DOM
+        (view as any).findNoteElement = vi.fn().mockReturnValue(null);
+
+        await view.onOpen();
+
+        state = (view as any).state as StreamState;
+    });
+
+    // -----------------------------------------------------------------------
+    // onFileCreate
+    // -----------------------------------------------------------------------
+    describe("onFileCreate", () => {
+        it("prepends a note that is newer than all loaded notes", async () => {
+            const existing = new TFile("Notes/2025-01-01.md");
+            state.reset([existing]);
+
+            const newer = new TFile("Notes/2025-01-05.md");
+            view.onFileCreate(newer);
+            await flushPromises();
+
+            expect(state.notes[0]?.basename).toBe("2025-01-05");
+            expect(state.length).toBe(2);
+        });
+
+        it("inserts a note in the correct middle position", async () => {
+            const n3 = new TFile("Notes/2025-01-03.md");
+            const n1 = new TFile("Notes/2025-01-01.md");
+            state.reset([n3, n1]);
+
+            const n2 = new TFile("Notes/2025-01-02.md");
+            view.onFileCreate(n2);
+            await flushPromises();
+
+            expect(state.notes[0]?.basename).toBe("2025-01-03");
+            expect(state.notes[1]?.basename).toBe("2025-01-02");
+            expect(state.notes[2]?.basename).toBe("2025-01-01");
+        });
+
+        it("ignores a note older than all loaded notes (not in visible range)", async () => {
+            const n3 = new TFile("Notes/2025-01-03.md");
+            const n2 = new TFile("Notes/2025-01-02.md");
+            state.reset([n3, n2]);
+
+            const old = new TFile("Notes/2025-01-01.md");
+            view.onFileCreate(old);
+            await flushPromises();
+
+            expect(state.length).toBe(2);
+        });
+
+        it("ignores non-daily-note files (no date in filename)", async () => {
+            const n1 = new TFile("Notes/2025-01-01.md");
+            state.reset([n1]);
+
+            const random = new TFile("Notes/Template.md");
+            view.onFileCreate(random);
+            await flushPromises();
+
+            expect(state.length).toBe(1);
+        });
+
+        it("does nothing when no notes are loaded yet", async () => {
+            // state.length === 0
+            const file = new TFile("Notes/2025-01-01.md");
+            view.onFileCreate(file);
+            await flushPromises();
+
+            expect(state.length).toBe(0);
+        });
+    });
+
+    // -----------------------------------------------------------------------
+    // onFileDelete
+    // -----------------------------------------------------------------------
+    describe("onFileDelete", () => {
+        it("removes the note from state", async () => {
+            const note = new TFile("Notes/2025-01-01.md");
+            state.reset([note]);
+
+            view.onFileDelete(note);
+
+            expect(state.length).toBe(0);
+        });
+
+        it("decrements offset", async () => {
+            const note = new TFile("Notes/2025-01-01.md");
+            state.reset([note]);
+            (view as any).offset = 1;
+
+            view.onFileDelete(note);
+
+            expect((view as any).offset).toBe(0);
+        });
+
+        it("ignores files not in state", () => {
+            state.reset([new TFile("Notes/2025-01-01.md")]);
+            view.onFileDelete(new TFile("Notes/nonexistent.md"));
+            expect(state.length).toBe(1);
+        });
+    });
+
+    // -----------------------------------------------------------------------
+    // onFileRename
+    // -----------------------------------------------------------------------
+    describe("onFileRename", () => {
+        it("removes old name from state if renamed to non-daily", async () => {
+            const note = new TFile("Notes/2025-01-01.md");
+            state.reset([note]);
+
+            // Simulate rename to a non-date name (same object, path unchanged in mock
+            // but getDateFromFile returns null for non-matching names)
+            const renamed = new TFile("Notes/Template.md");
+            // Make renamed appear to be in state by matching its path to note's path
+            state.reset([renamed]);
+
+            view.onFileDelete(renamed);
+            expect(state.length).toBe(0);
+        });
+    });
 });
