@@ -1,4 +1,4 @@
-import { App, Component, MarkdownRenderer, TFile, setIcon } from "obsidian";
+import { App, Component, MarkdownRenderer, MarkdownView, TFile, setIcon } from "obsidian";
 import { CollapsibleManager } from "./CollapsibleManager";
 import type { DailyNotesStreamSettings } from "./settings";
 
@@ -21,6 +21,13 @@ export class NoteRenderer {
             cls: "daily-note-title",
         });
         dateLink.onClickEvent(() => {
+            const existing = this.app.workspace
+                .getLeavesOfType("markdown")
+                .find(leaf => (leaf.view as MarkdownView).file?.path === file.path);
+            if (existing) {
+                void this.app.workspace.revealLeaf(existing);
+                return;
+            }
             this.app.workspace.getLeaf(false).openFile(file).catch((error) => {
                 console.error("DailyNotesStream: Failed to open file", error);
             });

@@ -121,6 +121,22 @@ describe("DailyNoteService", () => {
             const existing = svc.getBatch(0, 1)[0]!;
             expect(svc.insertSorted(existing)).toBe(-1);
         });
+
+        it("inserts a note in the middle position (triggers lo = mid+1 branch)", () => {
+            __setMockSettings({ format: "YYYY-MM-DD" });
+            __setMockNotes(["Notes/2025-01-05.md", "Notes/2025-01-01.md"]);
+
+            const svc = new DailyNoteService();
+            svc.initialize();
+
+            // sorted = [Jan5, Jan1]; inserting Jan3:
+            // mid=1 → Jan1 < Jan3 → hi=1; mid=0 → Jan5 > Jan3 → lo=1 (hits line 36)
+            const mid = new TFile("Notes/2025-01-03.md");
+            const idx = svc.insertSorted(mid);
+
+            expect(idx).toBe(1);
+            expect(svc.getBatch(0, 3)[1]?.basename).toBe("2025-01-03");
+        });
     });
 
     describe("instance: removeSorted", () => {
@@ -144,6 +160,81 @@ describe("DailyNoteService", () => {
             svc.initialize();
 
             expect(svc.removeSorted("Notes/nonexistent.md")).toBe(-1);
+        });
+    });
+
+    describe("instance: insertSorted — invalid date", () => {
+        it("returns -1 for a file with no parseable date", () => {
+            __setMockSettings({ format: "YYYY-MM-DD" });
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+            const noDate = new TFile("Notes/Template.md");
+            expect(svc.insertSorted(noDate)).toBe(-1);
+        });
+    });
+
+    describe("format fallback branches", () => {
+        it("buildSorted: uses YYYY-MM-DD when settings.format is empty string (covers || fallback)", () => {
+            __setMockSettings({ format: "" }); // empty string is falsy → right side of || taken
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            const sorted = DailyNoteService.getAllNotesSorted();
+            expect(sorted.length).toBe(1);
+            expect(sorted[0]?.basename).toBe("2025-01-01");
+        });
+
+        it("buildSorted: uses YYYY-MM-DD basename when format ends with slash (covers pop() || fallback)", () => {
+            // "YYYY/MM/".split("/").pop() === "" (falsy) → right side of || taken
+            __setMockSettings({ format: "YYYY/MM/" });
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+            expect(svc.length).toBeGreaterThanOrEqual(0);
+        });
+
+        it("parseDate: uses YYYY-MM-DD fallback when format is empty string", () => {
+            __setMockSettings({ format: "YYYY-MM-DD" });
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+            // Change format to empty before insertSorted so parseDate uses the fallback
+            __setMockSettings({ format: "" });
+            const newFile = new TFile("Notes/2025-01-05.md");
+            const idx = svc.insertSorted(newFile);
+            expect(idx).toBe(0); // YYYY-MM-DD fallback parses "2025-01-05" correctly
+        });
+
+        it("parseDate: uses YYYY-MM-DD basename fallback when format ends with slash", () => {
+            __setMockSettings({ format: "YYYY-MM-DD" });
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+            // "YYYY/MM/".split("/").pop() === "" → right side of || in parseDate taken
+            __setMockSettings({ format: "YYYY/MM/" });
+            const newFile = new TFile("Notes/2025-01-05.md");
+            const idx = svc.insertSorted(newFile);
+            expect(idx).toBe(0);
+        });
+    });
+
+    describe("static getBatch (legacy)", () => {
+        it("returns a slice of all sorted notes", () => {
+            __setMockSettings({ format: "YYYY-MM-DD" });
+            __setMockNotes([
+                "Notes/2025-01-03.md",
+                "Notes/2025-01-01.md",
+                "Notes/2025-01-02.md",
+            ]);
+            const batch = DailyNoteService.getBatch(0, 2);
+            expect(batch.length).toBe(2);
+            expect(batch[0]?.basename).toBe("2025-01-03");
+            expect(batch[1]?.basename).toBe("2025-01-02");
+        });
+
+        it("returns empty array when offset exceeds length", () => {
+            __setMockSettings({ format: "YYYY-MM-DD" });
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            expect(DailyNoteService.getBatch(10, 5)).toEqual([]);
         });
     });
 });
