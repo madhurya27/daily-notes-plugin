@@ -149,3 +149,34 @@ export const MarkdownRenderer = {
 };
 
 export const setIcon = () => {};
+
+export class MarkdownView {
+    file: any = null;
+}
+
+export class Component {}
+
+export class PluginSettingTab {
+    containerEl: any = { empty: () => {} };
+    constructor(_app: any, _plugin: any) {}
+}
+
+export class Setting {
+    constructor(_containerEl: any) {}
+    setName(_name: string) { return this; }
+    setDesc(_desc: string) { return this; }
+    addToggle(_cb: (_t: any) => any) { return this; }
+}
+
+export class Plugin {
+    app: any;
+    manifest: any;
+    constructor() {}
+    loadData() { return Promise.resolve(null); }
+    saveData(_data: any) { return Promise.resolve(); }
+    registerView(_type: string, _cb: any) {}
+    addRibbonIcon(_icon: string, _title: string, _cb: any) {}
+    addCommand(_cmd: any) {}
+    addSettingTab(_tab: any) {}
+    registerEvent(_e: any) {}
+}

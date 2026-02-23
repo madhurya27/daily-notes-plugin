@@ -62,5 +62,6 @@ export function __setMockSettings(settings: any) {
 }
 
 export function getDateFromFile(file: TFile, granularity: string) {
-    return moment(file.basename, mockSettings.format, true);
+    const m = moment(file.basename, mockSettings.format, true);
+    return m.isValid() ? m : null;
 }

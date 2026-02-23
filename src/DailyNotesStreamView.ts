@@ -40,6 +40,18 @@ export class DailyNotesStreamView extends ItemView {
     async onOpen() {
         this.streamContainerEl = this.contentEl.createDiv({ cls: "daily-notes-stream-container" });
 
+        // Mirror Obsidian's "Readable line length" setting so the stream view
+        // respects the same layout constraint as regular notes.
+        // Obsidian does NOT put is-readable-line-width on document.body — it sets it
+        // per-view on MarkdownView instances. Read the config directly instead.
+        const syncReadableWidth = () => {
+            // readableLineLength defaults to true when absent from config
+            const readable = ((this.app as any).vault?.config?.readableLineLength ?? true) as boolean;
+            this.contentEl.toggleClass("is-readable-line-width", readable);
+        };
+        syncReadableWidth();
+        this.registerEvent(this.app.workspace.on("css-change", syncReadableWidth));
+
         // Initialize the service here, not in onload(), because getAllDailyNotes()
         // throws if the vault / daily notes folder isn't ready yet at plugin load time.
         // It also throws if the configured daily notes folder doesn't exist in the vault.

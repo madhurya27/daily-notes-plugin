@@ -119,4 +119,20 @@ describe("StreamState", () => {
         // State should be unchanged
         expect(state.length).toBe(1);
     });
+    it("getAt returns the file at a valid index", () => {
+        const f = makeFile("Notes/a.md");
+        state.insert(0, f);
+        expect(state.getAt(0)).toBe(f);
+    });
+
+    it("getAt returns undefined for out-of-bounds index", () => {
+        expect(state.getAt(5)).toBeUndefined();
+    });
+
+    it("update is a no-op when file path is not found in state", () => {
+        const handler = vi.fn();
+        state.on(handler);
+        state.update(makeFile("Notes/nonexistent.md"));
+        expect(handler).not.toHaveBeenCalled();
+    });
 });
