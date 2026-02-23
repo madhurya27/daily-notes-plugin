@@ -6,7 +6,11 @@
 const proto = HTMLElement.prototype as any;
 
 proto.addClass = function (...classes: string[]) {
-    for (const cls of classes) this.classList.add(cls);
+    for (const cls of classes) {
+        for (const c of cls.trim().split(/\s+/).filter(Boolean)) {
+            this.classList.add(c);
+        }
+    }
     return this;
 };
 

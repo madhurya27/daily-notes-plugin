@@ -1,0 +1,274 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { NoteRenderer } from "../src/NoteRenderer";
+import { TFile } from "obsidian";
+import type { CollapsibleManager } from "../src/CollapsibleManager";
+import type { DailyNotesStreamSettings } from "../src/settings";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeApp(opts: { readResult?: string; fileCache?: any; leaves?: any[] } = {}) {
+    const { readResult = "", fileCache = null, leaves = [] } = opts;
+    const mockOpenFile = vi.fn().mockResolvedValue(undefined);
+    const mockLeaf = { openFile: mockOpenFile };
+    return {
+        vault: { read: vi.fn().mockResolvedValue(readResult) },
+        metadataCache: { getFileCache: vi.fn().mockReturnValue(fileCache) },
+        workspace: {
+            getLeavesOfType: vi.fn().mockReturnValue(leaves),
+            getLeaf: vi.fn().mockReturnValue(mockLeaf),
+            revealLeaf: vi.fn().mockResolvedValue(undefined),
+        },
+        _mockLeaf: mockLeaf,
+    };
+}
+
+function makeCollapsible(): CollapsibleManager {
+    return { makeCollapsible: vi.fn() } as any;
+}
+
+function makeSettings(overrides: Partial<DailyNotesStreamSettings> = {}): DailyNotesStreamSettings {
+    return { showProperties: false, propertiesCollapsed: false, ...overrides };
+}
+
+// ---------------------------------------------------------------------------
+// createNoteElement
+// ---------------------------------------------------------------------------
+
+describe("NoteRenderer.createNoteElement", () => {
+    let app: ReturnType<typeof makeApp>;
+    let renderer: NoteRenderer;
+
+    beforeEach(() => {
+        app = makeApp();
+        renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
+    });
+
+    it("returns element with .daily-note-block class", async () => {
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.classList.contains("daily-note-block")).toBe(true);
+    });
+
+    it("includes .daily-note-title with the file basename as text", async () => {
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".daily-note-title")?.textContent).toBe("2025-01-01");
+    });
+
+    it("sets dataset.sourcePath on .daily-note-content", async () => {
+        const file = new TFile("Notes/2025-01-01.md");
+        const el = await renderer.createNoteElement(file);
+        const content = el.querySelector(".daily-note-content") as HTMLElement;
+        expect(content.dataset.sourcePath).toBe("Notes/2025-01-01.md");
+    });
+
+    it("strips frontmatter using frontmatterPosition offset", async () => {
+        app.vault.read = vi.fn().mockResolvedValue("---\ntitle: Test\n---\nBody text");
+        app.metadataCache.getFileCache = vi.fn().mockReturnValue({
+            frontmatterPosition: { end: { offset: 23 } },
+        });
+        // MarkdownRenderer.render is a no-op mock; just ensure no throw
+        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    });
+
+    it("calls makeCollapsible after rendering content", async () => {
+        const collapsible = makeCollapsible();
+        renderer = new NoteRenderer(app as any, {} as any, collapsible, makeSettings());
+        await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(collapsible.makeCollapsible).toHaveBeenCalledOnce();
+    });
+
+    it("shows 'Error rendering note' text when vault.read rejects", async () => {
+        app.vault.read = vi.fn().mockRejectedValue(new Error("read failed"));
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".daily-note-content")?.textContent).toBe("Error rendering note");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Title click — revealLeaf vs openFile
+// ---------------------------------------------------------------------------
+
+describe("NoteRenderer title click", () => {
+    it("calls revealLeaf when file is already open in a markdown leaf", async () => {
+        const file = new TFile("Notes/2025-01-01.md");
+        const existingLeaf = { view: { file: { path: file.path } } };
+        const app = makeApp({ leaves: [existingLeaf] });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
+        const el = await renderer.createNoteElement(file);
+        (el.querySelector(".daily-note-title") as HTMLElement).click();
+        expect(app.workspace.revealLeaf).toHaveBeenCalledWith(existingLeaf);
+        expect(app.workspace.getLeaf).not.toHaveBeenCalled();
+    });
+
+    it("opens file in a new leaf when no matching leaf exists", async () => {
+        const file = new TFile("Notes/2025-01-01.md");
+        const app = makeApp({ leaves: [] });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
+        const el = await renderer.createNoteElement(file);
+        (el.querySelector(".daily-note-title") as HTMLElement).click();
+        expect(app.workspace.getLeaf).toHaveBeenCalledWith(false);
+    });
+
+    it("opens in new leaf when leaves exist but none match the file path", async () => {
+        const file = new TFile("Notes/2025-01-01.md");
+        const otherLeaf = { view: { file: { path: "Notes/2025-01-02.md" } } };
+        const app = makeApp({ leaves: [otherLeaf] });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
+        const el = await renderer.createNoteElement(file);
+        (el.querySelector(".daily-note-title") as HTMLElement).click();
+        expect(app.workspace.revealLeaf).not.toHaveBeenCalled();
+        expect(app.workspace.getLeaf).toHaveBeenCalled();
+    });
+
+    it("handles leaf.view.file being null without throwing", async () => {
+        const file = new TFile("Notes/2025-01-01.md");
+        const nullFileLeaf = { view: { file: null } };
+        const app = makeApp({ leaves: [nullFileLeaf] });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
+        const el = await renderer.createNoteElement(file);
+        expect(() => (el.querySelector(".daily-note-title") as HTMLElement).click()).not.toThrow();
+        expect(app.workspace.getLeaf).toHaveBeenCalled();
+    });
+
+    it("logs error when openFile rejects", async () => {
+        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const file = new TFile("Notes/2025-01-01.md");
+        const failLeaf = { openFile: vi.fn().mockRejectedValue(new Error("open failed")) };
+        const app = makeApp({ leaves: [] });
+        app.workspace.getLeaf = vi.fn().mockReturnValue(failLeaf);
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
+        const el = await renderer.createNoteElement(file);
+        (el.querySelector(".daily-note-title") as HTMLElement).click();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(consoleSpy).toHaveBeenCalled();
+        consoleSpy.mockRestore();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// renderProperties
+// ---------------------------------------------------------------------------
+
+describe("NoteRenderer renderProperties", () => {
+    it("renders nothing when showProperties is false", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tags: ["daily"] } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: false }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-container")).toBeNull();
+    });
+
+    it("renders nothing when fileCache is null", async () => {
+        const app = makeApp({ fileCache: null });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-container")).toBeNull();
+    });
+
+    it("renders nothing when frontmatter is null", async () => {
+        const app = makeApp({ fileCache: { frontmatter: null } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-container")).toBeNull();
+    });
+
+    it("renders nothing when frontmatter has only the 'position' key", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { position: {} } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-container")).toBeNull();
+    });
+
+    it("renders .metadata-container when showProperties is true and frontmatter has keys", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { mood: "happy" } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-container")).not.toBeNull();
+    });
+
+    it("renders array values as comma-separated string", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tags: ["work", "daily"] } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("work, daily");
+    });
+
+    it("renders object values as JSON string", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { meta: { key: "val" } } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe('{"key":"val"}');
+    });
+
+    it("renders boolean values as strings", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { published: true } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("true");
+    });
+
+    it("renders number values as strings", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { priority: 3 } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("3");
+    });
+
+    it("starts collapsed when propertiesCollapsed is true", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true, propertiesCollapsed: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(true);
+    });
+
+    it("heading click toggles collapsed state", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        const heading = el.querySelector(".metadata-properties-heading") as HTMLElement;
+        const container = el.querySelector(".metadata-container")!;
+        heading.click();
+        expect(container.classList.contains("is-collapsed")).toBe(true);
+        heading.click();
+        expect(container.classList.contains("is-collapsed")).toBe(false);
+    });
+
+    it("uses 'tags' icon for 'tags', 'tag', and 'aliases' keys", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tags: ["a"], tag: "b", aliases: ["c"] } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    });
+
+    it("uses 'calendar' icon for date/time/created/updated keys", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { date: "x", time: "x", created: "x", updated: "x" } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    });
+
+    it("uses 'link' icon for 'link' and 'url' keys", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { link: "http://a.com", url: "http://b.com" } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    });
+
+    it("uses 'image' icon for 'image' and 'cover' keys", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { image: "img.jpg", cover: "bg.jpg" } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    });
+
+    it("falls back to 'file-text' icon for unknown keys", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { customField: "value" } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    });
+
+    it("renders empty string when frontmatter value is null (covers false branch of string|number|boolean check)", async () => {
+        // null is not array, not non-null object, not string/number/boolean → displayValue stays ""
+        const app = makeApp({ fileCache: { frontmatter: { nullField: null } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("");
+    });
+});

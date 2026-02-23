@@ -5,10 +5,14 @@
 	flex-direction: column;
 	gap: var(--size-4-12, 3rem);
 	padding: var(--size-4-4, 1rem);
-	max-width: var(--file-line-width, 800px);
-	margin: 0 auto;
 	user-select: text;
 	cursor: auto;
+}
+
+.is-readable-line-width .daily-notes-stream-container {
+	max-width: var(--max-width, var(--file-line-width));
+	width: var(--line-width);
+	margin-inline: var(--content-margin, auto);
 }
 
 .daily-note-block {
@@ -28,9 +32,10 @@
 	cursor: pointer;
 	font-family: var(--h1-font);
 	line-height: var(--h1-line-height);
+	touch-action: manipulation;
 }
 
-.daily-note-title:hover {
+.daily-note-title:is(:hover, :active) {
 	text-decoration: underline;
 }
 
@@ -73,9 +78,10 @@
 	letter-spacing: 0.05em;
 	font-size: var(--font-ui-smaller);
 	user-select: none;
+	touch-action: manipulation;
 }
 
-.daily-notes-stream-container .metadata-properties-heading:hover {
+.daily-notes-stream-container .metadata-properties-heading:is(:hover, :active) {
 	color: var(--text-muted);
 }
 
@@ -133,6 +139,13 @@
 	word-break: break-word;
 }
 
+/* Tablet breakpoint */
+@media (max-width: 768px) {
+	.daily-notes-stream-container {
+		gap: var(--size-4-8, 2rem);
+	}
+}
+
 /* Mobile specific tweaks */
 @media (max-width: 480px) {
 	.daily-notes-stream-container {
@@ -142,6 +155,18 @@
 
 	.daily-note-title {
 		font-size: var(--h2-size);
+	}
+
+	.daily-notes-stream-container .metadata-property-key {
+		width: var(--size-4-24, 6rem);
+	}
+}
+
+/* Expand tap targets on touch devices */
+@media (pointer: coarse) {
+	.daily-note-content .collapse-indicator {
+		min-width: 2.75rem;
+		min-height: 2.75rem;
 	}
 }
 
@@ -163,6 +188,7 @@
 	color: var(--text-faint);
 	transform: rotate(90deg);
 	cursor: pointer;
+	touch-action: manipulation;
 }
 
 .daily-note-content .collapse-indicator svg {
@@ -207,7 +233,7 @@
 	left: 0;
 }
 
-.daily-note-content .is-collapsible:hover > .collapse-indicator {
+.daily-note-content .is-collapsible:is(:hover, :active) > .collapse-indicator {
 	color: var(--text-muted);
 }
 
