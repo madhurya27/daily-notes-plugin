@@ -22,6 +22,7 @@ export class CollapsibleManager {
     private processHeaders(contentEl: HTMLElement, filePath: string): void {
         const headers = contentEl.querySelectorAll("h1, h2, h3, h4, h5, h6");
         headers.forEach((header: HTMLElement) => {
+            if (header.parentElement?.tagName === "LI") return;
             const sectionKey = slugify(header.textContent ?? "");
             header.addClass("is-collapsible");
 
