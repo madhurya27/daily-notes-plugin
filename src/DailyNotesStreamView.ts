@@ -46,7 +46,8 @@ export class DailyNotesStreamView extends ItemView {
         // per-view on MarkdownView instances. Read the config directly instead.
         const syncReadableWidth = () => {
             // readableLineLength defaults to true when absent from config
-            const readable = ((this.app as any).vault?.config?.readableLineLength ?? true) as boolean;
+            type AppInternal = { vault?: { config?: { readableLineLength?: boolean } } };
+            const readable = (this.app as unknown as AppInternal).vault?.config?.readableLineLength ?? true;
             this.contentEl.toggleClass("is-readable-line-width", readable);
         };
         syncReadableWidth();

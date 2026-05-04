@@ -62,7 +62,7 @@ export class DailyNoteService {
         const dateFormat = settings.format || "YYYY-MM-DD";
         const basenameFormat = dateFormat.split("/").pop() || "YYYY-MM-DD";
 
-        const files = Object.values(dailyNotes) as TFile[];
+        const files = Object.values(dailyNotes);
 
         const notesWithDates = files.map(file => ({
             file,
