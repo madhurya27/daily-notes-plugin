@@ -1,50 +1,38 @@
 # Daily Notes Stream Plugin
 
-A read-only, infinite-scroll view of all your Daily Notes in Obsidian, displayed chronologically (newest first). This plugin allows you to effortlessly review your past days without manually opening each file.
+A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first.
 
 ## Features
 
-- **Stream View**: See your daily notes in a continuous, infinite-scrolling feed.
-- **Chronological Order**: Notes are sorted by date, with the most recent at the top.
-- **Live Updates**: Automatically detects new, modified, or renamed daily notes and updates the stream in real-time without reloading.
-- **Collapsible Content**: Headers (H1-H6) and nested lists can be collapsed and expanded directly in the stream view.
-- **Adaptive Styling**: Uses Obsidian's native CSS variables to ensure the stream matches your theme's fonts, colors, and spacing. Compatible with the Minimal theme's readable line-width settings.
-- **Nested Folder Support**: Automatically handles daily notes organized in subfolders (e.g., `Notes/2025/03/2025-03-04.md`).
-- **Rich Rendering**: Full support for Markdown, images, embeds, and tasks.
-- **Note Properties**: Option to display frontmatter metadata (tags, dates, etc.) for each note.
-  - **Collapsible**: Properties section can be toggled open or closed.
-  - **Native Styling**: Designed to match Obsidian's native aesthetics.
-- **Mobile Friendly**: optimized for touch and smaller screens.
+- Continuous stream sorted newest-first with infinite scroll (batch 10)
+- Live updates — new/modified/renamed/deleted notes reflect instantly
+- Collapsible headers (H1–H6) and nested lists
+- Frontmatter properties panel (toggleable, collapsible, native-styled)
+- Nested folder support (e.g. `Notes/2025/03/2025-03-04.md`)
+- Full Markdown rendering: images, embeds, wikilinks, tasks
+- Matches your Obsidian theme via native CSS variables
+- Mobile friendly
 
 ## Installation
 
-1. **From Release**: Download the latest release from GitHub and extract it to `<VaultFolder>/.obsidian/plugins/daily-notes-stream/`.
-2. **From Source**:
-   - Run `pnpm run build`.
-   - Copy `main.js`, `manifest.json`, and `styles.css` to `<VaultFolder>/.obsidian/plugins/daily-notes-stream/`.
-3. Reload Obsidian.
-4. Enable "Daily Notes Stream" in Community Plugins settings.
+**From release**: extract to `<Vault>/.obsidian/plugins/daily-notes-stream/`.  
+**From source**: `pnpm run build`, then copy `main.js`, `manifest.json`, `styles.css` to the same path.
+
+Reload Obsidian and enable **Daily Notes Stream** in **Settings → Community Plugins**.
 
 ## Usage
 
-1. **Open the Stream**:
-   - Click the "calendar-days" icon in the ribbon.
-   - Or run the command `Daily Notes Stream: Open Daily Notes Stream` from the Command Palette.
-2. **Navigation**:
-   - Scroll down to load older notes automatically.
-   - Click the date header of any note to open the original file.
-3. **Settings**:
-   - **Show Note Properties**: Toggle the display of frontmatter metadata.
-   - **Collapse Properties by Default**: Choose whether properties start hidden or visible.
+Open via the ribbon icon (calendar-days) or command palette (`Open Daily Notes Stream`).
+
+- Scroll down to load older notes.
+- Click a date header to open the original file.
+- **Settings**: toggle note properties display and default collapse state.
 
 ## Development
 
-1. Clone this repository.
-2. Run `pnpm install` to install dependencies.
-3. Run `pnpm test` to verify core logic.
-4. Run `pnpm run lint` to check for linting errors.
-5. Run `pnpm run build` to compile.
-6. Copy the output files to your test vault.
+```bash
+pnpm install && pnpm test && pnpm run lint && pnpm run build
+```
 
 ## License
 
