@@ -90,6 +90,15 @@ describe("CollapsibleManager — headers", () => {
         expect(content.querySelector("p")!.classList.contains("is-hidden")).toBe(false);
     });
 
+    it("skips headers that are direct children of a list item (no chevron added)", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<ul><li><h2>Heading in list</h2></li></ul>";
+        manager.makeCollapsible(content, "file.md");
+        const h2 = content.querySelector("h2")!;
+        expect(h2.classList.contains("is-collapsible")).toBe(false);
+        expect(h2.querySelector(".collapse-indicator")).toBeNull();
+    });
+
     it("processes all header levels h1–h6", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h1>1</h1><h2>2</h2><h3>3</h3><h4>4</h4><h5>5</h5><h6>6</h6>";
