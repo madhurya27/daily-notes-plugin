@@ -20,7 +20,7 @@ A read-only, infinite-scroll view of all your Daily Notes in Obsidian, displayed
 
 1. **From Release**: Download the latest release from GitHub and extract it to `<VaultFolder>/.obsidian/plugins/daily-notes-stream/`.
 2. **From Source**:
-   - Run `npm run build`.
+   - Run `pnpm run build`.
    - Copy `main.js`, `manifest.json`, and `styles.css` to `<VaultFolder>/.obsidian/plugins/daily-notes-stream/`.
 3. Reload Obsidian.
 4. Enable "Daily Notes Stream" in Community Plugins settings.
@@ -40,10 +40,10 @@ A read-only, infinite-scroll view of all your Daily Notes in Obsidian, displayed
 ## Development
 
 1. Clone this repository.
-2. Run `npm install` to install dependencies.
-3. Run `npm test` to verify core logic.
-4. Run `npm run lint` to check for linting errors.
-5. Run `npm run build` to compile.
+2. Run `pnpm install` to install dependencies.
+3. Run `pnpm test` to verify core logic.
+4. Run `pnpm run lint` to check for linting errors.
+5. Run `pnpm run build` to compile.
 6. Copy the output files to your test vault.
 
 ## License

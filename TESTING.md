@@ -5,7 +5,7 @@ The project includes a suite of automated unit tests to verify core logic (like 
 
 - **Run tests**:
   ```bash
-  npm test
+  pnpm test
   ```
 - **Coverage**: Includes legacy root-folder notes and new nested `YYYY/MM/` folder structures.
 
@@ -21,7 +21,7 @@ The project includes a suite of automated unit tests to verify core logic (like 
 - **Option A (Manual Build)**:
   - Run the build command in the project root:
     ```bash
-    npm run build
+    pnpm run build
     ```
   - Copy the distribution files to your test vault:
     ```bash
@@ -29,7 +29,7 @@ The project includes a suite of automated unit tests to verify core logic (like 
     cp main.js manifest.json styles.css <vault_path>/.obsidian/plugins/daily-notes-stream/
     ```
 - **Option B (Dist Package)**:
-  - Run `npm run build`.
+  - Run `pnpm run build`.
   - Copy the `dist/daily-notes-stream` folder to `<vault_path>/.obsidian/plugins/`.
 
 ## 4. Verification Steps

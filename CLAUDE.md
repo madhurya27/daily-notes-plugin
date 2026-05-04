@@ -5,16 +5,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm install          # Install dependencies
-npm run dev          # Watch mode (esbuild, outputs main.js with inline sourcemaps)
-npm run build        # Type-check then production build (minified, no sourcemaps)
-npm run lint         # Run ESLint across the project
-npm test             # Compile and run unit tests (outputs to tests/dist/)
+pnpm install          # Install dependencies
+pnpm run dev          # Watch mode (esbuild, outputs main.js with inline sourcemaps)
+pnpm run build        # Type-check then production build (minified, no sourcemaps)
+pnpm run lint         # Run ESLint across the project
+pnpm test             # Compile and run unit tests (outputs to tests/dist/)
 ```
 
 To deploy to the test vault (`PluginTest`):
 ```bash
-npm run build
+pnpm run build
 cp main.js manifest.json styles.css PluginTest/.obsidian/plugins/daily-notes-stream/
 ```
 
