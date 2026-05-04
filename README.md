@@ -8,7 +8,7 @@ A read-only, infinite-scroll view of all your Daily Notes in Obsidian, displayed
 - **Chronological Order**: Notes are sorted by date, with the most recent at the top.
 - **Live Updates**: Automatically detects new, modified, or renamed daily notes and updates the stream in real-time without reloading.
 - **Collapsible Content**: Headers (H1-H6) and nested lists can be collapsed and expanded directly in the stream view.
-- **Adaptive Styling**: Uses Obsidian's native CSS variables to ensure the stream matches your theme's fonts, colors, and spacing.
+- **Adaptive Styling**: Uses Obsidian's native CSS variables to ensure the stream matches your theme's fonts, colors, and spacing. Compatible with the Minimal theme's readable line-width settings.
 - **Nested Folder Support**: Automatically handles daily notes organized in subfolders (e.g., `Notes/2025/03/2025-03-04.md`).
 - **Rich Rendering**: Full support for Markdown, images, embeds, and tasks.
 - **Note Properties**: Option to display frontmatter metadata (tags, dates, etc.) for each note.
@@ -21,7 +21,7 @@ A read-only, infinite-scroll view of all your Daily Notes in Obsidian, displayed
 1. **From Release**: Download the latest release from GitHub and extract it to `<VaultFolder>/.obsidian/plugins/daily-notes-stream/`.
 2. **From Source**:
    - Run `npm run build`.
-   - Copy the `dist/daily-notes-stream` folder to `<VaultFolder>/.obsidian/plugins/`.
+   - Copy `main.js`, `manifest.json`, and `styles.css` to `<VaultFolder>/.obsidian/plugins/daily-notes-stream/`.
 3. Reload Obsidian.
 4. Enable "Daily Notes Stream" in Community Plugins settings.
 
@@ -42,8 +42,9 @@ A read-only, infinite-scroll view of all your Daily Notes in Obsidian, displayed
 1. Clone this repository.
 2. Run `npm install` to install dependencies.
 3. Run `npm test` to verify core logic.
-4. Run `npm run build` to compile.
-5. Copy the output files to your test vault.
+4. Run `npm run lint` to check for linting errors.
+5. Run `npm run build` to compile.
+6. Copy the output files to your test vault.
 
 ## License
 
