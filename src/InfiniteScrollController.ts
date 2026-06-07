@@ -64,14 +64,4 @@ export class InfiniteScrollController {
     getSentinel(): HTMLElement | null {
         return this.sentinel;
     }
-
-    /**
-     * Moves the sentinel back to the end of the container.
-     * Call this after inserting any element at the end that may have displaced it.
-     */
-    enforceSentinelPosition(container: HTMLElement): void {
-        if (this.sentinel && this.sentinel.parentElement === container) {
-            container.appendChild(this.sentinel);
-        }
-    }
 }

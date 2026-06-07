@@ -9,7 +9,13 @@ describe("DailyNoteService", () => {
         __setMockNotes([]);
     });
 
-    describe("getAllNotesSorted (static legacy)", () => {
+    describe("initialize + getBatch: building the sorted cache", () => {
+        function buildSorted(): TFile[] {
+            const svc = new DailyNoteService();
+            svc.initialize();
+            return svc.getBatch(0, svc.length);
+        }
+
         it("parses daily notes in root folder", () => {
             __setMockSettings({ format: "YYYY-MM-DD" });
             __setMockNotes([
@@ -18,7 +24,7 @@ describe("DailyNoteService", () => {
                 "Notes/2025-01-02.md",
             ]);
 
-            const sorted = DailyNoteService.getAllNotesSorted();
+            const sorted = buildSorted();
 
             expect(sorted.length).toBe(3);
             expect(sorted[0]?.basename).toBe("2025-01-03");
@@ -34,7 +40,7 @@ describe("DailyNoteService", () => {
                 "Notes/2025/01/2025-01-05.md",
             ]);
 
-            const sorted = DailyNoteService.getAllNotesSorted();
+            const sorted = buildSorted();
 
             expect(sorted.length).toBe(3);
             expect(sorted[0]?.basename).toBe("2025-01-10");
@@ -50,7 +56,7 @@ describe("DailyNoteService", () => {
                 "Notes/SomeOtherFile.md",
             ]);
 
-            const sorted = DailyNoteService.getAllNotesSorted();
+            const sorted = buildSorted();
 
             expect(sorted.length).toBe(1);
             expect(sorted[0]?.basename).toBe("2025-01-01");
@@ -60,7 +66,7 @@ describe("DailyNoteService", () => {
             __setMockSettings({ format: "YYYYMMDD" });
             __setMockNotes(["Notes/20250101.md"]);
 
-            const sorted = DailyNoteService.getAllNotesSorted();
+            const sorted = buildSorted();
 
             expect(sorted.length).toBe(1);
             expect(sorted[0]?.basename).toBe("20250101");
@@ -178,9 +184,10 @@ describe("DailyNoteService", () => {
         it("buildSorted: uses YYYY-MM-DD when settings.format is empty string (covers || fallback)", () => {
             __setMockSettings({ format: "" }); // empty string is falsy → right side of || taken
             __setMockNotes(["Notes/2025-01-01.md"]);
-            const sorted = DailyNoteService.getAllNotesSorted();
-            expect(sorted.length).toBe(1);
-            expect(sorted[0]?.basename).toBe("2025-01-01");
+            const svc = new DailyNoteService();
+            svc.initialize();
+            expect(svc.length).toBe(1);
+            expect(svc.getBatch(0, 1)[0]?.basename).toBe("2025-01-01");
         });
 
         it("buildSorted: uses YYYY-MM-DD basename when format ends with slash (covers pop() || fallback)", () => {
@@ -217,24 +224,4 @@ describe("DailyNoteService", () => {
         });
     });
 
-    describe("static getBatch (legacy)", () => {
-        it("returns a slice of all sorted notes", () => {
-            __setMockSettings({ format: "YYYY-MM-DD" });
-            __setMockNotes([
-                "Notes/2025-01-03.md",
-                "Notes/2025-01-01.md",
-                "Notes/2025-01-02.md",
-            ]);
-            const batch = DailyNoteService.getBatch(0, 2);
-            expect(batch.length).toBe(2);
-            expect(batch[0]?.basename).toBe("2025-01-03");
-            expect(batch[1]?.basename).toBe("2025-01-02");
-        });
-
-        it("returns empty array when offset exceeds length", () => {
-            __setMockSettings({ format: "YYYY-MM-DD" });
-            __setMockNotes(["Notes/2025-01-01.md"]);
-            expect(DailyNoteService.getBatch(10, 5)).toEqual([]);
-        });
-    });
 });

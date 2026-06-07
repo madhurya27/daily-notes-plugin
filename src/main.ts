@@ -5,9 +5,9 @@ import { DailyNoteService } from "./DailyNoteService";
 import { CollapsibleStateStore } from "./CollapsibleStateStore";
 
 export default class DailyNotesStreamPlugin extends Plugin {
-	settings: DailyNotesStreamSettings;
-	service: DailyNoteService;
-	collapseStore: CollapsibleStateStore;
+	settings!: DailyNotesStreamSettings;
+	service!: DailyNoteService;
+	collapseStore!: CollapsibleStateStore;
 
 	async onload() {
 		await this.loadSettings();

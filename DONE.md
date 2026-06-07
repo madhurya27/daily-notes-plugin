@@ -13,5 +13,5 @@
 - [x] Collapsible headers (H1–H6) and nested lists
 - [x] Settings refresh: view re-renders on settings change, scroll position preserved
 - [x] Nested folder support (e.g. `YYYY/MM/YYYY-MM-DD.md`)
-- [x] Automated unit tests for `DailyNoteService`
+- [x] Automated tests with 100% coverage across all source files (Vitest + jsdom)
 - [x] Switch to pnpm

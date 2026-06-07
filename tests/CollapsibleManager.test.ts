@@ -193,7 +193,7 @@ describe("CollapsibleManager — lists", () => {
         const indicator = content.querySelector("ul > li > .collapse-indicator") as HTMLElement;
         indicator.click();
         expect(content.querySelector("ul > li")!.classList.contains("is-collapsed")).toBe(true);
-        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-0", true);
+        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-item", true);
     });
 
     it("second indicator click un-collapses list item", () => {
@@ -206,20 +206,20 @@ describe("CollapsibleManager — lists", () => {
         expect(content.querySelector("ul > li")!.classList.contains("is-collapsed")).toBe(false);
     });
 
-    it("uses depth-based key: top-level list item has depth 1", () => {
+    it("uses a depth-and-text-based key: top-level list item has depth 1", () => {
         const content = document.createElement("div");
         content.innerHTML = "<ul><li>A<ul><li>Sub</li></ul></li></ul>";
         manager.makeCollapsible(content, "file.md");
         (content.querySelector("ul > li > .collapse-indicator") as HTMLElement).click();
-        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-0", true);
+        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-a", true);
     });
 
-    it("index increments per collapsible li", () => {
+    it("derives the key from the item's own text, ignoring nested sub-list content (stable across edits elsewhere)", () => {
         const content = document.createElement("div");
         content.innerHTML = `
             <ul>
-                <li>A<ul><li>Sub-A</li></ul></li>
-                <li>B<ul><li>Sub-B</li></ul></li>
+                <li>Alpha<ul><li>Sub-A</li></ul></li>
+                <li>Beta<ul><li>Sub-B</li></ul></li>
             </ul>`;
         manager.makeCollapsible(content, "file.md");
         const indicators = Array.from(
@@ -227,8 +227,8 @@ describe("CollapsibleManager — lists", () => {
         ) as HTMLElement[];
         indicators[0]!.click();
         indicators[1]!.click();
-        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-0", true);
-        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-1", true);
+        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-alpha", true);
+        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-beta", true);
     });
 
     it("handles ol (ordered list) as nested container", () => {

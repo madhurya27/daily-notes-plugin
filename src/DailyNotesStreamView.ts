@@ -1,5 +1,4 @@
 import { ItemView, WorkspaceLeaf, TFile, TAbstractFile } from "obsidian";
-import { getDateFromFile } from "obsidian-daily-notes-interface";
 import type DailyNotesStreamPlugin from "./main";
 import { StreamState } from "./StreamState";
 import { NoteRenderer } from "./NoteRenderer";
@@ -88,7 +87,7 @@ export class DailyNotesStreamView extends ItemView {
         this.registerEvent(this.app.vault.on("modify", (f) => this.onFileModify(f)));
         this.registerEvent(this.app.vault.on("create", (f) => this.onFileCreate(f)));
         this.registerEvent(this.app.vault.on("delete", (f) => this.onFileDelete(f)));
-        this.registerEvent(this.app.vault.on("rename", (f) => this.onFileRename(f)));
+        this.registerEvent(this.app.vault.on("rename", (f, oldPath) => this.onFileRename(f, oldPath)));
 
         // Sentinel + observer — triggers initial load because sentinel is visible
         this.scroll.attach(this.contentEl, this.streamContainerEl, () => this.loadMoreNotes());
@@ -117,61 +116,46 @@ export class DailyNotesStreamView extends ItemView {
 
     onFileCreate(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        const date = getDateFromFile(file, "day");
-        if (!date) return;
-        if (this.state.length === 0) return;
 
-        const notes = this.state.notes;
-        const newestDate = getDateFromFile(notes[0]!, "day");
-        const oldestDate = getDateFromFile(notes[notes.length - 1]!, "day");
-        if (!newestDate || !oldestDate) return;
-
-        let insertIndex: number;
-        if (date.isAfter(newestDate)) {
-            insertIndex = 0;
-        } else if (date.isBefore(newestDate) && date.isAfter(oldestDate)) {
-            insertIndex = notes.length;
-            for (let i = 0; i < notes.length; i++) {
-                const d = getDateFromFile(notes[i]!, "day");
-                if (d && date.isAfter(d)) { insertIndex = i; break; }
-            }
-        } else {
-            return;
-        }
+        // insertSorted is the single source of truth for sort order — it also
+        // keeps the service's cache in sync so later getBatch() calls stay
+        // aligned with `this.offset`. Returns -1 for non-daily-note files.
+        const globalIndex = this.plugin.service.insertSorted(file);
+        if (globalIndex === -1) return;
+        if (globalIndex >= this.offset) return; // beyond the loaded range — nothing to render yet
 
         this.renderer.createNoteElement(file).then(newEl => {
-            this.insertElementAt(newEl, insertIndex);
-            this.state.insert(insertIndex, file);
+            this.insertElementAt(newEl, globalIndex);
+            this.state.insert(globalIndex, file);
             this.offset++;
         }).catch(e => console.error("DailyNotesStream: Failed to insert new note", e));
     }
 
-    onFileDelete(file: TAbstractFile) {
-        if (!(file instanceof TFile)) return;
-        const el = this.findNoteElement(file);
+    /**
+     * Removes a note by its rendered path (which may differ from `file.path`
+     * after a rename — the DOM element's data-source-path is set at render time).
+     */
+    private removeNote(file: TFile, renderedPath: string): void {
+        const el = this.findNoteElementByPath(renderedPath);
         if (el) el.remove();
-        const idx = this.state.findIndex(file.path);
-        if (idx !== -1) {
+
+        const globalIndex = this.plugin.service.removeSorted(file.path);
+        if (globalIndex !== -1 && globalIndex < this.offset) {
             this.state.remove(file.path);
             this.offset--;
         }
-        this.plugin.collapseStore.clearForFile(file.path);
+        this.plugin.collapseStore.clearForFile(renderedPath);
     }
 
-    onFileRename(file: TAbstractFile) {
+    onFileDelete(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        const inState = this.state.findIndex(file.path) !== -1;
-        if (inState) {
-            const date = getDateFromFile(file, "day");
-            if (!date) {
-                this.onFileDelete(file);
-            } else {
-                this.onFileDelete(file);
-                this.onFileCreate(file);
-            }
-        } else {
-            this.onFileCreate(file);
-        }
+        this.removeNote(file, file.path);
+    }
+
+    onFileRename(file: TAbstractFile, oldPath: string) {
+        if (!(file instanceof TFile)) return;
+        this.removeNote(file, oldPath);
+        this.onFileCreate(file);
     }
 
     // -------------------------------------------------------------------------
@@ -253,7 +237,11 @@ export class DailyNotesStreamView extends ItemView {
     // -------------------------------------------------------------------------
 
     private findNoteElement(file: TFile): HTMLElement | null {
-        const selector = `.daily-note-content[data-source-path="${file.path.replace(/"/g, '\\"')}"]`;
+        return this.findNoteElementByPath(file.path);
+    }
+
+    private findNoteElementByPath(path: string): HTMLElement | null {
+        const selector = `.daily-note-content[data-source-path="${path.replace(/"/g, '\\"')}"]`;
         const contentEl = this.streamContainerEl.querySelector(selector);
         return (contentEl?.closest(".daily-note-block") as HTMLElement) ?? null;
     }

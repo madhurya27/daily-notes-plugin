@@ -15,6 +15,8 @@ function makePlugin() {
         service: {
             getBatch: vi.fn().mockReturnValue([]),
             initialize: vi.fn(),
+            insertSorted: vi.fn().mockReturnValue(-1),
+            removeSorted: vi.fn().mockReturnValue(-1),
         },
         collapseStore: new CollapsibleStateStore(app as any),
     } as any;
@@ -60,10 +62,10 @@ async function makeViewSetup() {
     (v as any).scroll = {
         attach: vi.fn(), detach: vi.fn(),
         getSentinel: vi.fn().mockReturnValue(null),
-        enforceSentinelPosition: vi.fn(),
     };
     (v as any).insertElementAt = vi.fn();
     (v as any).findNoteElement = vi.fn().mockReturnValue(null);
+    (v as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
     await v.onOpen();
     const s = (v as any).state as StreamState;
     return { view: v, plugin: p, state: s };
@@ -93,13 +95,13 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             attach: vi.fn(),
             detach: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
-            enforceSentinelPosition: vi.fn(),
         };
 
         // Stub DOM insertion — tests only care about state changes, not DOM
         (view as any).insertElementAt = vi.fn();
         // Also stub findNoteElement so delete/modify don't touch real DOM
         (view as any).findNoteElement = vi.fn().mockReturnValue(null);
+        (view as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
 
         await view.onOpen();
 
@@ -108,146 +110,152 @@ describe("DailyNotesStreamView — vault event handlers", () => {
 
     // -----------------------------------------------------------------------
     // onFileCreate
+    //
+    // insertSorted() is the single source of truth: it both updates the
+    // service's cache (keeping it aligned with `offset`) and reports where the
+    // file lands in the full sorted order. The view only renders/tracks it
+    // locally when that position falls within the currently loaded range.
     // -----------------------------------------------------------------------
     describe("onFileCreate", () => {
-        it("does nothing for a non-TFile argument", async () => {
+        it("does nothing for a non-TFile argument", () => {
             expect(() => view.onFileCreate({ path: "not-a-tfile" } as any)).not.toThrow();
-            expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
+            expect(plugin.service.insertSorted).not.toHaveBeenCalled();
         });
 
-        it("prepends a note that is newer than all loaded notes", async () => {
-            const existing = new TFile("Notes/2025-01-01.md");
-            state.reset([existing]);
+        it("ignores files that are not daily notes (insertSorted returns -1)", async () => {
+            plugin.service.insertSorted = vi.fn().mockReturnValue(-1);
+            const file = new TFile("Notes/Template.md");
 
-            const newer = new TFile("Notes/2025-01-05.md");
-            view.onFileCreate(newer);
-            await flushPromises();
-
-            expect(state.notes[0]?.basename).toBe("2025-01-05");
-            expect(state.length).toBe(2);
-        });
-
-        it("inserts a note in the correct middle position", async () => {
-            const n3 = new TFile("Notes/2025-01-03.md");
-            const n1 = new TFile("Notes/2025-01-01.md");
-            state.reset([n3, n1]);
-
-            const n2 = new TFile("Notes/2025-01-02.md");
-            view.onFileCreate(n2);
-            await flushPromises();
-
-            expect(state.notes[0]?.basename).toBe("2025-01-03");
-            expect(state.notes[1]?.basename).toBe("2025-01-02");
-            expect(state.notes[2]?.basename).toBe("2025-01-01");
-        });
-
-        it("ignores a note older than all loaded notes (not in visible range)", async () => {
-            const n3 = new TFile("Notes/2025-01-03.md");
-            const n2 = new TFile("Notes/2025-01-02.md");
-            state.reset([n3, n2]);
-
-            const old = new TFile("Notes/2025-01-01.md");
-            view.onFileCreate(old);
-            await flushPromises();
-
-            expect(state.length).toBe(2);
-        });
-
-        it("ignores non-daily-note files (no date in filename)", async () => {
-            const n1 = new TFile("Notes/2025-01-01.md");
-            state.reset([n1]);
-
-            const random = new TFile("Notes/Template.md");
-            view.onFileCreate(random);
-            await flushPromises();
-
-            expect(state.length).toBe(1);
-        });
-
-        it("does nothing when no notes are loaded yet", async () => {
-            // state.length === 0
-            const file = new TFile("Notes/2025-01-01.md");
             view.onFileCreate(file);
             await flushPromises();
 
             expect(state.length).toBe(0);
+            expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
         });
 
-        it("returns early when the oldest loaded note has no parseable date (covers !newestDate || !oldestDate branch)", async () => {
-            // Put a non-daily-note file in state — getDateFromFile returns null for it
-            const nonDate = new TFile("Notes/Template.md");
-            state.reset([nonDate]);
+        it("renders and inserts the note at its global index when within the loaded range", async () => {
+            (view as any).offset = 2;
+            plugin.service.insertSorted = vi.fn().mockReturnValue(0);
+            const file = new TFile("Notes/2025-01-05.md");
 
-            const newNote = new TFile("Notes/2025-01-05.md");
-            view.onFileCreate(newNote);
+            view.onFileCreate(file);
             await flushPromises();
 
-            // Should return early at line 114 without inserting
-            expect(state.length).toBe(1);
+            expect(plugin.service.insertSorted).toHaveBeenCalledWith(file);
+            expect((view as any).renderer.createNoteElement).toHaveBeenCalledWith(file);
+            expect(state.notes[0]).toBe(file);
+            expect((view as any).offset).toBe(3);
+        });
+
+        it("updates the cache but does not render when the global index is beyond the loaded range", async () => {
+            (view as any).offset = 2;
+            plugin.service.insertSorted = vi.fn().mockReturnValue(2);
+            const file = new TFile("Notes/2025-01-01.md");
+
+            view.onFileCreate(file);
+            await flushPromises();
+
             expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
+            expect(state.length).toBe(0);
+            expect((view as any).offset).toBe(2);
         });
     });
 
     // -----------------------------------------------------------------------
     // onFileDelete
+    //
+    // removeSorted() reports the file's previous global index — used both to
+    // keep the cache/offset aligned and to decide whether the file was
+    // currently rendered (global index within the loaded range).
     // -----------------------------------------------------------------------
     describe("onFileDelete", () => {
-        it("removes the note from state", async () => {
-            const note = new TFile("Notes/2025-01-01.md");
-            state.reset([note]);
-
-            view.onFileDelete(note);
-
-            expect(state.length).toBe(0);
+        it("does nothing for a non-TFile argument", () => {
+            expect(() => view.onFileDelete({ path: "not-a-tfile" } as any)).not.toThrow();
+            expect(plugin.service.removeSorted).not.toHaveBeenCalled();
         });
 
-        it("decrements offset", async () => {
+        it("removes from state and DOM and decrements offset when within the loaded range", () => {
             const note = new TFile("Notes/2025-01-01.md");
             state.reset([note]);
             (view as any).offset = 1;
+            plugin.service.removeSorted = vi.fn().mockReturnValue(0);
+            const mockEl = { remove: vi.fn() };
+            (view as any).findNoteElementByPath = vi.fn().mockReturnValue(mockEl);
 
             view.onFileDelete(note);
 
+            expect(plugin.service.removeSorted).toHaveBeenCalledWith(note.path);
+            expect(mockEl.remove).toHaveBeenCalled();
+            expect(state.length).toBe(0);
             expect((view as any).offset).toBe(0);
         });
 
-        it("ignores files not in state", () => {
-            state.reset([new TFile("Notes/2025-01-01.md")]);
-            view.onFileDelete(new TFile("Notes/nonexistent.md"));
-            expect(state.length).toBe(1);
-        });
-
-        it("does nothing for a non-TFile argument", () => {
-            expect(() => view.onFileDelete({ path: "not-a-tfile" } as any)).not.toThrow();
-            expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
-        });
-
-        it("calls remove() on the found DOM element", () => {
-            const note = new TFile("Notes/2025-01-01.md");
-            state.reset([note]);
+        it("removes the DOM element without touching state/offset when beyond the loaded range", () => {
+            (view as any).offset = 0;
+            plugin.service.removeSorted = vi.fn().mockReturnValue(3);
+            const note = new TFile("Notes/2025-01-10.md");
             const mockEl = { remove: vi.fn() };
-            (view as any).findNoteElement = vi.fn().mockReturnValue(mockEl);
+            (view as any).findNoteElementByPath = vi.fn().mockReturnValue(mockEl);
+
             view.onFileDelete(note);
+
             expect(mockEl.remove).toHaveBeenCalled();
+            expect(state.length).toBe(0);
+            expect((view as any).offset).toBe(0);
+        });
+
+        it("clears collapse state for the file's path regardless of whether it was cached", () => {
+            plugin.service.removeSorted = vi.fn().mockReturnValue(-1);
+            const note = new TFile("Notes/nonexistent.md");
+            const clearSpy = vi.spyOn(plugin.collapseStore, "clearForFile");
+
+            view.onFileDelete(note);
+
+            expect(clearSpy).toHaveBeenCalledWith(note.path);
         });
     });
 
     // -----------------------------------------------------------------------
     // onFileRename
+    //
+    // Obsidian mutates the TFile in place on rename, so `file.path` is already
+    // the new path by the time the handler runs — but the rendered DOM element's
+    // data-source-path was set to the *old* path at render time. `oldPath` (the
+    // event's second argument) is therefore needed to find/remove that element.
     // -----------------------------------------------------------------------
     describe("onFileRename", () => {
-        it("removes old name from state if renamed to non-daily", async () => {
-            const note = new TFile("Notes/2025-01-01.md");
-            state.reset([note]);
+        it("does nothing for a non-TFile argument", () => {
+            expect(() => view.onFileRename({ path: "x" } as any, "old.md")).not.toThrow();
+        });
 
-            // Simulate rename to a non-date name (same object, path unchanged in mock
-            // but getDateFromFile returns null for non-matching names)
-            const renamed = new TFile("Notes/Template.md");
-            // Make renamed appear to be in state by matching its path to note's path
-            state.reset([renamed]);
+        it("looks up the old DOM element by oldPath, removes it from the cache by the new path, and re-creates", () => {
+            const file = new TFile("Notes/2025-01-05.md");
+            plugin.service.removeSorted = vi.fn().mockReturnValue(-1);
+            plugin.service.insertSorted = vi.fn().mockReturnValue(-1);
+            const mockEl = { remove: vi.fn() };
+            const findSpy = vi.fn().mockReturnValue(mockEl);
+            (view as any).findNoteElementByPath = findSpy;
 
-            view.onFileDelete(renamed);
-            expect(state.length).toBe(0);
+            view.onFileRename(file, "Notes/2025-01-01.md");
+
+            expect(findSpy).toHaveBeenCalledWith("Notes/2025-01-01.md");
+            expect(mockEl.remove).toHaveBeenCalled();
+            expect(plugin.service.removeSorted).toHaveBeenCalledWith(file.path);
+            expect(plugin.service.insertSorted).toHaveBeenCalledWith(file);
+        });
+
+        it("re-inserts the renamed file at its new sorted position when within the loaded range", async () => {
+            (view as any).offset = 1;
+            plugin.service.removeSorted = vi.fn().mockReturnValue(-1);
+            plugin.service.insertSorted = vi.fn().mockReturnValue(0);
+            (view as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
+
+            const file = new TFile("Notes/2025-01-05.md");
+            view.onFileRename(file, "Notes/2025-01-01.md");
+            await flushPromises();
+
+            expect(state.notes[0]).toBe(file);
+            expect((view as any).offset).toBe(2);
         });
     });
 });
@@ -300,7 +308,6 @@ describe("DailyNotesStreamView — onOpen error path", () => {
         (errorView as any).scroll = {
             attach: vi.fn(), detach: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
-            enforceSentinelPosition: vi.fn(),
         };
         await expect(errorView.onOpen()).resolves.toBeUndefined();
     });
@@ -314,7 +321,6 @@ describe("DailyNotesStreamView — onOpen error path", () => {
         const scrollStub = {
             attach: vi.fn(), detach: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
-            enforceSentinelPosition: vi.fn(),
         };
         (errorView as any).scroll = scrollStub;
         await errorView.onOpen();
@@ -340,6 +346,7 @@ describe("DailyNotesStreamView — onFileModify", () => {
 
     it("does nothing when the note element is not in the DOM", () => {
         (view as any).findNoteElement = vi.fn().mockReturnValue(null);
+        (view as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
         view.onFileModify(new TFile("Notes/2025-01-01.md"));
         expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
     });
@@ -375,34 +382,18 @@ describe("DailyNotesStreamView — onFileRename extended", () => {
     });
 
     it("does nothing for a non-TFile argument", () => {
-        expect(() => view.onFileRename({ path: "x" } as any)).not.toThrow();
+        expect(() => view.onFileRename({ path: "x" } as any, "old.md")).not.toThrow();
     });
 
-    it("calls onFileCreate when file is not currently in state", () => {
-        state.reset([]); // file not in state
-        const file = new TFile("Notes/2025-01-01.md");
+    it("always removes the old entry (by oldPath) and re-creates under the new path — regardless of whether either name is a valid daily note", () => {
+        const file = new TFile("Notes/Template.md");
+        state.reset([]);
+        const removeSpy = vi.spyOn(view as any, "removeNote");
         const createSpy = vi.spyOn(view, "onFileCreate");
-        view.onFileRename(file);
-        expect(createSpy).toHaveBeenCalledWith(file);
-    });
 
-    it("calls only onFileDelete when renamed file has no parseable date", () => {
-        const nonDaily = new TFile("Notes/Template.md");
-        state.reset([nonDaily]); // Template.md IS in state
-        const deleteSpy = vi.spyOn(view, "onFileDelete");
-        const createSpy = vi.spyOn(view, "onFileCreate");
-        view.onFileRename(nonDaily);
-        expect(deleteSpy).toHaveBeenCalledWith(nonDaily);
-        expect(createSpy).not.toHaveBeenCalled();
-    });
+        view.onFileRename(file, "Notes/2025-01-01.md");
 
-    it("calls onFileDelete then onFileCreate when renamed file has a valid date", () => {
-        const file = new TFile("Notes/2025-01-01.md");
-        state.reset([file]);
-        const deleteSpy = vi.spyOn(view, "onFileDelete");
-        const createSpy = vi.spyOn(view, "onFileCreate");
-        view.onFileRename(file);
-        expect(deleteSpy).toHaveBeenCalledWith(file);
+        expect(removeSpy).toHaveBeenCalledWith(file, "Notes/2025-01-01.md");
         expect(createSpy).toHaveBeenCalledWith(file);
     });
 });
@@ -560,10 +551,10 @@ describe("DailyNotesStreamView — internal-link click handler", () => {
         (realView as any).scroll = {
             attach: vi.fn(), detach: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
-            enforceSentinelPosition: vi.fn(),
         };
         (realView as any).insertElementAt = vi.fn();
         (realView as any).findNoteElement = vi.fn().mockReturnValue(null);
+        (realView as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
         await realView.onOpen();
     });
 
@@ -624,6 +615,7 @@ describe("DailyNotesStreamView — findNoteElement", () => {
     beforeEach(async () => {
         ({ view } = await makeViewSetup());
         delete (view as any).findNoteElement; // expose real implementation
+        delete (view as any).findNoteElementByPath; // ...and the lookup it delegates to
     });
 
     it("returns the .daily-note-block ancestor when a matching element exists", () => {
@@ -726,6 +718,7 @@ describe("DailyNotesStreamView — insertElementAt", () => {
         container.appendChild(sentinel);
         (view as any).scroll.getSentinel = vi.fn().mockReturnValue(sentinel);
         (view as any).findNoteElement = vi.fn().mockReturnValue(null);
+        (view as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
 
         const el = document.createElement("div");
         (view as any).insertElementAt(el, 1);
@@ -741,6 +734,7 @@ describe("DailyNotesStreamView — insertElementAt", () => {
 
         (view as any).scroll.getSentinel = vi.fn().mockReturnValue(null);
         (view as any).findNoteElement = vi.fn().mockReturnValue(null);
+        (view as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
 
         const el = document.createElement("div");
         (view as any).insertElementAt(el, 1);
@@ -767,10 +761,10 @@ describe("DailyNotesStreamView — insertElementAt", () => {
 
 describe("DailyNotesStreamView — error catch paths", () => {
     let view: DailyNotesStreamView;
-    let state: StreamState;
+    let plugin: ReturnType<typeof makePlugin>;
 
     beforeEach(async () => {
-        ({ view, state } = await makeViewSetup());
+        ({ view, plugin } = await makeViewSetup());
     });
 
     it("onFileModify logs error when createNoteElement rejects", async () => {
@@ -792,8 +786,8 @@ describe("DailyNotesStreamView — error catch paths", () => {
 
     it("onFileCreate logs error when createNoteElement rejects", async () => {
         const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-        const existing = new TFile("Notes/2025-01-01.md");
-        state.reset([existing]);
+        (view as any).offset = 1;
+        plugin.service.insertSorted = vi.fn().mockReturnValue(0);
         (view as any).renderer.createNoteElement = vi.fn().mockRejectedValue(new Error("create failed"));
 
         const newer = new TFile("Notes/2025-01-05.md");
@@ -816,9 +810,9 @@ describe("DailyNotesStreamView — callback wiring", () => {
         __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
         __setMockNotes([]);
 
-        const capturedCallbacks: Record<string, (f: any) => void> = {};
+        const capturedCallbacks: Record<string, (f: any, oldPath?: any) => void> = {};
         const capturingVault = {
-            on: vi.fn((event: string, cb: (f: any) => void) => {
+            on: vi.fn((event: string, cb: (f: any, oldPath?: any) => void) => {
                 capturedCallbacks[event] = cb;
                 return {};
             }),
@@ -837,10 +831,10 @@ describe("DailyNotesStreamView — callback wiring", () => {
         (v as any).scroll = {
             attach: vi.fn(), detach: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
-            enforceSentinelPosition: vi.fn(),
         };
         (v as any).insertElementAt = vi.fn();
         (v as any).findNoteElement = vi.fn().mockReturnValue(null);
+        (v as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
         await v.onOpen();
         return { view: v, callbacks: capturedCallbacks, app };
     }
@@ -869,12 +863,12 @@ describe("DailyNotesStreamView — callback wiring", () => {
         expect(spy).toHaveBeenCalledWith(file);
     });
 
-    it("vault 'rename' callback delegates to onFileRename", async () => {
+    it("vault 'rename' callback delegates to onFileRename with the old path", async () => {
         const { view, callbacks } = await makeWiredView();
         const spy = vi.spyOn(view, "onFileRename");
         const file = new TFile("Notes/2025-01-01.md");
-        callbacks["rename"]?.(file);
-        expect(spy).toHaveBeenCalledWith(file);
+        callbacks["rename"]?.(file, "Notes/old-name.md");
+        expect(spy).toHaveBeenCalledWith(file, "Notes/old-name.md");
     });
 
     it("scroll.attach callback in onOpen delegates to loadMoreNotes", async () => {
@@ -926,10 +920,10 @@ describe("DailyNotesStreamView — callback wiring", () => {
         (v as any).scroll = {
             attach: vi.fn(), detach: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
-            enforceSentinelPosition: vi.fn(),
         };
         (v as any).insertElementAt = vi.fn();
         (v as any).findNoteElement = vi.fn().mockReturnValue(null);
+        (v as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
         await v.onOpen();
 
         const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});

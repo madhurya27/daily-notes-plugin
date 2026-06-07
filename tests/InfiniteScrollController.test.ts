@@ -162,28 +162,4 @@ describe("InfiniteScrollController", () => {
         const ctrl = new InfiniteScrollController();
         expect(() => ctrl.detach()).not.toThrow();
     });
-
-    // -------------------------------------------------------------------------
-    // enforceSentinelPosition
-    // -------------------------------------------------------------------------
-
-    it("enforceSentinelPosition moves sentinel to end of container", () => {
-        const ctrl = new InfiniteScrollController();
-        const container = document.createElement("div");
-        ctrl.attach(document.createElement("div"), container, vi.fn().mockResolvedValue(undefined));
-        // Insert a new element after the sentinel (displacing it conceptually)
-        container.appendChild(document.createElement("div"));
-        ctrl.enforceSentinelPosition(container);
-        expect(container.lastChild).toBe(ctrl.getSentinel());
-    });
-
-    it("enforceSentinelPosition does nothing when sentinel is in a different container", () => {
-        const ctrl = new InfiniteScrollController();
-        const container = document.createElement("div");
-        ctrl.attach(document.createElement("div"), container, vi.fn().mockResolvedValue(undefined));
-        const other = document.createElement("div");
-        // Should not throw; sentinel stays in original container
-        expect(() => ctrl.enforceSentinelPosition(other)).not.toThrow();
-        expect(container.querySelector(".daily-notes-stream-sentinel")).not.toBeNull();
-    });
 });

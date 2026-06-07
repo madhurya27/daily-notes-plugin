@@ -20,8 +20,8 @@ export class CollapsibleManager {
     }
 
     private processHeaders(contentEl: HTMLElement, filePath: string): void {
-        const headers = contentEl.querySelectorAll("h1, h2, h3, h4, h5, h6");
-        headers.forEach((header: HTMLElement) => {
+        const headers = contentEl.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6");
+        headers.forEach((header) => {
             if (header.parentElement?.tagName === "LI") return;
             const sectionKey = slugify(header.textContent ?? "");
             header.addClass("is-collapsible");
@@ -47,14 +47,13 @@ export class CollapsibleManager {
     }
 
     private processLists(contentEl: HTMLElement, filePath: string): void {
-        const listItems = contentEl.querySelectorAll("li");
-        let index = 0;
-        listItems.forEach((li: HTMLElement) => {
+        const listItems = contentEl.querySelectorAll<HTMLElement>("li");
+        listItems.forEach((li) => {
             const subList = li.querySelector("ul, ol");
             if (!subList) return;
 
             const depth = this.getListDepth(li);
-            const sectionKey = `li-${depth}-${index++}`;
+            const sectionKey = `li-${depth}-${slugify(this.ownText(li))}`;
 
             li.addClass("is-collapsible");
 
@@ -86,6 +85,20 @@ export class CollapsibleManager {
             nextEl.toggleClass("is-hidden", isCollapsed);
             nextEl = nextEl.nextElementSibling as HTMLElement | null;
         }
+    }
+
+    /**
+     * Text directly inside a list item, excluding nested sub-lists — used as a
+     * stable collapse-state key so it survives edits elsewhere in the note
+     * (a positional index would shift and desync saved state on every edit).
+     */
+    private ownText(li: HTMLElement): string {
+        let text = "";
+        for (const node of Array.from(li.childNodes)) {
+            if (node.nodeType === Node.ELEMENT_NODE && /^(UL|OL)$/.test((node as HTMLElement).tagName)) continue;
+            text += node.textContent;
+        }
+        return text;
     }
 
     private getListDepth(li: HTMLElement): number {

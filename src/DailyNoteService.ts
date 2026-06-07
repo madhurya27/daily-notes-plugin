@@ -81,23 +81,4 @@ export class DailyNoteService {
         const date = moment(file.basename, basenameFormat, true);
         return date.isValid() ? date : null;
     }
-
-    // -------------------------------------------------------------------------
-    // Legacy static API — kept for backward compatibility during transition.
-    // Delegates to a temporary one-shot instance.
-    // -------------------------------------------------------------------------
-
-    /** @deprecated Use instance getBatch() instead */
-    static getAllNotesSorted(): TFile[] {
-        const svc = new DailyNoteService();
-        svc.initialize();
-        return svc._sorted;
-    }
-
-    /** @deprecated Use instance getBatch() instead */
-    static getBatch(offset: number, limit: number): TFile[] {
-        const svc = new DailyNoteService();
-        svc.initialize();
-        return svc._sorted.slice(offset, offset + limit);
-    }
 }
