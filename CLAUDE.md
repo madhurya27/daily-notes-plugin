@@ -30,8 +30,8 @@ Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 
 Update docs in the same branch as the code change that makes them stale:
 - `README.md` — user-facing features, install, usage.
-- `TESTING.md` — manual verification checklist (mirrors current behavior).
-- `DONE.md` / `TODO.md` — move items between shipped and planned as work completes.
+- `docs/TESTING.md` — manual verification checklist (mirrors current behavior).
+- `docs/DONE.md` / `docs/TODO.md` — move items between shipped and planned as work completes.
 - `AGENTS.md` — plugin-dev conventions (manifest, security, mobile); don't edit its wording — fix the code/config to match it instead.
 - This file (`CLAUDE.md`) — architecture, key patterns, build/test setup.
 
