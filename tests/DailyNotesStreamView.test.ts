@@ -304,6 +304,16 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             expect(state.notes[0]).toBe(file);
             expect(state.length).toBe(2);
         });
+
+        it("migrates collapse state to the new path", async () => {
+            const migrateSpy = vi.spyOn(plugin.collapseStore, "migrate");
+            const file = new TFile("Notes/2025-01-05.md");
+
+            view.onFileRename(file, "Notes/2025-01-01.md");
+            await flushPromises();
+
+            expect(migrateSpy).toHaveBeenCalledWith("Notes/2025-01-01.md", file.path);
+        });
     });
 });
 

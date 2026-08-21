@@ -140,8 +140,10 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     /**
-     * Removes a note by its rendered path (which may differ from `file.path`
-     * after a rename — the DOM element's data-source-path is set at render time).
+     * Removes a note from the DOM, the state, and the service cache by its
+     * rendered path (which differs from `file.path` after a rename — the DOM
+     * element's data-source-path is set at render time). Collapse state is the
+     * caller's business: delete drops it, rename carries it over.
      */
     private removeNote(file: TFile, renderedPath: string): void {
         const el = this.findNoteElementByPath(renderedPath);
@@ -151,17 +153,22 @@ export class DailyNotesStreamView extends ItemView {
         if (globalIndex !== -1 && globalIndex < this.state.length) {
             this.state.remove(file.path);
         }
-        this.plugin.collapseStore.clearForFile(renderedPath);
     }
 
     onFileDelete(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => this.removeNote(file, file.path));
+        void this.enqueue(async () => {
+            this.removeNote(file, file.path);
+            this.plugin.collapseStore.clearForFile(file.path);
+        });
     }
 
     onFileRename(file: TAbstractFile, oldPath: string) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => this.removeNote(file, oldPath));
+        void this.enqueue(async () => {
+            this.plugin.collapseStore.migrate(oldPath, file.path);
+            this.removeNote(file, oldPath);
+        });
         this.onFileCreate(file);
     }
 

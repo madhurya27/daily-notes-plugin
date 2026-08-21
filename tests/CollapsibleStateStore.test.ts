@@ -55,6 +55,31 @@ describe("CollapsibleStateStore", () => {
         expect(() => store.clearForFile("nonexistent.md")).not.toThrow();
     });
 
+    it("migrate moves every collapsed section to the new path", () => {
+        store.setCollapsed("old.md", "heading-1", true);
+        store.setCollapsed("old.md", "heading-2", true);
+
+        store.migrate("old.md", "new.md");
+
+        expect(store.isCollapsed("new.md", "heading-1")).toBe(true);
+        expect(store.isCollapsed("new.md", "heading-2")).toBe(true);
+        expect(store.isCollapsed("old.md", "heading-1")).toBe(false);
+        expect(store.isCollapsed("old.md", "heading-2")).toBe(false);
+    });
+
+    it("migrate carries the index over, so a later clearForFile on the new path cleans up", () => {
+        store.setCollapsed("old.md", "heading-1", true);
+
+        store.migrate("old.md", "new.md");
+        store.clearForFile("new.md");
+
+        expect(store.isCollapsed("new.md", "heading-1")).toBe(false);
+    });
+
+    it("migrate is safe when the file has no collapsed sections", () => {
+        expect(() => store.migrate("old.md", "new.md")).not.toThrow();
+    });
+
     it("addToIndex does not duplicate keys on repeated setCollapsed(true)", () => {
         store.setCollapsed("file.md", "heading-1", true);
         store.setCollapsed("file.md", "heading-1", true); // second call, same key

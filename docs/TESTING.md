@@ -40,7 +40,7 @@ cp main.js manifest.json styles.css <vault>/.obsidian/plugins/daily-notes-stream
 - Create the first note in an empty vault → replaces the empty-state message without reopening.
 - Edit a visible daily note → stream updates in real-time.
 - Edit its frontmatter → properties update, no frontmatter leaks into the body.
-- Rename a daily note → header and sort order update.
+- Rename a daily note → header and sort order update; collapsed sections stay collapsed.
 - Delete a daily note → disappears from stream.
 - A dated `.png`, or a dated note outside the folder → neither appears.
 

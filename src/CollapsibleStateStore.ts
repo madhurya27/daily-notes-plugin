@@ -28,6 +28,14 @@ export class CollapsibleStateStore {
         }
     }
 
+    /** Carries collapse state across a rename or move, so nothing re-expands. */
+    migrate(oldPath: string, newPath: string): void {
+        for (const sectionKey of this.readIndex(oldPath)) {
+            this.setCollapsed(newPath, sectionKey, true);
+        }
+        this.clearForFile(oldPath);
+    }
+
     clearForFile(filePath: string): void {
         for (const sectionKey of this.readIndex(filePath)) {
             this.app.saveLocalStorage(this.sectionStorageKey(filePath, sectionKey), null);
