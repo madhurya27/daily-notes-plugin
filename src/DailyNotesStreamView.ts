@@ -281,7 +281,7 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     private findNoteElementByPath(path: string): HTMLElement | null {
-        const selector = `.daily-note-content[data-source-path="${path.replace(/"/g, '\\"')}"]`;
+        const selector = `.daily-note-content[data-source-path="${CSS.escape(path)}"]`;
         const contentEl = this.streamContainerEl.querySelector(selector);
         return (contentEl?.closest(".daily-note-block") as HTMLElement) ?? null;
     }

@@ -765,6 +765,21 @@ describe("DailyNotesStreamView — findNoteElement", () => {
         expect(result).toBe(block);
     });
 
+    it("matches paths containing CSS selector metacharacters", () => {
+        const path = 'Notes/2025-01-01 [a\\b"c].md';
+        const container = document.createElement("div");
+        const block = document.createElement("div");
+        block.classList.add("daily-note-block");
+        const content = document.createElement("div");
+        content.classList.add("daily-note-content");
+        content.dataset.sourcePath = path;
+        block.appendChild(content);
+        container.appendChild(block);
+        (view as any).streamContainerEl = container;
+
+        expect((view as any).findNoteElement(new TFile(path))).toBe(block);
+    });
+
     it("returns null when no matching element exists in the container", () => {
         const container = document.createElement("div");
         (view as any).streamContainerEl = container;

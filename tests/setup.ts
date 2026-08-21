@@ -65,3 +65,12 @@ proto.onClickEvent = function (handler: (e: MouseEvent) => void) {
 proto.prepend = proto.prepend ?? function (node: Node) {
     this.insertBefore(node, this.firstChild);
 };
+
+/**
+ * jsdom ships no CSS object; Obsidian runs on Chromium, which has CSS.escape.
+ * Escapes every character outside [A-Za-z0-9_-] — stricter than the CSSOM
+ * algorithm, and valid wherever the result is used (identifier or quoted value).
+ */
+(globalThis as any).CSS ??= {
+    escape: (value: string): string => value.replace(/[^\w-]/g, c => `\\${c}`),
+};
