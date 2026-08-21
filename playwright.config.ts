@@ -2,6 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
     testDir: "e2e",
+    globalSetup: "./e2e/global-setup.ts",
     // One Obsidian instance at a time: each carries a real vault on disk.
     workers: 1,
     fullyParallel: false,
