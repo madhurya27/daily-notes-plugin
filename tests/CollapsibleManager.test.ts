@@ -10,6 +10,11 @@ function makeStore(collapsedByDefault = false): CollapsibleStateStore {
     } as any;
 }
 
+/** Collapse toggles are bound to the chevron, not the whole heading/list item. */
+function clickChevron(el: HTMLElement): void {
+    (el.querySelector(":scope > .collapse-indicator") as HTMLElement).click();
+}
+
 describe("CollapsibleManager — headers", () => {
     let store: ReturnType<typeof makeStore>;
     let manager: CollapsibleManager;
@@ -51,41 +56,65 @@ describe("CollapsibleManager — headers", () => {
         expect(content.querySelector("p")!.classList.contains("is-hidden")).toBe(true);
     });
 
-    it("click on header hides siblings until next same-level heading", () => {
+    it("clicking inside the heading (not the chevron) does not toggle collapse", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h1>Title <a class=\"internal-link\">Link</a></h1><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+
+        (content.querySelector("a") as HTMLElement).click();
+
+        expect(content.querySelector("h1")!.classList.contains("is-collapsed")).toBe(false);
+        expect(store.setCollapsed).not.toHaveBeenCalled();
+    });
+
+    it("clicking the chevron toggles the heading without bubbling the click", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h1>Title</h1><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+        const onHeaderClick = vi.fn();
+        content.querySelector("h1")!.addEventListener("click", onHeaderClick);
+
+        (content.querySelector("h1 > .collapse-indicator") as HTMLElement).click();
+
+        expect(content.querySelector("h1")!.classList.contains("is-collapsed")).toBe(true);
+        expect(onHeaderClick).not.toHaveBeenCalled();
+    });
+
+    it("chevron click hides siblings until next same-level heading", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h1>A</h1><p>Para</p><h1>B</h1><p>After B</p>";
         manager.makeCollapsible(content, "file.md");
         const [h1a] = Array.from(content.querySelectorAll("h1")) as HTMLElement[];
-        h1a!.click();
+        clickChevron(h1a!);
         const [p1, p2] = Array.from(content.querySelectorAll("p")) as HTMLElement[];
         expect(p1!.classList.contains("is-hidden")).toBe(true);
         expect(p2!.classList.contains("is-hidden")).toBe(false);
     });
 
-    it("click stops at a higher-level heading", () => {
+    it("chevron click stops at a higher-level heading", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h2>Sub</h2><p>Body</p><h1>Top</h1>";
         manager.makeCollapsible(content, "file.md");
-        (content.querySelector("h2") as HTMLElement).click();
+        clickChevron(content.querySelector("h2") as HTMLElement);
         expect(content.querySelector("p")!.classList.contains("is-hidden")).toBe(true);
         expect(content.querySelector("h1")!.classList.contains("is-hidden")).toBe(false);
     });
 
-    it("click on header persists state to store with slugified key", () => {
+    it("chevron click persists state to store with slugified key", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h1>My Heading</h1>";
         manager.makeCollapsible(content, "file.md");
-        (content.querySelector("h1") as HTMLElement).click();
+        clickChevron(content.querySelector("h1") as HTMLElement);
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "my-heading", true);
     });
 
-    it("second click un-collapses header and removes is-hidden from siblings", () => {
+    it("second chevron click un-collapses header and removes is-hidden from siblings", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h1>Title</h1><p>Body</p>";
         manager.makeCollapsible(content, "file.md");
         const h1 = content.querySelector("h1") as HTMLElement;
-        h1.click(); // collapse
-        h1.click(); // uncollapse
+        clickChevron(h1); // collapse
+        clickChevron(h1); // uncollapse
         expect(h1.classList.contains("is-collapsed")).toBe(false);
         expect(content.querySelector("p")!.classList.contains("is-hidden")).toBe(false);
     });
@@ -112,7 +141,7 @@ describe("CollapsibleManager — headers", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h1>Hello World!</h1>";
         manager.makeCollapsible(content, "file.md");
-        (content.querySelector("h1") as HTMLElement).click();
+        clickChevron(content.querySelector("h1") as HTMLElement);
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "hello-world", true);
     });
 
@@ -120,7 +149,7 @@ describe("CollapsibleManager — headers", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h1>---Section---</h1>";
         manager.makeCollapsible(content, "file.md");
-        (content.querySelector("h1") as HTMLElement).click();
+        clickChevron(content.querySelector("h1") as HTMLElement);
         // "---Section---" → lowercase "---section---" → replace non-alphanumeric runs → "-section-" → strip edges → "section"
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "section", true);
     });
@@ -132,7 +161,7 @@ describe("CollapsibleManager — headers", () => {
         // Override textContent to return null, forcing the ?? '' fallback (line 25)
         Object.defineProperty(h1, "textContent", { get: () => null, configurable: true });
         manager.makeCollapsible(content, "file.md");
-        h1.click();
+        clickChevron(h1);
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "", true);
     });
 
@@ -140,7 +169,7 @@ describe("CollapsibleManager — headers", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h1>Top</h1><h2>Sub</h2><p>Body</p>";
         manager.makeCollapsible(content, "file.md");
-        (content.querySelector("h1") as HTMLElement).click();
+        clickChevron(content.querySelector("h1") as HTMLElement);
         // h2 level (2) > h1 level (1): NOT a break — h2 must be hidden (covers the false branch at line 83)
         expect(content.querySelector("h2")!.classList.contains("is-hidden")).toBe(true);
         expect(content.querySelector("p")!.classList.contains("is-hidden")).toBe(true);
@@ -154,9 +183,9 @@ describe("CollapsibleManager — headers", () => {
         const h2 = content.querySelector("h2") as HTMLElement;
         const [first, second] = Array.from(content.querySelectorAll("h3")) as HTMLElement[];
 
-        first!.click(); // collapse the first h3
-        h2.click(); // collapse the h2
-        h2.click(); // expand the h2
+        clickChevron(first!); // collapse the first h3
+        clickChevron(h2); // collapse the h2
+        clickChevron(h2); // expand the h2
 
         expect(first!.classList.contains("is-hidden")).toBe(false);
         expect(second!.classList.contains("is-hidden")).toBe(false);
@@ -173,9 +202,9 @@ describe("CollapsibleManager — headers", () => {
         const h2 = content.querySelector("h2") as HTMLElement;
         const inner = content.querySelector("h3") as HTMLElement;
 
-        inner.click();
-        h2.click();
-        h2.click();
+        clickChevron(inner);
+        clickChevron(h2);
+        clickChevron(h2);
 
         expect(content.querySelector("#b")!.classList.contains("is-hidden")).toBe(true);
         expect(content.querySelector("h4")!.classList.contains("is-hidden")).toBe(true);

@@ -37,7 +37,8 @@ export class CollapsibleManager {
                 this.applyHeaderCollapse(header, true);
             }
 
-            header.onClickEvent(() => {
+            indicator.onClickEvent((e) => {
+                e.stopPropagation();
                 const nowCollapsed = !header.hasClass("is-collapsed");
                 header.toggleClass("is-collapsed", nowCollapsed);
                 this.applyHeaderCollapse(header, nowCollapsed);
