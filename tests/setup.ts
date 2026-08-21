@@ -46,10 +46,11 @@ proto.createDiv = function (params?: { cls?: string; text?: string }) {
     return el;
 };
 
-proto.createEl = function (tag: string, params?: { cls?: string; text?: string }) {
+proto.createEl = function (tag: string, params?: { cls?: string; text?: string; href?: string }) {
     const el = document.createElement(tag);
     if (params?.cls) el.addClass(params.cls);
     if (params?.text) el.setText(params.text);
+    if (params?.href) el.setAttribute("href", params.href);
     this.appendChild(el);
     return el;
 };

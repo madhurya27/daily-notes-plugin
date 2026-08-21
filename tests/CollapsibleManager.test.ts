@@ -16,6 +16,104 @@ function clickChevron(el: HTMLElement): void {
     (el.querySelector(":scope > .collapse-indicator") as HTMLElement).click();
 }
 
+describe("CollapsibleManager — keyboard and ARIA", () => {
+    let store: ReturnType<typeof makeStore>;
+    let manager: CollapsibleManager;
+
+    function chevron(el: HTMLElement): HTMLElement {
+        return el.querySelector(":scope > .collapse-indicator") as HTMLElement;
+    }
+
+    function press(el: HTMLElement, key: string): void {
+        el.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    }
+
+    beforeEach(() => {
+        store = makeStore();
+        manager = new CollapsibleManager(store as any);
+    });
+
+    it("exposes each chevron as a focusable button", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+
+        const indicator = chevron(content.querySelector("h2") as HTMLElement);
+        expect(indicator.getAttribute("role")).toBe("button");
+        expect(indicator.getAttribute("tabindex")).toBe("0");
+    });
+
+    it("reports the section state through aria-expanded", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+        const indicator = chevron(content.querySelector("h2") as HTMLElement);
+
+        expect(indicator.getAttribute("aria-expanded")).toBe("true");
+        indicator.click();
+        expect(indicator.getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("starts with aria-expanded false for a stored collapsed section", () => {
+        store = makeStore(true);
+        manager = new CollapsibleManager(store as any);
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+
+        expect(chevron(content.querySelector("h2") as HTMLElement).getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("toggles on Enter and Space", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+        const header = content.querySelector("h2") as HTMLElement;
+
+        press(chevron(header), "Enter");
+        expect(header.classList.contains("is-collapsed")).toBe(true);
+
+        press(chevron(header), " ");
+        expect(header.classList.contains("is-collapsed")).toBe(false);
+    });
+
+    it("ignores other keys", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+        const header = content.querySelector("h2") as HTMLElement;
+
+        press(chevron(header), "a");
+
+        expect(header.classList.contains("is-collapsed")).toBe(false);
+        expect(store.setCollapsed).not.toHaveBeenCalled();
+    });
+
+    it("prevents Space from scrolling the stream", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+        const indicator = chevron(content.querySelector("h2") as HTMLElement);
+
+        const event = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+        indicator.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("gives list-item chevrons the same treatment", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<ul><li>Task<ul><li>sub</li></ul></li></ul>";
+        manager.makeCollapsible(content, "file.md");
+        const li = content.querySelector("li") as HTMLElement;
+
+        press(chevron(li), "Enter");
+
+        expect(li.classList.contains("is-collapsed")).toBe(true);
+        expect(chevron(li).getAttribute("aria-expanded")).toBe("false");
+    });
+});
+
 describe("CollapsibleManager — duplicate section keys", () => {
     let store: ReturnType<typeof makeStore>;
     let manager: CollapsibleManager;

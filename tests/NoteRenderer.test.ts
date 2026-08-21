@@ -129,6 +129,21 @@ describe("NoteRenderer.createNoteElement", () => {
 // Title click — revealLeaf vs openFile
 // ---------------------------------------------------------------------------
 
+describe("NoteRenderer title link", () => {
+    it("is keyboard focusable and does not navigate", async () => {
+        const app = makeApp({ leaves: [] });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        const link = el.querySelector(".daily-note-title") as HTMLAnchorElement;
+
+        expect(link.getAttribute("href")).toBe("#");
+
+        const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(true);
+    });
+});
+
 describe("NoteRenderer title click", () => {
     it("calls revealLeaf when file is already open in a markdown leaf", async () => {
         const file = new TFile("Notes/2025-01-01.md");

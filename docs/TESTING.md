@@ -31,6 +31,11 @@ cp main.js manifest.json styles.css <vault>/.obsidian/plugins/daily-notes-stream
 - Expanding a header keeps nested sections that were collapsed themselves collapsed.
 - Clicking a link (or selecting text) inside a header does not collapse the section.
 - Clicking a parent bullet chevron collapses sub-bullets.
+- Two headings with the same text collapse independently of each other.
+
+### Keyboard & screen reader
+- Tab reaches note titles and every chevron; Enter or Space toggles a chevron without scrolling the stream.
+- A screen reader announces each chevron as a button and reads its expanded/collapsed state.
 
 ### Scroll preservation
 - Toggle any setting in **Settings → Daily Notes Stream** → view refreshes but scroll position is retained.

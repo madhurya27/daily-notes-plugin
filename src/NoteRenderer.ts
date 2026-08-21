@@ -49,8 +49,12 @@ export class NoteRenderer {
         const dateLink = header.createEl("a", {
             text: file.basename,
             cls: "daily-note-title",
+            // href keeps the title focusable and Enter-activatable; the click
+            // handler opens the note itself.
+            href: "#",
         });
-        dateLink.onClickEvent(() => {
+        dateLink.onClickEvent((event) => {
+            event.preventDefault();
             const existing = this.app.workspace
                 .getLeavesOfType("markdown")
                 // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.

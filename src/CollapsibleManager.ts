@@ -34,6 +34,8 @@ export class CollapsibleManager {
     attachCollapseToggle(host: HTMLElement, section: CollapsibleSection): () => void {
         const indicator = document.createElement("span");
         indicator.addClass("collapse-indicator");
+        indicator.setAttribute("role", "button");
+        indicator.setAttribute("tabindex", "0");
         setIcon(indicator, "chevron-right");
         host.prepend(indicator);
 
@@ -41,14 +43,23 @@ export class CollapsibleManager {
         // The rendered DOM starts expanded, so only a collapsed section needs
         // applying — an expand pass here would reveal ancestors' hidden content.
         if (collapsed) section.apply(true);
+        indicator.setAttribute("aria-expanded", String(!collapsed));
 
         const toggle = () => {
             collapsed = !collapsed;
             section.apply(collapsed);
+            indicator.setAttribute("aria-expanded", String(!collapsed));
             this.store.setCollapsed(section.filePath, section.sectionKey, collapsed);
         };
 
         indicator.onClickEvent((e) => {
+            e.stopPropagation();
+            toggle();
+        });
+
+        indicator.addEventListener("keydown", (e) => {
+            if (e.key !== "Enter" && e.key !== " ") return;
+            e.preventDefault(); // Space would scroll the stream
             e.stopPropagation();
             toggle();
         });
