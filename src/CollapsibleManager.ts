@@ -15,15 +15,28 @@ export class CollapsibleManager {
     constructor(private readonly store: CollapsibleStateStore) {}
 
     makeCollapsible(contentEl: HTMLElement, filePath: string): void {
-        this.processHeaders(contentEl, filePath);
-        this.processLists(contentEl, filePath);
+        // Shared across headers and lists so every key in a note is unique.
+        const seenKeys = new Map<string, number>();
+        this.processHeaders(contentEl, filePath, seenKeys);
+        this.processLists(contentEl, filePath, seenKeys);
     }
 
-    private processHeaders(contentEl: HTMLElement, filePath: string): void {
+    /**
+     * Two headings with the same text would otherwise share one stored state.
+     * The first occurrence keeps the bare key, so state saved before this
+     * disambiguation still applies.
+     */
+    private uniqueKey(key: string, seenKeys: Map<string, number>): string {
+        const occurrence = (seenKeys.get(key) ?? 0) + 1;
+        seenKeys.set(key, occurrence);
+        return occurrence === 1 ? key : `${key}-${occurrence}`;
+    }
+
+    private processHeaders(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): void {
         const headers = contentEl.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6");
         headers.forEach((header) => {
             if (header.parentElement?.tagName === "LI") return;
-            const sectionKey = slugify(header.textContent ?? "");
+            const sectionKey = this.uniqueKey(slugify(header.textContent ?? ""), seenKeys);
             header.addClass("is-collapsible");
 
             const indicator = document.createElement("span");
@@ -47,14 +60,14 @@ export class CollapsibleManager {
         });
     }
 
-    private processLists(contentEl: HTMLElement, filePath: string): void {
+    private processLists(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): void {
         const listItems = contentEl.querySelectorAll<HTMLElement>("li");
         listItems.forEach((li) => {
             const subList = li.querySelector("ul, ol");
             if (!subList) return;
 
             const depth = this.getListDepth(li);
-            const sectionKey = `li-${depth}-${slugify(this.ownText(li))}`;
+            const sectionKey = this.uniqueKey(`li-${depth}-${slugify(this.ownText(li))}`, seenKeys);
 
             li.addClass("is-collapsible");
 

@@ -15,6 +15,56 @@ function clickChevron(el: HTMLElement): void {
     (el.querySelector(":scope > .collapse-indicator") as HTMLElement).click();
 }
 
+describe("CollapsibleManager — duplicate section keys", () => {
+    let store: ReturnType<typeof makeStore>;
+    let manager: CollapsibleManager;
+
+    beforeEach(() => {
+        store = makeStore();
+        manager = new CollapsibleManager(store as any);
+    });
+
+    it("suffixes repeated header text so each heading keeps its own state", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Notes</h2><p>a</p><h2>Notes</h2><p>b</p><h2>Notes</h2><p>c</p>";
+        manager.makeCollapsible(content, "file.md");
+
+        const headers = content.querySelectorAll("h2");
+        clickChevron(headers[0] as HTMLElement);
+        clickChevron(headers[1] as HTMLElement);
+        clickChevron(headers[2] as HTMLElement);
+
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(1, "file.md", "notes", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "notes-2", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(3, "file.md", "notes-3", true);
+    });
+
+    it("suffixes repeated list items at the same depth", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<ul><li>Task<ul><li>a</li></ul></li><li>Task<ul><li>b</li></ul></li></ul>";
+        manager.makeCollapsible(content, "file.md");
+
+        const items = content.querySelectorAll(":scope > ul > li");
+        clickChevron(items[0] as HTMLElement);
+        clickChevron(items[1] as HTMLElement);
+
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(1, "file.md", "li-1-task", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "li-1-task-2", true);
+    });
+
+    it("counts headers and list items separately", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Task</h2><ul><li>Task<ul><li>a</li></ul></li></ul>";
+        manager.makeCollapsible(content, "file.md");
+
+        clickChevron(content.querySelector("h2") as HTMLElement);
+        clickChevron(content.querySelector("li") as HTMLElement);
+
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(1, "file.md", "task", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "li-1-task", true);
+    });
+});
+
 describe("CollapsibleManager — headers", () => {
     let store: ReturnType<typeof makeStore>;
     let manager: CollapsibleManager;
