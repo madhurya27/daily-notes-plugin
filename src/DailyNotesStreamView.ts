@@ -214,7 +214,7 @@ export class DailyNotesStreamView extends ItemView {
                 this.streamContainerEl.appendChild(el);
             }
         }
-        this.state.reset([...this.state.notes, ...batch]);
+        this.state.append(batch);
 
         this.scroll.recheck();
     }
