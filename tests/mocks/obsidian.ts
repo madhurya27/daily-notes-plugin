@@ -30,11 +30,21 @@ class MockMoment {
     isAfter(other: MockMoment) { return this.date.getTime() > other.date.getTime(); }
     isBefore(other: MockMoment) { return this.date.getTime() < other.date.getTime(); }
     valueOf() { return this.date.getTime(); }
-    format(fmt: string) { return this.date.toISOString(); } // Simple stub
+    format(fmt: string) {
+        const pad = (n: number) => String(n).padStart(2, "0");
+        return fmt
+            .replace(/YYYY/g, String(this.date.getFullYear()))
+            .replace(/MM/g, pad(this.date.getMonth() + 1))
+            .replace(/DD/g, pad(this.date.getDate()));
+    }
 }
 
 export function moment(inp?: string, fmt?: string, strict?: boolean) {
     return new MockMoment(inp, fmt, strict);
+}
+
+export function normalizePath(path: string): string {
+    return path.replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/^\/+|\/+$/g, "");
 }
 
 export class TAbstractFile {
@@ -54,9 +64,11 @@ export class TFile extends TAbstractFile {
     stat: any;
     constructor(path: string) {
         super(path);
-        // basename is filename without extension
-        this.basename = this.name.replace(/\.md$/, "");
-        this.extension = "md";
+        // basename is filename without extension; extension is whatever follows
+        // the last dot (files without one get "")
+        const dot = this.name.lastIndexOf(".");
+        this.basename = dot > 0 ? this.name.slice(0, dot) : this.name;
+        this.extension = dot > 0 ? this.name.slice(dot + 1) : "";
     }
 }
 

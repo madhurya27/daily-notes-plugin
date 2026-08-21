@@ -123,10 +123,8 @@ export class DailyNotesStreamView extends ItemView {
         const globalIndex = this.plugin.service.insertSorted(file);
         if (globalIndex === -1) return;
         if (globalIndex >= this.offset) {
-            // Beyond the loaded range — nothing to render here. If the sentinel
-            // is visible (empty or fully-scrolled stream) the recheck makes the
-            // observer fire and loadMoreNotes picks the note up; otherwise it is
-            // correctly left for a later scroll.
+            // Beyond the loaded range: if the sentinel is visible, the recheck
+            // makes loadMoreNotes pick it up; otherwise a later scroll will.
             this.scroll.recheck();
             return;
         }
@@ -175,8 +173,7 @@ export class DailyNotesStreamView extends ItemView {
         try {
             const batch = this.plugin.service.getBatch(this.offset, BATCH_SIZE);
             if (batch.length === 0) {
-                // No recheck here: an empty batch that re-triggers the observer
-                // would spin forever.
+                // No recheck: re-triggering on an empty batch spins forever.
                 if (this.offset === 0 && !this.findEmptyState()) {
                     const empty = this.streamContainerEl.createDiv({
                         cls: "daily-notes-empty-state",
@@ -202,8 +199,8 @@ export class DailyNotesStreamView extends ItemView {
             this.state.reset([...this.state.notes, ...batch]);
             this.offset += batch.length;
 
-            // A batch too short to push the sentinel past the root margin leaves
-            // it intersecting, so the observer would never fire again.
+            // A short batch can leave the sentinel intersecting — without this
+            // the observer never fires again.
             this.scroll.recheck();
         } finally {
             this.isLoading = false;

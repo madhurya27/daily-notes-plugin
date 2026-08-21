@@ -1,5 +1,5 @@
 import { getAllDailyNotes, getDailyNoteSettings } from "obsidian-daily-notes-interface";
-import { TFile, moment } from "obsidian";
+import { TFile, moment, normalizePath } from "obsidian";
 
 export class DailyNoteService {
     private _sorted: TFile[] = [];
@@ -74,11 +74,24 @@ export class DailyNoteService {
         return notesWithDates.map(n => n.file);
     }
 
+    /**
+     * Parses a file's daily-note date, or null if it is not a daily note.
+     *
+     * Vault events fire for every file, so a basename match alone would let
+     * `Attachments/2026-07-07.png` into the cache. The date is round-tripped
+     * back into the path the settings imply and must match the file's.
+     */
     private parseDate(file: TFile) {
+        if (file.extension !== "md") return null;
+
         const settings = getDailyNoteSettings();
         const dateFormat = settings.format || "YYYY-MM-DD";
         const basenameFormat = dateFormat.split("/").pop() || "YYYY-MM-DD";
         const date = moment(file.basename, basenameFormat, true);
-        return date.isValid() ? date : null;
+        if (!date.isValid()) return null;
+
+        const folder = settings.folder ?? "";
+        const expectedPath = normalizePath(`${folder}/${date.format(dateFormat)}.md`);
+        return normalizePath(file.path) === expectedPath ? date : null;
     }
 }

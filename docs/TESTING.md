@@ -39,6 +39,7 @@ cp main.js manifest.json styles.css <vault>/.obsidian/plugins/daily-notes-stream
 - Edit a visible daily note → stream updates in real-time.
 - Rename a daily note → header and sort order update.
 - Delete a daily note → disappears from stream.
+- Add `2026-07-07.png` to an attachments folder, and a note named like a date outside the daily notes folder → neither appears in the stream.
 
 ### Properties
 - **Settings → Show Note Properties ON**: "Properties" header appears for notes with frontmatter; icons shown next to property names.

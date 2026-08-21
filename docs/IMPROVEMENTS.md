@@ -32,7 +32,7 @@ Three related defects, one shared fix:
 
 **Tests:** recheck delivers a callback via the mock observer; create-into-empty-stream renders the note and removes the empty state; short-batch scenario triggers a follow-up load; empty batch does not loop.
 
-### I2. Any file whose basename matches the date format is treated as a daily note
+### I2. Any file whose basename matches the date format is treated as a daily note — **DONE**
 **File:** `src/DailyNoteService.ts:77-83`
 
 `onFileCreate` fires for *every* vault file and routes into `insertSorted`, which validates only `moment(file.basename, basenameFormat, true)`. So `Attachments/2026-07-07.png` or a non-daily note named `2026-07-07.md` anywhere in the vault gets inserted into the stream — and into the service cache, desyncing pagination against `buildSorted()` (which uses `getAllDailyNotes()`).
