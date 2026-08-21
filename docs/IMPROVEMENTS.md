@@ -66,12 +66,12 @@ Three related defects, one shared fix:
 
 ## P2 — Correctness hardening & structural cleanup
 
-### I5. Remove the redundant `offset` field
+### I5. Remove the redundant `offset` field — **DONE**
 **File:** `src/DailyNotesStreamView.ts:19` and all uses
 
 `offset` is always equal to `state.length` (both start at 0; every mutation updates both in lockstep). Two sources of truth for one value is the root of the invariant documented in `CLAUDE.md`. Delete the field; use `this.state.length` everywhere (`getBatch(this.state.length, BATCH_SIZE)`, the `globalIndex >= this.state.length` guard, etc.). Update the **Live updates** invariant paragraph in `CLAUDE.md` to say `state.notes === service._sorted.slice(0, state.length)`.
 
-### I6. Serialize view mutations to close event/load races
+### I6. Serialize view mutations to close event/load races — **DONE**
 **File:** `src/DailyNotesStreamView.ts`
 
 `loadMoreNotes`, `onFileCreate`, and `onFileModify` all `await` mid-mutation, so vault events can interleave with an in-flight batch load. Concrete failure: a file deleted while its batch is rendering — `removeSorted` returns an index beyond the loaded range so state/DOM are left alone, but the batch loop then renders the deleted file's element and `state.reset([...notes, ...batch])` re-adds its stale `TFile`.
@@ -87,21 +87,21 @@ Route the bodies of `loadMoreNotes`, `onFileCreate`, `onFileModify`, `removeNote
 
 **Tests:** delete-during-load leaves the deleted note out of DOM and state; two rapid creates render in date order; observer firing during a load doesn't double-load.
 
-### I7. Clicking a link inside a heading also toggles collapse
+### I7. Clicking a link inside a heading also toggles collapse — **DONE**
 **File:** `src/CollapsibleManager.ts:40-45`
 
 Headers bind the toggle on the whole heading element, so clicking a wikilink in a heading both navigates and collapses the section — and any text-selection click toggles too. List items already bind only the chevron.
 
 **Fix:** Move the header toggle handler onto the `indicator` span (with `e.stopPropagation()`), matching `processLists`. Update `docs/TESTING.md` (header collapse is triggered by the chevron).
 
-### I8. Rename wipes collapse state instead of migrating it
+### I8. Rename wipes collapse state instead of migrating it — **DONE**
 **Files:** `src/CollapsibleStateStore.ts`, `src/DailyNotesStreamView.ts:155-159`
 
 `onFileRename` → `removeNote` → `clearForFile(oldPath)`, then re-creates under the new path, so all collapsed sections reset whenever a note is renamed or moved.
 
 **Fix:** Add `migrate(oldPath: string, newPath: string): void` to the store: read the old index, for each sectionKey copy the value to the new path's key, write the new index, then clear the old entries. In `onFileRename`, call `migrate` before `removeNote`, and make `removeNote` accept a flag (or split a helper) so the rename path skips `clearForFile`.
 
-### I9. Escape CSS selector with `CSS.escape`
+### I9. Escape CSS selector with `CSS.escape` — **DONE**
 **File:** `src/DailyNotesStreamView.ts:244`
 
 The hand-rolled `path.replace(/"/g, '\\"')` misses backslashes and other metacharacters. Use `` `.daily-note-content[data-source-path="${CSS.escape(path)}"]` `` — jsdom supports `CSS.escape`, so tests need no shim.
