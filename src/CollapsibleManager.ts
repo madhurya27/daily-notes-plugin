@@ -76,15 +76,28 @@ export class CollapsibleManager {
 
     private applyHeaderCollapse(header: HTMLElement, isCollapsed: boolean): void {
         const level = parseInt(header.tagName.substring(1));
+        // While expanding, a nested heading that is itself collapsed keeps its own
+        // content hidden: skip siblings until a heading at that level or higher.
+        let collapsedNestedLevel: number | null = null;
         let nextEl = header.nextElementSibling as HTMLElement | null;
         while (nextEl) {
-            if (nextEl.tagName.match(/^H[1-6]$/)) {
-                const nextLevel = parseInt(nextEl.tagName.substring(1));
+            const nextLevel = this.headingLevel(nextEl);
+            if (nextLevel !== null) {
                 if (nextLevel <= level) break;
+                if (collapsedNestedLevel !== null && nextLevel <= collapsedNestedLevel) collapsedNestedLevel = null;
             }
-            nextEl.toggleClass("is-hidden", isCollapsed);
+            if (collapsedNestedLevel === null) {
+                nextEl.toggleClass("is-hidden", isCollapsed);
+                if (!isCollapsed && nextLevel !== null && nextEl.hasClass("is-collapsed")) {
+                    collapsedNestedLevel = nextLevel;
+                }
+            }
             nextEl = nextEl.nextElementSibling as HTMLElement | null;
         }
+    }
+
+    private headingLevel(el: HTMLElement): number | null {
+        return /^H[1-6]$/.test(el.tagName) ? parseInt(el.tagName.substring(1)) : null;
     }
 
     /**

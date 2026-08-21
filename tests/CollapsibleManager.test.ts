@@ -145,6 +145,43 @@ describe("CollapsibleManager — headers", () => {
         expect(content.querySelector("h2")!.classList.contains("is-hidden")).toBe(true);
         expect(content.querySelector("p")!.classList.contains("is-hidden")).toBe(true);
     });
+
+    it("expanding a header keeps nested collapsed sections collapsed", () => {
+        const content = document.createElement("div");
+        content.innerHTML =
+            "<h2>Top</h2><p id=\"a\">A</p><h3>First</h3><p id=\"b\">B</p><h3>Second</h3><p id=\"c\">C</p>";
+        manager.makeCollapsible(content, "file.md");
+        const h2 = content.querySelector("h2") as HTMLElement;
+        const [first, second] = Array.from(content.querySelectorAll("h3")) as HTMLElement[];
+
+        first!.click(); // collapse the first h3
+        h2.click(); // collapse the h2
+        h2.click(); // expand the h2
+
+        expect(first!.classList.contains("is-hidden")).toBe(false);
+        expect(second!.classList.contains("is-hidden")).toBe(false);
+        expect(content.querySelector("#a")!.classList.contains("is-hidden")).toBe(false);
+        expect(content.querySelector("#b")!.classList.contains("is-hidden")).toBe(true);
+        expect(content.querySelector("#c")!.classList.contains("is-hidden")).toBe(false);
+    });
+
+    it("nested collapsed section stays collapsed only until a same-or-higher heading", () => {
+        const content = document.createElement("div");
+        content.innerHTML =
+            "<h2>Top</h2><h3>Inner</h3><p id=\"b\">B</p><h4>Deep</h4><p id=\"c\">C</p><h3>Next</h3><p id=\"d\">D</p>";
+        manager.makeCollapsible(content, "file.md");
+        const h2 = content.querySelector("h2") as HTMLElement;
+        const inner = content.querySelector("h3") as HTMLElement;
+
+        inner.click();
+        h2.click();
+        h2.click();
+
+        expect(content.querySelector("#b")!.classList.contains("is-hidden")).toBe(true);
+        expect(content.querySelector("h4")!.classList.contains("is-hidden")).toBe(true);
+        expect(content.querySelector("#c")!.classList.contains("is-hidden")).toBe(true);
+        expect(content.querySelector("#d")!.classList.contains("is-hidden")).toBe(false);
+    });
 });
 
 describe("CollapsibleManager — lists", () => {

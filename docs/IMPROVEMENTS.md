@@ -53,7 +53,7 @@ Three related defects, one shared fix:
 
 **Tests:** update existing modify tests to emit `changed`; add one asserting no re-render path uses `vault.on("modify")` anymore.
 
-### I4. Expanding a header destroys nested collapsed sections
+### I4. Expanding a header destroys nested collapsed sections — **DONE**
 **File:** `src/CollapsibleManager.ts:77-88`
 
 `applyHeaderCollapse(header, false)` unconditionally removes `is-hidden` from every sibling until the next same-or-higher heading. If an H3 inside a collapsed H2 was itself collapsed, expanding the H2 reveals the H3's content while the H3 still shows a collapsed chevron (and its stored state says collapsed).

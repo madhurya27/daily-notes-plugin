@@ -28,6 +28,7 @@ cp main.js manifest.json styles.css <vault>/.obsidian/plugins/daily-notes-stream
 
 ### Collapsible content
 - Clicking a header chevron collapses its content; chevron rotates.
+- Expanding a header keeps nested sections that were collapsed themselves collapsed.
 - Clicking a parent bullet chevron collapses sub-bullets.
 
 ### Scroll preservation
