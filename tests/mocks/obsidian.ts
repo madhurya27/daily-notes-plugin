@@ -159,7 +159,10 @@ export const MarkdownRenderer = {
     render: () => Promise.resolve()
 };
 
-export const setIcon = () => {};
+export const setIcon = (el: any, iconName: string) => {
+    // Record the icon so tests can assert on it; the real setIcon injects SVG.
+    el.dataset.icon = iconName;
+};
 
 export class MarkdownView {
     file: any = null;

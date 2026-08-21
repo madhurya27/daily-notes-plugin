@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NoteRenderer } from "../src/NoteRenderer";
 import { MarkdownView, TFile } from "obsidian";
-import type { CollapsibleManager } from "../src/CollapsibleManager";
+import { CollapsibleManager } from "../src/CollapsibleManager";
+import { CollapsibleStateStore } from "../src/CollapsibleStateStore";
 import type { DailyNotesStreamSettings } from "../src/settings";
 
 // ---------------------------------------------------------------------------
@@ -31,8 +32,22 @@ function makeMarkdownView(file: { path: string } | null): MarkdownView {
     return view;
 }
 
-function makeCollapsible(): CollapsibleManager {
-    return { makeCollapsible: vi.fn() } as any;
+function makeStore() {
+    const storage = new Map<string, unknown>();
+    return {
+        loadLocalStorage: vi.fn((key: string) => storage.get(key) ?? null),
+        saveLocalStorage: vi.fn((key: string, value: unknown) => {
+            if (value === null) storage.delete(key);
+            else storage.set(key, value);
+        }),
+    };
+}
+
+/** A real manager (the properties panel uses its toggle) with rendering stubbed. */
+function makeCollapsible(store = makeStore()): CollapsibleManager {
+    const manager = new CollapsibleManager(new CollapsibleStateStore(store as any));
+    vi.spyOn(manager, "makeCollapsible").mockImplementation(() => {});
+    return manager;
 }
 
 function makeSettings(overrides: Partial<DailyNotesStreamSettings> = {}): () => DailyNotesStreamSettings {
@@ -257,6 +272,29 @@ describe("NoteRenderer renderProperties", () => {
         expect(el.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(true);
     });
 
+    it("remembers an expanded panel across re-renders, overriding the setting", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
+        const collapsible = makeCollapsible();
+        const renderer = new NoteRenderer(app as any, {} as any, collapsible, makeSettings({ showProperties: true, propertiesCollapsed: true }));
+        const file = new TFile("Notes/2025-01-01.md");
+
+        const first = await renderer.createNoteElement(file);
+        (first.querySelector(".metadata-properties-heading") as HTMLElement).click();
+
+        const second = await renderer.createNoteElement(file);
+        expect(second.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(false);
+    });
+
+    it("toggles from the chevron as well as the heading row", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+
+        (el.querySelector(".metadata-properties-heading > .collapse-indicator") as HTMLElement).click();
+
+        expect(el.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(true);
+    });
+
     it("heading click toggles collapsed state", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
@@ -269,34 +307,36 @@ describe("NoteRenderer renderProperties", () => {
         expect(container.classList.contains("is-collapsed")).toBe(false);
     });
 
-    it("uses 'tags' icon for 'tags', 'tag', and 'aliases' keys", async () => {
-        const app = makeApp({ fileCache: { frontmatter: { tags: ["a"], tag: "b", aliases: ["c"] } } });
+    async function renderIcons(frontmatter: Record<string, unknown>): Promise<(string | undefined)[]> {
+        const app = makeApp({ fileCache: { frontmatter } });
         const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
-        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        return Array.from(el.querySelectorAll<HTMLElement>(".metadata-property-icon")).map(i => i.dataset.icon);
+    }
+
+    it("uses the 'tags' icon for 'tags', 'tag', and 'aliases' keys", async () => {
+        expect(await renderIcons({ tags: ["a"], tag: "b", aliases: ["c"] })).toEqual(["tags", "tags", "tags"]);
     });
 
-    it("uses 'calendar' icon for date/time/created/updated keys", async () => {
-        const app = makeApp({ fileCache: { frontmatter: { date: "x", time: "x", created: "x", updated: "x" } } });
-        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
-        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    it("uses the 'calendar' icon for date/time/created/updated keys", async () => {
+        expect(await renderIcons({ startDate: "x", bedtime: "x", created: "x", updated: "x" }))
+            .toEqual(["calendar", "calendar", "calendar", "calendar"]);
     });
 
-    it("uses 'link' icon for 'link' and 'url' keys", async () => {
-        const app = makeApp({ fileCache: { frontmatter: { link: "http://a.com", url: "http://b.com" } } });
-        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
-        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    it("uses the 'link' icon for 'link' and 'url' keys", async () => {
+        expect(await renderIcons({ link: "http://a.com", url: "http://b.com" })).toEqual(["link", "link"]);
     });
 
-    it("uses 'image' icon for 'image' and 'cover' keys", async () => {
-        const app = makeApp({ fileCache: { frontmatter: { image: "img.jpg", cover: "bg.jpg" } } });
-        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
-        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    it("uses the 'image' icon for 'image' and 'cover' keys", async () => {
+        expect(await renderIcons({ image: "img.jpg", cover: "bg.jpg" })).toEqual(["image", "image"]);
     });
 
-    it("falls back to 'file-text' icon for unknown keys", async () => {
-        const app = makeApp({ fileCache: { frontmatter: { customField: "value" } } });
-        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings({ showProperties: true }));
-        await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    it("falls back to the 'file-text' icon for unknown keys", async () => {
+        expect(await renderIcons({ customField: "value" })).toEqual(["file-text"]);
+    });
+
+    it("keeps the icon lookup case-insensitive", async () => {
+        expect(await renderIcons({ Tags: ["a"] })).toEqual(["tags"]);
     });
 
     it("renders empty string when frontmatter value is null (covers false branch of string|number|boolean check)", async () => {

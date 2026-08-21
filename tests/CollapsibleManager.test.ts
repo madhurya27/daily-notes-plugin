@@ -5,6 +5,7 @@ import type { CollapsibleStateStore } from "../src/CollapsibleStateStore";
 function makeStore(collapsedByDefault = false): CollapsibleStateStore {
     return {
         isCollapsed: vi.fn().mockReturnValue(collapsedByDefault),
+        collapsedOr: vi.fn().mockReturnValue(collapsedByDefault),
         setCollapsed: vi.fn(),
         clearForFile: vi.fn(),
     } as any;

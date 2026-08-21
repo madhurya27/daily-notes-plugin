@@ -85,7 +85,7 @@
 	color: var(--text-muted);
 }
 
-.daily-notes-stream-container .metadata-properties-heading-icon {
+.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -94,11 +94,11 @@
 	transform: rotate(90deg);
 }
 
-.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading-icon {
+.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading > .collapse-indicator {
 	transform: rotate(0deg);
 }
 
-.daily-notes-stream-container .metadata-properties-heading-icon svg {
+.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator svg {
 	width: var(--size-4-3);
 	height: var(--size-4-3);
 }

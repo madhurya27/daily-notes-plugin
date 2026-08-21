@@ -5,6 +5,16 @@ function slugify(text: string): string {
     return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+/** A section whose collapsed state is persisted per note. */
+export interface CollapsibleSection {
+    filePath: string;
+    sectionKey: string;
+    /** Used until the user toggles the section for the first time. */
+    defaultCollapsed: boolean;
+    /** Applies the state to the DOM. */
+    apply(collapsed: boolean): void;
+}
+
 /**
  * Post-processes a rendered markdown content element to add collapsible
  * chevrons to headers and list items.
@@ -13,6 +23,38 @@ function slugify(text: string): string {
  */
 export class CollapsibleManager {
     constructor(private readonly store: CollapsibleStateStore) {}
+
+    /**
+     * Prepends a chevron to `host`, applies the section's stored state, and
+     * binds the toggle to the chevron alone — clicks on the heading text or a
+     * link inside it must not collapse anything.
+     *
+     * Returns the toggle so a caller can bind extra hosts to it.
+     */
+    attachCollapseToggle(host: HTMLElement, section: CollapsibleSection): () => void {
+        const indicator = document.createElement("span");
+        indicator.addClass("collapse-indicator");
+        setIcon(indicator, "chevron-right");
+        host.prepend(indicator);
+
+        let collapsed = this.store.collapsedOr(section.filePath, section.sectionKey, section.defaultCollapsed);
+        // The rendered DOM starts expanded, so only a collapsed section needs
+        // applying — an expand pass here would reveal ancestors' hidden content.
+        if (collapsed) section.apply(true);
+
+        const toggle = () => {
+            collapsed = !collapsed;
+            section.apply(collapsed);
+            this.store.setCollapsed(section.filePath, section.sectionKey, collapsed);
+        };
+
+        indicator.onClickEvent((e) => {
+            e.stopPropagation();
+            toggle();
+        });
+
+        return toggle;
+    }
 
     makeCollapsible(contentEl: HTMLElement, filePath: string): void {
         // Shared across headers and lists so every key in a note is unique.
@@ -36,26 +78,16 @@ export class CollapsibleManager {
         const headers = contentEl.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6");
         headers.forEach((header) => {
             if (header.parentElement?.tagName === "LI") return;
-            const sectionKey = this.uniqueKey(slugify(header.textContent ?? ""), seenKeys);
             header.addClass("is-collapsible");
 
-            const indicator = document.createElement("span");
-            indicator.addClass("collapse-indicator");
-            setIcon(indicator, "chevron-right");
-            header.prepend(indicator);
-
-            const collapsed = this.store.isCollapsed(filePath, sectionKey);
-            if (collapsed) {
-                header.addClass("is-collapsed");
-                this.applyHeaderCollapse(header, true);
-            }
-
-            indicator.onClickEvent((e) => {
-                e.stopPropagation();
-                const nowCollapsed = !header.hasClass("is-collapsed");
-                header.toggleClass("is-collapsed", nowCollapsed);
-                this.applyHeaderCollapse(header, nowCollapsed);
-                this.store.setCollapsed(filePath, sectionKey, nowCollapsed);
+            this.attachCollapseToggle(header, {
+                filePath,
+                sectionKey: this.uniqueKey(slugify(header.textContent ?? ""), seenKeys),
+                defaultCollapsed: false,
+                apply: (collapsed) => {
+                    header.toggleClass("is-collapsed", collapsed);
+                    this.applyHeaderCollapse(header, collapsed);
+                },
             });
         });
     }
@@ -63,27 +95,16 @@ export class CollapsibleManager {
     private processLists(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): void {
         const listItems = contentEl.querySelectorAll<HTMLElement>("li");
         listItems.forEach((li) => {
-            const subList = li.querySelector("ul, ol");
-            if (!subList) return;
+            if (!li.querySelector("ul, ol")) return;
 
             const depth = this.getListDepth(li);
-            const sectionKey = this.uniqueKey(`li-${depth}-${slugify(this.ownText(li))}`, seenKeys);
-
             li.addClass("is-collapsible");
 
-            const indicator = document.createElement("span");
-            indicator.addClass("collapse-indicator");
-            setIcon(indicator, "chevron-right");
-            li.prepend(indicator);
-
-            const collapsed = this.store.isCollapsed(filePath, sectionKey);
-            if (collapsed) li.addClass("is-collapsed");
-
-            indicator.onClickEvent((e) => {
-                e.stopPropagation();
-                const nowCollapsed = !li.hasClass("is-collapsed");
-                li.toggleClass("is-collapsed", nowCollapsed);
-                this.store.setCollapsed(filePath, sectionKey, nowCollapsed);
+            this.attachCollapseToggle(li, {
+                filePath,
+                sectionKey: this.uniqueKey(`li-${depth}-${slugify(this.ownText(li))}`, seenKeys),
+                defaultCollapsed: false,
+                apply: (collapsed) => li.toggleClass("is-collapsed", collapsed),
             });
         });
     }

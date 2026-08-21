@@ -49,7 +49,7 @@ cp main.js manifest.json styles.css <vault>/.obsidian/plugins/daily-notes-stream
 - Clicking "Properties" header toggles collapse; chevron rotates.
 - **2026-02-01**: `tags: test, image, link`, `aliases: Feb 1st Test`, `mood: productive`.
 - **2026-01-15**: `tags: backlink, test`, `type: daily`, `location: Home Office`.
-- **Collapse by Default ON**: properties start hidden.
+- **Collapse by Default ON**: properties start hidden until you toggle a note's panel; that choice then sticks for that note across edits and reopens.
 - Frontmatter is **not** duplicated in the note body.
 
 ### Mobile
