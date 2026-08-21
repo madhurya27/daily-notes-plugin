@@ -60,6 +60,8 @@ function seedVault(): string {
 
     // Core daily-notes settings the plugin reads through the interface package.
     writeFileSync(join(config, "daily-notes.json"), JSON.stringify({ folder: "Notes", format: "YYYY-MM-DD" }));
+    // Follow the system light/dark setting rather than Obsidian's own default.
+    writeFileSync(join(config, "appearance.json"), JSON.stringify({ theme: "system" }));
     writeFileSync(join(config, "community-plugins.json"), JSON.stringify([PLUGIN_ID]));
     writeFileSync(join(config, "core-plugins.json"), JSON.stringify({ "daily-notes": true }));
 
@@ -99,6 +101,9 @@ async function launch(): Promise<{
     const browser = await connectWithRetry(port);
     const context = browser.contexts()[0]!;
     const page = context.pages()[0]!;
+    // Playwright emulates a light color scheme on attach; null restores the
+    // system preference so the window matches the rest of the desktop.
+    await page.emulateMedia({ colorScheme: null });
     await page.waitForLoadState("domcontentloaded");
     // layoutReady fires once the workspace (and plugin loading) has settled.
     await page.waitForFunction(() => window.app?.workspace?.layoutReady === true, null, {
