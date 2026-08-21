@@ -83,8 +83,10 @@ export class DailyNotesStreamView extends ItemView {
             }
         });
 
-        // Vault events
-        this.registerEvent(this.app.vault.on("modify", (f) => this.onFileModify(f)));
+        // Vault events. Re-render on metadataCache "changed", not vault
+        // "modify": the cache lags the write, and the renderer reads it for
+        // frontmatter offsets and properties.
+        this.registerEvent(this.app.metadataCache.on("changed", (f) => this.onFileModify(f)));
         this.registerEvent(this.app.vault.on("create", (f) => this.onFileCreate(f)));
         this.registerEvent(this.app.vault.on("delete", (f) => this.onFileDelete(f)));
         this.registerEvent(this.app.vault.on("rename", (f, oldPath) => this.onFileRename(f, oldPath)));

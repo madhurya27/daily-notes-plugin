@@ -38,6 +38,7 @@ function makeApp() {
         },
         metadataCache: {
             getFileCache: vi.fn().mockReturnValue({ frontmatter: null }),
+            on: vi.fn().mockReturnValue({}),
         },
         loadLocalStorage: vi.fn().mockReturnValue(null),
         saveLocalStorage: vi.fn(),
@@ -882,9 +883,17 @@ describe("DailyNotesStreamView — callback wiring", () => {
             }),
             read: vi.fn().mockResolvedValue(""),
         };
+        const capturingCache = {
+            getFileCache: vi.fn().mockReturnValue({ frontmatter: null }),
+            on: vi.fn((event: string, cb: (f: any) => void) => {
+                capturedCallbacks[event] = cb;
+                return {};
+            }),
+        };
         const app = {
             ...makeApp(),
             vault: capturingVault,
+            metadataCache: capturingCache,
         };
         const p = makePlugin();
         const l = new WorkspaceLeaf(app);
@@ -900,15 +909,23 @@ describe("DailyNotesStreamView — callback wiring", () => {
         (v as any).findNoteElement = vi.fn().mockReturnValue(null);
         (v as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
         await v.onOpen();
-        return { view: v, callbacks: capturedCallbacks, app };
+        return { view: v, callbacks: capturedCallbacks, app, vault: capturingVault };
     }
 
-    it("vault 'modify' callback delegates to onFileModify", async () => {
+    it("metadataCache 'changed' callback delegates to onFileModify", async () => {
         const { view, callbacks } = await makeWiredView();
         const spy = vi.spyOn(view, "onFileModify");
         const file = new TFile("Notes/2025-01-01.md");
-        callbacks["modify"]?.(file);
+        callbacks["changed"]?.(file);
         expect(spy).toHaveBeenCalledWith(file);
+    });
+
+    // vault 'modify' fires before metadataCache catches up, so re-rendering on
+    // it strips frontmatter at a stale offset.
+    it("does not re-render on vault 'modify'", async () => {
+        const { vault } = await makeWiredView();
+        const events = vault.on.mock.calls.map(([event]: [string]) => event);
+        expect(events).not.toContain("modify");
     });
 
     it("vault 'create' callback delegates to onFileCreate", async () => {

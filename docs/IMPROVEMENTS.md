@@ -44,7 +44,7 @@ Three related defects, one shared fix:
 
 **Tests:** `.png` with date basename rejected; date-named note outside the folder rejected; note in a nested-format subfolder accepted; folder setting empty/with trailing slash both work.
 
-### I3. `modify` re-render reads a stale metadataCache
+### I3. `modify` re-render reads a stale metadataCache — **DONE**
 **File:** `src/DailyNotesStreamView.ts:87, 106-115`
 
 `vault.on("modify")` fires when file content is written, but `metadataCache` updates asynchronously afterwards. `NoteRenderer.createNoteElement` uses the cache for `frontmatterPosition` (to strip frontmatter) and for the properties panel — so a re-render can slice the body at a stale offset (frontmatter leaking into the rendered content, or body text cut off) and show outdated properties.
