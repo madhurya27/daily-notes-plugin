@@ -35,8 +35,9 @@ function makeCollapsible(): CollapsibleManager {
     return { makeCollapsible: vi.fn() } as any;
 }
 
-function makeSettings(overrides: Partial<DailyNotesStreamSettings> = {}): DailyNotesStreamSettings {
-    return { showProperties: false, propertiesCollapsed: false, ...overrides };
+function makeSettings(overrides: Partial<DailyNotesStreamSettings> = {}): () => DailyNotesStreamSettings {
+    const settings = { showProperties: false, propertiesCollapsed: false, ...overrides };
+    return () => settings;
 }
 
 // ---------------------------------------------------------------------------
@@ -81,6 +82,17 @@ describe("NoteRenderer.createNoteElement", () => {
     it("reads through the cache — the view only displays notes", async () => {
         await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
         expect(app.vault.cachedRead).toHaveBeenCalledOnce();
+    });
+
+    it("reads the settings on each render, so a reloaded settings object is picked up", async () => {
+        let settings: DailyNotesStreamSettings = { showProperties: false, propertiesCollapsed: false };
+        app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { title: "Test" } });
+        renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), () => settings);
+
+        settings = { showProperties: true, propertiesCollapsed: false }; // as loadSettings() would
+        const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+
+        expect(el.querySelector(".metadata-container")).not.toBeNull();
     });
 
     it("calls makeCollapsible after rendering content", async () => {

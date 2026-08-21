@@ -32,7 +32,8 @@ export class DailyNotesStreamView extends ItemView {
             this.app,
             this,
             new CollapsibleManager(plugin.collapseStore),
-            plugin.settings
+            // A closure, not the object: loadSettings() reassigns plugin.settings.
+            () => plugin.settings
         );
     }
 
@@ -96,8 +97,6 @@ export class DailyNotesStreamView extends ItemView {
 
         // Sentinel + observer — triggers initial load because sentinel is visible
         this.scroll.attach(this.contentEl, this.streamContainerEl, () => this.loadMoreNotes());
-
-        console.debug("DailyNotesStreamView: Opening view...");
     }
 
     async onClose() {

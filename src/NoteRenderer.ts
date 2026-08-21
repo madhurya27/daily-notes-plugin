@@ -7,7 +7,7 @@ export class NoteRenderer {
         private readonly app: App,
         private readonly component: Component,
         private readonly collapsible: CollapsibleManager,
-        private readonly settings: DailyNotesStreamSettings
+        private readonly getSettings: () => DailyNotesStreamSettings
     ) {}
 
     async createNoteElement(file: TFile): Promise<HTMLElement> {
@@ -68,7 +68,7 @@ export class NoteRenderer {
     }
 
     private renderProperties(container: HTMLElement, file: TFile): void {
-        if (!this.settings.showProperties) return;
+        if (!this.getSettings().showProperties) return;
 
         const cache = this.app.metadataCache.getFileCache(file);
         if (!cache?.frontmatter) return;
@@ -87,7 +87,7 @@ export class NoteRenderer {
 
         const metadataProperties = metadataContent.createDiv({ cls: "metadata-properties" });
 
-        let isCollapsed = this.settings.propertiesCollapsed;
+        let isCollapsed = this.getSettings().propertiesCollapsed;
         const updateCollapseState = () => {
             metadataContainer.toggleClass("is-collapsed", isCollapsed);
         };
