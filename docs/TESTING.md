@@ -24,7 +24,7 @@ cp main.js manifest.json styles.css <vault>/.obsidian/plugins/daily-notes-stream
 - Clicking a header opens the original file.
 - Image `test-image.svg` renders in **2026-02-01**; `[[2026-01-15]]` link navigates correctly and back.
 - Scrolling to the bottom loads the next batch without duplicates.
-- With a tall window and short notes, the stream keeps loading past the first batch instead of stalling.
+- Tall window, short notes → loading continues past the first batch.
 
 ### Collapsible content
 - Clicking a header chevron collapses its content; chevron rotates.
@@ -35,11 +35,11 @@ cp main.js manifest.json styles.css <vault>/.obsidian/plugins/daily-notes-stream
 
 ### Live updates
 - Create a new daily note → appears at correct position immediately.
-- In a vault with no daily notes, create one → it replaces the "No daily notes found" message immediately, without reopening the view.
+- Create the first note in an empty vault → replaces the empty-state message without reopening.
 - Edit a visible daily note → stream updates in real-time.
 - Rename a daily note → header and sort order update.
 - Delete a daily note → disappears from stream.
-- Add `2026-07-07.png` to an attachments folder, and a note named like a date outside the daily notes folder → neither appears in the stream.
+- A dated `.png`, or a dated note outside the folder → neither appears.
 
 ### Properties
 - **Settings → Show Note Properties ON**: "Properties" header appears for notes with frontmatter; icons shown next to property names.
