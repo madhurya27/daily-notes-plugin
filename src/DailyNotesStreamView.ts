@@ -32,13 +32,20 @@ export class DailyNotesStreamView extends ItemView {
             this.app,
             this,
             new CollapsibleManager(plugin.collapseStore),
-            plugin.settings
+            // A closure, not the object: loadSettings() reassigns plugin.settings.
+            () => plugin.settings
         );
     }
 
-    getViewType(): string { return VIEW_TYPE_DAILY_NOTES_STREAM; }
-    getDisplayText(): string { return "Daily notes stream"; }
-    getIcon(): string { return "calendar-days"; }
+    getViewType(): string {
+        return VIEW_TYPE_DAILY_NOTES_STREAM;
+    }
+    getDisplayText(): string {
+        return "Daily notes stream";
+    }
+    getIcon(): string {
+        return "calendar-days";
+    }
 
     async onOpen() {
         this.streamContainerEl = this.contentEl.createDiv({ cls: "daily-notes-stream-container" });
@@ -96,8 +103,6 @@ export class DailyNotesStreamView extends ItemView {
 
         // Sentinel + observer — triggers initial load because sentinel is visible
         this.scroll.attach(this.contentEl, this.streamContainerEl, () => this.loadMoreNotes());
-
-        console.debug("DailyNotesStreamView: Opening view...");
     }
 
     async onClose() {
@@ -193,12 +198,12 @@ export class DailyNotesStreamView extends ItemView {
         if (batch.length === 0) {
             // No recheck: re-triggering on an empty batch spins forever.
             if (this.state.length === 0 && !this.findEmptyState()) {
-                const empty = this.streamContainerEl.createDiv({
-                    cls: "daily-notes-empty-state",
-                    text: "No daily notes found. Please check your daily notes settings.",
-                });
-                const sentinel = this.scroll.getSentinel();
-                if (sentinel) this.streamContainerEl.insertBefore(empty, sentinel);
+                this.insertBeforeSentinel(
+                    this.streamContainerEl.createDiv({
+                        cls: "daily-notes-empty-state",
+                        text: "No daily notes found. Please check your daily notes settings.",
+                    })
+                );
             }
             return;
         }
@@ -206,15 +211,9 @@ export class DailyNotesStreamView extends ItemView {
         this.findEmptyState()?.remove();
 
         for (const file of batch) {
-            const el = await this.renderer.createNoteElement(file);
-            const sentinel = this.scroll.getSentinel();
-            if (sentinel) {
-                this.streamContainerEl.insertBefore(el, sentinel);
-            } else {
-                this.streamContainerEl.appendChild(el);
-            }
+            this.insertBeforeSentinel(await this.renderer.createNoteElement(file));
         }
-        this.state.reset([...this.state.notes, ...batch]);
+        this.state.append(batch);
 
         this.scroll.recheck();
     }
@@ -228,11 +227,8 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     private async rerenderAll(): Promise<void> {
-        const snapshot = captureAnchor(
-            this.state.notes,
-            this.streamContainerEl,
-            this.contentEl,
-            (f) => this.findNoteElement(f)
+        const snapshot = captureAnchor(this.state.notes, this.streamContainerEl, this.contentEl, (f) =>
+            this.findNoteElement(f)
         );
 
         this.streamContainerEl.empty();
@@ -264,7 +260,7 @@ export class DailyNotesStreamView extends ItemView {
     private enqueue(task: () => Promise<void>): Promise<void> {
         this.queue = this.queue
             .then(task)
-            .catch(e => console.error("DailyNotesStream: Failed to update the stream", e));
+            .catch((e) => console.error("DailyNotesStream: Failed to update the stream", e));
         return this.queue;
     }
 
@@ -286,35 +282,24 @@ export class DailyNotesStreamView extends ItemView {
         return (contentEl?.closest(".daily-note-block") as HTMLElement) ?? null;
     }
 
-    private insertElementAt(el: HTMLElement, index: number): void {
-        const notes = this.state.notes;
-        if (index === 0) {
-            const first = this.streamContainerEl.firstChild;
-            if (first) {
-                this.streamContainerEl.insertBefore(el, first);
-            } else {
-                this.streamContainerEl.appendChild(el);
-            }
-        } else if (index >= notes.length) {
-            const sentinel = this.scroll.getSentinel();
-            if (sentinel) {
-                this.streamContainerEl.insertBefore(el, sentinel);
-            } else {
-                this.streamContainerEl.appendChild(el);
-            }
+    /** The sentinel must stay the last child, so everything lands before it. */
+    private insertBeforeSentinel(el: HTMLElement): void {
+        const sentinel = this.scroll.getSentinel();
+        if (sentinel) {
+            this.streamContainerEl.insertBefore(el, sentinel);
         } else {
-            const nextFile = notes[index];
-            const nextEl = nextFile ? this.findNoteElement(nextFile) : null;
-            if (nextEl) {
-                this.streamContainerEl.insertBefore(el, nextEl);
-            } else {
-                const sentinel = this.scroll.getSentinel();
-                if (sentinel) {
-                    this.streamContainerEl.insertBefore(el, sentinel);
-                } else {
-                    this.streamContainerEl.appendChild(el);
-                }
-            }
+            this.streamContainerEl.appendChild(el);
+        }
+    }
+
+    /** Inserts a note block ahead of the note that now follows it. */
+    private insertElementAt(el: HTMLElement, index: number): void {
+        const nextFile = this.state.notes[index];
+        const nextEl = nextFile ? this.findNoteElement(nextFile) : null;
+        if (nextEl) {
+            this.streamContainerEl.insertBefore(el, nextEl);
+        } else {
+            this.insertBeforeSentinel(el);
         }
     }
 }

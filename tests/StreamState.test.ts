@@ -71,22 +71,32 @@ describe("StreamState", () => {
         expect(state.length).toBe(0);
     });
 
-    it("findIndex returns -1 when not found", () => {
-        expect(state.findIndex("missing.md")).toBe(-1);
+    it("append adds files to the end", () => {
+        const a = makeFile("Notes/a.md");
+        const b = makeFile("Notes/b.md");
+        const c = makeFile("Notes/c.md");
+        state.reset([a]);
+
+        state.append([b, c]);
+
+        expect(state.notes).toEqual([a, b, c]);
     });
 
-    it("findIndex returns correct index", () => {
-        const f = makeFile("Notes/2025-01-01.md");
-        state.insert(0, f);
-        expect(state.findIndex(f.path)).toBe(0);
+    it("append with an empty batch leaves the list untouched", () => {
+        const a = makeFile("Notes/a.md");
+        state.reset([a]);
+
+        state.append([]);
+
+        expect(state.notes).toEqual([a]);
     });
 
-    it("notes is readonly — external mutation does not affect state", () => {
-        const f = makeFile("Notes/a.md");
-        state.insert(0, f);
-        const snapshot = state.notes as TFile[];
-        snapshot.push(makeFile("Notes/b.md")); // mutate the returned array
-        // State should be unchanged
+    it("reset copies its argument — later mutation of it does not leak in", () => {
+        const notes = [makeFile("Notes/a.md")];
+        state.reset(notes);
+
+        notes.push(makeFile("Notes/b.md"));
+
         expect(state.length).toBe(1);
     });
 });

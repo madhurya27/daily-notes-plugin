@@ -12,7 +12,7 @@ class MockMoment {
             const parts = dateStr.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
             // Simple parsing for YYYYMMDD
             const compact = dateStr.match(/(\d{4})(\d{2})(\d{2})/);
-            
+
             if (parts) {
                 this.date = new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
                 this._isValid = true;
@@ -26,10 +26,18 @@ class MockMoment {
         }
     }
 
-    isValid() { return this._isValid; }
-    isAfter(other: MockMoment) { return this.date.getTime() > other.date.getTime(); }
-    isBefore(other: MockMoment) { return this.date.getTime() < other.date.getTime(); }
-    valueOf() { return this.date.getTime(); }
+    isValid() {
+        return this._isValid;
+    }
+    isAfter(other: MockMoment) {
+        return this.date.getTime() > other.date.getTime();
+    }
+    isBefore(other: MockMoment) {
+        return this.date.getTime() < other.date.getTime();
+    }
+    valueOf() {
+        return this.date.getTime();
+    }
     format(fmt: string) {
         const pad = (n: number) => String(n).padStart(2, "0");
         return fmt
@@ -44,7 +52,10 @@ export function moment(inp?: string, fmt?: string, strict?: boolean) {
 }
 
 export function normalizePath(path: string): string {
-    return path.replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/^\/+|\/+$/g, "");
+    return path
+        .replace(/\\/g, "/")
+        .replace(/\/{2,}/g, "/")
+        .replace(/^\/+|\/+$/g, "");
 }
 
 export class TAbstractFile {
@@ -78,7 +89,9 @@ export class WorkspaceLeaf {
         this.app = app;
     }
     setViewState() {}
-    openFile() { return Promise.resolve(); }
+    openFile() {
+        return Promise.resolve();
+    }
 }
 
 // Mock DOM elements for Node environment
@@ -86,7 +99,7 @@ class MockHTMLElement {
     classList = {
         add: () => {},
         toggle: () => {},
-        remove: () => {}
+        remove: () => {},
     };
     style = {};
     dataset = {};
@@ -136,12 +149,18 @@ class MockHTMLElement {
         }
     }
     addEventListener() {}
-    querySelector() { return null; } // Simple mock
-    closest() { return null; }
+    querySelector() {
+        return null;
+    } // Simple mock
+    closest() {
+        return null;
+    }
     setText() {}
     toggleClass() {}
     onClickEvent() {}
-    get firstChild() { return this.children[0] || null; }
+    get firstChild() {
+        return this.children[0] || null;
+    }
 }
 
 export class ItemView {
@@ -156,10 +175,13 @@ export class ItemView {
 }
 
 export const MarkdownRenderer = {
-    render: () => Promise.resolve()
+    render: () => Promise.resolve(),
 };
 
-export const setIcon = () => {};
+export const setIcon = (el: any, iconName: string) => {
+    // Record the icon so tests can assert on it; the real setIcon injects SVG.
+    el.dataset.icon = iconName;
+};
 
 export class MarkdownView {
     file: any = null;
@@ -174,17 +196,27 @@ export class PluginSettingTab {
 
 export class Setting {
     constructor(_containerEl: any) {}
-    setName(_name: string) { return this; }
-    setDesc(_desc: string) { return this; }
-    addToggle(_cb: (_t: any) => any) { return this; }
+    setName(_name: string) {
+        return this;
+    }
+    setDesc(_desc: string) {
+        return this;
+    }
+    addToggle(_cb: (_t: any) => any) {
+        return this;
+    }
 }
 
 export class Plugin {
     app: any;
     manifest: any;
     constructor() {}
-    loadData() { return Promise.resolve(null); }
-    saveData(_data: any) { return Promise.resolve(); }
+    loadData() {
+        return Promise.resolve(null);
+    }
+    saveData(_data: any) {
+        return Promise.resolve();
+    }
     registerView(_type: string, _cb: any) {}
     addRibbonIcon(_icon: string, _title: string, _cb: any) {}
     addCommand(_cmd: any) {}

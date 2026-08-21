@@ -25,10 +25,18 @@ class MockMoment {
         }
     }
 
-    isValid() { return this._isValid; }
-    isAfter(other: MockMoment) { return this.date.getTime() > other.date.getTime(); }
-    isBefore(other: MockMoment) { return this.date.getTime() < other.date.getTime(); }
-    valueOf() { return this.date.getTime(); }
+    isValid() {
+        return this._isValid;
+    }
+    isAfter(other: MockMoment) {
+        return this.date.getTime() > other.date.getTime();
+    }
+    isBefore(other: MockMoment) {
+        return this.date.getTime() < other.date.getTime();
+    }
+    valueOf() {
+        return this.date.getTime();
+    }
 }
 
 function moment(inp?: string, fmt?: string, strict?: boolean) {
@@ -38,15 +46,26 @@ function moment(inp?: string, fmt?: string, strict?: boolean) {
 let mockNotes: Record<string, TFile> = {};
 let mockSettings = {
     format: "YYYY-MM-DD",
-    folder: "Notes"
+    folder: "Notes",
 };
 
 export function getAllDailyNotes() {
     return mockNotes;
 }
 
+let settingsCallCount = 0;
+
 export function getDailyNoteSettings() {
+    settingsCallCount++;
     return mockSettings;
+}
+
+export function __getSettingsCallCount() {
+    return settingsCallCount;
+}
+
+export function __resetSettingsCallCount() {
+    settingsCallCount = 0;
 }
 
 // Helpers to setup test state

@@ -2,12 +2,42 @@ import { App, Component, MarkdownRenderer, MarkdownView, TFile, setIcon } from "
 import { CollapsibleManager } from "./CollapsibleManager";
 import type { DailyNotesStreamSettings } from "./settings";
 
+/** Reserved key for the properties panel; a heading slug can never contain ":". */
+const PROPERTIES_SECTION_KEY = ":properties";
+
+const PROPERTY_ICONS: Record<string, string> = {
+    tags: "tags",
+    tag: "tags",
+    aliases: "tags",
+    created: "calendar",
+    updated: "calendar",
+    link: "link",
+    url: "link",
+    image: "image",
+    cover: "image",
+};
+
+function propertyIcon(key: string): string {
+    const name = key.toLowerCase();
+    const known = PROPERTY_ICONS[name];
+    if (known) return known;
+    if (name.includes("date") || name.includes("time")) return "calendar";
+    return "file-text";
+}
+
+function displayValue(value: unknown): string {
+    if (Array.isArray(value)) return value.map(String).join(", ");
+    if (typeof value === "object" && value !== null) return JSON.stringify(value);
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+    return "";
+}
+
 export class NoteRenderer {
     constructor(
         private readonly app: App,
         private readonly component: Component,
         private readonly collapsible: CollapsibleManager,
-        private readonly settings: DailyNotesStreamSettings
+        private readonly getSettings: () => DailyNotesStreamSettings
     ) {}
 
     async createNoteElement(file: TFile): Promise<HTMLElement> {
@@ -19,18 +49,26 @@ export class NoteRenderer {
         const dateLink = header.createEl("a", {
             text: file.basename,
             cls: "daily-note-title",
+            // href keeps the title focusable and Enter-activatable; the click
+            // handler opens the note itself.
+            href: "#",
         });
-        dateLink.onClickEvent(() => {
+        dateLink.onClickEvent((event) => {
+            event.preventDefault();
             const existing = this.app.workspace
                 .getLeavesOfType("markdown")
-                .find(leaf => (leaf.view as MarkdownView).file?.path === file.path);
+                // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
+                .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
             if (existing) {
                 void this.app.workspace.revealLeaf(existing);
                 return;
             }
-            this.app.workspace.getLeaf(false).openFile(file).catch((error) => {
-                console.error("DailyNotesStream: Failed to open file", error);
-            });
+            this.app.workspace
+                .getLeaf(false)
+                .openFile(file)
+                .catch((error) => {
+                    console.error("DailyNotesStream: Failed to open file", error);
+                });
         });
 
         // Properties (frontmatter)
@@ -41,7 +79,7 @@ export class NoteRenderer {
         contentEl.dataset.sourcePath = file.path;
 
         try {
-            let markdown = await this.app.vault.read(file);
+            let markdown = await this.app.vault.cachedRead(file);
 
             const cache = this.app.metadataCache.getFileCache(file);
             const frontmatterPos = cache?.frontmatterPosition;
@@ -49,13 +87,7 @@ export class NoteRenderer {
                 markdown = markdown.slice(frontmatterPos.end.offset).trim();
             }
 
-            await MarkdownRenderer.render(
-                this.app,
-                markdown,
-                contentEl,
-                file.path,
-                this.component
-            );
+            await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, this.component);
 
             this.collapsible.makeCollapsible(contentEl, file.path);
         } catch (error) {
@@ -67,63 +99,45 @@ export class NoteRenderer {
     }
 
     private renderProperties(container: HTMLElement, file: TFile): void {
-        if (!this.settings.showProperties) return;
+        if (!this.getSettings().showProperties) return;
 
         const cache = this.app.metadataCache.getFileCache(file);
         if (!cache?.frontmatter) return;
 
         const frontmatter = cache.frontmatter as unknown as Record<string, unknown>;
-        const keys = Object.keys(frontmatter).filter(k => k !== "position");
+        const keys = Object.keys(frontmatter).filter((k) => k !== "position");
         if (keys.length === 0) return;
 
         const metadataContainer = container.createDiv({ cls: "metadata-container" });
         const metadataContent = metadataContainer.createDiv({ cls: "metadata-content" });
 
         const heading = metadataContent.createDiv({ cls: "metadata-properties-heading" });
-        const headingIcon = heading.createDiv({ cls: "metadata-properties-heading-icon collapse-indicator" });
-        setIcon(headingIcon, "chevron-right");
         heading.createDiv({ cls: "metadata-properties-heading-label", text: "Properties" });
 
         const metadataProperties = metadataContent.createDiv({ cls: "metadata-properties" });
-
-        let isCollapsed = this.settings.propertiesCollapsed;
-        const updateCollapseState = () => {
-            metadataContainer.toggleClass("is-collapsed", isCollapsed);
-        };
-        updateCollapseState();
-
-        heading.onClickEvent(() => {
-            isCollapsed = !isCollapsed;
-            updateCollapseState();
-        });
-
         for (const key of keys) {
-            const propertyRow = metadataProperties.createDiv({ cls: "metadata-property" });
-
-            const keyContainer = propertyRow.createDiv({ cls: "metadata-property-key" });
-            const iconEl = keyContainer.createDiv({ cls: "metadata-property-icon" });
-
-            let iconName = "file-text";
-            const keyLower = key.toLowerCase();
-            if (keyLower === "tags" || keyLower === "tag" || keyLower === "aliases") iconName = "tags";
-            else if (keyLower.includes("date") || keyLower.includes("time") || keyLower === "created" || keyLower === "updated") iconName = "calendar";
-            else if (keyLower === "link" || keyLower === "url") iconName = "link";
-            else if (keyLower === "image" || keyLower === "cover") iconName = "image";
-            setIcon(iconEl, iconName);
-
-            keyContainer.createSpan({ cls: "metadata-property-key-input", text: key });
-
-            const valueEl = propertyRow.createDiv({ cls: "metadata-property-value" });
-            const value = frontmatter[key];
-            let displayValue = "";
-            if (Array.isArray(value)) {
-                displayValue = value.map(String).join(", ");
-            } else if (typeof value === "object" && value !== null) {
-                displayValue = JSON.stringify(value);
-            } else if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-                displayValue = String(value);
-            }
-            valueEl.createSpan({ cls: "metadata-property-value-text", text: displayValue });
+            this.renderPropertyRow(metadataProperties, key, frontmatter[key]);
         }
+
+        // The whole heading row toggles here — unlike a markdown heading it
+        // holds no links or selectable prose.
+        const toggle = this.collapsible.attachCollapseToggle(heading, {
+            filePath: file.path,
+            sectionKey: PROPERTIES_SECTION_KEY,
+            defaultCollapsed: this.getSettings().propertiesCollapsed,
+            apply: (collapsed) => metadataContainer.toggleClass("is-collapsed", collapsed),
+        });
+        heading.onClickEvent(() => toggle());
+    }
+
+    private renderPropertyRow(container: HTMLElement, key: string, value: unknown): void {
+        const propertyRow = container.createDiv({ cls: "metadata-property" });
+
+        const keyContainer = propertyRow.createDiv({ cls: "metadata-property-key" });
+        setIcon(keyContainer.createDiv({ cls: "metadata-property-icon" }), propertyIcon(key));
+        keyContainer.createSpan({ cls: "metadata-property-key-input", text: key });
+
+        const valueEl = propertyRow.createDiv({ cls: "metadata-property-value" });
+        valueEl.createSpan({ cls: "metadata-property-value-text", text: displayValue(value) });
     }
 }

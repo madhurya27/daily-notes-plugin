@@ -5,6 +5,7 @@ import type { CollapsibleStateStore } from "../src/CollapsibleStateStore";
 function makeStore(collapsedByDefault = false): CollapsibleStateStore {
     return {
         isCollapsed: vi.fn().mockReturnValue(collapsedByDefault),
+        collapsedOr: vi.fn().mockReturnValue(collapsedByDefault),
         setCollapsed: vi.fn(),
         clearForFile: vi.fn(),
     } as any;
@@ -14,6 +15,154 @@ function makeStore(collapsedByDefault = false): CollapsibleStateStore {
 function clickChevron(el: HTMLElement): void {
     (el.querySelector(":scope > .collapse-indicator") as HTMLElement).click();
 }
+
+describe("CollapsibleManager — keyboard and ARIA", () => {
+    let store: ReturnType<typeof makeStore>;
+    let manager: CollapsibleManager;
+
+    function chevron(el: HTMLElement): HTMLElement {
+        return el.querySelector(":scope > .collapse-indicator") as HTMLElement;
+    }
+
+    function press(el: HTMLElement, key: string): void {
+        el.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    }
+
+    beforeEach(() => {
+        store = makeStore();
+        manager = new CollapsibleManager(store as any);
+    });
+
+    it("exposes each chevron as a focusable button", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+
+        const indicator = chevron(content.querySelector("h2") as HTMLElement);
+        expect(indicator.getAttribute("role")).toBe("button");
+        expect(indicator.getAttribute("tabindex")).toBe("0");
+    });
+
+    it("reports the section state through aria-expanded", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+        const indicator = chevron(content.querySelector("h2") as HTMLElement);
+
+        expect(indicator.getAttribute("aria-expanded")).toBe("true");
+        indicator.click();
+        expect(indicator.getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("starts with aria-expanded false for a stored collapsed section", () => {
+        store = makeStore(true);
+        manager = new CollapsibleManager(store as any);
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+
+        expect(chevron(content.querySelector("h2") as HTMLElement).getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("toggles on Enter and Space", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+        const header = content.querySelector("h2") as HTMLElement;
+
+        press(chevron(header), "Enter");
+        expect(header.classList.contains("is-collapsed")).toBe(true);
+
+        press(chevron(header), " ");
+        expect(header.classList.contains("is-collapsed")).toBe(false);
+    });
+
+    it("ignores other keys", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+        const header = content.querySelector("h2") as HTMLElement;
+
+        press(chevron(header), "a");
+
+        expect(header.classList.contains("is-collapsed")).toBe(false);
+        expect(store.setCollapsed).not.toHaveBeenCalled();
+    });
+
+    it("prevents Space from scrolling the stream", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        manager.makeCollapsible(content, "file.md");
+        const indicator = chevron(content.querySelector("h2") as HTMLElement);
+
+        const event = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+        indicator.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("gives list-item chevrons the same treatment", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<ul><li>Task<ul><li>sub</li></ul></li></ul>";
+        manager.makeCollapsible(content, "file.md");
+        const li = content.querySelector("li") as HTMLElement;
+
+        press(chevron(li), "Enter");
+
+        expect(li.classList.contains("is-collapsed")).toBe(true);
+        expect(chevron(li).getAttribute("aria-expanded")).toBe("false");
+    });
+});
+
+describe("CollapsibleManager — duplicate section keys", () => {
+    let store: ReturnType<typeof makeStore>;
+    let manager: CollapsibleManager;
+
+    beforeEach(() => {
+        store = makeStore();
+        manager = new CollapsibleManager(store as any);
+    });
+
+    it("suffixes repeated header text so each heading keeps its own state", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Notes</h2><p>a</p><h2>Notes</h2><p>b</p><h2>Notes</h2><p>c</p>";
+        manager.makeCollapsible(content, "file.md");
+
+        const headers = content.querySelectorAll("h2");
+        clickChevron(headers[0] as HTMLElement);
+        clickChevron(headers[1] as HTMLElement);
+        clickChevron(headers[2] as HTMLElement);
+
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(1, "file.md", "notes", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "notes-2", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(3, "file.md", "notes-3", true);
+    });
+
+    it("suffixes repeated list items at the same depth", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<ul><li>Task<ul><li>a</li></ul></li><li>Task<ul><li>b</li></ul></li></ul>";
+        manager.makeCollapsible(content, "file.md");
+
+        const items = content.querySelectorAll(":scope > ul > li");
+        clickChevron(items[0] as HTMLElement);
+        clickChevron(items[1] as HTMLElement);
+
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(1, "file.md", "li-1-task", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "li-1-task-2", true);
+    });
+
+    it("counts headers and list items separately", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Task</h2><ul><li>Task<ul><li>a</li></ul></li></ul>";
+        manager.makeCollapsible(content, "file.md");
+
+        clickChevron(content.querySelector("h2") as HTMLElement);
+        clickChevron(content.querySelector("li") as HTMLElement);
+
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(1, "file.md", "task", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "li-1-task", true);
+    });
+});
 
 describe("CollapsibleManager — headers", () => {
     let store: ReturnType<typeof makeStore>;
@@ -58,7 +207,7 @@ describe("CollapsibleManager — headers", () => {
 
     it("clicking inside the heading (not the chevron) does not toggle collapse", () => {
         const content = document.createElement("div");
-        content.innerHTML = "<h1>Title <a class=\"internal-link\">Link</a></h1><p>Body</p>";
+        content.innerHTML = '<h1>Title <a class="internal-link">Link</a></h1><p>Body</p>';
         manager.makeCollapsible(content, "file.md");
 
         (content.querySelector("a") as HTMLElement).click();
@@ -177,8 +326,7 @@ describe("CollapsibleManager — headers", () => {
 
     it("expanding a header keeps nested collapsed sections collapsed", () => {
         const content = document.createElement("div");
-        content.innerHTML =
-            "<h2>Top</h2><p id=\"a\">A</p><h3>First</h3><p id=\"b\">B</p><h3>Second</h3><p id=\"c\">C</p>";
+        content.innerHTML = '<h2>Top</h2><p id="a">A</p><h3>First</h3><p id="b">B</p><h3>Second</h3><p id="c">C</p>';
         manager.makeCollapsible(content, "file.md");
         const h2 = content.querySelector("h2") as HTMLElement;
         const [first, second] = Array.from(content.querySelectorAll("h3")) as HTMLElement[];
@@ -197,7 +345,7 @@ describe("CollapsibleManager — headers", () => {
     it("nested collapsed section stays collapsed only until a same-or-higher heading", () => {
         const content = document.createElement("div");
         content.innerHTML =
-            "<h2>Top</h2><h3>Inner</h3><p id=\"b\">B</p><h4>Deep</h4><p id=\"c\">C</p><h3>Next</h3><p id=\"d\">D</p>";
+            '<h2>Top</h2><h3>Inner</h3><p id="b">B</p><h4>Deep</h4><p id="c">C</p><h3>Next</h3><p id="d">D</p>';
         manager.makeCollapsible(content, "file.md");
         const h2 = content.querySelector("h2") as HTMLElement;
         const inner = content.querySelector("h3") as HTMLElement;
@@ -288,9 +436,7 @@ describe("CollapsibleManager — lists", () => {
                 <li>Beta<ul><li>Sub-B</li></ul></li>
             </ul>`;
         manager.makeCollapsible(content, "file.md");
-        const indicators = Array.from(
-            content.querySelectorAll("ul > li > .collapse-indicator")
-        ) as HTMLElement[];
+        const indicators = Array.from(content.querySelectorAll("ul > li > .collapse-indicator")) as HTMLElement[];
         indicators[0]!.click();
         indicators[1]!.click();
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-alpha", true);

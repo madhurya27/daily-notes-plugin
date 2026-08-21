@@ -3,8 +3,13 @@ import { TFile } from "obsidian";
 export class StreamState {
     private _notes: TFile[] = [];
 
+    /** The live internal array; `readonly` keeps callers from mutating it. */
     get notes(): readonly TFile[] {
-        return [...this._notes];
+        return this._notes;
+    }
+
+    append(files: TFile[]): void {
+        this._notes.push(...files);
     }
 
     insert(index: number, file: TFile): void {
@@ -12,17 +17,13 @@ export class StreamState {
     }
 
     remove(filePath: string): void {
-        const index = this._notes.findIndex(n => n.path === filePath);
+        const index = this._notes.findIndex((n) => n.path === filePath);
         if (index === -1) return;
         this._notes.splice(index, 1);
     }
 
     reset(notes: TFile[] = []): void {
         this._notes = [...notes];
-    }
-
-    findIndex(filePath: string): number {
-        return this._notes.findIndex(n => n.path === filePath);
     }
 
     get length(): number {

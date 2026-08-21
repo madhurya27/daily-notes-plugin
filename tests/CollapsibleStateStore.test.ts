@@ -36,6 +36,17 @@ describe("CollapsibleStateStore", () => {
         expect(store.isCollapsed("file.md", "heading-1")).toBe(false);
     });
 
+    it("collapsedOr returns the fallback when the section has no saved state", () => {
+        expect(store.collapsedOr("file.md", "properties", true)).toBe(true);
+        expect(store.collapsedOr("file.md", "properties", false)).toBe(false);
+    });
+
+    it("collapsedOr prefers a saved expanded state over a collapsed fallback", () => {
+        store.setCollapsed("file.md", "properties", false);
+
+        expect(store.collapsedOr("file.md", "properties", true)).toBe(false);
+    });
+
     it("clearForFile removes all entries for that file", () => {
         store.setCollapsed("file.md", "heading-1", true);
         store.setCollapsed("file.md", "heading-2", true);
@@ -76,6 +87,14 @@ describe("CollapsibleStateStore", () => {
         expect(store.isCollapsed("new.md", "heading-1")).toBe(false);
     });
 
+    it("migrate carries an explicitly expanded section over", () => {
+        store.setCollapsed("old.md", "properties", false);
+
+        store.migrate("old.md", "new.md");
+
+        expect(store.collapsedOr("new.md", "properties", true)).toBe(false);
+    });
+
     it("migrate is safe when the file has no collapsed sections", () => {
         expect(() => store.migrate("old.md", "new.md")).not.toThrow();
     });
@@ -88,20 +107,12 @@ describe("CollapsibleStateStore", () => {
         expect(store.isCollapsed("file.md", "heading-1")).toBe(false);
     });
 
-    it("removeFromIndex sets index to null when last entry is removed", () => {
-        store.setCollapsed("file.md", "only-key", true);
-        store.setCollapsed("file.md", "only-key", false); // removes from index
-        // Index is now null; clearForFile should be a no-op (no crash)
-        expect(() => store.clearForFile("file.md")).not.toThrow();
-    });
+    it("clearForFile also drops explicitly expanded sections", () => {
+        store.setCollapsed("file.md", "key-a", false);
 
-    it("removeFromIndex leaves remaining keys when one is removed", () => {
-        store.setCollapsed("file.md", "key-a", true);
-        store.setCollapsed("file.md", "key-b", true);
-        store.setCollapsed("file.md", "key-a", false); // remove only key-a
-        // key-b should still be cleared
         store.clearForFile("file.md");
-        expect(store.isCollapsed("file.md", "key-b")).toBe(false);
+
+        expect(store.collapsedOr("file.md", "key-a", true)).toBe(true);
     });
 
     it("readIndex returns [] when stored index value is not an array", () => {
@@ -113,13 +124,13 @@ describe("CollapsibleStateStore", () => {
 
     it("uses vault-scoped storage keys with 'collapse:' prefix", () => {
         store.setCollapsed("notes/2025-01-01.md", "intro", true);
-        const sectionCall = app.saveLocalStorage.mock.calls.find(c => c[0].startsWith("collapse:"));
+        const sectionCall = app.saveLocalStorage.mock.calls.find((c) => c[0].startsWith("collapse:"));
         expect(sectionCall?.[0]).toBe("collapse:notes/2025-01-01.md:intro");
     });
 
     it("uses 'collapse-idx:' prefix for the index key", () => {
         store.setCollapsed("notes/2025-01-01.md", "intro", true);
-        const indexCall = app.saveLocalStorage.mock.calls.find(c => c[0].startsWith("collapse-idx:"));
+        const indexCall = app.saveLocalStorage.mock.calls.find((c) => c[0].startsWith("collapse-idx:"));
         expect(indexCall?.[0]).toBe("collapse-idx:notes/2025-01-01.md");
     });
 

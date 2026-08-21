@@ -15,3 +15,5 @@
 - [x] Nested folder support (e.g. `YYYY/MM/YYYY-MM-DD.md`)
 - [x] Automated tests with 100% coverage across all source files (Vitest + jsdom)
 - [x] Switch to pnpm
+- [x] Persisted collapse state per note, including the properties panel
+- [x] Keyboard and screen-reader support for collapse chevrons and note titles

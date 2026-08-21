@@ -29,7 +29,7 @@ function makeApp() {
     return {
         vault: {
             on: vi.fn().mockReturnValue({}),
-            read: vi.fn().mockResolvedValue(""),
+            cachedRead: vi.fn().mockResolvedValue(""),
         },
         workspace: {
             on: vi.fn().mockReturnValue({}),
@@ -47,7 +47,7 @@ function makeApp() {
 
 /** Flushes all pending microtasks so .then() callbacks fire. */
 function flushPromises(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 0));
+    return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 /** Shared setup: creates a fully-stubbed view and returns view, plugin, state. */
@@ -61,7 +61,9 @@ async function makeViewSetup() {
         createNoteElement: vi.fn().mockResolvedValue(document.createElement("div")),
     };
     (v as any).scroll = {
-        attach: vi.fn(), detach: vi.fn(), recheck: vi.fn(),
+        attach: vi.fn(),
+        detach: vi.fn(),
+        recheck: vi.fn(),
         getSentinel: vi.fn().mockReturnValue(null),
     };
     (v as any).insertElementAt = vi.fn();
@@ -344,6 +346,18 @@ describe("DailyNotesStreamView — view API", () => {
         await view.onClose();
         expect((view as any).scroll.detach).toHaveBeenCalled();
     });
+
+    it("gives the renderer a live view of the plugin settings", async () => {
+        const plugin = makePlugin();
+        const app = makeApp();
+        app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { mood: "happy" } });
+        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(app) as any, plugin);
+
+        plugin.settings = { showProperties: true, propertiesCollapsed: false }; // as loadSettings() would
+        const el = await (freshView as any).renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+
+        expect(el.querySelector(".metadata-container")).not.toBeNull();
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -363,7 +377,8 @@ describe("DailyNotesStreamView — onOpen error path", () => {
         });
         const errorView = new DailyNotesStreamView(new WorkspaceLeaf(makeApp()), errorPlugin);
         (errorView as any).scroll = {
-            attach: vi.fn(), detach: vi.fn(),
+            attach: vi.fn(),
+            detach: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
         };
         await expect(errorView.onOpen()).resolves.toBeUndefined();
@@ -376,7 +391,8 @@ describe("DailyNotesStreamView — onOpen error path", () => {
         });
         const errorView = new DailyNotesStreamView(new WorkspaceLeaf(makeApp()), errorPlugin);
         const scrollStub = {
-            attach: vi.fn(), detach: vi.fn(),
+            attach: vi.fn(),
+            detach: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
         };
         (errorView as any).scroll = scrollStub;
@@ -541,9 +557,9 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         plugin.service.getBatch = vi.fn().mockReturnValue([kept, doomed]);
         const doomedEl = document.createElement("div");
         (view as any).renderer.createNoteElement = vi.fn(async (f: TFile) =>
-            f === doomed ? doomedEl : document.createElement("div"));
-        (view as any).findNoteElementByPath = vi.fn((path: string) =>
-            path === doomed.path ? doomedEl : null);
+            f === doomed ? doomedEl : document.createElement("div")
+        );
+        (view as any).findNoteElementByPath = vi.fn((path: string) => (path === doomed.path ? doomedEl : null));
         plugin.service.removeSorted = vi.fn().mockReturnValue(1);
         const container = document.createElement("div");
         (view as any).streamContainerEl = container;
@@ -652,7 +668,7 @@ describe("DailyNotesStreamView — refresh", () => {
         // Return an element with non-zero bottom so captureAnchor captures a snapshot
         const anchorEl = document.createElement("div");
         anchorEl.getBoundingClientRect = () =>
-            ({ top: 100, bottom: 200, left: 0, right: 0, width: 0, height: 0 } as DOMRect);
+            ({ top: 100, bottom: 200, left: 0, right: 0, width: 0, height: 0 }) as DOMRect;
         (view as any).findNoteElement = vi.fn().mockReturnValue(anchorEl);
 
         // Should not throw — restoreAnchor will run with the captured snapshot
@@ -681,7 +697,8 @@ describe("DailyNotesStreamView — internal-link click handler", () => {
             createNoteElement: vi.fn().mockResolvedValue(document.createElement("div")),
         };
         (realView as any).scroll = {
-            attach: vi.fn(), detach: vi.fn(),
+            attach: vi.fn(),
+            detach: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
         };
         (realView as any).insertElementAt = vi.fn();
@@ -729,11 +746,7 @@ describe("DailyNotesStreamView — internal-link click handler", () => {
         noteContent.appendChild(link);
         container.appendChild(noteContent);
         link.click();
-        expect(realApp.workspace.openLinkText).toHaveBeenCalledWith(
-            "SomeNote",
-            "Notes/2025-01-01.md",
-            false
-        );
+        expect(realApp.workspace.openLinkText).toHaveBeenCalledWith("SomeNote", "Notes/2025-01-01.md", false);
     });
 });
 
@@ -790,7 +803,7 @@ describe("DailyNotesStreamView — findNoteElement", () => {
 });
 
 // ---------------------------------------------------------------------------
-// insertElementAt — real implementation (lines 248–277)
+// insertElementAt — real implementation
 // ---------------------------------------------------------------------------
 
 describe("DailyNotesStreamView — insertElementAt", () => {
@@ -805,16 +818,22 @@ describe("DailyNotesStreamView — insertElementAt", () => {
         (view as any).streamContainerEl = container;
     });
 
-    it("index 0 with existing first child → inserts before first child", () => {
-        const existing = document.createElement("div");
-        container.appendChild(existing);
+    it("index 0 → inserts before the first note block", () => {
+        const fileA = new TFile("Notes/2025-01-01.md");
+        state.reset([fileA]);
+        const blockA = document.createElement("div");
+        container.appendChild(blockA);
+        (view as any).findNoteElement = vi.fn().mockReturnValue(blockA);
+
         const el = document.createElement("div");
         (view as any).insertElementAt(el, 0);
+
         expect(container.firstChild).toBe(el);
-        expect(container.children[1]).toBe(existing);
+        expect(container.children[1]).toBe(blockA);
     });
 
-    it("index 0 with empty container → appends to container", () => {
+    it("index 0 with an empty stream → appends to container", () => {
+        (view as any).scroll.getSentinel = vi.fn().mockReturnValue(null);
         const el = document.createElement("div");
         (view as any).insertElementAt(el, 0);
         expect(container.firstChild).toBe(el);
@@ -888,7 +907,7 @@ describe("DailyNotesStreamView — insertElementAt", () => {
         expect(container.lastChild).toBe(el);
     });
 
-    it("middle index, nextFile is undefined in notes array (covers ternary false branch at line 266)", () => {
+    it("index inside the range but with an undefined slot → appends", () => {
         const fileA = new TFile("Notes/2025-01-03.md");
         state.reset([fileA, fileA]); // length = 2 so else branch is reached at index 1
         // Make notes[1] return undefined via a spy on the getter
@@ -963,7 +982,7 @@ describe("DailyNotesStreamView — callback wiring", () => {
                 capturedCallbacks[event] = cb;
                 return {};
             }),
-            read: vi.fn().mockResolvedValue(""),
+            cachedRead: vi.fn().mockResolvedValue(""),
         };
         const capturingCache = {
             getFileCache: vi.fn().mockReturnValue({ frontmatter: null }),
@@ -984,7 +1003,9 @@ describe("DailyNotesStreamView — callback wiring", () => {
             createNoteElement: vi.fn().mockResolvedValue(document.createElement("div")),
         };
         (v as any).scroll = {
-            attach: vi.fn(), detach: vi.fn(), recheck: vi.fn(),
+            attach: vi.fn(),
+            detach: vi.fn(),
+            recheck: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
         };
         (v as any).insertElementAt = vi.fn();
@@ -1081,7 +1102,9 @@ describe("DailyNotesStreamView — callback wiring", () => {
             createNoteElement: vi.fn().mockResolvedValue(document.createElement("div")),
         };
         (v as any).scroll = {
-            attach: vi.fn(), detach: vi.fn(), recheck: vi.fn(),
+            attach: vi.fn(),
+            detach: vi.fn(),
+            recheck: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
         };
         (v as any).insertElementAt = vi.fn();

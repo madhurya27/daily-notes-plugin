@@ -65,10 +65,10 @@ describe("InfiniteScrollController", () => {
         const ctrl = new InfiniteScrollController();
         const scrollRoot = document.createElement("div");
         ctrl.attach(scrollRoot, document.createElement("div"), vi.fn().mockResolvedValue(undefined));
-        expect(IntersectionObserver).toHaveBeenCalledWith(
-            expect.any(Function),
-            { root: scrollRoot, rootMargin: "200px" }
-        );
+        expect(IntersectionObserver).toHaveBeenCalledWith(expect.any(Function), {
+            root: scrollRoot,
+            rootMargin: "200px",
+        });
     });
 
     it("attach calls observer.observe on the sentinel", () => {
@@ -101,10 +101,7 @@ describe("InfiniteScrollController", () => {
         const ctrl = new InfiniteScrollController();
         const trigger = vi.fn().mockResolvedValue(undefined);
         ctrl.attach(document.createElement("div"), document.createElement("div"), trigger);
-        capturedCallback(
-            [{ isIntersecting: true } as IntersectionObserverEntry],
-            {} as IntersectionObserver
-        );
+        capturedCallback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
         expect(trigger).toHaveBeenCalledOnce();
     });
 
@@ -112,10 +109,7 @@ describe("InfiniteScrollController", () => {
         const ctrl = new InfiniteScrollController();
         const trigger = vi.fn().mockResolvedValue(undefined);
         ctrl.attach(document.createElement("div"), document.createElement("div"), trigger);
-        capturedCallback(
-            [{ isIntersecting: false } as IntersectionObserverEntry],
-            {} as IntersectionObserver
-        );
+        capturedCallback([{ isIntersecting: false } as IntersectionObserverEntry], {} as IntersectionObserver);
         expect(trigger).not.toHaveBeenCalled();
     });
 
@@ -132,11 +126,8 @@ describe("InfiniteScrollController", () => {
         const ctrl = new InfiniteScrollController();
         const trigger = vi.fn().mockRejectedValue(new Error("boom"));
         ctrl.attach(document.createElement("div"), document.createElement("div"), trigger);
-        capturedCallback(
-            [{ isIntersecting: true } as IntersectionObserverEntry],
-            {} as IntersectionObserver
-        );
-        await new Promise(resolve => setTimeout(resolve, 0));
+        capturedCallback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+        await new Promise((resolve) => setTimeout(resolve, 0));
         expect(consoleSpy).toHaveBeenCalled();
         consoleSpy.mockRestore();
     });
