@@ -71,16 +71,6 @@ describe("StreamState", () => {
         expect(state.length).toBe(0);
     });
 
-    it("findIndex returns -1 when not found", () => {
-        expect(state.findIndex("missing.md")).toBe(-1);
-    });
-
-    it("findIndex returns correct index", () => {
-        const f = makeFile("Notes/2025-01-01.md");
-        state.insert(0, f);
-        expect(state.findIndex(f.path)).toBe(0);
-    });
-
     it("notes is readonly — external mutation does not affect state", () => {
         const f = makeFile("Notes/a.md");
         state.insert(0, f);

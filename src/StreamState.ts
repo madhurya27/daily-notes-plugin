@@ -21,10 +21,6 @@ export class StreamState {
         this._notes = [...notes];
     }
 
-    findIndex(filePath: string): number {
-        return this._notes.findIndex(n => n.path === filePath);
-    }
-
     get length(): number {
         return this._notes.length;
     }
