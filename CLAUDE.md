@@ -8,6 +8,7 @@ pnpm run dev       # watch mode → main.js (inline sourcemaps)
 pnpm run build     # type-check + production build (minified)
 pnpm run lint      # ESLint
 pnpm test          # vitest run (mocks in tests/mocks/, jsdom via tests/setup.ts)
+pnpm run test:coverage  # vitest run --coverage (100% required)
 ```
 
 Deploy to test vault:
