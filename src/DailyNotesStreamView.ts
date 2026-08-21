@@ -122,7 +122,14 @@ export class DailyNotesStreamView extends ItemView {
         // aligned with `this.offset`. Returns -1 for non-daily-note files.
         const globalIndex = this.plugin.service.insertSorted(file);
         if (globalIndex === -1) return;
-        if (globalIndex >= this.offset) return; // beyond the loaded range — nothing to render yet
+        if (globalIndex >= this.offset) {
+            // Beyond the loaded range — nothing to render here. If the sentinel
+            // is visible (empty or fully-scrolled stream) the recheck makes the
+            // observer fire and loadMoreNotes picks the note up; otherwise it is
+            // correctly left for a later scroll.
+            this.scroll.recheck();
+            return;
+        }
 
         this.renderer.createNoteElement(file).then(newEl => {
             this.insertElementAt(newEl, globalIndex);
@@ -168,19 +175,20 @@ export class DailyNotesStreamView extends ItemView {
         try {
             const batch = this.plugin.service.getBatch(this.offset, BATCH_SIZE);
             if (batch.length === 0) {
-                if (this.offset === 0) {
-                    const empty = document.createElement("div");
-                    empty.addClass("daily-notes-empty-state");
-                    empty.setText("No daily notes found. Please check your daily notes settings.");
+                // No recheck here: an empty batch that re-triggers the observer
+                // would spin forever.
+                if (this.offset === 0 && !this.findEmptyState()) {
+                    const empty = this.streamContainerEl.createDiv({
+                        cls: "daily-notes-empty-state",
+                        text: "No daily notes found. Please check your daily notes settings.",
+                    });
                     const sentinel = this.scroll.getSentinel();
-                    if (sentinel) {
-                        this.streamContainerEl.insertBefore(empty, sentinel);
-                    } else {
-                        this.streamContainerEl.appendChild(empty);
-                    }
+                    if (sentinel) this.streamContainerEl.insertBefore(empty, sentinel);
                 }
                 return;
             }
+
+            this.findEmptyState()?.remove();
 
             for (const file of batch) {
                 const el = await this.renderer.createNoteElement(file);
@@ -193,6 +201,10 @@ export class DailyNotesStreamView extends ItemView {
             }
             this.state.reset([...this.state.notes, ...batch]);
             this.offset += batch.length;
+
+            // A batch too short to push the sentinel past the root margin leaves
+            // it intersecting, so the observer would never fire again.
+            this.scroll.recheck();
         } finally {
             this.isLoading = false;
         }
@@ -235,6 +247,10 @@ export class DailyNotesStreamView extends ItemView {
     // -------------------------------------------------------------------------
     // DOM helpers
     // -------------------------------------------------------------------------
+
+    private findEmptyState(): HTMLElement | null {
+        return this.streamContainerEl.querySelector(".daily-notes-empty-state");
+    }
 
     private findNoteElement(file: TFile): HTMLElement | null {
         return this.findNoteElementByPath(file.path);

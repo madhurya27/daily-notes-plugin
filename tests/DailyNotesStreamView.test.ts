@@ -60,7 +60,7 @@ async function makeViewSetup() {
         createNoteElement: vi.fn().mockResolvedValue(document.createElement("div")),
     };
     (v as any).scroll = {
-        attach: vi.fn(), detach: vi.fn(),
+        attach: vi.fn(), detach: vi.fn(), recheck: vi.fn(),
         getSentinel: vi.fn().mockReturnValue(null),
     };
     (v as any).insertElementAt = vi.fn();
@@ -94,6 +94,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
         (view as any).scroll = {
             attach: vi.fn(),
             detach: vi.fn(),
+            recheck: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
         };
 
@@ -158,6 +159,27 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
             expect(state.length).toBe(0);
             expect((view as any).offset).toBe(2);
+        });
+
+        it("rechecks the sentinel when the note lands beyond the loaded range", async () => {
+            (view as any).offset = 2;
+            plugin.service.insertSorted = vi.fn().mockReturnValue(2);
+
+            view.onFileCreate(new TFile("Notes/2025-01-01.md"));
+            await flushPromises();
+
+            expect((view as any).scroll.recheck).toHaveBeenCalledOnce();
+        });
+
+        it("rechecks the sentinel for the first note created into an empty stream", async () => {
+            (view as any).offset = 0;
+            plugin.service.insertSorted = vi.fn().mockReturnValue(0);
+
+            view.onFileCreate(new TFile("Notes/2025-01-01.md"));
+            await flushPromises();
+
+            expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
+            expect((view as any).scroll.recheck).toHaveBeenCalledOnce();
         });
     });
 
@@ -479,6 +501,48 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         const children = Array.from(container.children);
         // Sentinel must remain last
         expect(children[children.length - 1]).toBe(sentinel);
+    });
+
+    it("removes a stale empty-state div once notes exist", async () => {
+        const container = document.createElement("div");
+        container.createDiv({ cls: "daily-notes-empty-state", text: "No daily notes found." });
+        (view as any).streamContainerEl = container;
+        plugin.service.getBatch = vi.fn().mockReturnValue([new TFile("Notes/2025-01-01.md")]);
+
+        await (view as any).loadMoreNotes();
+
+        expect(container.querySelector(".daily-notes-empty-state")).toBeNull();
+    });
+
+    it("never appends a second empty-state div on repeated empty loads", async () => {
+        const container = document.createElement("div");
+        (view as any).streamContainerEl = container;
+        plugin.service.getBatch = vi.fn().mockReturnValue([]);
+
+        await (view as any).loadMoreNotes();
+        await (view as any).loadMoreNotes();
+
+        expect(container.querySelectorAll(".daily-notes-empty-state").length).toBe(1);
+    });
+
+    it("rechecks the sentinel after a non-empty batch so a short batch keeps loading", async () => {
+        const container = document.createElement("div");
+        (view as any).streamContainerEl = container;
+        plugin.service.getBatch = vi.fn().mockReturnValue([new TFile("Notes/2025-01-01.md")]);
+
+        await (view as any).loadMoreNotes();
+
+        expect((view as any).scroll.recheck).toHaveBeenCalledOnce();
+    });
+
+    it("does not recheck after an empty batch (would loop forever)", async () => {
+        const container = document.createElement("div");
+        (view as any).streamContainerEl = container;
+        plugin.service.getBatch = vi.fn().mockReturnValue([]);
+
+        await (view as any).loadMoreNotes();
+
+        expect((view as any).scroll.recheck).not.toHaveBeenCalled();
     });
 });
 
@@ -829,7 +893,7 @@ describe("DailyNotesStreamView — callback wiring", () => {
             createNoteElement: vi.fn().mockResolvedValue(document.createElement("div")),
         };
         (v as any).scroll = {
-            attach: vi.fn(), detach: vi.fn(),
+            attach: vi.fn(), detach: vi.fn(), recheck: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
         };
         (v as any).insertElementAt = vi.fn();
@@ -918,7 +982,7 @@ describe("DailyNotesStreamView — callback wiring", () => {
             createNoteElement: vi.fn().mockResolvedValue(document.createElement("div")),
         };
         (v as any).scroll = {
-            attach: vi.fn(), detach: vi.fn(),
+            attach: vi.fn(), detach: vi.fn(), recheck: vi.fn(),
             getSentinel: vi.fn().mockReturnValue(null),
         };
         (v as any).insertElementAt = vi.fn();

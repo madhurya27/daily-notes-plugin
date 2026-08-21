@@ -3,18 +3,20 @@ import { InfiniteScrollController } from "../src/InfiniteScrollController";
 
 describe("InfiniteScrollController", () => {
     let mockObserve: ReturnType<typeof vi.fn>;
+    let mockUnobserve: ReturnType<typeof vi.fn>;
     let mockDisconnect: ReturnType<typeof vi.fn>;
     let capturedCallback: IntersectionObserverCallback;
 
     beforeEach(() => {
         mockObserve = vi.fn();
+        mockUnobserve = vi.fn();
         mockDisconnect = vi.fn();
         // Must use a regular function (not arrow) so it can be called with `new`
         vi.stubGlobal(
             "IntersectionObserver",
             vi.fn(function (cb: IntersectionObserverCallback) {
                 capturedCallback = cb;
-                return { observe: mockObserve, disconnect: mockDisconnect };
+                return { observe: mockObserve, unobserve: mockUnobserve, disconnect: mockDisconnect };
             })
         );
     });
@@ -161,5 +163,40 @@ describe("InfiniteScrollController", () => {
     it("detach is a no-op when not attached (no throw)", () => {
         const ctrl = new InfiniteScrollController();
         expect(() => ctrl.detach()).not.toThrow();
+    });
+    // -------------------------------------------------------------------------
+    // recheck
+    //
+    // IntersectionObserver only fires on intersection *changes*. When a loaded
+    // batch is too short to push the sentinel out of the root margin, the
+    // sentinel stays intersecting and no further callback arrives. Re-observing
+    // forces a fresh initial callback with the current intersection state.
+    // -------------------------------------------------------------------------
+
+    it("recheck re-observes the sentinel to force a fresh callback", () => {
+        const ctrl = new InfiniteScrollController();
+        ctrl.attach(document.createElement("div"), document.createElement("div"), vi.fn().mockResolvedValue(undefined));
+        mockObserve.mockClear();
+
+        ctrl.recheck();
+
+        expect(mockUnobserve).toHaveBeenCalledWith(ctrl.getSentinel());
+        expect(mockObserve).toHaveBeenCalledWith(ctrl.getSentinel());
+    });
+
+    it("recheck is a no-op before attach (no throw)", () => {
+        const ctrl = new InfiniteScrollController();
+        expect(() => ctrl.recheck()).not.toThrow();
+        expect(mockObserve).not.toHaveBeenCalled();
+    });
+
+    it("recheck is a no-op after detach (no throw)", () => {
+        const ctrl = new InfiniteScrollController();
+        ctrl.attach(document.createElement("div"), document.createElement("div"), vi.fn().mockResolvedValue(undefined));
+        ctrl.detach();
+        mockObserve.mockClear();
+
+        expect(() => ctrl.recheck()).not.toThrow();
+        expect(mockObserve).not.toHaveBeenCalled();
     });
 });

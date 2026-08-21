@@ -15,7 +15,7 @@ Implementation-ready items from a code review at commit `b551db4`. Line numbers 
 
 ## P1 — Bugs (user-visible)
 
-### I1. Infinite scroll stalls; first note never appears in an empty stream
+### I1. Infinite scroll stalls; first note never appears in an empty stream — **DONE**
 **Files:** `src/InfiniteScrollController.ts`, `src/DailyNotesStreamView.ts:117-132, 165-199`
 
 Three related defects, one shared fix:
