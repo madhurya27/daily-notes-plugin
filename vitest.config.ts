@@ -3,6 +3,8 @@ import { resolve } from "path";
 
 export default defineConfig({
     test: {
+        // e2e/ belongs to Playwright; vitest would try to collect its specs.
+        include: ["tests/**/*.test.ts"],
         environment: "jsdom",
         setupFiles: ["tests/setup.ts"],
         coverage: {
