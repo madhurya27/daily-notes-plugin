@@ -124,13 +124,13 @@ describe("CollapsibleStateStore", () => {
 
     it("uses vault-scoped storage keys with 'collapse:' prefix", () => {
         store.setCollapsed("notes/2025-01-01.md", "intro", true);
-        const sectionCall = app.saveLocalStorage.mock.calls.find(c => c[0].startsWith("collapse:"));
+        const sectionCall = app.saveLocalStorage.mock.calls.find((c) => c[0].startsWith("collapse:"));
         expect(sectionCall?.[0]).toBe("collapse:notes/2025-01-01.md:intro");
     });
 
     it("uses 'collapse-idx:' prefix for the index key", () => {
         store.setCollapsed("notes/2025-01-01.md", "intro", true);
-        const indexCall = app.saveLocalStorage.mock.calls.find(c => c[0].startsWith("collapse-idx:"));
+        const indexCall = app.saveLocalStorage.mock.calls.find((c) => c[0].startsWith("collapse-idx:"));
         expect(indexCall?.[0]).toBe("collapse-idx:notes/2025-01-01.md");
     });
 

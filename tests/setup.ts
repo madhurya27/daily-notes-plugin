@@ -63,9 +63,11 @@ proto.onClickEvent = function (handler: (e: MouseEvent) => void) {
     this.addEventListener("click", handler);
 };
 
-proto.prepend = proto.prepend ?? function (node: Node) {
-    this.insertBefore(node, this.firstChild);
-};
+proto.prepend =
+    proto.prepend ??
+    function (node: Node) {
+        this.insertBefore(node, this.firstChild);
+    };
 
 /**
  * jsdom ships no CSS object; Obsidian runs on Chromium, which has CSS.escape.
@@ -73,5 +75,5 @@ proto.prepend = proto.prepend ?? function (node: Node) {
  * algorithm, and valid wherever the result is used (identifier or quoted value).
  */
 (globalThis as any).CSS ??= {
-    escape: (value: string): string => value.replace(/[^\w-]/g, c => `\\${c}`),
+    escape: (value: string): string => value.replace(/[^\w-]/g, (c) => `\\${c}`),
 };

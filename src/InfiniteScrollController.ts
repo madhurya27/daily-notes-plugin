@@ -15,11 +15,7 @@ export class InfiniteScrollController {
      * @param container  - The element to append the sentinel into
      * @param onTrigger  - Called when the sentinel enters the viewport
      */
-    attach(
-        scrollRoot: HTMLElement,
-        container: HTMLElement,
-        onTrigger: () => Promise<void>
-    ): void {
+    attach(scrollRoot: HTMLElement, container: HTMLElement, onTrigger: () => Promise<void>): void {
         this.detach();
 
         this.sentinel = document.createElement("div");

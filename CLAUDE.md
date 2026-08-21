@@ -7,6 +7,7 @@ pnpm install       # install deps
 pnpm run dev       # watch mode → main.js (inline sourcemaps)
 pnpm run build     # type-check + production build (minified)
 pnpm run lint      # ESLint
+pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is hand-wrapped, so it is ignored.
 pnpm test          # vitest run (mocks in tests/mocks/, jsdom via tests/setup.ts)
 pnpm run test:coverage  # vitest run --coverage (100% required)
 ```

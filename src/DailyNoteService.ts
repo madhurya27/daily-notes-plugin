@@ -61,7 +61,7 @@ export class DailyNoteService {
      * Returns the removed index, or -1 if not found.
      */
     removeSorted(filePath: string): number {
-        const index = this._sorted.findIndex(f => f.path === filePath);
+        const index = this._sorted.findIndex((f) => f.path === filePath);
         if (index !== -1) this._sorted.splice(index, 1);
         return index;
     }
@@ -76,12 +76,12 @@ export class DailyNoteService {
         // getAllDailyNotes() is already scoped to the daily-notes folder, so the
         // basename match is enough here — no path round-trip needed.
         const notesWithDates = Object.values(getAllDailyNotes())
-            .map(file => ({ file, date: this.parseBasename(file, format) }))
+            .map((file) => ({ file, date: this.parseBasename(file, format) }))
             .filter((n): n is { file: TFile; date: NonNullable<typeof n.date> } => n.date !== null);
 
         notesWithDates.sort((a, b) => b.date.valueOf() - a.date.valueOf());
 
-        return notesWithDates.map(n => n.file);
+        return notesWithDates.map((n) => n.file);
     }
 
     private readFormat(): DateFormat {

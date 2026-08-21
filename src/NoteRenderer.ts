@@ -58,14 +58,17 @@ export class NoteRenderer {
             const existing = this.app.workspace
                 .getLeavesOfType("markdown")
                 // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
-                .find(leaf => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
+                .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
             if (existing) {
                 void this.app.workspace.revealLeaf(existing);
                 return;
             }
-            this.app.workspace.getLeaf(false).openFile(file).catch((error) => {
-                console.error("DailyNotesStream: Failed to open file", error);
-            });
+            this.app.workspace
+                .getLeaf(false)
+                .openFile(file)
+                .catch((error) => {
+                    console.error("DailyNotesStream: Failed to open file", error);
+                });
         });
 
         // Properties (frontmatter)
@@ -84,13 +87,7 @@ export class NoteRenderer {
                 markdown = markdown.slice(frontmatterPos.end.offset).trim();
             }
 
-            await MarkdownRenderer.render(
-                this.app,
-                markdown,
-                contentEl,
-                file.path,
-                this.component
-            );
+            await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, this.component);
 
             this.collapsible.makeCollapsible(contentEl, file.path);
         } catch (error) {
@@ -108,7 +105,7 @@ export class NoteRenderer {
         if (!cache?.frontmatter) return;
 
         const frontmatter = cache.frontmatter as unknown as Record<string, unknown>;
-        const keys = Object.keys(frontmatter).filter(k => k !== "position");
+        const keys = Object.keys(frontmatter).filter((k) => k !== "position");
         if (keys.length === 0) return;
 
         const metadataContainer = container.createDiv({ cls: "metadata-container" });

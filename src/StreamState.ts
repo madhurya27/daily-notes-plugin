@@ -17,7 +17,7 @@ export class StreamState {
     }
 
     remove(filePath: string): void {
-        const index = this._notes.findIndex(n => n.path === filePath);
+        const index = this._notes.findIndex((n) => n.path === filePath);
         if (index === -1) return;
         this._notes.splice(index, 1);
     }

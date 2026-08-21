@@ -207,7 +207,7 @@ describe("CollapsibleManager — headers", () => {
 
     it("clicking inside the heading (not the chevron) does not toggle collapse", () => {
         const content = document.createElement("div");
-        content.innerHTML = "<h1>Title <a class=\"internal-link\">Link</a></h1><p>Body</p>";
+        content.innerHTML = '<h1>Title <a class="internal-link">Link</a></h1><p>Body</p>';
         manager.makeCollapsible(content, "file.md");
 
         (content.querySelector("a") as HTMLElement).click();
@@ -326,8 +326,7 @@ describe("CollapsibleManager — headers", () => {
 
     it("expanding a header keeps nested collapsed sections collapsed", () => {
         const content = document.createElement("div");
-        content.innerHTML =
-            "<h2>Top</h2><p id=\"a\">A</p><h3>First</h3><p id=\"b\">B</p><h3>Second</h3><p id=\"c\">C</p>";
+        content.innerHTML = '<h2>Top</h2><p id="a">A</p><h3>First</h3><p id="b">B</p><h3>Second</h3><p id="c">C</p>';
         manager.makeCollapsible(content, "file.md");
         const h2 = content.querySelector("h2") as HTMLElement;
         const [first, second] = Array.from(content.querySelectorAll("h3")) as HTMLElement[];
@@ -346,7 +345,7 @@ describe("CollapsibleManager — headers", () => {
     it("nested collapsed section stays collapsed only until a same-or-higher heading", () => {
         const content = document.createElement("div");
         content.innerHTML =
-            "<h2>Top</h2><h3>Inner</h3><p id=\"b\">B</p><h4>Deep</h4><p id=\"c\">C</p><h3>Next</h3><p id=\"d\">D</p>";
+            '<h2>Top</h2><h3>Inner</h3><p id="b">B</p><h4>Deep</h4><p id="c">C</p><h3>Next</h3><p id="d">D</p>';
         manager.makeCollapsible(content, "file.md");
         const h2 = content.querySelector("h2") as HTMLElement;
         const inner = content.querySelector("h3") as HTMLElement;
@@ -437,9 +436,7 @@ describe("CollapsibleManager — lists", () => {
                 <li>Beta<ul><li>Sub-B</li></ul></li>
             </ul>`;
         manager.makeCollapsible(content, "file.md");
-        const indicators = Array.from(
-            content.querySelectorAll("ul > li > .collapse-indicator")
-        ) as HTMLElement[];
+        const indicators = Array.from(content.querySelectorAll("ul > li > .collapse-indicator")) as HTMLElement[];
         indicators[0]!.click();
         indicators[1]!.click();
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-alpha", true);

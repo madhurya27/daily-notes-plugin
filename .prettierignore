@@ -1,0 +1,6 @@
+main.js
+coverage/
+pnpm-lock.yaml
+
+# Hand-wrapped prose
+*.md

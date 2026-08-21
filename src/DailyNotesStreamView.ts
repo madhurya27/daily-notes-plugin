@@ -37,9 +37,15 @@ export class DailyNotesStreamView extends ItemView {
         );
     }
 
-    getViewType(): string { return VIEW_TYPE_DAILY_NOTES_STREAM; }
-    getDisplayText(): string { return "Daily notes stream"; }
-    getIcon(): string { return "calendar-days"; }
+    getViewType(): string {
+        return VIEW_TYPE_DAILY_NOTES_STREAM;
+    }
+    getDisplayText(): string {
+        return "Daily notes stream";
+    }
+    getIcon(): string {
+        return "calendar-days";
+    }
 
     async onOpen() {
         this.streamContainerEl = this.contentEl.createDiv({ cls: "daily-notes-stream-container" });
@@ -192,10 +198,12 @@ export class DailyNotesStreamView extends ItemView {
         if (batch.length === 0) {
             // No recheck: re-triggering on an empty batch spins forever.
             if (this.state.length === 0 && !this.findEmptyState()) {
-                this.insertBeforeSentinel(this.streamContainerEl.createDiv({
-                    cls: "daily-notes-empty-state",
-                    text: "No daily notes found. Please check your daily notes settings.",
-                }));
+                this.insertBeforeSentinel(
+                    this.streamContainerEl.createDiv({
+                        cls: "daily-notes-empty-state",
+                        text: "No daily notes found. Please check your daily notes settings.",
+                    })
+                );
             }
             return;
         }
@@ -219,11 +227,8 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     private async rerenderAll(): Promise<void> {
-        const snapshot = captureAnchor(
-            this.state.notes,
-            this.streamContainerEl,
-            this.contentEl,
-            (f) => this.findNoteElement(f)
+        const snapshot = captureAnchor(this.state.notes, this.streamContainerEl, this.contentEl, (f) =>
+            this.findNoteElement(f)
         );
 
         this.streamContainerEl.empty();
@@ -255,7 +260,7 @@ export class DailyNotesStreamView extends ItemView {
     private enqueue(task: () => Promise<void>): Promise<void> {
         this.queue = this.queue
             .then(task)
-            .catch(e => console.error("DailyNotesStream: Failed to update the stream", e));
+            .catch((e) => console.error("DailyNotesStream: Failed to update the stream", e));
         return this.queue;
     }
 

@@ -36,7 +36,7 @@ describe("captureAnchor", () => {
         // 'b' is partially visible (bottom=300, scrollRect.top=200 → elBottom=100 > 0)
         const elB = makeEl({ top: 150, bottom: 300 });
 
-        const findElement = (f: TFile) => f.path === "Notes/a.md" ? elA : elB;
+        const findElement = (f: TFile) => (f.path === "Notes/a.md" ? elA : elB);
         const result = captureAnchor(files, {} as HTMLElement, scrollEl, findElement);
 
         expect(result).not.toBeNull();
@@ -52,9 +52,7 @@ describe("captureAnchor", () => {
         const elA = makeEl({ top: 10, bottom: 200 });
         const elB = makeEl({ top: 210, bottom: 400 });
 
-        const result = captureAnchor(files, {} as HTMLElement, scrollEl, (f) =>
-            f.path === "Notes/a.md" ? elA : elB
-        );
+        const result = captureAnchor(files, {} as HTMLElement, scrollEl, (f) => (f.path === "Notes/a.md" ? elA : elB));
 
         expect(result!.file.path).toBe("Notes/a.md");
         expect(result!.relativeTopPx).toBe(10); // 10 - 0
@@ -69,8 +67,12 @@ describe("restoreAnchor", () => {
         let scrollTop = 200;
         const scrollEl = {
             getBoundingClientRect: () => ({ top: 0, bottom: 500 }),
-            get scrollTop() { return scrollTop; },
-            set scrollTop(v: number) { scrollTop = v; },
+            get scrollTop() {
+                return scrollTop;
+            },
+            set scrollTop(v: number) {
+                scrollTop = v;
+            },
         } as unknown as HTMLElement;
 
         // After re-render the element is now at top=80 (relative=80)
@@ -90,8 +92,12 @@ describe("restoreAnchor", () => {
         let scrollTop = 100;
         const scrollEl = {
             getBoundingClientRect: () => ({ top: 0, bottom: 500 }),
-            get scrollTop() { return scrollTop; },
-            set scrollTop(v: number) { scrollTop = v; },
+            get scrollTop() {
+                return scrollTop;
+            },
+            set scrollTop(v: number) {
+                scrollTop = v;
+            },
         } as unknown as HTMLElement;
 
         restoreAnchor(snapshot, scrollEl, () => null);

@@ -2,7 +2,10 @@ import { setIcon } from "obsidian";
 import { CollapsibleStateStore } from "./CollapsibleStateStore";
 
 function slugify(text: string): string {
-    return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return text
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
 }
 
 /** A section whose collapsed state is persisted per note. */
