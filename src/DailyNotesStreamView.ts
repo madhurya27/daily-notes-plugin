@@ -16,7 +16,12 @@ export class DailyNotesStreamView extends ItemView {
     private renderer: NoteRenderer;
     private scroll: InfiniteScrollController;
     private streamContainerEl!: HTMLElement;
-    private isLoading = false;
+
+    // Vault events and batch loads both mutate state + DOM across awaits, so
+    // they run one at a time: an event interleaving with an in-flight batch
+    // would leave state and the service cache disagreeing.
+    private queue: Promise<void> = Promise.resolve();
+    private loadPending = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: DailyNotesStreamPlugin) {
         super(leaf);
@@ -105,33 +110,33 @@ export class DailyNotesStreamView extends ItemView {
 
     onFileModify(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        const el = this.findNoteElement(file);
-        if (el) {
-            this.renderer.createNoteElement(file).then(newEl => {
-                this.streamContainerEl.insertBefore(newEl, el);
-                el.remove();
-            }).catch(e => console.error("DailyNotesStream: Failed to refresh note", e));
-        }
+        void this.enqueue(async () => {
+            const el = this.findNoteElement(file);
+            if (!el) return;
+            const newEl = await this.renderer.createNoteElement(file);
+            this.streamContainerEl.insertBefore(newEl, el);
+            el.remove();
+        });
     }
 
     onFileCreate(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
+        void this.enqueue(async () => {
+            // insertSorted is the single source of truth for sort order — it also
+            // keeps the service's cache in sync so later getBatch() calls stay
+            // aligned with `this.state.length`. Returns -1 for non-daily-note files.
+            const globalIndex = this.plugin.service.insertSorted(file);
+            if (globalIndex === -1) return;
+            if (globalIndex >= this.state.length) {
+                // Beyond the loaded range — a visible sentinel loads it now.
+                this.scroll.recheck();
+                return;
+            }
 
-        // insertSorted is the single source of truth for sort order — it also
-        // keeps the service's cache in sync so later getBatch() calls stay
-        // aligned with `this.state.length`. Returns -1 for non-daily-note files.
-        const globalIndex = this.plugin.service.insertSorted(file);
-        if (globalIndex === -1) return;
-        if (globalIndex >= this.state.length) {
-            // Beyond the loaded range — a visible sentinel loads it now.
-            this.scroll.recheck();
-            return;
-        }
-
-        this.renderer.createNoteElement(file).then(newEl => {
+            const newEl = await this.renderer.createNoteElement(file);
             this.insertElementAt(newEl, globalIndex);
             this.state.insert(globalIndex, file);
-        }).catch(e => console.error("DailyNotesStream: Failed to insert new note", e));
+        });
     }
 
     /**
@@ -151,12 +156,12 @@ export class DailyNotesStreamView extends ItemView {
 
     onFileDelete(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        this.removeNote(file, file.path);
+        void this.enqueue(async () => this.removeNote(file, file.path));
     }
 
     onFileRename(file: TAbstractFile, oldPath: string) {
         if (!(file instanceof TFile)) return;
-        this.removeNote(file, oldPath);
+        void this.enqueue(async () => this.removeNote(file, oldPath));
         this.onFileCreate(file);
     }
 
@@ -164,48 +169,58 @@ export class DailyNotesStreamView extends ItemView {
     // Load more (infinite scroll)
     // -------------------------------------------------------------------------
 
-    async loadMoreNotes() {
-        if (this.isLoading) return;
-        this.isLoading = true;
-        try {
-            const batch = this.plugin.service.getBatch(this.state.length, BATCH_SIZE);
-            if (batch.length === 0) {
-                // No recheck: re-triggering on an empty batch spins forever.
-                if (this.state.length === 0 && !this.findEmptyState()) {
-                    const empty = this.streamContainerEl.createDiv({
-                        cls: "daily-notes-empty-state",
-                        text: "No daily notes found. Please check your daily notes settings.",
-                    });
-                    const sentinel = this.scroll.getSentinel();
-                    if (sentinel) this.streamContainerEl.insertBefore(empty, sentinel);
-                }
-                return;
+    loadMoreNotes(): Promise<void> {
+        if (this.loadPending) return this.queue;
+        this.loadPending = true;
+        return this.enqueue(async () => {
+            try {
+                await this.loadBatch();
+            } finally {
+                this.loadPending = false;
             }
+        });
+    }
 
-            this.findEmptyState()?.remove();
-
-            for (const file of batch) {
-                const el = await this.renderer.createNoteElement(file);
+    private async loadBatch(): Promise<void> {
+        const batch = this.plugin.service.getBatch(this.state.length, BATCH_SIZE);
+        if (batch.length === 0) {
+            // No recheck: re-triggering on an empty batch spins forever.
+            if (this.state.length === 0 && !this.findEmptyState()) {
+                const empty = this.streamContainerEl.createDiv({
+                    cls: "daily-notes-empty-state",
+                    text: "No daily notes found. Please check your daily notes settings.",
+                });
                 const sentinel = this.scroll.getSentinel();
-                if (sentinel) {
-                    this.streamContainerEl.insertBefore(el, sentinel);
-                } else {
-                    this.streamContainerEl.appendChild(el);
-                }
+                if (sentinel) this.streamContainerEl.insertBefore(empty, sentinel);
             }
-            this.state.reset([...this.state.notes, ...batch]);
-
-            this.scroll.recheck();
-        } finally {
-            this.isLoading = false;
+            return;
         }
+
+        this.findEmptyState()?.remove();
+
+        for (const file of batch) {
+            const el = await this.renderer.createNoteElement(file);
+            const sentinel = this.scroll.getSentinel();
+            if (sentinel) {
+                this.streamContainerEl.insertBefore(el, sentinel);
+            } else {
+                this.streamContainerEl.appendChild(el);
+            }
+        }
+        this.state.reset([...this.state.notes, ...batch]);
+
+        this.scroll.recheck();
     }
 
     // -------------------------------------------------------------------------
     // Refresh (settings change)
     // -------------------------------------------------------------------------
 
-    async refresh() {
+    refresh(): Promise<void> {
+        return this.enqueue(() => this.rerenderAll());
+    }
+
+    private async rerenderAll(): Promise<void> {
         const snapshot = captureAnchor(
             this.state.notes,
             this.streamContainerEl,
@@ -233,6 +248,17 @@ export class DailyNotesStreamView extends ItemView {
 
         // Restore state
         this.state.reset(notes);
+    }
+
+    /**
+     * Runs `task` after every previously queued mutation completes, so no two
+     * of them interleave at an await.
+     */
+    private enqueue(task: () => Promise<void>): Promise<void> {
+        this.queue = this.queue
+            .then(task)
+            .catch(e => console.error("DailyNotesStream: Failed to update the stream", e));
+        return this.queue;
     }
 
     // -------------------------------------------------------------------------
