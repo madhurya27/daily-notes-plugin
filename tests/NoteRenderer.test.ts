@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NoteRenderer } from "../src/NoteRenderer";
-import { TFile } from "obsidian";
+import { MarkdownView, TFile } from "obsidian";
 import type { CollapsibleManager } from "../src/CollapsibleManager";
 import type { DailyNotesStreamSettings } from "../src/settings";
 
@@ -22,6 +22,13 @@ function makeApp(opts: { readResult?: string; fileCache?: any; leaves?: any[] } 
         },
         _mockLeaf: mockLeaf,
     };
+}
+
+/** A markdown leaf view; `instanceof` rules out deferred (unloaded) views. */
+function makeMarkdownView(file: { path: string } | null): MarkdownView {
+    const view = new MarkdownView();
+    view.file = file as any;
+    return view;
 }
 
 function makeCollapsible(): CollapsibleManager {
@@ -98,7 +105,7 @@ describe("NoteRenderer.createNoteElement", () => {
 describe("NoteRenderer title click", () => {
     it("calls revealLeaf when file is already open in a markdown leaf", async () => {
         const file = new TFile("Notes/2025-01-01.md");
-        const existingLeaf = { view: { file: { path: file.path } } };
+        const existingLeaf = { view: makeMarkdownView({ path: file.path }) };
         const app = makeApp({ leaves: [existingLeaf] });
         const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
         const el = await renderer.createNoteElement(file);
@@ -118,8 +125,19 @@ describe("NoteRenderer title click", () => {
 
     it("opens in new leaf when leaves exist but none match the file path", async () => {
         const file = new TFile("Notes/2025-01-01.md");
-        const otherLeaf = { view: { file: { path: "Notes/2025-01-02.md" } } };
+        const otherLeaf = { view: makeMarkdownView({ path: "Notes/2025-01-02.md" }) };
         const app = makeApp({ leaves: [otherLeaf] });
+        const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
+        const el = await renderer.createNoteElement(file);
+        (el.querySelector(".daily-note-title") as HTMLElement).click();
+        expect(app.workspace.revealLeaf).not.toHaveBeenCalled();
+        expect(app.workspace.getLeaf).toHaveBeenCalled();
+    });
+
+    it("opens in a new leaf when the markdown leaf is deferred (not a MarkdownView)", async () => {
+        const file = new TFile("Notes/2025-01-01.md");
+        const deferredLeaf = { view: { file: { path: file.path } } };
+        const app = makeApp({ leaves: [deferredLeaf] });
         const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
         const el = await renderer.createNoteElement(file);
         (el.querySelector(".daily-note-title") as HTMLElement).click();
@@ -129,7 +147,7 @@ describe("NoteRenderer title click", () => {
 
     it("handles leaf.view.file being null without throwing", async () => {
         const file = new TFile("Notes/2025-01-01.md");
-        const nullFileLeaf = { view: { file: null } };
+        const nullFileLeaf = { view: makeMarkdownView(null) };
         const app = makeApp({ leaves: [nullFileLeaf] });
         const renderer = new NoteRenderer(app as any, {} as any, makeCollapsible(), makeSettings());
         const el = await renderer.createNoteElement(file);

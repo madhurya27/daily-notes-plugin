@@ -23,7 +23,8 @@ export class NoteRenderer {
         dateLink.onClickEvent(() => {
             const existing = this.app.workspace
                 .getLeavesOfType("markdown")
-                .find(leaf => (leaf.view as MarkdownView).file?.path === file.path);
+                // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
+                .find(leaf => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
             if (existing) {
                 void this.app.workspace.revealLeaf(existing);
                 return;
