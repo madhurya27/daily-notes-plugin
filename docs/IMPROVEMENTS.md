@@ -110,66 +110,66 @@ The hand-rolled `path.replace(/"/g, '\\"')` misses backslashes and other metacha
 
 ## P3 — Quality, performance, polish
 
-### I10. `DailyNoteService` cleanup
+### I10. `DailyNoteService` cleanup — **DONE**
 **File:** `src/DailyNoteService.ts`
 - `parseDate` calls `getDailyNoteSettings()` on every invocation — `insertSorted` calls it O(log n) times per insert. Fetch settings/format once per public operation and pass them down.
 - `buildSorted` duplicates the format-derivation and parse logic — reuse the shared helper.
 - `insertSorted` does a linear `some()` dedupe scan *and* a binary search. Drop the `some()`; after the binary search, check whether the neighbor at the insertion point has the same path.
 
-### I11. `StreamState`: stop copying on every read; add `append`
+### I11. `StreamState`: stop copying on every read; add `append` — **DONE**
 **File:** `src/StreamState.ts:6-8`
 
 The `notes` getter clones the array on every access (hot paths: `insertElementAt`, `loadMoreNotes`, `refresh`). Return the internal array typed `readonly TFile[]` without copying. Add `append(files: TFile[]): void` and replace `state.reset([...state.notes, ...batch])` in `loadMoreNotes` with `state.append(batch)`.
 
-### I12. Extract "insert before sentinel" helper
+### I12. Extract "insert before sentinel" helper — **DONE**
 **File:** `src/DailyNotesStreamView.ts:175-180, 187-192, 259-276`
 
 The `getSentinel() ? insertBefore : appendChild` dance appears four times. Add a private `insertBeforeSentinel(el: HTMLElement): void` on the view and use it everywhere (including the fallbacks inside `insertElementAt`).
 
-### I13. Use `vault.cachedRead` for rendering
+### I13. Use `vault.cachedRead` for rendering — **DONE**
 **File:** `src/NoteRenderer.ts:44`
 
 The view is read-only display; `vault.cachedRead(file)` avoids a disk read. Straight swap; update the mock.
 
-### I14. Disambiguate duplicate header/list collapse keys
+### I14. Disambiguate duplicate header/list collapse keys — **DONE**
 **File:** `src/CollapsibleManager.ts:26, 56`
 
 Two headings with identical text share one storage key, so collapsing one collapses both on next render. Track slug occurrence counts per note during processing and suffix repeats (`slug`, `slug-2`, `slug-3`). Same for list-item keys. First occurrence keeps the bare slug so existing stored state stays valid.
 
-### I15. Keyboard & ARIA support for collapsibles
+### I15. Keyboard & ARIA support for collapsibles — **DONE**
 **Files:** `src/CollapsibleManager.ts`, `src/NoteRenderer.ts`
 
 Chevrons are click-only spans. On each indicator (headers, list items, properties heading): `role="button"`, `tabindex="0"`, `aria-expanded` kept in sync on toggle, and a `keydown` handler for Enter/Space. Give the note-title `<a>` an `href="#"` + `preventDefault`, or make it a `role="link"` element, so it's focusable.
 
-### I16. Dependency & manifest hygiene
+### I16. Dependency & manifest hygiene — **DONE**
 **Files:** `package.json`, `manifest.json`
 - `"obsidian": "latest"` is a floating version and sits in `dependencies` although it's types-only (marked external at build). Move it to `devDependencies` pinned to a released version ≥7 days old (project convention).
 - `minAppVersion: "0.15.0"` is inaccurate: `MarkdownRenderer.render(app, ...)` requires ~1.3.0+. Verify the minimum against the obsidian-api changelog and bump `manifest.json` + `versions.json`.
 
-### I17. Trivia
+### I17. Trivia — **DONE**
 - Remove the leftover `console.debug("DailyNotesStreamView: Opening view...")` (`src/DailyNotesStreamView.ts:95`).
 - `NoteRenderer` captures the settings *object reference* and only works because settings are mutated in place (`src/settings.ts:33`). Pass the plugin (or a `getSettings` closure) instead so a future `loadSettings()` reassignment can't silently freeze the renderer's view of settings.
 - Empty-state div in `loadMoreNotes` uses raw `document.createElement`; use `createDiv({ cls, text })` like the rest of the codebase (falls out of I1).
 - Delete the empty `onunload()` override in `src/main.ts:66-67` — the base class default is identical.
 
-### I18. Delete dead code: `StreamState.findIndex`
+### I18. Delete dead code: `StreamState.findIndex` — **DONE**
 **File:** `src/StreamState.ts:24-26`
 
 `findIndex` has no callers in `src/` — only its own unit tests exercise it. Delete the method and its tests.
 
-### I19. Replace the `as MarkdownView` cast with `instanceof`
+### I19. Replace the `as MarkdownView` cast with `instanceof` — **DONE**
 **File:** `src/NoteRenderer.ts:24-26`
 
 `(leaf.view as MarkdownView).file` assumes every `"markdown"` leaf view is a loaded `MarkdownView` (deferred views since Obsidian 1.7.2 may not be). Use `leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path`. The obsidian mock needs a `MarkdownView` class for `instanceof` to work in tests. The review bot also flags view casts, so this supports the M section.
 
-### I20. Deduplicate collapse-indicator wiring; slim down `renderProperties`
+### I20. Deduplicate collapse-indicator wiring; slim down `renderProperties` — **DONE**
 **Files:** `src/CollapsibleManager.ts:29-45, 60-73`, `src/NoteRenderer.ts:69-128`
 
 The create-span → `addClass("collapse-indicator")` → `setIcon(chevron)` → read-state → toggle-handler sequence is written out three times (headers, list items, properties heading). Extract one helper, e.g. `attachCollapseToggle(hostEl, { initiallyCollapsed, onToggle }): HTMLElement` in `CollapsibleManager` (or a small shared module), and use it in all three places. While there:
 - `renderProperties` is ~60 lines doing three jobs; split out `renderPropertyRow(container, key, value)` and replace the icon if/else chain with a lookup table (`const PROPERTY_ICONS: Record<string, string>` plus the date/time substring rule).
 - Optional consistency fix: the properties panel's collapse state is a local variable, so it resets to the settings default whenever the note re-renders on modify — unlike headers/lists, which persist via `CollapsibleStateStore`. Persist it in the store under a reserved key (e.g. `properties`), falling back to `settings.propertiesCollapsed` when unset; `clearForFile` then cleans it up on delete for free.
 
-### I21. Collapse `insertElementAt` to a single decision
+### I21. Collapse `insertElementAt` to a single decision — **DONE**
 **File:** `src/DailyNotesStreamView.ts:249-279`
 
 Three branches with repeated fallbacks reduce (after I1 removes the stale empty-state and I12 adds `insertBeforeSentinel`) to: look up the element of `notes[index]` if `index < notes.length`; insert before it if found, otherwise `insertBeforeSentinel(el)`. The `index === 0` special case is subsumed — `notes[0]`'s element *is* the first note block.
