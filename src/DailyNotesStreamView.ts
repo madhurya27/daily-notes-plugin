@@ -16,7 +16,6 @@ export class DailyNotesStreamView extends ItemView {
     private renderer: NoteRenderer;
     private scroll: InfiniteScrollController;
     private streamContainerEl!: HTMLElement;
-    private offset = 0;
     private isLoading = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: DailyNotesStreamPlugin) {
@@ -65,7 +64,6 @@ export class DailyNotesStreamView extends ItemView {
             });
             return;
         }
-        this.offset = 0;
         this.state.reset();
 
         // Internal-link click handler
@@ -121,10 +119,10 @@ export class DailyNotesStreamView extends ItemView {
 
         // insertSorted is the single source of truth for sort order — it also
         // keeps the service's cache in sync so later getBatch() calls stay
-        // aligned with `this.offset`. Returns -1 for non-daily-note files.
+        // aligned with `this.state.length`. Returns -1 for non-daily-note files.
         const globalIndex = this.plugin.service.insertSorted(file);
         if (globalIndex === -1) return;
-        if (globalIndex >= this.offset) {
+        if (globalIndex >= this.state.length) {
             // Beyond the loaded range — a visible sentinel loads it now.
             this.scroll.recheck();
             return;
@@ -133,7 +131,6 @@ export class DailyNotesStreamView extends ItemView {
         this.renderer.createNoteElement(file).then(newEl => {
             this.insertElementAt(newEl, globalIndex);
             this.state.insert(globalIndex, file);
-            this.offset++;
         }).catch(e => console.error("DailyNotesStream: Failed to insert new note", e));
     }
 
@@ -146,9 +143,8 @@ export class DailyNotesStreamView extends ItemView {
         if (el) el.remove();
 
         const globalIndex = this.plugin.service.removeSorted(file.path);
-        if (globalIndex !== -1 && globalIndex < this.offset) {
+        if (globalIndex !== -1 && globalIndex < this.state.length) {
             this.state.remove(file.path);
-            this.offset--;
         }
         this.plugin.collapseStore.clearForFile(renderedPath);
     }
@@ -172,10 +168,10 @@ export class DailyNotesStreamView extends ItemView {
         if (this.isLoading) return;
         this.isLoading = true;
         try {
-            const batch = this.plugin.service.getBatch(this.offset, BATCH_SIZE);
+            const batch = this.plugin.service.getBatch(this.state.length, BATCH_SIZE);
             if (batch.length === 0) {
                 // No recheck: re-triggering on an empty batch spins forever.
-                if (this.offset === 0 && !this.findEmptyState()) {
+                if (this.state.length === 0 && !this.findEmptyState()) {
                     const empty = this.streamContainerEl.createDiv({
                         cls: "daily-notes-empty-state",
                         text: "No daily notes found. Please check your daily notes settings.",
@@ -198,7 +194,6 @@ export class DailyNotesStreamView extends ItemView {
                 }
             }
             this.state.reset([...this.state.notes, ...batch]);
-            this.offset += batch.length;
 
             this.scroll.recheck();
         } finally {

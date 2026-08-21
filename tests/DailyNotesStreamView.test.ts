@@ -114,7 +114,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
     // onFileCreate
     //
     // insertSorted() is the single source of truth: it both updates the
-    // service's cache (keeping it aligned with `offset`) and reports where the
+    // service's cache (keeping it aligned with the loaded range) and reports where the
     // file lands in the full sorted order. The view only renders/tracks it
     // locally when that position falls within the currently loaded range.
     // -----------------------------------------------------------------------
@@ -136,7 +136,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
         });
 
         it("renders and inserts the note at its global index when within the loaded range", async () => {
-            (view as any).offset = 2;
+            state.reset([new TFile("Notes/2025-01-04.md"), new TFile("Notes/2025-01-03.md")]);
             plugin.service.insertSorted = vi.fn().mockReturnValue(0);
             const file = new TFile("Notes/2025-01-05.md");
 
@@ -146,11 +146,11 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             expect(plugin.service.insertSorted).toHaveBeenCalledWith(file);
             expect((view as any).renderer.createNoteElement).toHaveBeenCalledWith(file);
             expect(state.notes[0]).toBe(file);
-            expect((view as any).offset).toBe(3);
+            expect(state.length).toBe(3);
         });
 
         it("updates the cache but does not render when the global index is beyond the loaded range", async () => {
-            (view as any).offset = 2;
+            state.reset([new TFile("Notes/2025-01-04.md"), new TFile("Notes/2025-01-03.md")]);
             plugin.service.insertSorted = vi.fn().mockReturnValue(2);
             const file = new TFile("Notes/2025-01-01.md");
 
@@ -158,12 +158,11 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             await flushPromises();
 
             expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
-            expect(state.length).toBe(0);
-            expect((view as any).offset).toBe(2);
+            expect(state.length).toBe(2);
         });
 
         it("rechecks the sentinel when the note lands beyond the loaded range", async () => {
-            (view as any).offset = 2;
+            state.reset([new TFile("Notes/2025-01-04.md"), new TFile("Notes/2025-01-03.md")]);
             plugin.service.insertSorted = vi.fn().mockReturnValue(2);
 
             view.onFileCreate(new TFile("Notes/2025-01-01.md"));
@@ -172,8 +171,19 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             expect((view as any).scroll.recheck).toHaveBeenCalledOnce();
         });
 
+        it("derives the loaded range from state.length, so the next batch starts after the insert", async () => {
+            state.reset([new TFile("Notes/2025-01-04.md"), new TFile("Notes/2025-01-03.md")]);
+            plugin.service.insertSorted = vi.fn().mockReturnValue(0);
+
+            view.onFileCreate(new TFile("Notes/2025-01-05.md"));
+            await flushPromises();
+
+            expect(state.length).toBe(3);
+            await view.loadMoreNotes();
+            expect(plugin.service.getBatch).toHaveBeenCalledWith(3, 10);
+        });
+
         it("rechecks the sentinel for the first note created into an empty stream", async () => {
-            (view as any).offset = 0;
             plugin.service.insertSorted = vi.fn().mockReturnValue(0);
 
             view.onFileCreate(new TFile("Notes/2025-01-01.md"));
@@ -188,7 +198,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
     // onFileDelete
     //
     // removeSorted() reports the file's previous global index — used both to
-    // keep the cache/offset aligned and to decide whether the file was
+    // keep the cache aligned and to decide whether the file was
     // currently rendered (global index within the loaded range).
     // -----------------------------------------------------------------------
     describe("onFileDelete", () => {
@@ -197,10 +207,9 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             expect(plugin.service.removeSorted).not.toHaveBeenCalled();
         });
 
-        it("removes from state and DOM and decrements offset when within the loaded range", () => {
+        it("removes from state and DOM when within the loaded range", () => {
             const note = new TFile("Notes/2025-01-01.md");
             state.reset([note]);
-            (view as any).offset = 1;
             plugin.service.removeSorted = vi.fn().mockReturnValue(0);
             const mockEl = { remove: vi.fn() };
             (view as any).findNoteElementByPath = vi.fn().mockReturnValue(mockEl);
@@ -210,11 +219,9 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             expect(plugin.service.removeSorted).toHaveBeenCalledWith(note.path);
             expect(mockEl.remove).toHaveBeenCalled();
             expect(state.length).toBe(0);
-            expect((view as any).offset).toBe(0);
         });
 
-        it("removes the DOM element without touching state/offset when beyond the loaded range", () => {
-            (view as any).offset = 0;
+        it("removes the DOM element without touching state when beyond the loaded range", () => {
             plugin.service.removeSorted = vi.fn().mockReturnValue(3);
             const note = new TFile("Notes/2025-01-10.md");
             const mockEl = { remove: vi.fn() };
@@ -224,7 +231,6 @@ describe("DailyNotesStreamView — vault event handlers", () => {
 
             expect(mockEl.remove).toHaveBeenCalled();
             expect(state.length).toBe(0);
-            expect((view as any).offset).toBe(0);
         });
 
         it("clears collapse state for the file's path regardless of whether it was cached", () => {
@@ -268,7 +274,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
         });
 
         it("re-inserts the renamed file at its new sorted position when within the loaded range", async () => {
-            (view as any).offset = 1;
+            state.reset([new TFile("Notes/2025-01-02.md")]);
             plugin.service.removeSorted = vi.fn().mockReturnValue(-1);
             plugin.service.insertSorted = vi.fn().mockReturnValue(0);
             (view as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
@@ -278,7 +284,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             await flushPromises();
 
             expect(state.notes[0]).toBe(file);
-            expect((view as any).offset).toBe(2);
+            expect(state.length).toBe(2);
         });
     });
 });
@@ -447,7 +453,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         expect((view as any).isLoading).toBe(false);
     });
 
-    it("appends empty-state div when batch is empty at offset 0 and no sentinel", async () => {
+    it("appends empty-state div when the batch is empty, nothing is loaded, and there is no sentinel", async () => {
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
         (view as any).scroll.getSentinel = vi.fn().mockReturnValue(null);
         const container = document.createElement("div");
@@ -456,7 +462,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         expect(container.querySelector(".daily-notes-empty-state")).not.toBeNull();
     });
 
-    it("inserts empty-state before sentinel when batch is empty at offset 0", async () => {
+    it("inserts empty-state before sentinel when the batch is empty and nothing is loaded", async () => {
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
         const container = document.createElement("div");
         const sentinel = document.createElement("div");
@@ -470,16 +476,16 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         expect(children.indexOf(emptyState!)).toBeLessThan(children.indexOf(sentinel));
     });
 
-    it("adds no empty-state div when batch is empty at offset > 0", async () => {
+    it("adds no empty-state div when the batch is empty but notes are already loaded", async () => {
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
-        (view as any).offset = 5;
+        (view as any).state.reset([new TFile("Notes/2025-01-01.md")]);
         const container = document.createElement("div");
         (view as any).streamContainerEl = container;
         await (view as any).loadMoreNotes();
         expect(container.querySelector(".daily-notes-empty-state")).toBeNull();
     });
 
-    it("renders each file in batch, updates state, and increments offset", async () => {
+    it("renders each file in batch and appends them to state", async () => {
         const files = [new TFile("Notes/2025-01-03.md"), new TFile("Notes/2025-01-01.md")];
         plugin.service.getBatch = vi.fn().mockReturnValue(files);
         (view as any).scroll.getSentinel = vi.fn().mockReturnValue(null);
@@ -487,7 +493,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         (view as any).streamContainerEl = container;
         await (view as any).loadMoreNotes();
         expect((view as any).renderer.createNoteElement).toHaveBeenCalledTimes(2);
-        expect((view as any).offset).toBe(2);
+        expect((view as any).state.length).toBe(2);
     });
 
     it("inserts each rendered note before sentinel when one exists", async () => {
@@ -851,7 +857,7 @@ describe("DailyNotesStreamView — error catch paths", () => {
 
     it("onFileCreate logs error when createNoteElement rejects", async () => {
         const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-        (view as any).offset = 1;
+        (view as any).state.reset([new TFile("Notes/2025-01-04.md")]);
         plugin.service.insertSorted = vi.fn().mockReturnValue(0);
         (view as any).renderer.createNoteElement = vi.fn().mockRejectedValue(new Error("create failed"));
 
