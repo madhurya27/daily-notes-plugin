@@ -166,11 +166,6 @@ describe("InfiniteScrollController", () => {
     });
     // -------------------------------------------------------------------------
     // recheck
-    //
-    // IntersectionObserver only fires on intersection *changes*. When a loaded
-    // batch is too short to push the sentinel out of the root margin, the
-    // sentinel stays intersecting and no further callback arrives. Re-observing
-    // forces a fresh initial callback with the current intersection state.
     // -------------------------------------------------------------------------
 
     it("recheck re-observes the sentinel to force a fresh callback", () => {

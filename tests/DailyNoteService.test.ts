@@ -180,11 +180,6 @@ describe("DailyNoteService", () => {
         });
     });
 
-    // -----------------------------------------------------------------------
-    // A vault event fires for every file, so insertSorted must reject anything
-    // that is not a real daily note — otherwise the cache desyncs from
-    // getAllDailyNotes() and pagination skips or duplicates notes.
-    // -----------------------------------------------------------------------
     describe("instance: insertSorted — non-daily-note files", () => {
         function serviceWith(paths: string[]): DailyNoteService {
             __setMockNotes(paths);
@@ -281,9 +276,8 @@ describe("DailyNoteService", () => {
             __setMockNotes(["Notes/2025-01-01.md"]);
             const svc = new DailyNoteService();
             svc.initialize();
-            // "YYYY/MM/".split("/").pop() === "" → right side of || in parseDate taken.
-            // The basename still parses, but no file can match a format ending in
-            // a slash (it implies an empty filename), so the note is rejected.
+            // "YYYY/MM/".split("/").pop() === "" → || fallback taken. No file can
+            // match a format ending in a slash, so the note is still rejected.
             __setMockSettings({ format: "YYYY/MM/", folder: "Notes" });
             const newFile = new TFile("Notes/2025-01-05.md");
             expect(svc.insertSorted(newFile)).toBe(-1);

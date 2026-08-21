@@ -123,8 +123,7 @@ export class DailyNotesStreamView extends ItemView {
         const globalIndex = this.plugin.service.insertSorted(file);
         if (globalIndex === -1) return;
         if (globalIndex >= this.offset) {
-            // Beyond the loaded range: if the sentinel is visible, the recheck
-            // makes loadMoreNotes pick it up; otherwise a later scroll will.
+            // Beyond the loaded range — a visible sentinel loads it now.
             this.scroll.recheck();
             return;
         }
@@ -199,8 +198,6 @@ export class DailyNotesStreamView extends ItemView {
             this.state.reset([...this.state.notes, ...batch]);
             this.offset += batch.length;
 
-            // A short batch can leave the sentinel intersecting — without this
-            // the observer never fires again.
             this.scroll.recheck();
         } finally {
             this.isLoading = false;

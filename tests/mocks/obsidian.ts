@@ -64,8 +64,7 @@ export class TFile extends TAbstractFile {
     stat: any;
     constructor(path: string) {
         super(path);
-        // basename is filename without extension; extension is whatever follows
-        // the last dot (files without one get "")
+        // split on the last dot; files without one get extension ""
         const dot = this.name.lastIndexOf(".");
         this.basename = dot > 0 ? this.name.slice(0, dot) : this.name;
         this.extension = dot > 0 ? this.name.slice(dot + 1) : "";

@@ -78,8 +78,8 @@ export class DailyNoteService {
      * Parses a file's daily-note date, or null if it is not a daily note.
      *
      * Vault events fire for every file, so a basename match alone would let
-     * `Attachments/2026-07-07.png` into the cache. The date is round-tripped
-     * back into the path the settings imply and must match the file's.
+     * `Attachments/2026-07-07.png` in: the date must also round-trip back to
+     * the file's own path.
      */
     private parseDate(file: TFile) {
         if (file.extension !== "md") return null;

@@ -45,12 +45,8 @@ export class InfiniteScrollController {
     }
 
     /**
-     * Forces the observer to re-evaluate the sentinel's current visibility.
-     *
-     * IntersectionObserver only fires on intersection *changes*. A batch too
-     * short to push the sentinel out of the root margin leaves it intersecting,
-     * so no further callback arrives and the stream stalls. Re-observing
-     * delivers a fresh initial callback with the current state.
+     * Re-observes the sentinel, forcing a fresh callback. Needed because
+     * IntersectionObserver only fires on intersection *changes*.
      */
     recheck(): void {
         if (!this.observer || !this.sentinel) return;
