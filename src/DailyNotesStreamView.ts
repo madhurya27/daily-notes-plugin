@@ -193,12 +193,10 @@ export class DailyNotesStreamView extends ItemView {
         if (batch.length === 0) {
             // No recheck: re-triggering on an empty batch spins forever.
             if (this.state.length === 0 && !this.findEmptyState()) {
-                const empty = this.streamContainerEl.createDiv({
+                this.insertBeforeSentinel(this.streamContainerEl.createDiv({
                     cls: "daily-notes-empty-state",
                     text: "No daily notes found. Please check your daily notes settings.",
-                });
-                const sentinel = this.scroll.getSentinel();
-                if (sentinel) this.streamContainerEl.insertBefore(empty, sentinel);
+                }));
             }
             return;
         }
@@ -206,13 +204,7 @@ export class DailyNotesStreamView extends ItemView {
         this.findEmptyState()?.remove();
 
         for (const file of batch) {
-            const el = await this.renderer.createNoteElement(file);
-            const sentinel = this.scroll.getSentinel();
-            if (sentinel) {
-                this.streamContainerEl.insertBefore(el, sentinel);
-            } else {
-                this.streamContainerEl.appendChild(el);
-            }
+            this.insertBeforeSentinel(await this.renderer.createNoteElement(file));
         }
         this.state.append(batch);
 
@@ -286,35 +278,24 @@ export class DailyNotesStreamView extends ItemView {
         return (contentEl?.closest(".daily-note-block") as HTMLElement) ?? null;
     }
 
-    private insertElementAt(el: HTMLElement, index: number): void {
-        const notes = this.state.notes;
-        if (index === 0) {
-            const first = this.streamContainerEl.firstChild;
-            if (first) {
-                this.streamContainerEl.insertBefore(el, first);
-            } else {
-                this.streamContainerEl.appendChild(el);
-            }
-        } else if (index >= notes.length) {
-            const sentinel = this.scroll.getSentinel();
-            if (sentinel) {
-                this.streamContainerEl.insertBefore(el, sentinel);
-            } else {
-                this.streamContainerEl.appendChild(el);
-            }
+    /** The sentinel must stay the last child, so everything lands before it. */
+    private insertBeforeSentinel(el: HTMLElement): void {
+        const sentinel = this.scroll.getSentinel();
+        if (sentinel) {
+            this.streamContainerEl.insertBefore(el, sentinel);
         } else {
-            const nextFile = notes[index];
-            const nextEl = nextFile ? this.findNoteElement(nextFile) : null;
-            if (nextEl) {
-                this.streamContainerEl.insertBefore(el, nextEl);
-            } else {
-                const sentinel = this.scroll.getSentinel();
-                if (sentinel) {
-                    this.streamContainerEl.insertBefore(el, sentinel);
-                } else {
-                    this.streamContainerEl.appendChild(el);
-                }
-            }
+            this.streamContainerEl.appendChild(el);
+        }
+    }
+
+    /** Inserts a note block ahead of the note that now follows it. */
+    private insertElementAt(el: HTMLElement, index: number): void {
+        const nextFile = this.state.notes[index];
+        const nextEl = nextFile ? this.findNoteElement(nextFile) : null;
+        if (nextEl) {
+            this.streamContainerEl.insertBefore(el, nextEl);
+        } else {
+            this.insertBeforeSentinel(el);
         }
     }
 }

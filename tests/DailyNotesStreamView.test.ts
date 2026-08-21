@@ -790,7 +790,7 @@ describe("DailyNotesStreamView — findNoteElement", () => {
 });
 
 // ---------------------------------------------------------------------------
-// insertElementAt — real implementation (lines 248–277)
+// insertElementAt — real implementation
 // ---------------------------------------------------------------------------
 
 describe("DailyNotesStreamView — insertElementAt", () => {
@@ -805,16 +805,22 @@ describe("DailyNotesStreamView — insertElementAt", () => {
         (view as any).streamContainerEl = container;
     });
 
-    it("index 0 with existing first child → inserts before first child", () => {
-        const existing = document.createElement("div");
-        container.appendChild(existing);
+    it("index 0 → inserts before the first note block", () => {
+        const fileA = new TFile("Notes/2025-01-01.md");
+        state.reset([fileA]);
+        const blockA = document.createElement("div");
+        container.appendChild(blockA);
+        (view as any).findNoteElement = vi.fn().mockReturnValue(blockA);
+
         const el = document.createElement("div");
         (view as any).insertElementAt(el, 0);
+
         expect(container.firstChild).toBe(el);
-        expect(container.children[1]).toBe(existing);
+        expect(container.children[1]).toBe(blockA);
     });
 
-    it("index 0 with empty container → appends to container", () => {
+    it("index 0 with an empty stream → appends to container", () => {
+        (view as any).scroll.getSentinel = vi.fn().mockReturnValue(null);
         const el = document.createElement("div");
         (view as any).insertElementAt(el, 0);
         expect(container.firstChild).toBe(el);
@@ -888,7 +894,7 @@ describe("DailyNotesStreamView — insertElementAt", () => {
         expect(container.lastChild).toBe(el);
     });
 
-    it("middle index, nextFile is undefined in notes array (covers ternary false branch at line 266)", () => {
+    it("index inside the range but with an undefined slot → appends", () => {
         const fileA = new TFile("Notes/2025-01-03.md");
         state.reset([fileA, fileA]); // length = 2 so else branch is reached at index 1
         // Make notes[1] return undefined via a spy on the getter
