@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { DailyNoteService } from "../src/DailyNoteService";
-import { __setMockNotes, __setMockSettings } from "obsidian-daily-notes-interface";
+import { __setMockNotes, __setMockSettings, __getSettingsCallCount, __resetSettingsCallCount } from "obsidian-daily-notes-interface";
 import { TFile } from "obsidian";
 
 describe("DailyNoteService", () => {
@@ -115,6 +115,35 @@ describe("DailyNoteService", () => {
 
             expect(idx).toBe(0);
             expect(svc.getBatch(0, 10)[0]?.basename).toBe("2025-01-05");
+        });
+
+        it("returns -1 for a path already in the cache", () => {
+            __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
+            __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]);
+
+            const svc = new DailyNoteService();
+            svc.initialize();
+
+            expect(svc.insertSorted(new TFile("Notes/2025-01-01.md"))).toBe(-1);
+            expect(svc.length).toBe(2);
+        });
+
+        it("reads the daily-note settings once per insert", () => {
+            __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
+            __setMockNotes([
+                "Notes/2025-01-01.md",
+                "Notes/2025-01-02.md",
+                "Notes/2025-01-03.md",
+                "Notes/2025-01-04.md",
+            ]);
+
+            const svc = new DailyNoteService();
+            svc.initialize();
+            __resetSettingsCallCount();
+
+            svc.insertSorted(new TFile("Notes/2025-01-05.md"));
+
+            expect(__getSettingsCallCount()).toBe(1);
         });
 
         it("returns -1 when file already present", () => {

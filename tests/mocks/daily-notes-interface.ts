@@ -45,8 +45,19 @@ export function getAllDailyNotes() {
     return mockNotes;
 }
 
+let settingsCallCount = 0;
+
 export function getDailyNoteSettings() {
+    settingsCallCount++;
     return mockSettings;
+}
+
+export function __getSettingsCallCount() {
+    return settingsCallCount;
+}
+
+export function __resetSettingsCallCount() {
+    settingsCallCount = 0;
 }
 
 // Helpers to setup test state
