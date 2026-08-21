@@ -344,6 +344,18 @@ describe("DailyNotesStreamView — view API", () => {
         await view.onClose();
         expect((view as any).scroll.detach).toHaveBeenCalled();
     });
+
+    it("gives the renderer a live view of the plugin settings", async () => {
+        const plugin = makePlugin();
+        const app = makeApp();
+        app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { mood: "happy" } });
+        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(app) as any, plugin);
+
+        plugin.settings = { showProperties: true, propertiesCollapsed: false }; // as loadSettings() would
+        const el = await (freshView as any).renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+
+        expect(el.querySelector(".metadata-container")).not.toBeNull();
+    });
 });
 
 // ---------------------------------------------------------------------------
