@@ -41,7 +41,7 @@ export class NoteRenderer {
         contentEl.dataset.sourcePath = file.path;
 
         try {
-            let markdown = await this.app.vault.read(file);
+            let markdown = await this.app.vault.cachedRead(file);
 
             const cache = this.app.metadataCache.getFileCache(file);
             const frontmatterPos = cache?.frontmatterPosition;

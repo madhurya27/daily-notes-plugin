@@ -29,7 +29,7 @@ function makeApp() {
     return {
         vault: {
             on: vi.fn().mockReturnValue({}),
-            read: vi.fn().mockResolvedValue(""),
+            cachedRead: vi.fn().mockResolvedValue(""),
         },
         workspace: {
             on: vi.fn().mockReturnValue({}),
@@ -969,7 +969,7 @@ describe("DailyNotesStreamView — callback wiring", () => {
                 capturedCallbacks[event] = cb;
                 return {};
             }),
-            read: vi.fn().mockResolvedValue(""),
+            cachedRead: vi.fn().mockResolvedValue(""),
         };
         const capturingCache = {
             getFileCache: vi.fn().mockReturnValue({ frontmatter: null }),

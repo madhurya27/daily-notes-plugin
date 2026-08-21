@@ -13,7 +13,7 @@ function makeApp(opts: { readResult?: string; fileCache?: any; leaves?: any[] } 
     const mockOpenFile = vi.fn().mockResolvedValue(undefined);
     const mockLeaf = { openFile: mockOpenFile };
     return {
-        vault: { read: vi.fn().mockResolvedValue(readResult) },
+        vault: { cachedRead: vi.fn().mockResolvedValue(readResult) },
         metadataCache: { getFileCache: vi.fn().mockReturnValue(fileCache) },
         workspace: {
             getLeavesOfType: vi.fn().mockReturnValue(leaves),
@@ -63,12 +63,17 @@ describe("NoteRenderer.createNoteElement", () => {
     });
 
     it("strips frontmatter using frontmatterPosition offset", async () => {
-        app.vault.read = vi.fn().mockResolvedValue("---\ntitle: Test\n---\nBody text");
+        app.vault.cachedRead = vi.fn().mockResolvedValue("---\ntitle: Test\n---\nBody text");
         app.metadataCache.getFileCache = vi.fn().mockReturnValue({
             frontmatterPosition: { end: { offset: 23 } },
         });
         // MarkdownRenderer.render is a no-op mock; just ensure no throw
         await expect(renderer.createNoteElement(new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+    });
+
+    it("reads through the cache — the view only displays notes", async () => {
+        await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        expect(app.vault.cachedRead).toHaveBeenCalledOnce();
     });
 
     it("calls makeCollapsible after rendering content", async () => {
@@ -78,8 +83,8 @@ describe("NoteRenderer.createNoteElement", () => {
         expect(collapsible.makeCollapsible).toHaveBeenCalledOnce();
     });
 
-    it("shows 'Error rendering note' text when vault.read rejects", async () => {
-        app.vault.read = vi.fn().mockRejectedValue(new Error("read failed"));
+    it("shows 'Error rendering note' text when the read rejects", async () => {
+        app.vault.cachedRead = vi.fn().mockRejectedValue(new Error("read failed"));
         vi.spyOn(console, "error").mockImplementation(() => {});
         const el = await renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
         expect(el.querySelector(".daily-note-content")?.textContent).toBe("Error rendering note");
