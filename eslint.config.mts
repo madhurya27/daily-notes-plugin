@@ -34,5 +34,8 @@ export default tseslint.config(
         "PluginTest",
         "vitest.config.ts",
         "tests",
+        // Typechecked by tsconfig.e2e.json; ESLint's project service covers src only.
+        "e2e",
+        "playwright.config.ts",
     ])
 );

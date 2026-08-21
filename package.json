@@ -12,12 +12,15 @@
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "test": "vitest run",
-        "test:coverage": "vitest run --coverage"
+        "test:coverage": "vitest run --coverage",
+        "typecheck:e2e": "tsc -noEmit -p tsconfig.e2e.json",
+        "test:e2e": "pnpm run build && pnpm run typecheck:e2e && playwright test"
     },
     "keywords": [],
     "license": "MIT",
     "devDependencies": {
         "@eslint/js": "9.30.1",
+        "@playwright/test": "1.62.1",
         "@types/node": "^20.0.0",
         "@vitest/coverage-v8": "^4.0.18",
         "esbuild": "0.25.5",

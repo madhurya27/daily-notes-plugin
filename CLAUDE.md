@@ -10,6 +10,7 @@ pnpm run lint      # ESLint
 pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is hand-wrapped, so it is ignored.
 pnpm test          # vitest run (mocks in tests/mocks/, jsdom via tests/setup.ts)
 pnpm run test:coverage  # vitest run --coverage (100% required)
+pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
 ```
 
 Deploy to test vault:
@@ -25,6 +26,8 @@ Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 - `src/DailyNoteService.ts` — fetches/parses all daily notes via `obsidian-daily-notes-interface`, handles nested folder formats (e.g. `YYYY/MM/YYYY-MM-DD`), returns paginated batches sorted newest-first.
 - `src/DailyNotesStreamView.ts` — `ItemView` subclass; infinite scroll (`IntersectionObserver`, batch 10), vault event handlers (`modify`/`create`/`delete`/`rename`), `MarkdownRenderer.render()`, collapsible headers (H1–H6) and lists, frontmatter panel.
 - `src/settings.ts` — `DailyNotesStreamSettings` interface, defaults, `PluginSettingTab`.
+
+**E2E**: `e2e/` drives the *real* Obsidian app. `e2e/obsidian.ts` seeds a throwaway vault (14 daily notes + the built plugin), launches the installed Obsidian with its own `--user-data-dir` and `--remote-debugging-port`, and attaches Playwright over CDP — so the user's real vault and config are never touched. It answers the first-run trust prompt, enables the plugin through `app.plugins`, and closes the settings pane (an open modal keeps the leaf deferred, and a deferred view never renders). Tests share one instance and open a fresh view each via `openStream()`. Unit tests mock the `obsidian` module; only these exercise real `MarkdownRenderer` output, real `moment` parsing, and real vault events.
 
 **Build**: esbuild `src/main.ts` → `main.js` (CJS, `obsidian` external). **Tests**: Vitest with mocks for `obsidian` and `obsidian-daily-notes-interface` from `tests/mocks/` and jsdom (`tests/setup.ts`). 100% coverage required, including view logic.
 
