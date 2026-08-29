@@ -190,19 +190,58 @@ export class MarkdownView {
 export class Component {}
 
 export class PluginSettingTab {
-    containerEl: any = { empty: () => {} };
-    constructor(_app: any, _plugin: any) {}
+    app: any;
+    containerEl: HTMLElement = document.createElement("div");
+    constructor(app: any, _plugin: any) {
+        this.app = app;
+    }
+}
+
+/** Stands in for Obsidian's ToggleComponent; `change()` fires the bound handler. */
+export class ToggleComponent {
+    value = false;
+    private handler: (_value: boolean) => unknown = () => {};
+    setValue(value: boolean) {
+        this.value = value;
+        return this;
+    }
+    onChange(cb: (_value: boolean) => unknown) {
+        this.handler = cb;
+        return this;
+    }
+    async change(value: boolean) {
+        this.value = value;
+        await this.handler(value);
+    }
 }
 
 export class Setting {
-    constructor(_containerEl: any) {}
-    setName(_name: string) {
+    /** Every Setting built since the last reset, in construction order. */
+    static created: Setting[] = [];
+    static reset() {
+        Setting.created = [];
+    }
+
+    name = "";
+    desc = "";
+    toggles: ToggleComponent[] = [];
+
+    constructor(containerEl: HTMLElement) {
+        containerEl.createDiv({ cls: "setting-item" });
+        Setting.created.push(this);
+    }
+    setName(name: string) {
+        this.name = name;
         return this;
     }
-    setDesc(_desc: string) {
+    setDesc(desc: string) {
+        this.desc = desc;
         return this;
     }
-    addToggle(_cb: (_t: any) => any) {
+    addToggle(cb: (_toggle: ToggleComponent) => unknown) {
+        const toggle = new ToggleComponent();
+        cb(toggle);
+        this.toggles.push(toggle);
         return this;
     }
 }
@@ -210,16 +249,37 @@ export class Setting {
 export class Plugin {
     app: any;
     manifest: any;
-    constructor() {}
-    loadData() {
-        return Promise.resolve(null);
+    /** Registrations recorded so tests can invoke what onload() wired up. */
+    views: Record<string, (_leaf: any) => any> = {};
+    ribbonIcons: { icon: string; title: string; callback: (_evt: any) => any }[] = [];
+    commands: { id: string; name: string; callback: () => any }[] = [];
+    settingTabs: any[] = [];
+    data: unknown = null;
+
+    constructor(app?: any, manifest?: any) {
+        this.app = app;
+        this.manifest = manifest;
     }
-    saveData(_data: any) {
+    loadData() {
+        return Promise.resolve(this.data);
+    }
+    saveData(data: unknown) {
+        this.data = data;
         return Promise.resolve();
     }
-    registerView(_type: string, _cb: any) {}
-    addRibbonIcon(_icon: string, _title: string, _cb: any) {}
-    addCommand(_cmd: any) {}
-    addSettingTab(_tab: any) {}
+    registerView(type: string, cb: (_leaf: any) => any) {
+        this.views[type] = cb;
+    }
+    addRibbonIcon(icon: string, title: string, callback: (_evt: any) => any) {
+        this.ribbonIcons.push({ icon, title, callback });
+        return document.createElement("div");
+    }
+    addCommand(cmd: { id: string; name: string; callback: () => any }) {
+        this.commands.push(cmd);
+        return cmd;
+    }
+    addSettingTab(tab: any) {
+        this.settingTabs.push(tab);
+    }
     registerEvent(_e: any) {}
 }
