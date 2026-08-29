@@ -20,6 +20,14 @@ const NO_THROTTLE = [
     "--disable-renderer-backgrounding",
     "--disable-background-timer-throttling",
 ];
+/**
+ * The physical window is shrunk to Obsidian's minimum and parked in a screen
+ * corner, so the unavoidable flash before the hide lands is a small square
+ * rather than a full-size window. The renderer is then told to lay out at
+ * VIEWPORT regardless, so tests see an ordinary viewport.
+ */
+const MIN_WINDOW = { width: 300, height: 200 };
+const VIEWPORT = { width: 1024, height: 800 };
 const PLUGIN_ID = "daily-notes-stream";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -89,6 +97,8 @@ export interface ObsidianApp {
     vaultPath: string;
     /** Whether macOS currently has the app hidden. */
     isHidden: () => boolean;
+    /** Whether macOS currently has the app in front of everything else. */
+    isFrontmost: () => boolean;
 }
 
 async function launch(): Promise<{
@@ -105,8 +115,21 @@ async function launch(): Promise<{
         })
     );
 
+    // Obsidian keeps window bounds per vault. Bounds fully off the screen are
+    // rejected outright (it falls back to a centred 1024x800); a corner is
+    // clamped to fit, which is what we want.
+    if (!SHOW_WINDOW) {
+        const screen = screenSize();
+        writeFileSync(
+            join(userDataDir, `${VAULT_ID}.json`),
+            JSON.stringify({ ...MIN_WINDOW, x: screen.width, y: screen.height, isMaximized: false, zoom: 0 })
+        );
+    }
+
     const port = await freePort();
     const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE];
+    // Whoever owns the screen right now gets it back if Obsidian grabs focus.
+    const focusOwner = SHOW_WINDOW ? null : frontmostApp();
     // detached: Electron spawns helper processes, and killing only the parent
     // orphans them. Its own process group can be signalled as a unit.
     const proc: ChildProcess | null = SHOW_WINDOW
@@ -114,9 +137,11 @@ async function launch(): Promise<{
         : launchHidden(args, userDataDir);
 
     let browser: Browser | null = null;
+    let hider: ChildProcess | null = null;
     // Defined before startup runs: a throw anywhere below must still tear the
     // instance down, or a failed run leaves an Obsidian window in the dock.
     const dispose = async () => {
+        hider?.kill();
         await browser?.close().catch(() => {});
         if (proc) await killTree(proc);
         else killByUserDataDir(userDataDir);
@@ -125,7 +150,18 @@ async function launch(): Promise<{
     };
 
     try {
-        return { app: await startUp((browser = await connectWithRetry(port)), userDataDir, vaultPath), dispose };
+        // Armed before the window paints: the CDP port is not open yet, so
+        // there is nothing to hide, but there is also nothing left to miss.
+        if (!SHOW_WINDOW) hider = watchAndHide(await awaitMainProcess(userDataDir), focusOwner);
+        const app = await startUp((browser = await connectWithRetry(port)), userDataDir, vaultPath);
+        if (hider) {
+            hider.kill();
+            hider = null;
+            // Startup is over, so nothing will show the window again; make the
+            // hidden state one Node observed rather than one AppleScript left.
+            hideApp(userDataDir);
+        }
+        return { app, dispose };
     } catch (error) {
         await dispose();
         throw error;
@@ -134,12 +170,14 @@ async function launch(): Promise<{
 
 /** Drives Obsidian's first-run dance until the plugin is live and the window hidden. */
 async function startUp(browser: Browser, userDataDir: string, vaultPath: string): Promise<ObsidianApp> {
-    // As early as possible: the CDP target exists, so the window does too, and
-    // every step below drives the renderer over CDP rather than the desktop.
-    if (!SHOW_WINDOW) hideApp(userDataDir);
-
     const context = browser.contexts()[0]!;
     const page = context.pages()[0]!;
+    // The window itself is 300x200 in a corner; lay the page out at a normal
+    // size so viewport-sensitive behaviour (infinite scroll) is realistic.
+    if (!SHOW_WINDOW) {
+        const cdp = await context.newCDPSession(page);
+        await cdp.send("Emulation.setDeviceMetricsOverride", { ...VIEWPORT, deviceScaleFactor: 1, mobile: false });
+    }
     // Playwright emulates a light color scheme on attach; null restores the
     // system preference so the window matches the rest of the desktop.
     await page.emulateMedia({ colorScheme: null });
@@ -172,17 +210,16 @@ async function startUp(browser: Browser, userDataDir: string, vaultPath: string)
     await page.evaluate(() => window.app.setting?.close?.());
     await expect(page.locator(".modal-container")).toHaveCount(0);
 
-    // Again at the end: opening the vault re-shows the window behind us.
-    // Electron never propagates the hide to the renderer, so document.hidden
-    // stays false — macOS is the only authority on whether the window shows.
-    if (!SHOW_WINDOW) hideApp(userDataDir);
-
     const isHidden = () => {
         const pid = mainProcessPid(userDataDir);
         return pid !== null && systemEvents(pid, "get visible") === "false";
     };
+    const isFrontmost = () => {
+        const pid = mainProcessPid(userDataDir);
+        return pid !== null && systemEvents(pid, "get frontmost") === "true";
+    };
 
-    return { page, vaultPath, isHidden };
+    return { page, vaultPath, isHidden, isFrontmost };
 }
 
 /**
@@ -196,12 +233,80 @@ function launchHidden(args: string[], userDataDir: string): null {
     return null;
 }
 
+/** The main display's size, so the window can be parked in its far corner. */
+function screenSize(): { width: number; height: number } {
+    try {
+        const out = execFileSync("osascript", ["-e", 'tell application "Finder" to get bounds of window of desktop'], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        });
+        const [, , width, height] = out.split(",").map((n) => Number(n.trim()));
+        if (width && height) return { width, height };
+    } catch {
+        // Fall through to a size no display exceeds by much; macOS clamps anyway.
+    }
+    return { width: 5000, height: 3000 };
+}
+
+/** The app that owns the screen, so focus can be handed straight back to it. */
+function frontmostApp(): string | null {
+    try {
+        const script = 'tell application "System Events" to get name of first process whose frontmost is true';
+        return (
+            execFileSync("osascript", ["-e", script], {
+                encoding: "utf8",
+                stdio: ["ignore", "pipe", "ignore"],
+            }).trim() || null
+        );
+    } catch {
+        return null;
+    }
+}
+
+/** Waits for this run's Electron main process to exist, so it can be addressed. */
+async function awaitMainProcess(userDataDir: string): Promise<number> {
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+        const pid = mainProcessPid(userDataDir);
+        if (pid !== null) return pid;
+        await new Promise((r) => setTimeout(r, 25));
+    }
+    throw new Error("Obsidian did not start");
+}
+
 /**
- * Hides the app once it owns a window. `-j` only stops the app activating —
- * Obsidian shows its window regardless, and hiding before that window exists is
- * undone by the show. Seeding the window offscreen does not work either: macOS
- * clamps saved bounds back onto a display. Hiding this late leaves the window on
- * screen for a moment; it is once per run, not once per test.
+ * Keeps the window off the screen for the whole of startup, and gives focus
+ * back when it is taken. `open -g -j` only stops LaunchServices activating the
+ * app — Obsidian shows and focuses its own window twice, when it first paints
+ * and again once the vault has opened. Hiding from Node reacts a poll too late
+ * (about a third of a second of stolen focus each time), so the loop lives
+ * inside one long-running osascript that reacts within a frame or two. It is
+ * bounded rather than infinite: a crashed run must not strand it.
+ */
+function watchAndHide(pid: number, focusOwner: string | null): ChildProcess {
+    const restore = focusOwner ? `set frontmost of (first process whose name is "${focusOwner}") to true` : "";
+    // The process is resolved once: looking it up by unix id is the slow part,
+    // and every millisecond spent on it is a millisecond of visible window.
+    const script = `tell application "System Events"
+        set p to first process whose unix id is ${pid}
+        repeat 6000 times
+            try
+                if visible of p is true then
+                    set visible of p to false
+                    ${restore}
+                end if
+            end try
+            delay 0.02
+        end repeat
+    end tell`;
+    return spawn("osascript", ["-e", script], { stdio: "ignore" });
+}
+
+/**
+ * Hides the app, waiting for it to own a window first — hiding before that
+ * window exists is undone by the show, and seeding the window offscreen does not
+ * work either: macOS clamps saved bounds back onto a display. The watcher above
+ * does the hiding during startup; this settles the final state afterwards.
  */
 function hideApp(userDataDir: string): void {
     const deadline = Date.now() + 20_000;

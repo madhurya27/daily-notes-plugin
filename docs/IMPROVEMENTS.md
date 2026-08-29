@@ -185,21 +185,21 @@ Reference: Obsidian's [submission requirements](https://docs.obsidian.md/Plugins
 
 The internal-link handler uses raw `addEventListener`. Reviewers require DOM listeners via `this.registerDomEvent(this.streamContainerEl, "click", ...)` for guaranteed cleanup. Straight swap; add `registerDomEvent` to the `Component`/view mock if missing.
 
-### M2. Isolate the internal `vault.config` access
+### M2. Isolate the internal `vault.config` access — **DONE**
 **File:** `src/DailyNotesStreamView.ts:46-53`
 
 `readableLineLength` has no public API, so some internal access is unavoidable — but reviewers flag it, so contain and justify it. Extract a helper (e.g. `getReadableLineLength(app): boolean` in a small util or on the view) holding the single type-cast, keep the `?? true` fallback, and keep the comment explaining there is no public API. Behavior unchanged; be prepared to justify it in the submission PR.
 
-### M3. `manifest.json` fixes
+### M3. `manifest.json` fixes — **DONE**
 - `authorUrl` is `https://github.com/madhurya`, but the git author is `madhurya27` — verify and point it at the real profile (reviewers check that it resolves to the author). Update `author` if it should be a display name other than "Madhurya".
 - `minAppVersion` accuracy is item I16 — required before submission, since the bot cross-checks `versions.json`.
 - Do not add `fundingUrl` unless it's a real funding page (an invalid one is rejected).
 
-### M4. README corrections
+### M4. README corrections — **DONE**
 - The command palette entry is shown as "Daily Notes Stream: Open stream", but the README says `Open Daily Notes Stream` — fix the Usage section.
 - Rename the title from "Daily Notes Stream Plugin" to "Daily Notes Stream" (guidelines discourage "Plugin" in names; keeps it consistent with the manifest).
 
-### M5. Release automation
+### M5. Release automation — **DONE**
 Add `.github/workflows/release.yml` mirroring the [obsidian-sample-plugin release workflow](https://github.com/obsidianmd/obsidian-sample-plugin/blob/master/.github/workflows/release.yml): on a pushed tag, run `pnpm install --frozen-lockfile && pnpm run build`, then create a draft GitHub release with `main.js`, `manifest.json`, `styles.css` attached as **individual assets** (no zip required). The tag must exactly equal the `manifest.json` version — **no leading `v`** (`version-bump.mjs` already handles the manifest/versions.json bump via `pnpm version`). Pin action versions per the dependency-quarantine convention.
 
 ### M6. Pre-submission compliance sweep

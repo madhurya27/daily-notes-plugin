@@ -66,6 +66,9 @@ importers:
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@20.19.33)(jiti@2.6.1)(jsdom@28.1.0(supports-color@7.2.0))(yaml@2.8.1)
+      yaml:
+        specifier: 2.8.1
+        version: 2.8.1
 
 packages:
 

@@ -5,6 +5,7 @@ import { NoteRenderer } from "./NoteRenderer";
 import { CollapsibleManager } from "./CollapsibleManager";
 import { InfiniteScrollController } from "./InfiniteScrollController";
 import { captureAnchor, restoreAnchor } from "./ScrollAnchorManager";
+import { getReadableLineLength } from "./obsidianInternals";
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
 
@@ -52,13 +53,8 @@ export class DailyNotesStreamView extends ItemView {
 
         // Mirror Obsidian's "Readable line length" setting so the stream view
         // respects the same layout constraint as regular notes.
-        // Obsidian does NOT put is-readable-line-width on document.body — it sets it
-        // per-view on MarkdownView instances. Read the config directly instead.
         const syncReadableWidth = () => {
-            // readableLineLength defaults to true when absent from config
-            type AppInternal = { vault?: { config?: { readableLineLength?: boolean } } };
-            const readable = (this.app as unknown as AppInternal).vault?.config?.readableLineLength ?? true;
-            this.contentEl.toggleClass("is-readable-line-width", readable);
+            this.contentEl.toggleClass("is-readable-line-width", getReadableLineLength(this.app));
         };
         syncReadableWidth();
         this.registerEvent(this.app.workspace.on("css-change", syncReadableWidth));

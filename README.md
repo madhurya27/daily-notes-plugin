@@ -1,4 +1,4 @@
-# Daily Notes Stream Plugin
+# Daily Notes Stream
 
 A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first.
 
@@ -22,7 +22,7 @@ Reload Obsidian and enable **Daily Notes Stream** in **Settings → Community Pl
 
 ## Usage
 
-Open via the ribbon icon (calendar-days) or command palette (`Open Daily Notes Stream`).
+Open via the ribbon icon (calendar-days) or command palette (`Daily Notes Stream: Open stream`).
 
 - Scroll down to load older notes.
 - Click a date header to open the original file.
