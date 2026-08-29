@@ -172,6 +172,9 @@ export class ItemView {
     }
     registerEvent() {}
     register() {}
+    registerDomEvent(el: any, type: string, cb: any) {
+        el.addEventListener(type, cb);
+    }
 }
 
 export const MarkdownRenderer = {

@@ -79,7 +79,7 @@ export class DailyNotesStreamView extends ItemView {
         this.state.reset();
 
         // Internal-link click handler
-        this.streamContainerEl.addEventListener("click", (event) => {
+        this.registerDomEvent(this.streamContainerEl, "click", (event) => {
             const target = event.target as HTMLElement;
             if (!target.matches(".internal-link")) return;
             event.preventDefault();

@@ -180,7 +180,7 @@ Three branches with repeated fallbacks reduce (after I1 removes the stale empty-
 
 Reference: Obsidian's [submission requirements](https://docs.obsidian.md/Plugins/Releasing/Submission+requirements+for+plugins) and [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines). The review bot enforces most of these automatically.
 
-### M1. Use `registerDomEvent` for the container click listener
+### M1. Use `registerDomEvent` for the container click listener — **DONE**
 **File:** `src/DailyNotesStreamView.ts:72`
 
 The internal-link handler uses raw `addEventListener`. Reviewers require DOM listeners via `this.registerDomEvent(this.streamContainerEl, "click", ...)` for guaranteed cleanup. Straight swap; add `registerDomEvent` to the `Component`/view mock if missing.

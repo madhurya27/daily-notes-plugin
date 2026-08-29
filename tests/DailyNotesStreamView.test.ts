@@ -683,6 +683,7 @@ describe("DailyNotesStreamView — refresh", () => {
 describe("DailyNotesStreamView — internal-link click handler", () => {
     let realView: DailyNotesStreamView;
     let realApp: ReturnType<typeof makeApp>;
+    let registerDomEventSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(async () => {
         __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
@@ -704,7 +705,16 @@ describe("DailyNotesStreamView — internal-link click handler", () => {
         (realView as any).insertElementAt = vi.fn();
         (realView as any).findNoteElement = vi.fn().mockReturnValue(null);
         (realView as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
+        registerDomEventSpy = vi.spyOn(realView as any, "registerDomEvent");
         await realView.onOpen();
+    });
+
+    it("registers the click listener through registerDomEvent so Obsidian cleans it up", () => {
+        expect(registerDomEventSpy).toHaveBeenCalledWith(
+            (realView as any).streamContainerEl,
+            "click",
+            expect.any(Function)
+        );
     });
 
     it("calls openLinkText when an .internal-link element is clicked", () => {
