@@ -1,5 +1,5 @@
 import { test as base, chromium, expect, type Browser, type Page } from "@playwright/test";
-import { spawn, type ChildProcess } from "child_process";
+import { execFileSync, spawn, type ChildProcess } from "child_process";
 import { createServer } from "net";
 import { mkdirSync, mkdtempSync, writeFileSync, copyFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
@@ -7,6 +7,19 @@ import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
+const OBSIDIAN_BUNDLE = process.env.OBSIDIAN_BUNDLE ?? "/Applications/Obsidian.app";
+/** Set to watch the run happen; otherwise the window never reaches the screen. */
+const SHOW_WINDOW = process.env.E2E_SHOW_WINDOW === "1";
+const VAULT_ID = "e2e0000000000001";
+
+// A hidden window is an occluded window, and Chromium stops servicing occluded
+// renderers: timers slow to a crawl and IntersectionObserver stops firing, which
+// is exactly what the infinite-scroll tests wait on.
+const NO_THROTTLE = [
+    "--disable-backgrounding-occluded-windows",
+    "--disable-renderer-backgrounding",
+    "--disable-background-timer-throttling",
+];
 const PLUGIN_ID = "daily-notes-stream";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -74,6 +87,8 @@ function seedVault(): string {
 export interface ObsidianApp {
     page: Page;
     vaultPath: string;
+    /** Whether macOS currently has the app hidden. */
+    isHidden: () => boolean;
 }
 
 async function launch(): Promise<{
@@ -85,20 +100,44 @@ async function launch(): Promise<{
     writeFileSync(
         join(userDataDir, "obsidian.json"),
         JSON.stringify({
-            vaults: { e2e0000000000001: { path: vaultPath, ts: Date.now(), open: true } },
+            vaults: { [VAULT_ID]: { path: vaultPath, ts: Date.now(), open: true } },
             updateDisabled: true,
         })
     );
 
     const port = await freePort();
+    const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE];
     // detached: Electron spawns helper processes, and killing only the parent
     // orphans them. Its own process group can be signalled as a unit.
-    const proc: ChildProcess = spawn(OBSIDIAN, [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`], {
-        stdio: "ignore",
-        detached: true,
-    });
+    const proc: ChildProcess | null = SHOW_WINDOW
+        ? spawn(OBSIDIAN, args, { stdio: "ignore", detached: true })
+        : launchHidden(args, userDataDir);
 
-    const browser = await connectWithRetry(port);
+    let browser: Browser | null = null;
+    // Defined before startup runs: a throw anywhere below must still tear the
+    // instance down, or a failed run leaves an Obsidian window in the dock.
+    const dispose = async () => {
+        await browser?.close().catch(() => {});
+        if (proc) await killTree(proc);
+        else killByUserDataDir(userDataDir);
+        rmSync(vaultPath, { recursive: true, force: true });
+        rmSync(userDataDir, { recursive: true, force: true });
+    };
+
+    try {
+        return { app: await startUp((browser = await connectWithRetry(port)), userDataDir, vaultPath), dispose };
+    } catch (error) {
+        await dispose();
+        throw error;
+    }
+}
+
+/** Drives Obsidian's first-run dance until the plugin is live and the window hidden. */
+async function startUp(browser: Browser, userDataDir: string, vaultPath: string): Promise<ObsidianApp> {
+    // As early as possible: the CDP target exists, so the window does too, and
+    // every step below drives the renderer over CDP rather than the desktop.
+    if (!SHOW_WINDOW) hideApp(userDataDir);
+
     const context = browser.contexts()[0]!;
     const page = context.pages()[0]!;
     // Playwright emulates a light color scheme on attach; null restores the
@@ -133,13 +172,86 @@ async function launch(): Promise<{
     await page.evaluate(() => window.app.setting?.close?.());
     await expect(page.locator(".modal-container")).toHaveCount(0);
 
-    const dispose = async () => {
-        await browser.close().catch(() => {});
-        await killTree(proc);
-        rmSync(vaultPath, { recursive: true, force: true });
-        rmSync(userDataDir, { recursive: true, force: true });
+    // Again at the end: opening the vault re-shows the window behind us.
+    // Electron never propagates the hide to the renderer, so document.hidden
+    // stays false — macOS is the only authority on whether the window shows.
+    if (!SHOW_WINDOW) hideApp(userDataDir);
+
+    const isHidden = () => {
+        const pid = mainProcessPid(userDataDir);
+        return pid !== null && systemEvents(pid, "get visible") === "false";
     };
-    return { app: { page, vaultPath }, dispose };
+
+    return { page, vaultPath, isHidden };
+}
+
+/**
+ * Launches Obsidian through LaunchServices with -g -j so it starts hidden and
+ * never steals focus. `open` exits immediately and hands back no pid, so the
+ * caller gets null and cleans up by matching the user-data-dir instead — which
+ * also catches the helper processes, since they inherit the flag.
+ */
+function launchHidden(args: string[], userDataDir: string): null {
+    execFileSync("open", ["-n", "-g", "-j", "-a", OBSIDIAN_BUNDLE, "--args", ...args], { stdio: "ignore" });
+    return null;
+}
+
+/**
+ * Hides the app once it owns a window. `-j` only stops the app activating —
+ * Obsidian shows its window regardless, and hiding before that window exists is
+ * undone by the show. Seeding the window offscreen does not work either: macOS
+ * clamps saved bounds back onto a display. Hiding this late leaves the window on
+ * screen for a moment; it is once per run, not once per test.
+ */
+function hideApp(userDataDir: string): void {
+    const deadline = Date.now() + 20_000;
+    while (Date.now() < deadline) {
+        const pid = mainProcessPid(userDataDir);
+        if (
+            pid !== null &&
+            systemEvents(pid, "count of windows") !== "0" &&
+            systemEvents(pid, "set visible to false") !== null
+        ) {
+            return;
+        }
+        execFileSync("sleep", ["0.25"]);
+    }
+    throw new Error("Could not hide the Obsidian window; re-run with E2E_SHOW_WINDOW=1");
+}
+
+/** Runs one System Events statement against a process; null when it is not addressable yet. */
+function systemEvents(pid: number, statement: string): string | null {
+    try {
+        const script = `tell application "System Events" to tell (first process whose unix id is ${pid}) to ${statement}`;
+        return execFileSync("osascript", ["-e", script], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+    } catch {
+        return null;
+    }
+}
+
+/** The Electron main process for this run: our user-data-dir, no --type= helper flag. */
+function mainProcessPid(userDataDir: string): number | null {
+    const ps = execFileSync("ps", ["-axo", "pid=,command="], { encoding: "utf8" });
+    for (const line of ps.split("\n")) {
+        if (!line.includes(userDataDir) || line.includes("--type=")) continue;
+        const pid = Number(line.trim().split(/\s+/)[0]);
+        if (Number.isFinite(pid)) return pid;
+    }
+    return null;
+}
+
+/** Kills every process whose command line carries this run's user-data-dir. */
+function killByUserDataDir(userDataDir: string): void {
+    for (const signal of ["-TERM", "-KILL"]) {
+        try {
+            execFileSync("pkill", [signal, "-f", userDataDir], { stdio: "ignore" });
+        } catch {
+            // pkill exits 1 when nothing matched — the process is already gone.
+        }
+    }
 }
 
 /** Signals the whole Electron process group, escalating if it lingers. */
