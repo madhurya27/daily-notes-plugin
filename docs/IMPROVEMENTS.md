@@ -190,7 +190,7 @@ The internal-link handler uses raw `addEventListener`. Reviewers require DOM lis
 
 `readableLineLength` has no public API, so some internal access is unavoidable — but reviewers flag it, so contain and justify it. Extract a helper (e.g. `getReadableLineLength(app): boolean` in a small util or on the view) holding the single type-cast, keep the `?? true` fallback, and keep the comment explaining there is no public API. Behavior unchanged; be prepared to justify it in the submission PR.
 
-### M3. `manifest.json` fixes
+### M3. `manifest.json` fixes — **DONE**
 - `authorUrl` is `https://github.com/madhurya`, but the git author is `madhurya27` — verify and point it at the real profile (reviewers check that it resolves to the author). Update `author` if it should be a display name other than "Madhurya".
 - `minAppVersion` accuracy is item I16 — required before submission, since the bot cross-checks `versions.json`.
 - Do not add `fundingUrl` unless it's a real funding page (an invalid one is rejected).
