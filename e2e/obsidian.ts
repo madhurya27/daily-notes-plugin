@@ -20,6 +20,14 @@ const NO_THROTTLE = [
     "--disable-renderer-backgrounding",
     "--disable-background-timer-throttling",
 ];
+/**
+ * The physical window is shrunk to Obsidian's minimum and parked in a screen
+ * corner, so the unavoidable flash before the hide lands is a small square
+ * rather than a full-size window. The renderer is then told to lay out at
+ * VIEWPORT regardless, so tests see an ordinary viewport.
+ */
+const MIN_WINDOW = { width: 300, height: 200 };
+const VIEWPORT = { width: 1024, height: 800 };
 const PLUGIN_ID = "daily-notes-stream";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -107,6 +115,17 @@ async function launch(): Promise<{
         })
     );
 
+    // Obsidian keeps window bounds per vault. Bounds fully off the screen are
+    // rejected outright (it falls back to a centred 1024x800); a corner is
+    // clamped to fit, which is what we want.
+    if (!SHOW_WINDOW) {
+        const screen = screenSize();
+        writeFileSync(
+            join(userDataDir, `${VAULT_ID}.json`),
+            JSON.stringify({ ...MIN_WINDOW, x: screen.width, y: screen.height, isMaximized: false, zoom: 0 })
+        );
+    }
+
     const port = await freePort();
     const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE];
     // Whoever owns the screen right now gets it back if Obsidian grabs focus.
@@ -153,6 +172,12 @@ async function launch(): Promise<{
 async function startUp(browser: Browser, userDataDir: string, vaultPath: string): Promise<ObsidianApp> {
     const context = browser.contexts()[0]!;
     const page = context.pages()[0]!;
+    // The window itself is 300x200 in a corner; lay the page out at a normal
+    // size so viewport-sensitive behaviour (infinite scroll) is realistic.
+    if (!SHOW_WINDOW) {
+        const cdp = await context.newCDPSession(page);
+        await cdp.send("Emulation.setDeviceMetricsOverride", { ...VIEWPORT, deviceScaleFactor: 1, mobile: false });
+    }
     // Playwright emulates a light color scheme on attach; null restores the
     // system preference so the window matches the rest of the desktop.
     await page.emulateMedia({ colorScheme: null });
@@ -208,6 +233,21 @@ function launchHidden(args: string[], userDataDir: string): null {
     return null;
 }
 
+/** The main display's size, so the window can be parked in its far corner. */
+function screenSize(): { width: number; height: number } {
+    try {
+        const out = execFileSync("osascript", ["-e", 'tell application "Finder" to get bounds of window of desktop'], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        });
+        const [, , width, height] = out.split(",").map((n) => Number(n.trim()));
+        if (width && height) return { width, height };
+    } catch {
+        // Fall through to a size no display exceeds by much; macOS clamps anyway.
+    }
+    return { width: 5000, height: 3000 };
+}
+
 /** The app that owns the screen, so focus can be handed straight back to it. */
 function frontmostApp(): string | null {
     try {
@@ -245,16 +285,18 @@ async function awaitMainProcess(userDataDir: string): Promise<number> {
  */
 function watchAndHide(pid: number, focusOwner: string | null): ChildProcess {
     const restore = focusOwner ? `set frontmost of (first process whose name is "${focusOwner}") to true` : "";
+    // The process is resolved once: looking it up by unix id is the slow part,
+    // and every millisecond spent on it is a millisecond of visible window.
     const script = `tell application "System Events"
-        repeat 2400 times
+        set p to first process whose unix id is ${pid}
+        repeat 6000 times
             try
-                set p to first process whose unix id is ${pid}
                 if visible of p is true then
                     set visible of p to false
                     ${restore}
                 end if
             end try
-            delay 0.05
+            delay 0.02
         end repeat
     end tell`;
     return spawn("osascript", ["-e", script], { stdio: "ignore" });

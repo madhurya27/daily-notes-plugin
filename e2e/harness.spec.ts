@@ -25,3 +25,13 @@ test("the test run never leaves Obsidian in front of the user's work", async ({ 
     // it and hands focus back; by the time a test runs, neither may have stuck.
     expect(obsidian.isFrontmost()).toBe(false);
 });
+
+test("lays the page out at a normal size despite the small window", async ({ obsidian }) => {
+    test.skip(process.env.E2E_SHOW_WINDOW === "1", "the window is a normal one");
+
+    // The window itself is shrunk to Obsidian's 300x200 minimum and parked in a
+    // corner, so the flash before the hide lands is small; the renderer is told
+    // to lay out at a usual size so infinite scroll behaves realistically.
+    const inner = await obsidian.page.evaluate(() => ({ w: window.innerWidth, h: window.innerHeight }));
+    expect(inner).toEqual({ w: 1024, h: 800 });
+});
