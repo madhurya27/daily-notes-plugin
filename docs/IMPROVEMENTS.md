@@ -195,7 +195,7 @@ The internal-link handler uses raw `addEventListener`. Reviewers require DOM lis
 - `minAppVersion` accuracy is item I16 — required before submission, since the bot cross-checks `versions.json`.
 - Do not add `fundingUrl` unless it's a real funding page (an invalid one is rejected).
 
-### M4. README corrections
+### M4. README corrections — **DONE**
 - The command palette entry is shown as "Daily Notes Stream: Open stream", but the README says `Open Daily Notes Stream` — fix the Usage section.
 - Rename the title from "Daily Notes Stream Plugin" to "Daily Notes Stream" (guidelines discourage "Plugin" in names; keeps it consistent with the manifest).
 
