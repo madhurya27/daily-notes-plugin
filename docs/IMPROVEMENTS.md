@@ -199,7 +199,7 @@ The internal-link handler uses raw `addEventListener`. Reviewers require DOM lis
 - The command palette entry is shown as "Daily Notes Stream: Open stream", but the README says `Open Daily Notes Stream` — fix the Usage section.
 - Rename the title from "Daily Notes Stream Plugin" to "Daily Notes Stream" (guidelines discourage "Plugin" in names; keeps it consistent with the manifest).
 
-### M5. Release automation
+### M5. Release automation — **DONE**
 Add `.github/workflows/release.yml` mirroring the [obsidian-sample-plugin release workflow](https://github.com/obsidianmd/obsidian-sample-plugin/blob/master/.github/workflows/release.yml): on a pushed tag, run `pnpm install --frozen-lockfile && pnpm run build`, then create a draft GitHub release with `main.js`, `manifest.json`, `styles.css` attached as **individual assets** (no zip required). The tag must exactly equal the `manifest.json` version — **no leading `v`** (`version-bump.mjs` already handles the manifest/versions.json bump via `pnpm version`). Pin action versions per the dependency-quarantine convention.
 
 ### M6. Pre-submission compliance sweep
