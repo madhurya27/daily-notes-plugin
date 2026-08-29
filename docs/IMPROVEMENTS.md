@@ -185,7 +185,7 @@ Reference: Obsidian's [submission requirements](https://docs.obsidian.md/Plugins
 
 The internal-link handler uses raw `addEventListener`. Reviewers require DOM listeners via `this.registerDomEvent(this.streamContainerEl, "click", ...)` for guaranteed cleanup. Straight swap; add `registerDomEvent` to the `Component`/view mock if missing.
 
-### M2. Isolate the internal `vault.config` access
+### M2. Isolate the internal `vault.config` access — **DONE**
 **File:** `src/DailyNotesStreamView.ts:46-53`
 
 `readableLineLength` has no public API, so some internal access is unavoidable — but reviewers flag it, so contain and justify it. Extract a helper (e.g. `getReadableLineLength(app): boolean` in a small util or on the view) holding the single type-cast, keep the `?? true` fallback, and keep the comment explaining there is no public API. Behavior unchanged; be prepared to justify it in the submission PR.
