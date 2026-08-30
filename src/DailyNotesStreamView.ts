@@ -68,7 +68,7 @@ export class DailyNotesStreamView extends ItemView {
             console.error("DailyNotesStream: Failed to initialize note service", e);
             this.streamContainerEl.createDiv({
                 cls: "daily-notes-empty-state",
-                text: "Could not load daily notes. Please check your Daily Notes settings (folder and date format).",
+                text: "Could not load daily notes. Please check your daily notes settings (folder and date format).",
             });
             return;
         }

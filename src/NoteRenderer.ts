@@ -91,7 +91,7 @@ export class NoteRenderer {
 
             this.collapsible.makeCollapsible(contentEl, file.path);
         } catch (error) {
-            console.error(`Failed to render note ${file.path}:`, error);
+            console.error(`DailyNotesStream: Failed to render note ${file.path}:`, error);
             contentEl.setText("Error rendering note");
         }
 
