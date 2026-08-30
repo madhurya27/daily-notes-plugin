@@ -12,7 +12,7 @@
 import { chromium } from "@playwright/test";
 import { execFileSync, spawn } from "child_process";
 import { createServer } from "net";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
@@ -25,9 +25,31 @@ const VAULT_ID = "dev00000000000001";
 const PHONE_WINDOW = { width: 420, height: 900 };
 
 const args = process.argv.slice(2);
+
+/** Reads `--flag value` and `--flag=value` alike. */
+const flagValue = (name) => {
+    const inline = args.find((arg) => arg.startsWith(`${name}=`));
+    if (inline) return inline.slice(name.length + 1);
+    const index = args.indexOf(name);
+    return index === -1 ? undefined : args[index + 1];
+};
+
+const parsePosition = (value) => {
+    if (value === undefined) return null;
+    const match = /^(-?\d+),(-?\d+)$/.exec(value.trim());
+    if (!match) {
+        console.error(`--position wants x,y in pixels (e.g. --position 900,60), got: ${value}`);
+        process.exit(1);
+    }
+    return { x: Number(match[1]), y: Number(match[2]) };
+};
+
 const mobile = !args.includes("--desktop");
 const resize = mobile && !args.includes("--keep-size");
-const vault = resolve(args.find((arg) => !arg.startsWith("--")) ?? join(REPO, "PluginTest"));
+const position = parsePosition(flagValue("--position"));
+// A value consumed by a flag is not the vault path.
+const positional = args.filter((arg, index) => !arg.startsWith("--") && args[index - 1] !== "--position");
+const vault = resolve(positional[0] ?? join(REPO, "PluginTest"));
 const userDataDir = join(REPO, ".dev", "obsidian-userdata");
 
 if (!existsSync(join(vault, ".obsidian", "plugins", PLUGIN_ID, "main.js"))) {
@@ -104,15 +126,31 @@ writeFileSync(
     JSON.stringify({ vaults: { [VAULT_ID]: { path: vault, ts: Date.now(), open: true } }, updateDisabled: true })
 );
 
-// Obsidian stores window bounds per vault, so setting them before launch opens
-// the window phone-sized rather than resizing a full-size one on screen.
-if (resize) {
-    const screen = screenSize();
-    const height = Math.min(PHONE_WINDOW.height, screen.height - 80);
-    writeFileSync(
-        join(userDataDir, `${VAULT_ID}.json`),
-        JSON.stringify({ width: PHONE_WINDOW.width, height, x: 60, y: 40, isMaximized: false, zoom: 0 })
-    );
+// Obsidian stores window bounds per vault and reads them at startup, so writing
+// them here opens the window in place rather than moving it on screen after.
+if (resize || position) {
+    const boundsPath = join(userDataDir, `${VAULT_ID}.json`);
+    // --keep-size means the size is whatever the last session saved; keep the
+    // rest of the file too, since Obsidian stores zoom and maximised state in it.
+    let bounds = { x: 60, y: 40, isMaximized: false, zoom: 0 };
+    if (existsSync(boundsPath)) {
+        try {
+            bounds = { ...bounds, ...JSON.parse(readFileSync(boundsPath, "utf8")) };
+        } catch {
+            // A corrupt bounds file is not worth failing the launch over.
+        }
+    }
+    if (resize) {
+        const screen = screenSize();
+        bounds.width = PHONE_WINDOW.width;
+        bounds.height = Math.min(PHONE_WINDOW.height, screen.height - 80);
+    }
+    if (position) {
+        bounds.x = position.x;
+        bounds.y = position.y;
+        bounds.isMaximized = false;
+    }
+    writeFileSync(boundsPath, JSON.stringify(bounds));
 }
 
 const port = await freePort();
@@ -181,5 +219,5 @@ console.log(
     `Obsidian is open on ${vault} with the stream view showing.\n` +
         `Layout: ${classes || "desktop"}${resize ? ` in a ${PHONE_WINDOW.width}px window` : ""}.\n` +
         "Toggle emulation in the console any time: this.app.emulateMobile(false)\n" +
-        "--desktop skips emulation; --keep-size leaves the window where you left it."
+        "--desktop skips emulation; --keep-size keeps the saved size; --position x,y places the window."
 );
