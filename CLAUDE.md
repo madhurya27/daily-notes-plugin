@@ -13,10 +13,11 @@ pnpm run test:coverage  # vitest run --coverage (100% required)
 pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
 ```
 
-Deploy to test vault:
+Seed and deploy to the local test vault:
 ```bash
-pnpm run build && cp main.js manifest.json styles.css PluginTest/.obsidian/plugins/daily-notes-stream/
+pnpm run build && pnpm run seed   # writes PluginTest/ (gitignored) and installs the build into it
 ```
+`scripts/seed-test-vault.mjs` rewrites the notes `docs/TESTING.md`'s checklist names but leaves an existing `.obsidian` alone, so a vault you have opened keeps its settings. Takes an optional target path.
 
 ## Architecture
 

@@ -7,15 +7,26 @@ pnpm test
 Covers date parsing and sorting for root-folder and nested `YYYY/MM/` structures.
 
 ## 2. Test vault setup
-- Enable the **Daily Notes** core plugin; set a **New file location** (e.g. `Notes`).
-- Create 11+ daily notes matching your date format (default `YYYY-MM-DD`) to test infinite scroll.
-- Add frontmatter to some notes (tags, aliases, custom fields) to test properties display.
-
-## 3. Deploy
 ```bash
-pnpm run build
-cp main.js manifest.json styles.css <vault>/.obsidian/plugins/daily-notes-stream/
+pnpm run build && pnpm run seed
 ```
+Writes `PluginTest/` (gitignored) with everything the checklist below names: 14
+daily notes in `Notes/`, the two dated notes referenced by frontmatter, nested
+lists, repeated headings, a heading holding a link, `test-image.svg`, and a dated
+`.png` plus a dated note outside the folder that must *not* appear. Core daily
+notes is pre-enabled at `Notes` / `YYYY-MM-DD`.
+
+Open it once via **Open folder as vault**. Re-running the seed rewrites the notes
+but leaves `.obsidian` alone, so the layout and settings you set up survive.
+
+Pass a path to seed somewhere else: `pnpm run seed ~/Vaults/Mine`.
+
+## 3. Deploy a new build
+```bash
+pnpm run build && pnpm run seed
+```
+Same command — it copies `main.js`, `manifest.json` and `styles.css` into the
+vault's plugin folder. Then **Reload app without saving** in Obsidian.
 
 ## 4. Verification
 

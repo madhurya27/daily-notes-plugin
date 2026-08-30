@@ -20,6 +20,16 @@ export default tseslint.config(
         },
     },
     ...obsidianmd.configs.recommended,
+    // Node scripts, not plugin code: Node globals, and no typed linting to
+    // configure since they sit outside every tsconfig.
+    {
+        files: ["scripts/**/*.mjs"],
+        languageOptions: {
+            globals: { ...globals.node },
+            parserOptions: { projectService: false },
+        },
+        extends: [tseslint.configs.disableTypeChecked],
+    },
     // Last: turns off stylistic rules that would fight Prettier.
     prettier,
     globalIgnores([
