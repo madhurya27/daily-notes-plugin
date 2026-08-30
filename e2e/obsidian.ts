@@ -78,6 +78,11 @@ function noteBody(day: number): string {
         "const wide = { alpha: 1, beta: 2, gamma: 3, delta: 4, epsilon: 5, zeta: 6, eta: 7, theta: 8 };",
         "```",
         "",
+        "## Tasks",
+        "",
+        "- [ ] Parent task",
+        "    - [ ] Child task",
+        "",
     ].join("\n");
 }
 

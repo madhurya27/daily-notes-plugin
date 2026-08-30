@@ -81,6 +81,43 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(nested).toBeVisible();
     });
 
+    test("hides a table and a code block under a collapsed heading", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const note = container.locator(".daily-note-block").first();
+        const heading = note.locator(".daily-note-content h2", { hasText: "Wide content" });
+        const table = note.locator(".daily-note-content table").first();
+        const code = note.locator(".daily-note-content pre").first();
+
+        await expect(table).toBeVisible();
+        await heading.locator(".collapse-indicator").click();
+
+        // Both carry their own display rule so they scroll rather than widen the
+        // page; hidden has to outrank that or a collapsed section keeps showing.
+        await expect(table).toBeHidden();
+        await expect(code).toBeHidden();
+
+        await heading.locator(".collapse-indicator").click();
+        await expect(table).toBeVisible();
+    });
+
+    test("keeps the list chevron clear of a task's checkbox", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const parentTask = container
+            .locator(".daily-note-content li.task-list-item", { hasText: "Parent task" })
+            .first();
+        const chevron = parentTask.locator("> .collapse-indicator");
+        const checkbox = parentTask.locator("> input").first();
+
+        await expect(chevron).toBeVisible();
+        const [chevronBox, checkboxBox] = await Promise.all([chevron.boundingBox(), checkbox.boundingBox()]);
+
+        // The chevron sits outside the list content; a task item puts its
+        // checkbox there too, so the two collide unless the chevron moves.
+        expect(chevronBox!.x + chevronBox!.width).toBeLessThanOrEqual(checkboxBox!.x);
+    });
+
     test("toggles a heading from the keyboard", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
@@ -223,5 +260,35 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(container.locator(".daily-note-block").first().locator(".metadata-container")).toHaveClass(
             /is-collapsed/
         );
+    });
+
+    test("does not offer a pointer on property icons nothing can click", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            await plugin.saveSettings();
+        });
+
+        // Only Obsidian's mobile stylesheet styles this icon as a button: in its
+        // own properties editor it opens a menu, but the stream is read-only, so
+        // the cursor must not promise an interaction that cannot happen.
+        await page.evaluate(() => window.app.emulateMobile(true));
+        await page.waitForFunction(() => window.app.workspace.layoutReady === true, null, { timeout: 30_000 });
+        try {
+            const container = await openStream(page);
+            const panel = container.locator(".metadata-container").first();
+            // Collapse state persists per note, and an earlier test may have left
+            // this panel closed; its icons are then not there to measure.
+            if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
+                await panel.locator(".metadata-properties-heading").click();
+            }
+            const icon = panel.locator(".metadata-property-icon").first();
+            await expect(icon).toBeVisible();
+            await expect(icon).toHaveCSS("cursor", "default");
+        } finally {
+            await page.evaluate(() => window.app.emulateMobile(false));
+            await page.waitForFunction(() => window.app.workspace.layoutReady === true, null, { timeout: 30_000 });
+        }
     });
 });

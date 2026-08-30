@@ -162,11 +162,18 @@
     }
 }
 
-/* Expand tap targets on touch devices */
+/* Expand tap targets on touch devices. Growing the box itself would push the
+   chevron into the text beside it — a task's checkbox especially — so the extra
+   area is an overlay that takes no space in layout. */
 @media (pointer: coarse) {
     .daily-note-content .collapse-indicator {
-        min-width: 2.75rem;
-        min-height: 2.75rem;
+        position: relative;
+    }
+
+    .daily-note-content .collapse-indicator::after {
+        content: "";
+        position: absolute;
+        inset: calc((2.75rem - var(--size-4-4, 1rem)) / -2);
     }
 }
 
@@ -207,6 +214,12 @@
     top: calc((var(--line-height-normal, 1.5) * 1em - var(--size-4-4, 1rem)) / 2);
 }
 
+/* A task item hangs its checkbox in the same margin the chevron parks in, so
+   the chevron moves out by another step to clear it. */
+.daily-note-content li.task-list-item.is-collapsible > .collapse-indicator {
+    left: calc(-1 * var(--size-4-16, 4rem));
+}
+
 .daily-note-content li.is-collapsed > ul,
 .daily-note-content li.is-collapsed > ol {
     display: none;
@@ -238,9 +251,10 @@
 }
 
 .is-hidden,
-/* A collapsible heading carries its own display below, and a bare .is-hidden
-   cannot outrank it: hidden has to win on every element it lands on. */
-.daily-note-content .is-collapsible.is-hidden {
+/* Headings, tables and code blocks each carry their own display rule below, all
+   of which outrank a bare .is-hidden. The class is repeated to raise this rule's
+   specificity above every one of them: hidden must win wherever it lands. */
+.daily-note-content .is-hidden.is-hidden {
     display: none;
 }
 
@@ -260,4 +274,11 @@
     display: block;
     max-width: 100%;
     overflow-x: auto;
+}
+
+/* Obsidian's mobile stylesheet styles this icon as a button — in its own
+   properties editor it opens a type menu. The stream is read-only, so the
+   pointer would promise an interaction that does not exist here. */
+.daily-note-block .metadata-property-icon {
+    cursor: default;
 }
