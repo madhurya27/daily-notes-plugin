@@ -54,6 +54,31 @@ describe("release workflow", () => {
         expect(script()).toMatch(/exit 1/);
     });
 
+    it("checks the code out without leaving the write-scoped token in .git/config", () => {
+        // `pnpm install` and the build run dependency code in the same job.
+        const checkout = steps().find((step) => step.uses?.startsWith("actions/checkout@"));
+        expect(checkout?.with?.["persist-credentials"]).toBe(false);
+    });
+
+    it("runs the quality gates before it builds a release", () => {
+        const commands = steps().map((step) => step.run ?? "");
+        const buildIndex = commands.findIndex((run) => run.includes("pnpm run build"));
+        for (const gate of ["pnpm run format:check", "pnpm run lint", "pnpm run test:coverage"]) {
+            const gateIndex = commands.findIndex((run) => run.includes(gate));
+            expect(gateIndex, `${gate} is missing`).toBeGreaterThanOrEqual(0);
+            expect(gateIndex, `${gate} runs after the build`).toBeLessThan(buildIndex);
+        }
+    });
+
+    it("pins the pnpm version the setup action resolves", () => {
+        // pnpm/action-setup takes no version input here, so it reads
+        // package.json#packageManager; without it the job fails outright.
+        const pkg = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8")) as {
+            packageManager?: string;
+        };
+        expect(pkg.packageManager).toMatch(/^pnpm@\d+\.\d+\.\d+$/);
+    });
+
     it("pins every action to a full commit SHA", () => {
         const used = steps()
             .map((step) => step.uses)
