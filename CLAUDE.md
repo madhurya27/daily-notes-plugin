@@ -32,7 +32,7 @@ Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 
 **Build**: esbuild `src/main.ts` → `main.js` (CJS, `obsidian` external). **Tests**: Vitest with mocks for `obsidian` and `obsidian-daily-notes-interface` from `tests/mocks/` and jsdom (`tests/setup.ts`). 100% coverage required, including view logic.
 
-**Release**: `.github/workflows/release.yml` fires on a pushed tag matching the manifest version exactly (no leading `v` — `pnpm version` writes both files through `version-bump.mjs`). It verifies tag against manifest, builds from the frozen lockfile, and drafts a GitHub release with `main.js`, `manifest.json` and `styles.css` attached individually. Actions are pinned to full commit SHAs.
+**Release**: `.github/workflows/release.yml` fires on a pushed tag matching the manifest version exactly (no leading `v` — `pnpm version` writes both files through `version-bump.mjs`). It verifies tag against manifest, installs from the frozen lockfile, runs format/lint/tests, builds, and drafts a GitHub release with `main.js`, `manifest.json` and `styles.css` attached individually. Actions are pinned to full commit SHAs; checkout does not persist credentials, and pnpm's version comes from `package.json#packageManager` (the setup action passes no version input — without the field the job fails).
 
 ## Documentation
 
