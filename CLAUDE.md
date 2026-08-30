@@ -17,7 +17,7 @@ Seed and deploy to the local test vault:
 ```bash
 pnpm run build && pnpm run seed   # writes PluginTest/ (gitignored) and installs the build into it
 ```
-`pnpm run open` then launches a separate Obsidian (own `--user-data-dir` under `.dev/`, CDP-attached) on that vault with the plugin enabled, the stream view open and `app.emulateMobile(true)` applied — `--desktop` skips the emulation. Emulation rebuilds the workspace, so it is applied *before* the view is opened or the leaf is discarded. `scripts/seed-test-vault.mjs` rewrites the notes `docs/TESTING.md`'s checklist names but leaves an existing `.obsidian` alone, so a vault you have opened keeps its settings. Takes an optional target path.
+`pnpm run open` then launches a separate Obsidian (own `--user-data-dir` under `.dev/`, CDP-attached) on that vault with the plugin enabled, the stream view open and `app.emulateMobile(true)` applied — `--desktop` skips the emulation, `--keep-size` keeps the saved size, `--position x,y` places the window (phone mode has no drag region to move it by). Three ordering constraints: emulation rebuilds the workspace, so it is applied *before* the view is opened or the leaf is discarded; window bounds are written to the user-data dir before launch, since Obsidian reads them per vault at startup and `is-phone` keys off width; and any surviving Electron helper from a previous run holds the single-instance lock, so the script kills that process group first or the new launch exits without opening its debugging port. `scripts/seed-test-vault.mjs` rewrites the notes `docs/TESTING.md`'s checklist names but leaves an existing `.obsidian` alone, so a vault you have opened keeps its settings. Takes an optional target path.
 
 ## Architecture
 

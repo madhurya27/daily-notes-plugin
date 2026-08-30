@@ -10,20 +10,46 @@
  * put between runs; delete it for a clean slate.
  */
 import { chromium } from "@playwright/test";
-import { spawn } from "child_process";
+import { execFileSync, spawn } from "child_process";
 import { createServer } from "net";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
 const PLUGIN_ID = "daily-notes-stream";
+const VIEW_TYPE = "daily-notes-stream-view";
 const VAULT_ID = "dev00000000000001";
+/** Narrow enough for Obsidian's phone layout (is-phone), which keys off width. */
+const PHONE_WINDOW = { width: 420, height: 900 };
 
 const args = process.argv.slice(2);
+
+/** Reads `--flag value` and `--flag=value` alike. */
+const flagValue = (name) => {
+    const inline = args.find((arg) => arg.startsWith(`${name}=`));
+    if (inline) return inline.slice(name.length + 1);
+    const index = args.indexOf(name);
+    return index === -1 ? undefined : args[index + 1];
+};
+
+const parsePosition = (value) => {
+    if (value === undefined) return null;
+    const match = /^(-?\d+),(-?\d+)$/.exec(value.trim());
+    if (!match) {
+        console.error(`--position wants x,y in pixels (e.g. --position 900,60), got: ${value}`);
+        process.exit(1);
+    }
+    return { x: Number(match[1]), y: Number(match[2]) };
+};
+
 const mobile = !args.includes("--desktop");
-const vault = resolve(args.find((arg) => !arg.startsWith("--")) ?? join(REPO, "PluginTest"));
+const resize = mobile && !args.includes("--keep-size");
+const position = parsePosition(flagValue("--position"));
+// A value consumed by a flag is not the vault path.
+const positional = args.filter((arg, index) => !arg.startsWith("--") && args[index - 1] !== "--position");
+const vault = resolve(positional[0] ?? join(REPO, "PluginTest"));
 const userDataDir = join(REPO, ".dev", "obsidian-userdata");
 
 if (!existsSync(join(vault, ".obsidian", "plugins", PLUGIN_ID, "main.js"))) {
@@ -53,11 +79,79 @@ const connect = async (port) => {
     }
 };
 
+/** The desktop's usable size, so a phone-shaped window lands on screen. */
+const screenSize = () => {
+    try {
+        const out = execFileSync("osascript", ["-e", 'tell application "Finder" to get bounds of window of desktop'], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        });
+        const [, , width, height] = out.split(",").map((n) => Number(n.trim()));
+        if (width && height) return { width, height };
+    } catch {
+        // Fall through: macOS clamps a window back onto a display anyway.
+    }
+    return { width: 1440, height: 900 };
+};
+
+/**
+ * Electron leaves helper processes behind, and any survivor holds the
+ * single-instance lock: a fresh launch then exits silently and never opens its
+ * debugging port. Clear the whole group before launching another.
+ */
+const stopExisting = () => {
+    const running = () => {
+        try {
+            return (
+                execFileSync("pgrep", ["-f", `user-data-dir=${userDataDir}`], { encoding: "utf8" }).trim().length > 0
+            );
+        } catch {
+            return false; // pgrep exits 1 when nothing matches.
+        }
+    };
+    if (!running()) return;
+    try {
+        execFileSync("pkill", ["-f", `user-data-dir=${userDataDir}`]);
+    } catch {
+        // Already gone between the check and the kill.
+    }
+    const deadline = Date.now() + 10_000;
+    while (running() && Date.now() < deadline) execFileSync("sleep", ["0.2"]);
+};
+
 mkdirSync(userDataDir, { recursive: true });
+stopExisting();
 writeFileSync(
     join(userDataDir, "obsidian.json"),
     JSON.stringify({ vaults: { [VAULT_ID]: { path: vault, ts: Date.now(), open: true } }, updateDisabled: true })
 );
+
+// Obsidian stores window bounds per vault and reads them at startup, so writing
+// them here opens the window in place rather than moving it on screen after.
+if (resize || position) {
+    const boundsPath = join(userDataDir, `${VAULT_ID}.json`);
+    // --keep-size means the size is whatever the last session saved; keep the
+    // rest of the file too, since Obsidian stores zoom and maximised state in it.
+    let bounds = { x: 60, y: 40, isMaximized: false, zoom: 0 };
+    if (existsSync(boundsPath)) {
+        try {
+            bounds = { ...bounds, ...JSON.parse(readFileSync(boundsPath, "utf8")) };
+        } catch {
+            // A corrupt bounds file is not worth failing the launch over.
+        }
+    }
+    if (resize) {
+        const screen = screenSize();
+        bounds.width = PHONE_WINDOW.width;
+        bounds.height = Math.min(PHONE_WINDOW.height, screen.height - 80);
+    }
+    if (position) {
+        bounds.x = position.x;
+        bounds.y = position.y;
+        bounds.isMaximized = false;
+    }
+    writeFileSync(boundsPath, JSON.stringify(bounds));
+}
 
 const port = await freePort();
 spawn(OBSIDIAN, [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`], {
@@ -95,16 +189,35 @@ if (mobile !== (await page.evaluate(() => window.app.isMobile))) {
     await page.waitForFunction(() => window.app?.workspace?.layoutReady === true, null, { timeout: 60_000 });
 }
 
-await page.evaluate(async () => {
-    const leaf = window.app.workspace.getLeaf(true);
-    await leaf.setViewState({ type: "daily-notes-stream-view", active: true });
-    window.app.workspace.revealLeaf(leaf);
-});
-await page.waitForSelector(".daily-notes-stream-container", { timeout: 30_000 });
+// Obsidian restores the previous session's leaves, so reuse a stream view if
+// one came back rather than stacking up a new tab on every run.
+await page.evaluate(async (viewType) => {
+    const { workspace } = window.app;
+    const [existing, ...duplicates] = workspace.getLeavesOfType(viewType);
+    // A run that failed part-way still left its tab behind; keep one.
+    for (const duplicate of duplicates) duplicate.detach();
+    const leaf = existing ?? workspace.getLeaf(true);
+    await leaf.setViewState({ type: viewType, active: true });
+    workspace.revealLeaf(leaf);
+}, VIEW_TYPE);
+// A deferred or background leaf keeps its container in the DOM but unrendered;
+// wait for one that is actually on screen.
+await page.waitForFunction(
+    () => [...document.querySelectorAll(".daily-notes-stream-container")].some((el) => el.offsetParent !== null),
+    null,
+    { timeout: 30_000 }
+);
+
+const layout = await page.evaluate(() => ({
+    mobile: document.body.classList.contains("is-mobile"),
+    phone: document.body.classList.contains("is-phone"),
+}));
 
 await browser.close();
+const classes = [layout.mobile && "is-mobile", layout.phone && "is-phone"].filter(Boolean).join(" ");
 console.log(
-    `Obsidian is open on ${vault} with the stream view showing, mobile emulation ${mobile ? "ON" : "OFF"}.\n` +
-        "Toggle it any time in the console: this.app.emulateMobile(false)\n" +
-        "Narrow the window past ~600px to pick up Obsidian's phone layout (is-phone) too."
+    `Obsidian is open on ${vault} with the stream view showing.\n` +
+        `Layout: ${classes || "desktop"}${resize ? ` in a ${PHONE_WINDOW.width}px window` : ""}.\n` +
+        "Toggle emulation in the console any time: this.app.emulateMobile(false)\n" +
+        "--desktop skips emulation; --keep-size keeps the saved size; --position x,y places the window."
 );

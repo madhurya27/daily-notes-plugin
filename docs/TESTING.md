@@ -18,13 +18,21 @@ notes is pre-enabled at `Notes` / `YYYY-MM-DD`.
 
 Open it once via **Open folder as vault**, or let the opener do it:
 ```bash
-pnpm run open            # stream view showing, mobile emulation ON
-pnpm run open --desktop  # same, emulation off
+pnpm run open              # phone-sized window, mobile emulation ON
+pnpm run open --desktop    # ordinary window, emulation off
+pnpm run open --keep-size  # emulation on, window left at its saved size
+pnpm run open --position 900,60   # place the window; combines with the others
 ```
+Phone mode has no draggable region — Obsidian is frameless on macOS and the phone
+layout collapses the tab strip that carries it — so `--position` is how the window
+gets moved, short of holding ⌃⌘ and dragging.
 That runs its own Obsidian against `.dev/obsidian-userdata`, so it can sit beside
 your real Obsidian without touching its config or vault list. It answers the
-trust prompt, enables the plugin, switches mobile emulation, opens the stream and
-detaches, leaving the window yours.
+trust prompt, enables the plugin, switches mobile emulation, sizes the window to
+420px so Obsidian's phone layout (`is-phone`) engages on top of `is-mobile` — it
+switches at exactly 600px, live as you resize — opens
+the stream and detaches, leaving the window yours. Re-running reuses the existing
+tab and clears any duplicate a failed run left behind.
 
 Re-running the seed rewrites the notes but leaves `.obsidian` alone, so the layout
 and settings you set up survive.
@@ -85,10 +93,10 @@ real Obsidian instance; the rest still need a human.
 `isDesktopOnly: false` promises this works on a phone; no static check can keep
 that promise, so this section is run by hand before a release.
 
-**Emulate first** — `pnpm run open`, or by hand in the desktop console
-(`Cmd+Opt+I`) with `this.app.emulateMobile(true)`, and `false` to leave. Either
-way, narrow the window past ~600px to pick up the phone layout (`is-phone`) on
-top of `is-mobile`. This flips `Platform.isMobile` and loads the mobile CSS, so
+**Emulate first** — `pnpm run open` gets you `is-mobile` and `is-phone` in one
+command. By hand it is `this.app.emulateMobile(true)` in the desktop console
+(`Cmd+Opt+I`), `false` to leave, plus dragging the window under ~600px wide for
+the phone layout. This flips `Platform.isMobile` and loads the mobile CSS, so
 it catches layout and touch-target problems in seconds. It is not a substitute
 for a device: it keeps Electron's Chromium, so it cannot reproduce an iOS
 WKWebView bug.
