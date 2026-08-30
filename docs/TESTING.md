@@ -53,15 +53,55 @@ real Obsidian instance; the rest still need a human.
 - A dated `.png`, or a dated note outside the folder → neither appears. **[e2e]**
 
 ### Properties
-- **Settings → Show Note Properties ON**: "Properties" header appears for notes with frontmatter; icons shown next to property names.
+- **Settings → Show note properties ON**: "Properties" header appears for notes with frontmatter; icons shown next to property names.
 - Clicking "Properties" header toggles collapse; chevron rotates.
 - **2026-02-01**: `tags: test, image, link`, `aliases: Feb 1st Test`, `mood: productive`.
 - **2026-01-15**: `tags: backlink, test`, `type: daily`, `location: Home Office`.
-- **Collapse by Default ON**: properties start hidden until you toggle a note's panel; that choice then sticks for that note across edits and reopens. **[e2e]**
+- **Collapse properties by default ON**: properties start hidden until you toggle a note's panel; that choice then sticks for that note across edits and reopens. **[e2e]**
 - Frontmatter is **not** duplicated in the note body.
 
 ### Mobile
-- Responsive layout and touch scrolling work on iOS/Android.
+`isDesktopOnly: false` promises this works on a phone; no static check can keep
+that promise, so this section is run by hand before a release.
+
+**Emulate first** — desktop console (`Cmd+Opt+I`), `this.app.emulateMobile(true)`,
+and `false` to leave. This flips `Platform.isMobile` and loads the mobile CSS, so
+it catches layout and touch-target problems in seconds. It is not a substitute
+for a device: it keeps Electron's Chromium, so it cannot reproduce an iOS
+WKWebView bug.
+
+**Then a real device.** Getting the plugin onto one:
+| Platform | Route |
+| --- | --- |
+| iOS | Vault in iCloud Drive: copy the three built files on the Mac into `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/<vault>/.obsidian/plugins/daily-notes-stream/`. The Files app hides dot-folders, so copying on the phone does not work. |
+| iOS, no cable | BRAT, pointed at the repo, installing a published pre-release — also exercises the real release artifacts. |
+| Either | Obsidian Sync with "Installed plugins" enabled. |
+| Android | Any file manager, straight into `<vault>/.obsidian/plugins/daily-notes-stream/`. Dot-folders are visible. |
+
+Checks:
+- Layout: notes fill the width with no horizontal scroll; the properties panel
+  stays readable at the narrowest width; long code blocks and tables scroll
+  inside themselves rather than the page.
+- Touch targets: the collapse chevrons on headers, list items and the properties
+  row are tappable without zooming, and a tap on heading *text* still selects
+  rather than toggling.
+- Infinite scroll under momentum: a hard flick to the bottom loads the next batch
+  without duplicates or a stall, and repeated flicks keep loading.
+- Backgrounding: scroll down, switch apps, return — the view is still there at
+  the same position and keeps scrolling.
+- Live updates: edit a visible note in another pane/tab and confirm it re-renders
+  in place.
+- Rotation: portrait ↔ landscape reflows without clipping or a lost scroll
+  position.
+- Console: no errors in the mobile console (iOS: Safari → Develop → your device;
+  Android: `chrome://inspect`).
+
+**No Android device?** Lower risk than it sounds — Android's WebView is Chromium,
+the same engine family as desktop Obsidian, so desktop plus emulation covers that
+engine. iOS is the genuinely different one (WKWebView) and the one to test on
+hardware. If you do want real Android, an Android Studio emulator with a Google
+Play system image installs Obsidian from the Play Store, and `adb push` puts the
+plugin in the vault.
 
 ## 5. Debugging
-Open the Developer Console (`Cmd+Opt+I`). Look for `DailyNotesStreamView:` and `DailyNoteService:` prefixed logs. "No daily notes found" means the daily notes plugin isn't configured or no files match.
+Open the Developer Console (`Cmd+Opt+I`). Look for `DailyNotesStream:` prefixed logs. "No daily notes found" means the daily notes plugin isn't configured or no files match.
