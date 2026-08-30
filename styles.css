@@ -237,7 +237,10 @@
     color: var(--text-muted);
 }
 
-.is-hidden {
+.is-hidden,
+/* A collapsible heading carries its own display below, and a bare .is-hidden
+   cannot outrank it: hidden has to win on every element it lands on. */
+.daily-note-content .is-collapsible.is-hidden {
     display: none;
 }
 

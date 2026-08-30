@@ -62,6 +62,25 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(body).toBeVisible();
     });
 
+    test("hides headings nested under a collapsed one, not just its text", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const firstNote = container.locator(".daily-note-block").first();
+        const heading = firstNote.locator(".daily-note-content h2").first();
+        const nested = firstNote.locator(".daily-note-content h3").first();
+
+        await expect(nested).toBeVisible();
+        await heading.locator(".collapse-indicator").click();
+
+        // Hiding is a class the stylesheet has to honour: a heading carries the
+        // collapsible rule's own display, which a bare .is-hidden cannot outrank.
+        await expect(nested).toHaveClass(/is-hidden/);
+        await expect(nested).toBeHidden();
+
+        await heading.locator(".collapse-indicator").click();
+        await expect(nested).toBeVisible();
+    });
+
     test("toggles a heading from the keyboard", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
