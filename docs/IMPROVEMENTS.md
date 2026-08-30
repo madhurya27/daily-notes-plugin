@@ -202,16 +202,23 @@ The internal-link handler uses raw `addEventListener`. Reviewers require DOM lis
 ### M5. Release automation — **DONE**
 Add `.github/workflows/release.yml` mirroring the [obsidian-sample-plugin release workflow](https://github.com/obsidianmd/obsidian-sample-plugin/blob/master/.github/workflows/release.yml): on a pushed tag, run `pnpm install --frozen-lockfile && pnpm run build`, then create a draft GitHub release with `main.js`, `manifest.json`, `styles.css` attached as **individual assets** (no zip required). The tag must exactly equal the `manifest.json` version — **no leading `v`** (`version-bump.mjs` already handles the manifest/versions.json bump via `pnpm version`). Pin action versions per the dependency-quarantine convention.
 
-### M6. Pre-submission compliance sweep
-Run through these and fix anything found (most are already clean — verify, don't assume):
-- No `console.log`/`console.debug` in production paths (I17 removes the known one; `console.error` for real errors is fine).
-- No `innerHTML`/`outerHTML`, no `var`, no styles assigned from JS — use CSS classes (currently compliant).
-- Sentence case in all UI strings (command names, settings, ribbon tooltip — currently compliant).
-- No heading like "General" in settings; settings names don't repeat the plugin name (compliant).
-- `onunload` must not detach leaves of the view type (compliant — leave it empty).
-- `normalizePath` on constructed vault paths (arrives with I2).
-- Mobile: `isDesktopOnly: false` demands no Node/Electron APIs (compliant) — run the `docs/TESTING.md` checklist on iOS or Android before submitting.
-- `pnpm run build` must succeed from a clean clone with the pinned deps.
+### M6. Pre-submission compliance sweep — **DONE except the mobile pass**
+Swept 2026-08. `tests/compliance.test.ts` now guards the automatable items, so a
+regression fails there rather than in review: no `console.log`/`debug`/`info`/`warn`
+(only prefixed `console.error`), no `innerHTML`/`outerHTML`, no `var`, no styles
+assigned from JS, no Node/Electron API against `isDesktopOnly: false`, and
+"Daily notes" in sentence case throughout the UI copy.
+
+Fixed by the sweep: an unprefixed `console.error` in `NoteRenderer`, and the
+title-cased "Daily Notes settings" in the load-failure message.
+
+Verified by hand: settings has no headings and no name repeats the plugin name;
+`onunload` does not exist, so it detaches no leaves; `normalizePath` guards the
+constructed path in `DailyNoteService`; a clean clone installs from the frozen
+lockfile and builds.
+
+**Still open — the one blocking item:** run the `docs/TESTING.md` checklist on iOS
+or Android. `isDesktopOnly: false` is a promise no static check can keep.
 
 ### M7. Submission steps (manual, after everything above is merged and released)
 1. Confirm the GitHub repo is public with `README.md` and `LICENSE` at the root (both exist).

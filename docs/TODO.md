@@ -6,7 +6,7 @@
 - [ ] Create today's note from the view — spec'd as F2 in `docs/IMPROVEMENTS.md`
 - [ ] Filtering: filter by tag/header
 - [ ] Tag click opens Obsidian search
-- [ ] Publish to Obsidian community plugins — see M items in `docs/IMPROVEMENTS.md`
+- [ ] Publish to Obsidian community plugins — M1–M6 done; blocked on a mobile pass of `docs/TESTING.md` (iOS/Android), then M7's manual submission steps
 
 ## Deferred code health
 Reviewed 2026-07 and deliberately not fixed; each has a trigger for revisiting.
