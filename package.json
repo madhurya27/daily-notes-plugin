@@ -10,6 +10,7 @@
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
         "version": "node version-bump.mjs && git add manifest.json versions.json",
         "seed": "node scripts/seed-test-vault.mjs",
+        "open": "node scripts/open-test-vault.mjs",
         "lint": "eslint .",
         "format": "prettier --write .",
         "format:check": "prettier --check .",

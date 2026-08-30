@@ -17,7 +17,7 @@ Seed and deploy to the local test vault:
 ```bash
 pnpm run build && pnpm run seed   # writes PluginTest/ (gitignored) and installs the build into it
 ```
-`scripts/seed-test-vault.mjs` rewrites the notes `docs/TESTING.md`'s checklist names but leaves an existing `.obsidian` alone, so a vault you have opened keeps its settings. Takes an optional target path.
+`pnpm run open` then launches a separate Obsidian (own `--user-data-dir` under `.dev/`, CDP-attached) on that vault with the plugin enabled, the stream view open and `app.emulateMobile(true)` applied — `--desktop` skips the emulation. Emulation rebuilds the workspace, so it is applied *before* the view is opened or the leaf is discarded. `scripts/seed-test-vault.mjs` rewrites the notes `docs/TESTING.md`'s checklist names but leaves an existing `.obsidian` alone, so a vault you have opened keeps its settings. Takes an optional target path.
 
 ## Architecture
 
