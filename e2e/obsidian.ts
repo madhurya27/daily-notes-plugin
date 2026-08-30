@@ -64,6 +64,16 @@ function noteBody(day: number): string {
         "    - Bread",
         "- Read a chapter",
         "",
+        "## Wide content",
+        "",
+        "| Day | Distance | Pace | Heart rate | Weather | Route | Notes |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        `| ${day} | 8 km | 5:12 | 148 | Overcast | Riverside loop | Felt easy |`,
+        "",
+        "```ts",
+        "const wide = { alpha: 1, beta: 2, gamma: 3, delta: 4, epsilon: 5, zeta: 6, eta: 7, theta: 8 };",
+        "```",
+        "",
     ].join("\n");
 }
 

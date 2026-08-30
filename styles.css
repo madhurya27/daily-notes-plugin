@@ -249,3 +249,12 @@
     margin-block-start: 0;
     margin-block-end: 0;
 }
+
+/* Wide content scrolls inside its own box. Without this a table or a long code
+   line widens the whole stream, dragging every other note sideways with it —
+   worst on a phone, where the page ends up narrower than the table. */
+.daily-note-content :is(table, pre) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+}

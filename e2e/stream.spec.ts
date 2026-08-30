@@ -131,6 +131,52 @@ test.describe("daily notes stream in real Obsidian", () => {
         });
     });
 
+    test("keeps wide content inside the stream instead of scrolling the page", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const cdp = await page.context().newCDPSession(page);
+        const setViewport = (width: number) =>
+            cdp.send("Emulation.setDeviceMetricsOverride", { width, height: 800, deviceScaleFactor: 1, mobile: false });
+        const setMobile = async (on: boolean) => {
+            await page.evaluate((emulate) => window.app.emulateMobile(emulate), on);
+            // emulateMobile tears the workspace down and rebuilds it, taking every
+            // open leaf with it, so the view has to be reopened afterwards.
+            await page.waitForFunction(() => window.app.workspace.layoutReady === true, null, { timeout: 30_000 });
+        };
+
+        // A phone is where a wide table or code line has nowhere to go and starts
+        // pushing the page sideways; at desktop width it simply fits.
+        await setViewport(420);
+        await setMobile(true);
+        try {
+            const container = await openStream(page);
+            await expect(container.locator("table").first()).toBeVisible();
+            // is-phone is what carries the mobile layout, and it keys off width.
+            await expect(page.locator("body")).toHaveClass(/is-phone/);
+
+            const overflow = await container.evaluate((el) => {
+                const scroller = el.parentElement!;
+                // Both are viewport coordinates: the scroller need not start at 0.
+                const limit = scroller.getBoundingClientRect().right;
+                return {
+                    pageOverflow: scroller.scrollWidth - scroller.clientWidth,
+                    widest: Math.max(
+                        ...Array.from(el.querySelectorAll("table, pre")).map((child) =>
+                            Math.round(child.getBoundingClientRect().right - limit)
+                        )
+                    ),
+                };
+            });
+
+            expect(overflow.pageOverflow).toBeLessThanOrEqual(0);
+            expect(overflow.widest).toBeLessThanOrEqual(0);
+        } finally {
+            // Restore the fixture's layout: the instance is shared with every
+            // other test, and a failure here must not leave them on a phone.
+            await setMobile(false);
+            await setViewport(1024);
+        }
+    });
+
     test("keeps the properties panel collapsed across a re-render", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
