@@ -189,48 +189,27 @@ test.describe("daily notes stream in real Obsidian", () => {
 
     test("keeps wide content inside the stream instead of scrolling the page", async ({ obsidian }) => {
         const { page } = obsidian;
-        const cdp = await page.context().newCDPSession(page);
-        const setViewport = (width: number) =>
-            cdp.send("Emulation.setDeviceMetricsOverride", { width, height: 800, deviceScaleFactor: 1, mobile: false });
-        const setMobile = async (on: boolean) => {
-            await page.evaluate((emulate) => window.app.emulateMobile(emulate), on);
-            // emulateMobile tears the workspace down and rebuilds it, taking every
-            // open leaf with it, so the view has to be reopened afterwards.
-            await page.waitForFunction(() => window.app.workspace.layoutReady === true, null, { timeout: 30_000 });
-        };
+        const container = await openStream(page);
+        await expect(container.locator("table").first()).toBeVisible();
 
-        // A phone is where a wide table or code line has nowhere to go and starts
-        // pushing the page sideways; at desktop width it simply fits.
-        await setViewport(420);
-        await setMobile(true);
-        try {
-            const container = await openStream(page);
-            await expect(container.locator("table").first()).toBeVisible();
-            // is-phone is what carries the mobile layout, and it keys off width.
-            await expect(page.locator("body")).toHaveClass(/is-phone/);
+        // The mobile project is where this bites: a phone has no room for a wide
+        // table or code line, so it pushes the page sideways instead.
+        const overflow = await container.evaluate((el) => {
+            const scroller = el.parentElement!;
+            // Both are viewport coordinates: the scroller need not start at 0.
+            const limit = scroller.getBoundingClientRect().right;
+            return {
+                pageOverflow: scroller.scrollWidth - scroller.clientWidth,
+                widest: Math.max(
+                    ...Array.from(el.querySelectorAll("table, pre")).map((child) =>
+                        Math.round(child.getBoundingClientRect().right - limit)
+                    )
+                ),
+            };
+        });
 
-            const overflow = await container.evaluate((el) => {
-                const scroller = el.parentElement!;
-                // Both are viewport coordinates: the scroller need not start at 0.
-                const limit = scroller.getBoundingClientRect().right;
-                return {
-                    pageOverflow: scroller.scrollWidth - scroller.clientWidth,
-                    widest: Math.max(
-                        ...Array.from(el.querySelectorAll("table, pre")).map((child) =>
-                            Math.round(child.getBoundingClientRect().right - limit)
-                        )
-                    ),
-                };
-            });
-
-            expect(overflow.pageOverflow).toBeLessThanOrEqual(0);
-            expect(overflow.widest).toBeLessThanOrEqual(0);
-        } finally {
-            // Restore the fixture's layout: the instance is shared with every
-            // other test, and a failure here must not leave them on a phone.
-            await setMobile(false);
-            await setViewport(1024);
-        }
+        expect(overflow.pageOverflow).toBeLessThanOrEqual(0);
+        expect(overflow.widest).toBeLessThanOrEqual(0);
     });
 
     test("keeps the properties panel collapsed across a re-render", async ({ obsidian }) => {
@@ -269,26 +248,19 @@ test.describe("daily notes stream in real Obsidian", () => {
             plugin.settings.showProperties = true;
             await plugin.saveSettings();
         });
-
-        // Only Obsidian's mobile stylesheet styles this icon as a button: in its
-        // own properties editor it opens a menu, but the stream is read-only, so
-        // the cursor must not promise an interaction that cannot happen.
-        await page.evaluate(() => window.app.emulateMobile(true));
-        await page.waitForFunction(() => window.app.workspace.layoutReady === true, null, { timeout: 30_000 });
-        try {
-            const container = await openStream(page);
-            const panel = container.locator(".metadata-container").first();
-            // Collapse state persists per note, and an earlier test may have left
-            // this panel closed; its icons are then not there to measure.
-            if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
-                await panel.locator(".metadata-properties-heading").click();
-            }
-            const icon = panel.locator(".metadata-property-icon").first();
-            await expect(icon).toBeVisible();
-            await expect(icon).toHaveCSS("cursor", "default");
-        } finally {
-            await page.evaluate(() => window.app.emulateMobile(false));
-            await page.waitForFunction(() => window.app.workspace.layoutReady === true, null, { timeout: 30_000 });
+        const container = await openStream(page);
+        const panel = container.locator(".metadata-container").first();
+        // Collapse state persists per note, and an earlier test may have left
+        // this panel closed; its icons are then not there to measure.
+        if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
+            await panel.locator(".metadata-properties-heading").click();
         }
+        const icon = panel.locator(".metadata-property-icon").first();
+        await expect(icon).toBeVisible();
+
+        // Obsidian's mobile stylesheet styles this icon as a button: in its own
+        // properties editor it opens a menu. The stream is read-only, so the
+        // cursor must not promise an interaction that cannot happen.
+        await expect(icon).toHaveCSS("cursor", "default");
     });
 });

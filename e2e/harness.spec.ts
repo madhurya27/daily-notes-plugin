@@ -1,4 +1,4 @@
-import { test, expect } from "./obsidian";
+import { test, expect, LAYOUT_VIEWPORT } from "./obsidian";
 
 test("the test window follows the system colour scheme", async ({ obsidian }) => {
     const { bodyClass, prefersDark } = await obsidian.page.evaluate(() => ({
@@ -32,6 +32,8 @@ test("lays the page out at a normal size despite the small window", async ({ obs
     // The window itself is shrunk to Obsidian's 300x200 minimum and parked in a
     // corner, so the flash before the hide lands is small; the renderer is told
     // to lay out at a usual size so infinite scroll behaves realistically.
+    // Each project lays out at its own size: a desktop window, or a phone.
+    const expected = LAYOUT_VIEWPORT[test.info().project.name === "mobile" ? "mobile" : "desktop"];
     const inner = await obsidian.page.evaluate(() => ({ w: window.innerWidth, h: window.innerHeight }));
-    expect(inner).toEqual({ w: 1024, h: 800 });
+    expect(inner).toEqual({ w: expected.width, h: expected.height });
 });

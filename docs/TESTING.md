@@ -6,6 +6,13 @@ pnpm test
 ```
 Covers date parsing and sorting for root-folder and nested `YYYY/MM/` structures.
 
+`pnpm run test:e2e` runs every spec twice — once as **desktop**, once as **mobile**
+(`emulateMobile` at a 420px viewport, so `is-mobile` and `is-phone` both apply).
+Failures name the project, so a rule that is right on one layout and wrong on the
+other shows up as a single red row rather than a mystery. Run one with
+`pnpm exec playwright test --project=mobile`. `E2E_SHOW_WINDOW=1` opens the window
+on a second display when there is one.
+
 ## 2. Test vault setup
 ```bash
 pnpm run build && pnpm run seed
@@ -31,6 +38,7 @@ pnpm run open              # phone-sized window, mobile emulation ON
 pnpm run open --desktop    # ordinary window, emulation off
 pnpm run open --keep-size  # emulation on, window left at its saved size
 pnpm run open --position 900,60   # place the window; combines with the others
+pnpm run open --secondary         # open on the second display (--display N for others)
 ```
 Phone mode has no draggable region — Obsidian is frameless on macOS and the phone
 layout collapses the tab strip that carries it — so `--position` is how the window

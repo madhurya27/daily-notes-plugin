@@ -28,6 +28,8 @@ const NO_THROTTLE = [
  */
 const MIN_WINDOW = { width: 300, height: 200 };
 const VIEWPORT = { width: 1024, height: 800 };
+/** Narrow enough for is-phone, which switches at 600px. */
+const PHONE_VIEWPORT = { width: 420, height: 800 };
 const PLUGIN_ID = "daily-notes-stream";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -143,6 +145,23 @@ async function launch(): Promise<{
             join(userDataDir, `${VAULT_ID}.json`),
             JSON.stringify({ ...MIN_WINDOW, x: screen.width, y: screen.height, isMaximized: false, zoom: 0 })
         );
+    } else {
+        // A watched run is still a run: park it on a second display if there is
+        // one, rather than over whatever the user is doing on their main screen.
+        const secondary = secondaryScreen();
+        if (secondary) {
+            writeFileSync(
+                join(userDataDir, `${VAULT_ID}.json`),
+                JSON.stringify({
+                    width: Math.min(VIEWPORT.width, secondary.width - 80),
+                    height: Math.min(VIEWPORT.height, secondary.height - 80),
+                    x: secondary.x + 40,
+                    y: secondary.y + 40,
+                    isMaximized: false,
+                    zoom: 0,
+                })
+            );
+        }
     }
 
     const port = await freePort();
@@ -265,6 +284,31 @@ function screenSize(): { width: number; height: number } {
         // Fall through to a size no display exceeds by much; macOS clamps anyway.
     }
     return { width: 5000, height: 3000 };
+}
+
+/**
+ * The display beside the main one, in the top-left coordinates Obsidian stores
+ * window bounds in — NSScreen reports Cocoa frames, whose origin is the main
+ * display's bottom-left with y growing upwards.
+ */
+function secondaryScreen(): { x: number; y: number; width: number; height: number } | null {
+    const script =
+        "ObjC.import('AppKit'); $.NSScreen.screens.js.map(s => " +
+        "[s.frame.origin.x, s.frame.origin.y, s.frame.size.width, s.frame.size.height].join(',')).join(';')";
+    try {
+        const out = execFileSync("osascript", ["-l", "JavaScript", "-e", script], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        const frames = out.split(";").map((frame) => frame.split(",").map(Number));
+        const mainHeight = frames[0]?.[3];
+        const second = frames[1];
+        if (!mainHeight || !second) return null;
+        const [x, y, width, height] = second as [number, number, number, number];
+        return { x, y: mainHeight - (y + height), width, height };
+    } catch {
+        return null;
+    }
 }
 
 /** The app that owns the screen, so focus can be handed straight back to it. */
@@ -414,18 +458,49 @@ async function connectWithRetry(port: number): Promise<Browser> {
 
 interface WorkerFixtures {
     obsidian: ObsidianApp;
+    /** Set per project: every spec runs once as a desktop and once as a phone. */
+    mobileLayout: boolean;
 }
 
 /** One Obsidian instance per worker; tests share it and open a fresh view each. */
 export const test = base.extend<object, WorkerFixtures>({
+    mobileLayout: [false, { scope: "worker", option: true }],
     obsidian: [
-        async ({}, use: (app: ObsidianApp) => Promise<void>) => {
+        async ({ mobileLayout }, use: (app: ObsidianApp) => Promise<void>) => {
             const { app, dispose } = await launch();
+            if (mobileLayout) await applyMobileLayout(app.page);
             await use(app);
             await dispose();
         },
         { scope: "worker", timeout: 120_000 },
     ],
 });
+
+/**
+ * Puts the instance in Obsidian's phone layout for the whole worker: is-mobile
+ * comes from emulateMobile, is-phone only from a narrow viewport, and the bugs
+ * this catches (a wide table pushing the page sideways, a cursor promising a
+ * tap that does nothing) need both.
+ */
+async function applyMobileLayout(page: Page): Promise<void> {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setDeviceMetricsOverride", {
+        ...PHONE_VIEWPORT,
+        deviceScaleFactor: 1,
+        mobile: false,
+    });
+    await page.evaluate(() => window.app.emulateMobile(true));
+    // emulateMobile tears the workspace down and rebuilds it; every leaf goes
+    // with it, so tests must open their own view afterwards (they all do).
+    await page.waitForFunction(() => window.app.workspace.layoutReady === true, null, { timeout: 60_000 });
+}
+
+/** The per-project option playwright.config.ts sets. */
+export interface MobileLayoutOptions {
+    mobileLayout: boolean;
+}
+
+/** The viewport each project lays out at. */
+export const LAYOUT_VIEWPORT = { desktop: VIEWPORT, mobile: PHONE_VIEWPORT };
 
 export { expect };
