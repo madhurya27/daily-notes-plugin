@@ -10,11 +10,20 @@ Covers date parsing and sorting for root-folder and nested `YYYY/MM/` structures
 ```bash
 pnpm run build && pnpm run seed
 ```
-Writes `PluginTest/` (gitignored) with everything the checklist below names: 14
+Writes `PluginTest/` (gitignored) with everything the checklist below names: 122
 daily notes in `Notes/`, the two dated notes referenced by frontmatter, nested
 lists, repeated headings, a heading holding a link, `test-image.svg`, and a dated
 `.png` plus a dated note outside the folder that must *not* appear. Core daily
 notes is pre-enabled at `Notes` / `YYYY-MM-DD`.
+
+The filler notes cycle through seven shapes rather than repeating one — long
+notes, a wide code block and a wide table (both must scroll inside themselves),
+tasks and a blockquote, H1–H6 nesting, and one with no frontmatter at all, so the
+properties panel is tested by its absence too. `--days N` changes how many:
+```bash
+pnpm run seed --days 400   # deep history
+pnpm run seed --days 12    # barely past one batch
+```
 
 Open it once via **Open folder as vault**, or let the opener do it:
 ```bash

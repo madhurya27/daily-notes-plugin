@@ -13,7 +13,18 @@ import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const vault = resolve(process.argv[2] ?? join(REPO, "PluginTest"));
+const args = process.argv.slice(2);
+
+/** Reads `--flag value` and `--flag=value` alike. */
+const flagValue = (name) => {
+    const inline = args.find((arg) => arg.startsWith(`${name}=`));
+    if (inline) return inline.slice(name.length + 1);
+    const index = args.indexOf(name);
+    return index === -1 ? undefined : args[index + 1];
+};
+
+const positional = args.filter((arg, index) => !arg.startsWith("--") && args[index - 1] !== "--days");
+const vault = resolve(positional[0] ?? join(REPO, "PluginTest"));
 const NOTES = "Notes";
 const PLUGIN_ID = "daily-notes-stream";
 const ASSETS = ["main.js", "manifest.json", "styles.css"];
@@ -31,38 +42,110 @@ const writeConfigOnce = (relative, contents) => {
 
 const body = (...lines) => lines.join("\n") + "\n";
 
-/** The stream loads 10 at a time; a filler run of this length forces a second batch. */
-const FILLER_NOTES = 12;
+/** The stream loads 10 at a time, so this is a dozen batches of scrolling. */
+const DEFAULT_DAYS = 120;
+const days = Number(flagValue("--days") ?? DEFAULT_DAYS);
+if (!Number.isInteger(days) || days < 1) {
+    console.error(`--days wants a positive whole number, got: ${flagValue("--days")}`);
+    process.exit(1);
+}
 
 const fillerDate = (index) => {
     const date = new Date(Date.UTC(2026, 7, 29) - index * 86_400_000);
     return date.toISOString().slice(0, 10);
 };
 
-const filler = (index) =>
-    body(
-        "---",
-        `mood: day-${index + 1}`,
-        "tags:",
-        "  - daily",
-        "---",
-        "",
+const frontmatter = (index) => ["---", `mood: day-${index + 1}`, "tags:", "  - daily", "---", ""];
+
+/**
+ * Notes of different shapes, cycled through the filler run: a stream of one
+ * repeated note tests scrolling and nothing else. Each shape carries something
+ * the checklist asks about — wide content that must scroll inside itself, deep
+ * heading nesting, a note with no frontmatter (so no properties panel).
+ */
+const SHAPES = [
+    (index) => [
+        ...frontmatter(index),
         "## Morning",
         "",
-        `Ran ${index + 1} km before work.`,
+        `Ran ${(index % 12) + 1} km before work.`,
         "",
         "## Evening",
         "",
         "- Groceries",
         "    - Milk",
         "    - Bread",
-        "- Read a chapter"
-    );
+        "- Read a chapter",
+    ],
+    (index) => [
+        ...frontmatter(index),
+        "## Long read",
+        "",
+        ...Array.from(
+            { length: 6 },
+            (_, paragraph) =>
+                `Paragraph ${paragraph + 1} of a note long enough that a single day fills more than ` +
+                "one screen, which is what makes scroll-position restore worth checking.\n"
+        ),
+        "## Afterwards",
+        "",
+        "Short closing line.",
+    ],
+    (index) => [
+        ...frontmatter(index),
+        "## Wide code",
+        "",
+        "```ts",
+        "const wide = { alpha: 1, beta: 2, gamma: 3, delta: 4, epsilon: 5, zeta: 6, eta: 7, theta: 8, iota: 9 };",
+        "```",
+        "",
+        "It must scroll inside its own box, never the page.",
+    ],
+    (index) => [
+        ...frontmatter(index),
+        "## Wide table",
+        "",
+        "| Day | Distance | Pace | Heart rate | Weather | Route | Notes |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        `| ${index + 1} | 8 km | 5:12 | 148 | Overcast | Riverside loop | Felt easy |`,
+    ],
+    (index) => [
+        ...frontmatter(index),
+        "## Tasks",
+        "",
+        "- [x] Ship the thing",
+        "- [ ] Write it up",
+        "    - [ ] Draft",
+        "    - [ ] Edit",
+        "",
+        "> A quote, for the blockquote styling.",
+    ],
+    (index) => [
+        ...frontmatter(index),
+        "# Top level",
+        "",
+        "## Second",
+        "",
+        "### Third",
+        "",
+        "Collapse the top one and everything below it should go with it.",
+        "",
+        "#### Fourth",
+        "",
+        "##### Fifth",
+        "",
+        "###### Sixth",
+    ],
+    // No frontmatter: the properties panel must simply not appear.
+    () => ["A single line, no properties."],
+];
+
+const filler = (index) => body(...SHAPES[index % SHAPES.length](index));
 
 rmSync(join(vault, NOTES), { recursive: true, force: true });
 rmSync(join(vault, "Elsewhere"), { recursive: true, force: true });
 
-for (let index = 0; index < FILLER_NOTES; index++) {
+for (let index = 0; index < days; index++) {
     write(join(NOTES, `${fillerDate(index)}.md`), filler(index));
 }
 
@@ -151,4 +234,7 @@ for (const asset of ASSETS) {
     copyFileSync(join(REPO, asset), target);
 }
 
-console.log(`Seeded ${FILLER_NOTES + 2} daily notes and installed the plugin into ${vault}`);
+console.log(
+    `Seeded ${days + 2} daily notes (${fillerDate(days - 1)} to ${fillerDate(0)}, plus the two the docs name).`
+);
+console.log(`Installed the plugin into ${vault}`);
