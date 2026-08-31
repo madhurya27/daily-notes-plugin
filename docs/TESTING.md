@@ -35,6 +35,8 @@ pnpm run seed --days 12    # barely past one batch
 Open it once via **Open folder as vault**, or let the opener do it:
 ```bash
 pnpm run open              # phone-sized window, mobile emulation ON
+pnpm run open --ipad       # tablet-sized window, mobile emulation ON (no is-phone)
+pnpm run open --landscape  # the phone or iPad size on its side
 pnpm run open --desktop    # ordinary window, emulation off
 pnpm run open --keep-size  # emulation on, window left at its saved size
 pnpm run open --position 900,60   # place the window; combines with the others
@@ -115,9 +117,10 @@ real Obsidian instance; the rest still need a human.
 that promise, so this section is run by hand before a release.
 
 **Emulate first** — `pnpm run open` gets you `is-mobile` and `is-phone` in one
-command. By hand it is `this.app.emulateMobile(true)` in the desktop console
-(`Cmd+Opt+I`), `false` to leave, plus dragging the window under ~600px wide for
-the phone layout. This flips `Platform.isMobile` and loads the mobile CSS, so
+command; `--ipad` gets the tablet layout, `is-mobile` without `is-phone`;
+`--landscape` turns either on its side. By hand it is `this.app.emulateMobile(true)` in the desktop console (`Cmd+Opt+I`),
+`false` to leave, plus dragging the window under ~600px on either side for the
+phone layout. This flips `Platform.isMobile` and loads the mobile CSS, so
 it catches layout and touch-target problems in seconds. It is not a substitute
 for a device: it keeps Electron's Chromium, so it cannot reproduce an iOS
 WKWebView bug.

@@ -2,7 +2,7 @@
  * Opens PluginTest/ in Obsidian with the plugin enabled and mobile emulation on,
  * then leaves the window running and detaches.
  *
- *   node scripts/open-test-vault.mjs [--desktop] [vault]
+ *   node scripts/open-test-vault.mjs [--desktop|--ipad] [--landscape] [vault]
  *
  * Runs its own Obsidian instance against `.dev/obsidian-userdata`, so your real
  * Obsidian config and vaults are never touched — the two can run side by side.
@@ -21,8 +21,16 @@ const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Conten
 const PLUGIN_ID = "daily-notes-stream";
 const VIEW_TYPE = "daily-notes-stream-view";
 const VAULT_ID = "dev00000000000001";
-/** Narrow enough for Obsidian's phone layout (is-phone), which keys off width. */
-const PHONE_WINDOW = { width: 420, height: 900 };
+/**
+ * Emulated window sizes, portrait; --landscape swaps the two. `is-mobile` comes
+ * from emulateMobile, `is-phone` from either window dimension being under
+ * 600px — so a phone keeps the phone layout on its side, and the iPad size is
+ * the tablet layout in both orientations: mobile CSS without the phone one.
+ */
+const MOBILE_WINDOWS = {
+    phone: { width: 420, height: 900 },
+    ipad: { width: 820, height: 1180 },
+};
 
 const args = process.argv.slice(2);
 
@@ -44,8 +52,11 @@ const parsePosition = (value) => {
     return { x: Number(match[1]), y: Number(match[2]) };
 };
 
-const mobile = !args.includes("--desktop");
-const resize = mobile && !args.includes("--keep-size");
+const device = args.includes("--desktop") ? "desktop" : args.includes("--ipad") ? "ipad" : "phone";
+const mobile = device !== "desktop";
+const portrait = mobile && !args.includes("--keep-size") ? MOBILE_WINDOWS[device] : null;
+const windowSize =
+    portrait && args.includes("--landscape") ? { width: portrait.height, height: portrait.width } : portrait;
 const position = parsePosition(flagValue("--position"));
 // 1 is the main display; --secondary is shorthand for the next one along.
 const displayArg = flagValue("--display") ?? (args.includes("--secondary") ? "2" : undefined);
@@ -177,9 +188,9 @@ writeFileSync(
     bounds.x = screen.x + 40;
     bounds.y = screen.y + 40;
     bounds.isMaximized = false;
-    if (resize) {
-        bounds.width = PHONE_WINDOW.width;
-        bounds.height = Math.min(PHONE_WINDOW.height, screen.height - 80);
+    if (windowSize) {
+        bounds.width = Math.min(windowSize.width, screen.width - 80);
+        bounds.height = Math.min(windowSize.height, screen.height - 80);
     }
     // An explicit position wins over the display's default corner.
     if (position) {
@@ -259,8 +270,9 @@ await browser.close();
 const classes = [layout.mobile && "is-mobile", layout.phone && "is-phone"].filter(Boolean).join(" ");
 console.log(
     `Obsidian is open on ${vault} with the stream view showing.\n` +
-        `Layout: ${classes || "desktop"}${resize ? ` in a ${PHONE_WINDOW.width}px window` : ""}, ${layout.theme}.\n` +
+        `Layout: ${classes || "desktop"}${windowSize ? ` in a ${windowSize.width}x${windowSize.height} window` : ""}, ${layout.theme}.\n` +
         "Toggle emulation in the console any time: this.app.emulateMobile(false)\n" +
+        "--ipad gives the tablet layout (is-mobile, no is-phone); --landscape turns either on its side;\n" +
         "--desktop skips emulation; --keep-size keeps the saved size;\n" +
         "--position x,y places the window; --secondary (or --display N) puts it on another screen."
 );
