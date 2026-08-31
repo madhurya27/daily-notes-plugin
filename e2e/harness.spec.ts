@@ -1,4 +1,4 @@
-import { test, expect } from "./obsidian";
+import { test, expect, LAYOUT_VIEWPORT } from "./obsidian";
 
 test("the test window follows the system colour scheme", async ({ obsidian }) => {
     const { bodyClass, prefersDark } = await obsidian.page.evaluate(() => ({
@@ -26,12 +26,26 @@ test("the test run never leaves Obsidian in front of the user's work", async ({ 
     expect(obsidian.isFrontmost()).toBe(false);
 });
 
+test("shrinks the window to Obsidian's minimum", async ({ obsidian }) => {
+    test.skip(process.env.E2E_SHOW_WINDOW === "1", "the window is deliberately a normal one");
+
+    // Bounds landing on no display at all are rejected outright, and Obsidian
+    // falls back to a centred full-size window — which then flashes over the
+    // user's screen before the hide lands. An extended desktop makes that easy
+    // to hit, so the corner has to be a point some display actually contains.
+    const bounds = obsidian.windowBounds();
+    expect(bounds).not.toBeNull();
+    expect({ width: bounds!.width, height: bounds!.height }).toEqual({ width: 300, height: 200 });
+});
+
 test("lays the page out at a normal size despite the small window", async ({ obsidian }) => {
     test.skip(process.env.E2E_SHOW_WINDOW === "1", "the window is a normal one");
 
     // The window itself is shrunk to Obsidian's 300x200 minimum and parked in a
     // corner, so the flash before the hide lands is small; the renderer is told
     // to lay out at a usual size so infinite scroll behaves realistically.
+    // Each project lays out at its own size: a desktop window, or a phone.
+    const expected = LAYOUT_VIEWPORT[test.info().project.name === "mobile" ? "mobile" : "desktop"];
     const inner = await obsidian.page.evaluate(() => ({ w: window.innerWidth, h: window.innerHeight }));
-    expect(inner).toEqual({ w: 1024, h: 800 });
+    expect(inner).toEqual({ w: expected.width, h: expected.height });
 });

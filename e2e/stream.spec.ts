@@ -62,6 +62,84 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(body).toBeVisible();
     });
 
+    test("hides headings nested under a collapsed one, not just its text", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const firstNote = container.locator(".daily-note-block").first();
+        const heading = firstNote.locator(".daily-note-content h2").first();
+        const nested = firstNote.locator(".daily-note-content h3").first();
+
+        await expect(nested).toBeVisible();
+        await heading.locator(".collapse-indicator").click();
+
+        // Hiding is a class the stylesheet has to honour: a heading carries the
+        // collapsible rule's own display, which a bare .is-hidden cannot outrank.
+        await expect(nested).toHaveClass(/is-hidden/);
+        await expect(nested).toBeHidden();
+
+        await heading.locator(".collapse-indicator").click();
+        await expect(nested).toBeVisible();
+    });
+
+    test("hides a table and a code block under a collapsed heading", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const note = container.locator(".daily-note-block").first();
+        const heading = note.locator(".daily-note-content h2", { hasText: "Wide content" });
+        const table = note.locator(".daily-note-content table").first();
+        const code = note.locator(".daily-note-content pre").first();
+
+        await expect(table).toBeVisible();
+        await heading.locator(".collapse-indicator").click();
+
+        // Both carry their own display rule so they scroll rather than widen the
+        // page; hidden has to outrank that or a collapsed section keeps showing.
+        await expect(table).toBeHidden();
+        await expect(code).toBeHidden();
+
+        await heading.locator(".collapse-indicator").click();
+        await expect(table).toBeVisible();
+    });
+
+    test("keeps the list chevron clear of a task's checkbox", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const parentTask = container
+            .locator(".daily-note-content li.task-list-item", { hasText: "Parent task" })
+            .first();
+        const chevron = parentTask.locator("> .collapse-indicator");
+        const checkbox = parentTask.locator("> input").first();
+
+        await expect(chevron).toBeVisible();
+        const [chevronBox, checkboxBox] = await Promise.all([chevron.boundingBox(), checkbox.boundingBox()]);
+
+        // The chevron sits outside the list content; a task item puts its
+        // checkbox there too, so the two collide unless the chevron moves.
+        expect(chevronBox!.x + chevronBox!.width).toBeLessThanOrEqual(checkboxBox!.x);
+    });
+
+    test("indents nested lists the way Obsidian's reading view does", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const list = container.locator(".daily-note-content ul", { hasText: "Groceries" }).first();
+        await expect(list).toBeVisible();
+
+        // Obsidian indents rendered lists through the list item's margin and
+        // zeroes the list's own padding; a plain <ul> instead falls back to the
+        // browser's 40px per level, which on a phone eats a tenth of the width
+        // for every nesting level.
+        const step = await list.evaluate((ul) => {
+            const li = (el: Element) => el.querySelector(":scope > li")!;
+            const outer = li(ul).getBoundingClientRect().left;
+            const inner = li(ul.querySelector("ul")!).getBoundingClientRect().left;
+            return { padding: getComputedStyle(ul).paddingInlineStart, nested: inner - outer };
+        });
+
+        expect(step.padding).toBe("0px");
+        // --list-indent: 0.5625em * 4 = 2.25em, 36px at the default 16px root.
+        expect(step.nested).toBeCloseTo(36, 0);
+    });
+
     test("toggles a heading from the keyboard", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
@@ -131,6 +209,31 @@ test.describe("daily notes stream in real Obsidian", () => {
         });
     });
 
+    test("keeps wide content inside the stream instead of scrolling the page", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        await expect(container.locator("table").first()).toBeVisible();
+
+        // The mobile project is where this bites: a phone has no room for a wide
+        // table or code line, so it pushes the page sideways instead.
+        const overflow = await container.evaluate((el) => {
+            const scroller = el.parentElement!;
+            // Both are viewport coordinates: the scroller need not start at 0.
+            const limit = scroller.getBoundingClientRect().right;
+            return {
+                pageOverflow: scroller.scrollWidth - scroller.clientWidth,
+                widest: Math.max(
+                    ...Array.from(el.querySelectorAll("table, pre")).map((child) =>
+                        Math.round(child.getBoundingClientRect().right - limit)
+                    )
+                ),
+            };
+        });
+
+        expect(overflow.pageOverflow).toBeLessThanOrEqual(0);
+        expect(overflow.widest).toBeLessThanOrEqual(0);
+    });
+
     test("keeps the properties panel collapsed across a re-render", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
@@ -158,5 +261,28 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(container.locator(".daily-note-block").first().locator(".metadata-container")).toHaveClass(
             /is-collapsed/
         );
+    });
+
+    test("does not offer a pointer on property icons nothing can click", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const panel = container.locator(".metadata-container").first();
+        // Collapse state persists per note, and an earlier test may have left
+        // this panel closed; its icons are then not there to measure.
+        if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
+            await panel.locator(".metadata-properties-heading").click();
+        }
+        const icon = panel.locator(".metadata-property-icon").first();
+        await expect(icon).toBeVisible();
+
+        // Obsidian's mobile stylesheet styles this icon as a button: in its own
+        // properties editor it opens a menu. The stream is read-only, so the
+        // cursor must not promise an interaction that cannot happen.
+        await expect(icon).toHaveCSS("cursor", "default");
     });
 });

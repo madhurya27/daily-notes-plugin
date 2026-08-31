@@ -47,8 +47,16 @@ const parsePosition = (value) => {
 const mobile = !args.includes("--desktop");
 const resize = mobile && !args.includes("--keep-size");
 const position = parsePosition(flagValue("--position"));
+// 1 is the main display; --secondary is shorthand for the next one along.
+const displayArg = flagValue("--display") ?? (args.includes("--secondary") ? "2" : undefined);
+const display = displayArg === undefined ? null : Number(displayArg);
+if (display !== null && (!Number.isInteger(display) || display < 1)) {
+    console.error(`--display wants a screen number from 1, got: ${displayArg}`);
+    process.exit(1);
+}
 // A value consumed by a flag is not the vault path.
-const positional = args.filter((arg, index) => !arg.startsWith("--") && args[index - 1] !== "--position");
+const consumed = new Set(["--position", "--display"]);
+const positional = args.filter((arg, index) => !arg.startsWith("--") && !consumed.has(args[index - 1]));
 const vault = resolve(positional[0] ?? join(REPO, "PluginTest"));
 const userDataDir = join(REPO, ".dev", "obsidian-userdata");
 
@@ -79,20 +87,31 @@ const connect = async (port) => {
     }
 };
 
-/** The desktop's usable size, so a phone-shaped window lands on screen. */
-const screenSize = () => {
+/**
+ * Every display, top-left origin first — the coordinate space Obsidian stores
+ * window bounds in. NSScreen reports Cocoa coordinates instead: the origin is
+ * the bottom-left of the *main* display and y grows upwards, so each frame is
+ * flipped against the main display's height.
+ */
+const screens = () => {
+    const script =
+        "ObjC.import('AppKit'); $.NSScreen.screens.js.map(s => " +
+        "[s.frame.origin.x, s.frame.origin.y, s.frame.size.width, s.frame.size.height].join(',')).join(';')";
     try {
-        const out = execFileSync("osascript", ["-e", 'tell application "Finder" to get bounds of window of desktop'], {
+        const out = execFileSync("osascript", ["-l", "JavaScript", "-e", script], {
             encoding: "utf8",
             stdio: ["ignore", "pipe", "ignore"],
-        });
-        const [, , width, height] = out.split(",").map((n) => Number(n.trim()));
-        if (width && height) return { width, height };
+        }).trim();
+        const frames = out.split(";").map((frame) => frame.split(",").map(Number));
+        const mainHeight = frames[0]?.[3];
+        if (!mainHeight) return null;
+        return frames.map(([x, y, width, height]) => ({ x, y: mainHeight - (y + height), width, height }));
     } catch {
-        // Fall through: macOS clamps a window back onto a display anyway.
+        return null; // Fall through: macOS clamps a window back onto a display.
     }
-    return { width: 1440, height: 900 };
 };
+
+const FALLBACK_SCREEN = { x: 0, y: 0, width: 1440, height: 900 };
 
 /**
  * Electron leaves helper processes behind, and any survivor holds the
@@ -128,7 +147,7 @@ writeFileSync(
 
 // Obsidian stores window bounds per vault and reads them at startup, so writing
 // them here opens the window in place rather than moving it on screen after.
-if (resize || position) {
+{
     const boundsPath = join(userDataDir, `${VAULT_ID}.json`);
     // --keep-size means the size is whatever the last session saved; keep the
     // rest of the file too, since Obsidian stores zoom and maximised state in it.
@@ -140,11 +159,29 @@ if (resize || position) {
             // A corrupt bounds file is not worth failing the launch over.
         }
     }
+    const displays = screens();
+    let screen = displays?.[0] ?? FALLBACK_SCREEN;
+    if (display !== null) {
+        const chosen = displays?.[display - 1];
+        if (!chosen) {
+            const found = displays?.length ?? 0;
+            console.error(`No display ${display}: macOS reports ${found} screen${found === 1 ? "" : "s"}.`);
+            process.exit(1);
+        }
+        screen = chosen;
+    }
+    // Placed every run, not only when asked: bounds persist, so without this a
+    // window opens wherever the last run happened to put it. This window is one
+    // to watch, so it belongs on the main display unless asked otherwise — the
+    // hidden e2e run is the one that goes to a second screen.
+    bounds.x = screen.x + 40;
+    bounds.y = screen.y + 40;
+    bounds.isMaximized = false;
     if (resize) {
-        const screen = screenSize();
         bounds.width = PHONE_WINDOW.width;
         bounds.height = Math.min(PHONE_WINDOW.height, screen.height - 80);
     }
+    // An explicit position wins over the display's default corner.
     if (position) {
         bounds.x = position.x;
         bounds.y = position.y;
@@ -161,6 +198,10 @@ spawn(OBSIDIAN, [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${po
 
 const browser = await connect(port);
 const page = browser.contexts()[0].pages()[0];
+// Attaching over CDP makes Playwright emulate a light colour scheme, so the
+// window opens light and only returns to the system theme when this script
+// detaches. null hands the preference back immediately.
+await page.emulateMedia({ colorScheme: null });
 await page.waitForFunction(() => window.app?.workspace?.layoutReady === true, null, { timeout: 60_000 });
 
 // A vault that ships plugins raises a one-time trust prompt whose overlay
@@ -211,13 +252,15 @@ await page.waitForFunction(
 const layout = await page.evaluate(() => ({
     mobile: document.body.classList.contains("is-mobile"),
     phone: document.body.classList.contains("is-phone"),
+    theme: document.body.className.match(/theme-\w+/)?.[0] ?? "unknown",
 }));
 
 await browser.close();
 const classes = [layout.mobile && "is-mobile", layout.phone && "is-phone"].filter(Boolean).join(" ");
 console.log(
     `Obsidian is open on ${vault} with the stream view showing.\n` +
-        `Layout: ${classes || "desktop"}${resize ? ` in a ${PHONE_WINDOW.width}px window` : ""}.\n` +
+        `Layout: ${classes || "desktop"}${resize ? ` in a ${PHONE_WINDOW.width}px window` : ""}, ${layout.theme}.\n` +
         "Toggle emulation in the console any time: this.app.emulateMobile(false)\n" +
-        "--desktop skips emulation; --keep-size keeps the saved size; --position x,y places the window."
+        "--desktop skips emulation; --keep-size keeps the saved size;\n" +
+        "--position x,y places the window; --secondary (or --display N) puts it on another screen."
 );
