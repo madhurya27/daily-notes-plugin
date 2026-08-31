@@ -147,7 +147,7 @@ writeFileSync(
 
 // Obsidian stores window bounds per vault and reads them at startup, so writing
 // them here opens the window in place rather than moving it on screen after.
-if (resize || position || display !== null) {
+{
     const boundsPath = join(userDataDir, `${VAULT_ID}.json`);
     // --keep-size means the size is whatever the last session saved; keep the
     // rest of the file too, since Obsidian stores zoom and maximised state in it.
@@ -169,11 +169,14 @@ if (resize || position || display !== null) {
             process.exit(1);
         }
         screen = chosen;
-        // Inset from the corner so the window is not flush against the edge.
-        bounds.x = screen.x + 40;
-        bounds.y = screen.y + 40;
-        bounds.isMaximized = false;
     }
+    // Placed every run, not only when asked: bounds persist, so without this a
+    // window opens wherever the last run happened to put it. This window is one
+    // to watch, so it belongs on the main display unless asked otherwise — the
+    // hidden e2e run is the one that goes to a second screen.
+    bounds.x = screen.x + 40;
+    bounds.y = screen.y + 40;
+    bounds.isMaximized = false;
     if (resize) {
         bounds.width = PHONE_WINDOW.width;
         bounds.height = Math.min(PHONE_WINDOW.height, screen.height - 80);

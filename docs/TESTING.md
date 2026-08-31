@@ -40,6 +40,9 @@ pnpm run open --keep-size  # emulation on, window left at its saved size
 pnpm run open --position 900,60   # place the window; combines with the others
 pnpm run open --secondary         # open on the second display (--display N for others)
 ```
+The window opens on the **main** display unless you ask otherwise — it is there to
+be watched. The hidden e2e run is the opposite: it parks in the corner of a second
+display when there is one, so the flash before it hides is off your working screen.
 Phone mode has no draggable region — Obsidian is frameless on macOS and the phone
 layout collapses the tab strip that carries it — so `--position` is how the window
 gets moved, short of holding ⌃⌘ and dragging.
