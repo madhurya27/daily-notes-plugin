@@ -34,6 +34,7 @@ pnpm run seed --days 12    # barely past one batch
 
 Open it once via **Open folder as vault**, or let the opener do it:
 ```bash
+pnpm run open --help       # every option, with its default
 pnpm run open              # phone-sized window, mobile emulation ON
 pnpm run open --ipad       # tablet-sized window, mobile emulation ON (no is-phone)
 pnpm run open --landscape  # the phone or iPad size on its side

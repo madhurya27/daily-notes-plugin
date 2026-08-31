@@ -2,7 +2,7 @@
  * Opens PluginTest/ in Obsidian with the plugin enabled and mobile emulation on,
  * then leaves the window running and detaches.
  *
- *   node scripts/open-test-vault.mjs [--desktop|--ipad] [--landscape] [vault]
+ *   node scripts/open-test-vault.mjs [options] [vault]   (--help lists the options)
  *
  * Runs its own Obsidian instance against `.dev/obsidian-userdata`, so your real
  * Obsidian config and vaults are never touched — the two can run side by side.
@@ -33,6 +33,50 @@ const MOBILE_WINDOWS = {
 };
 
 const args = process.argv.slice(2);
+
+const USAGE = `pnpm run open [options] [vault]
+
+Opens PluginTest/ in its own Obsidian with the plugin enabled, the stream view
+showing and mobile emulation on, then detaches and leaves the window up.
+
+Size and layout (default: phone portrait)
+  --ipad          tablet window, 820x1180 — is-mobile without is-phone
+  --landscape     turn the phone or iPad size on its side
+  --desktop       ordinary window, no mobile emulation
+  --keep-size     emulate, but leave the window at its saved size
+
+Placement (default: 40,40 on the main display)
+  --position x,y  place the window (phone mode has no drag region to move it by)
+  --secondary     open on the second display
+  --display N     open on display N, counting from 1
+
+  --help, -h      this message
+
+is-phone follows the window: either dimension under 600px turns it on, so a
+phone keeps the phone layout in landscape and an iPad never takes it.
+Everything runs against .dev/obsidian-userdata — your real Obsidian config and
+vaults are untouched, and the two can run side by side.`;
+
+if (args.includes("--help") || args.includes("-h")) {
+    console.log(USAGE);
+    process.exit(0);
+}
+
+// A silently ignored typo (--ipad2) opens the wrong layout and looks like a bug.
+const KNOWN_FLAGS = new Set([
+    "--desktop",
+    "--ipad",
+    "--landscape",
+    "--keep-size",
+    "--position",
+    "--secondary",
+    "--display",
+]);
+const unknown = args.filter((arg) => arg.startsWith("--") && !KNOWN_FLAGS.has(arg.split("=")[0]));
+if (unknown.length) {
+    console.error(`Unknown option${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}\nRun: pnpm run open --help`);
+    process.exit(1);
+}
 
 /** Reads `--flag value` and `--flag=value` alike. */
 const flagValue = (name) => {
@@ -272,7 +316,5 @@ console.log(
     `Obsidian is open on ${vault} with the stream view showing.\n` +
         `Layout: ${classes || "desktop"}${windowSize ? ` in a ${windowSize.width}x${windowSize.height} window` : ""}, ${layout.theme}.\n` +
         "Toggle emulation in the console any time: this.app.emulateMobile(false)\n" +
-        "--ipad gives the tablet layout (is-mobile, no is-phone); --landscape turns either on its side;\n" +
-        "--desktop skips emulation; --keep-size keeps the saved size;\n" +
-        "--position x,y places the window; --secondary (or --display N) puts it on another screen."
+        "Other sizes, placement and displays: pnpm run open --help"
 );
