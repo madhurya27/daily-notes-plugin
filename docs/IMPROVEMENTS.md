@@ -188,7 +188,10 @@ The internal-link handler uses raw `addEventListener`. Reviewers require DOM lis
 ### M2. Isolate the internal `vault.config` access — **DONE**
 **File:** `src/DailyNotesStreamView.ts:46-53`
 
-`readableLineLength` has no public API, so some internal access is unavoidable — but reviewers flag it, so contain and justify it. Extract a helper (e.g. `getReadableLineLength(app): boolean` in a small util or on the view) holding the single type-cast, keep the `?? true` fallback, and keep the comment explaining there is no public API. Behavior unchanged; be prepared to justify it in the submission PR.
+`readableLineLength` has no public API, so some internal access is unavoidable — but reviewers flag it, so contain and justify it. Extract a helper (e.g. `getReadableLineLength(app): boolean` in a small util or on the view) holding the single type-cast, keep the `?? true` fallback, and keep the comment explaining there is no public API. Behavior unchanged; be prepared to justify it if review asks. Re-checked
+2026-08-30: no live policy, requirement or guideline mentions internal or
+private API use at all, so this is reviewer discretion rather than a stated
+rule.
 
 ### M3. `manifest.json` fixes — **DONE**
 - `authorUrl` is `https://github.com/madhurya`, but the git author is `madhurya27` — verify and point it at the real profile (reviewers check that it resolves to the author). Update `author` if it should be a display name other than "Madhurya".
@@ -212,19 +215,38 @@ assigned from JS, no Node/Electron API against `isDesktopOnly: false`, and
 Fixed by the sweep: an unprefixed `console.error` in `NoteRenderer`, and the
 title-cased "Daily Notes settings" in the load-failure message.
 
-Verified by hand: settings has no headings and no name repeats the plugin name;
-`onunload` does not exist, so it detaches no leaves; `normalizePath` guards the
-constructed path in `DailyNoteService`; a clean clone installs from the frozen
-lockfile and builds.
+Re-checked 2026-08-30 against the live [Developer policies][policies],
+[Submission requirements][requirements] and [Plugin guidelines][guidelines] —
+no violations. Seven rules that had only been verified by hand became tests in
+the same sweep: `this.app` over the global `app`, no plugin id inside a command
+id, no default hotkey, no leaf detached in `onunload`, the manifest description
+(≤250 chars, ends in a full stop, no emoji, does not open with "This is a
+plugin"), `fundingUrl` real if present, `obsidian` absent from the plugin id,
+and a non-empty `LICENSE` at the root. Each was checked by mutation: break the
+rule, watch the test fail.
+
+Still verified by hand: settings has no headings and no name repeats the plugin
+name; `normalizePath` guards the constructed path in `DailyNoteService`; a clean
+clone installs from the frozen lockfile and builds.
+
+Two open nits, neither blocking: `minAppVersion` accuracy (item I16), and the
+"consider organizing your code base using folders" guideline — `src/` is eleven
+flat `.ts` files.
+
+[policies]: https://docs.obsidian.md/Developer+policies
+[requirements]: https://docs.obsidian.md/Plugins/Releasing/Submission+requirements+for+plugins
+[guidelines]: https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines
 
 **Still open — the one blocking item:** run the `docs/TESTING.md` checklist on iOS
 or Android. `isDesktopOnly: false` is a promise no static check can keep.
 
 ### M7. Submission steps (manual, after everything above is merged and released)
+Obsidian replaced the pull request against `obsidianmd/obsidian-releases` with a
+developer dashboard; there is no `community-plugins.json` entry to append.
 1. Confirm the GitHub repo is public with `README.md` and `LICENSE` at the root (both exist).
-2. Publish the release (M5) for the final version; verify the three assets download correctly.
-3. Fork `obsidianmd/obsidian-releases`, append an entry to `community-plugins.json`: `{ "id": "daily-notes-stream", "name": "Daily Notes Stream", "author": <manifest author>, "description": <manifest description>, "repo": "<owner>/<repo>" }` (end of file, no reordering).
-4. Open the PR using their plugin template, tick every checklist item, and respond to bot findings until all checks are green.
+2. Publish the release (M5) for the final version; verify `main.js`, `manifest.json` and `styles.css` download individually and that the tag equals the manifest version exactly.
+3. Sign in to [community.obsidian.md](https://community.obsidian.md/), connect the GitHub account, pick the repo and complete the dashboard's steps.
+4. The automated review runs on submission and reports within minutes. Fix what it finds, publish a new release, resubmit. Once it passes, the plugin is installable in-app within 24 hours.
 
 ---
 
