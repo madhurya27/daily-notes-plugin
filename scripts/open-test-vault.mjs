@@ -198,6 +198,10 @@ spawn(OBSIDIAN, [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${po
 
 const browser = await connect(port);
 const page = browser.contexts()[0].pages()[0];
+// Attaching over CDP makes Playwright emulate a light colour scheme, so the
+// window opens light and only returns to the system theme when this script
+// detaches. null hands the preference back immediately.
+await page.emulateMedia({ colorScheme: null });
 await page.waitForFunction(() => window.app?.workspace?.layoutReady === true, null, { timeout: 60_000 });
 
 // A vault that ships plugins raises a one-time trust prompt whose overlay
@@ -248,13 +252,14 @@ await page.waitForFunction(
 const layout = await page.evaluate(() => ({
     mobile: document.body.classList.contains("is-mobile"),
     phone: document.body.classList.contains("is-phone"),
+    theme: document.body.className.match(/theme-\w+/)?.[0] ?? "unknown",
 }));
 
 await browser.close();
 const classes = [layout.mobile && "is-mobile", layout.phone && "is-phone"].filter(Boolean).join(" ");
 console.log(
     `Obsidian is open on ${vault} with the stream view showing.\n` +
-        `Layout: ${classes || "desktop"}${resize ? ` in a ${PHONE_WINDOW.width}px window` : ""}.\n` +
+        `Layout: ${classes || "desktop"}${resize ? ` in a ${PHONE_WINDOW.width}px window` : ""}, ${layout.theme}.\n` +
         "Toggle emulation in the console any time: this.app.emulateMobile(false)\n" +
         "--desktop skips emulation; --keep-size keeps the saved size;\n" +
         "--position x,y places the window; --secondary (or --display N) puts it on another screen."
