@@ -118,6 +118,28 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(chevronBox!.x + chevronBox!.width).toBeLessThanOrEqual(checkboxBox!.x);
     });
 
+    test("indents nested lists the way Obsidian's reading view does", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const list = container.locator(".daily-note-content ul", { hasText: "Groceries" }).first();
+        await expect(list).toBeVisible();
+
+        // Obsidian indents rendered lists through the list item's margin and
+        // zeroes the list's own padding; a plain <ul> instead falls back to the
+        // browser's 40px per level, which on a phone eats a tenth of the width
+        // for every nesting level.
+        const step = await list.evaluate((ul) => {
+            const li = (el: Element) => el.querySelector(":scope > li")!;
+            const outer = li(ul).getBoundingClientRect().left;
+            const inner = li(ul.querySelector("ul")!).getBoundingClientRect().left;
+            return { padding: getComputedStyle(ul).paddingInlineStart, nested: inner - outer };
+        });
+
+        expect(step.padding).toBe("0px");
+        // --list-indent: 0.5625em * 4 = 2.25em, 36px at the default 16px root.
+        expect(step.nested).toBeCloseTo(36, 0);
+    });
+
     test("toggles a heading from the keyboard", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);

@@ -75,7 +75,10 @@ export class NoteRenderer {
         this.renderProperties(noteContainer, file);
 
         // Content
-        const contentEl = noteContainer.createDiv({ cls: "daily-note-content" });
+        // "markdown-rendered" is how Obsidian scopes its whole reading-view
+        // stylesheet — list indent included. Without it a rendered note falls
+        // back to the browser's defaults.
+        const contentEl = noteContainer.createDiv({ cls: "daily-note-content markdown-rendered" });
         contentEl.dataset.sourcePath = file.path;
 
         try {
