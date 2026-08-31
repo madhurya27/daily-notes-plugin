@@ -38,6 +38,7 @@ Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 ## Documentation
 
 Update docs in the same branch as the code change that makes them stale:
+- `docs/adr/` — one numbered record per non-obvious decision, written in the branch that makes it. Rationale and rejected options live *only* here; everything else links to it. `docs/adr/README.md` holds the index and the rules.
 - `README.md` — user-facing features, install, usage.
 - `docs/TESTING.md` — manual verification checklist (mirrors current behavior).
 - `docs/DONE.md` / `docs/TODO.md` — move items between shipped and planned as work completes.
