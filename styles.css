@@ -276,6 +276,18 @@
     overflow-x: auto;
 }
 
+/* Obsidian pins the copy button to a code block's top-right corner and wraps
+   rendered code, so a long first line runs under the icon — its last few
+   characters unreadable. An empty float in that corner is the one thing text
+   wraps around: only the lines beside the button lose width, the rest of the
+   block keeps it. */
+.daily-note-content pre::before {
+    content: "";
+    float: right;
+    width: 3em;
+    height: 1.5em;
+}
+
 /* Obsidian's mobile stylesheet styles this icon as a button — in its own
    properties editor it opens a type menu. The stream is read-only, so the
    pointer would promise an interaction that does not exist here. */
