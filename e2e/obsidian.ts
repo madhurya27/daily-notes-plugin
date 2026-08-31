@@ -120,6 +120,8 @@ export interface ObsidianApp {
     isHidden: () => boolean;
     /** Whether macOS currently has the app in front of everything else. */
     isFrontmost: () => boolean;
+    /** The window's real size and position, as macOS sees it. */
+    windowBounds: () => { width: number; height: number; x: number; y: number } | null;
 }
 
 async function launch(): Promise<{
@@ -140,10 +142,20 @@ async function launch(): Promise<{
     // rejected outright (it falls back to a centred 1024x800); a corner is
     // clamped to fit, which is what we want.
     if (!SHOW_WINDOW) {
-        const screen = screenSize();
+        // The corner has to be a point some display actually contains: bounds
+        // landing on no screen are rejected, and Obsidian then centres a
+        // full-size window, which flashes over the user's work before the hide.
+        // An extended desktop is where a "past the edge" guess stops clamping.
+        const screen = secondaryScreen() ?? mainScreen();
         writeFileSync(
             join(userDataDir, `${VAULT_ID}.json`),
-            JSON.stringify({ ...MIN_WINDOW, x: screen.width, y: screen.height, isMaximized: false, zoom: 0 })
+            JSON.stringify({
+                ...MIN_WINDOW,
+                x: screen.x + screen.width - MIN_WINDOW.width,
+                y: screen.y + screen.height - MIN_WINDOW.height,
+                isMaximized: false,
+                zoom: 0,
+            })
         );
     } else {
         // A watched run is still a run: park it on a second display if there is
@@ -257,7 +269,19 @@ async function startUp(browser: Browser, userDataDir: string, vaultPath: string)
         return pid !== null && systemEvents(pid, "get frontmost") === "true";
     };
 
-    return { page, vaultPath, isHidden, isFrontmost };
+    const windowBounds = () => {
+        const pid = mainProcessPid(userDataDir);
+        if (pid === null) return null;
+        const size = systemEvents(pid, "get size of first window");
+        const position = systemEvents(pid, "get position of first window");
+        if (!size || !position) return null;
+        const [width, height] = size.split(",").map((n) => Number(n.trim()));
+        const [x, y] = position.split(",").map((n) => Number(n.trim()));
+        if ([width, height, x, y].some((n) => !Number.isFinite(n))) return null;
+        return { width: width!, height: height!, x: x!, y: y! };
+    };
+
+    return { page, vaultPath, isHidden, isFrontmost, windowBounds };
 }
 
 /**
@@ -286,12 +310,25 @@ function screenSize(): { width: number; height: number } {
     return { width: 5000, height: 3000 };
 }
 
+interface Screen {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+/** The main display, or a size no display exceeds by much if macOS won't say. */
+function mainScreen(): Screen {
+    const { width, height } = screenSize();
+    return { x: 0, y: 0, width, height };
+}
+
 /**
  * The display beside the main one, in the top-left coordinates Obsidian stores
  * window bounds in — NSScreen reports Cocoa frames, whose origin is the main
  * display's bottom-left with y growing upwards.
  */
-function secondaryScreen(): { x: number; y: number; width: number; height: number } | null {
+function secondaryScreen(): Screen | null {
     const script =
         "ObjC.import('AppKit'); $.NSScreen.screens.js.map(s => " +
         "[s.frame.origin.x, s.frame.origin.y, s.frame.size.width, s.frame.size.height].join(',')).join(';')";

@@ -26,6 +26,18 @@ test("the test run never leaves Obsidian in front of the user's work", async ({ 
     expect(obsidian.isFrontmost()).toBe(false);
 });
 
+test("shrinks the window to Obsidian's minimum", async ({ obsidian }) => {
+    test.skip(process.env.E2E_SHOW_WINDOW === "1", "the window is deliberately a normal one");
+
+    // Bounds landing on no display at all are rejected outright, and Obsidian
+    // falls back to a centred full-size window — which then flashes over the
+    // user's screen before the hide lands. An extended desktop makes that easy
+    // to hit, so the corner has to be a point some display actually contains.
+    const bounds = obsidian.windowBounds();
+    expect(bounds).not.toBeNull();
+    expect({ width: bounds!.width, height: bounds!.height }).toEqual({ width: 300, height: 200 });
+});
+
 test("lays the page out at a normal size despite the small window", async ({ obsidian }) => {
     test.skip(process.env.E2E_SHOW_WINDOW === "1", "the window is a normal one");
 
