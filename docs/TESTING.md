@@ -24,7 +24,8 @@ lists, repeated headings, a heading holding a link, `test-image.svg`, and a date
 notes is pre-enabled at `Notes` / `YYYY-MM-DD`.
 
 The filler notes cycle through seven shapes rather than repeating one — long
-notes, a wide code block and a wide table (both must scroll inside themselves),
+notes, a wide code block (which must scroll inside itself, its first line
+wrapping clear of the copy button) and a wide table (scrolling likewise),
 tasks and a blockquote, H1–H6 nesting, and one with no frontmatter at all, so the
 properties panel is tested by its absence too. `--days N` changes how many:
 ```bash

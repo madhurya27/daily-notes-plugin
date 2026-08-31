@@ -234,6 +234,38 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(overflow.widest).toBeLessThanOrEqual(0);
     });
 
+    test("keeps the copy button off the code it sits over", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const pre = container.locator("pre").first();
+        await expect(pre).toBeVisible();
+        // The button only fades in on hover, but it holds its place either way.
+        await pre.hover();
+
+        // Obsidian wraps rendered code and pins its copy button to the top-right
+        // corner, so a long first line runs underneath the icon.
+        const overlap = await pre.evaluate((el) => {
+            const button = el.querySelector(".copy-code-button");
+            const code = el.querySelector("code");
+            if (!button || !code) throw new Error("no copy button on the rendered code block");
+            const icon = button.getBoundingClientRect();
+            const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+            const range = document.createRange();
+            let widest = 0;
+            for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                range.selectNodeContents(node);
+                for (const line of Array.from(range.getClientRects())) {
+                    const across = Math.min(line.right, icon.right) - Math.max(line.left, icon.left);
+                    const down = Math.min(line.bottom, icon.bottom) - Math.max(line.top, icon.top);
+                    if (across > 0 && down > 0) widest = Math.max(widest, across);
+                }
+            }
+            return Math.round(widest);
+        });
+
+        expect(overlap).toBe(0);
+    });
+
     test("keeps the properties panel collapsed across a re-render", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
