@@ -8,7 +8,7 @@ pnpm run dev       # watch mode → main.js (inline sourcemaps)
 pnpm run build     # type-check + production build (minified)
 pnpm run lint      # ESLint
 pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is hand-wrapped, so it is ignored.
-pnpm test          # vitest run (mocks in tests/mocks/, jsdom via tests/setup.ts)
+pnpm test          # vitest run (mocks in tests/mocks/, jsdom via tests/setup.ts, stubbed view in tests/streamViewFixture.ts)
 pnpm run test:coverage  # vitest run --coverage (100% required)
 pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
 ```
