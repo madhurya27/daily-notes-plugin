@@ -2,16 +2,19 @@ import { readFileSync, writeFileSync } from "fs";
 
 const targetVersion = process.env.npm_package_version;
 
-// read minAppVersion from manifest.json and bump version to target version
+// Prettier checks these files in the release workflow, before the build.
+const writeJson = (file, value) => writeFileSync(file, JSON.stringify(value, null, 4) + "\n");
+
 const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
 const { minAppVersion } = manifest;
 manifest.version = targetVersion;
-writeFileSync("manifest.json", JSON.stringify(manifest, null, "\t"));
+writeJson("manifest.json", manifest);
 
-// update versions.json with target version and minAppVersion from manifest.json
-// but only if the target version is not already in versions.json
+// versions.json maps each plugin version to the app version it needs, so every
+// released version needs its own entry — including a bump that leaves
+// minAppVersion untouched.
 const versions = JSON.parse(readFileSync("versions.json", "utf8"));
-if (!Object.values(versions).includes(minAppVersion)) {
+if (!(targetVersion in versions)) {
     versions[targetVersion] = minAppVersion;
-    writeFileSync("versions.json", JSON.stringify(versions, null, "\t"));
+    writeJson("versions.json", versions);
 }
