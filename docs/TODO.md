@@ -6,7 +6,12 @@
 - [ ] Create today's note from the view — spec'd as F2 in `docs/IMPROVEMENTS.md`
 - [ ] Filtering: filter by tag/header
 - [ ] Tag click opens Obsidian search
-- [ ] Publish to Obsidian community plugins — M1–M6 done; blocked on a mobile pass of `docs/TESTING.md` (iOS/Android), then M7's manual submission steps
+- [ ] Publish to Obsidian community plugins — M1–M6 done; before M7's manual submission steps:
+  - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**
+  - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**; review the history first
+  - [ ] Dry-run the release workflow — it has never run; tag `1.0.0` only drafts a release, so check the three assets download individually
+  - [ ] README screenshot or GIF, desktop and phone layouts
+  - [ ] GitHub repo description and topics (both empty)
 
 ## Deferred code health
 Reviewed 2026-07 and deliberately not fixed; each has a trigger for revisiting.

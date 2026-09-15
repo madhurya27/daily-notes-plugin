@@ -229,9 +229,9 @@ Still verified by hand: settings has no headings and no name repeats the plugin
 name; `normalizePath` guards the constructed path in `DailyNoteService`; a clean
 clone installs from the frozen lockfile and builds.
 
-Two open nits, neither blocking: `minAppVersion` accuracy (item I16), and the
-"consider organizing your code base using folders" guideline — `src/` is eleven
-flat `.ts` files.
+One open nit, not blocking: the "consider organizing your code base using
+folders" guideline — `src/` is eleven flat `.ts` files. (`minAppVersion` is
+settled at 1.8.7, where `loadLocalStorage` landed; see `4edb40c`.)
 
 [policies]: https://docs.obsidian.md/Developer+policies
 [requirements]: https://docs.obsidian.md/Plugins/Releasing/Submission+requirements+for+plugins
@@ -243,7 +243,7 @@ or Android. `isDesktopOnly: false` is a promise no static check can keep.
 ### M7. Submission steps (manual, after everything above is merged and released)
 Obsidian replaced the pull request against `obsidianmd/obsidian-releases` with a
 developer dashboard; there is no `community-plugins.json` entry to append.
-1. Confirm the GitHub repo is public with `README.md` and `LICENSE` at the root (both exist).
+1. Make the GitHub repo public — it is private — with `README.md` and `LICENSE` at the root (both exist).
 2. Publish the release (M5) for the final version; verify `main.js`, `manifest.json` and `styles.css` download individually and that the tag equals the manifest version exactly.
 3. Sign in to [community.obsidian.md](https://community.obsidian.md/), connect the GitHub account, pick the repo and complete the dashboard's steps.
 4. The automated review runs on submission and reports within minutes. Fix what it finds, publish a new release, resubmit. Once it passes, the plugin is installable in-app within 24 hours.
