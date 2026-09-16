@@ -69,6 +69,7 @@ Tag must equal the manifest version exactly, no leading `v`; `pnpm version` writ
 Update docs in the same branch as the change that makes them stale:
 
 - `docs/adr/` — one numbered record per non-obvious decision. Rationale and rejected options live *only* here; everything else links to it.
+- `docs/decisions.md` — smaller design decisions: decision, why, rejected. Bigger ones are an ADR.
 - `README.md` — user-facing features, install, usage.
 - `docs/TESTING.md` — manual verification checklist.
 - `docs/DONE.md` / `docs/TODO.md` — move items as work completes.

@@ -15,10 +15,8 @@ Ordered by priority, from the 2026-09 comparison against
   a vault with no daily notes currently renders blank.
 - [ ] Filtering: filter by tag/header — land after note unloading; retrofitting it over windowing is harder.
 - [ ] Tag click opens Obsidian search
-- [ ] Editability: click to edit inline — **decide before building.** Embedding editors is what forces Daily
-  Notes Editor's four `prototype` patches and why its view cannot react to vault events; live updates,
-  collapsing and testability are downstream of read-only rendering. Cheaper 80%: a per-note open/append
-  action. Either way the outcome belongs in `docs/decisions.md`.
+- [ ] Per-note edit action — open in a split, or append to today's note. Read-only stream stays; see
+  `docs/decisions.md` (2026-09-15).
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
   - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**
   - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**; review the history first
@@ -28,35 +26,29 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] Position the README against Daily Notes Editor — a live-updating reading feed, not an inline editor.
 
 ## Features
-New capability, as opposed to the fixes above. Each fits the read-only reading feed; anything needing embedded
-editors belongs with the editability decision in `## Open`.
+New capability, as opposed to the fixes above. Embedded editors are ruled out by `docs/decisions.md`.
 
-Surveyed 2026-09 against core plugins and the community directory. **The filter: anything operating on a
-*file* is already solved by core or an established plugin — only what operates on *the stream itself* is ours.**
-**Recommended first three are marked ★.**
+Surveyed 2026-09 against core and the community directory. **The filter: what operates on a *file* is already
+solved elsewhere; only what operates on *the stream* is ours.** ★ marks the recommended first three.
 
-- [ ] Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. ★ Intra-view, so nothing external covers
-  it, and no embedded editors compete for focus.
-- [ ] Skip empty notes — template-created but unwritten dailies are noise in a feed; detectable as
-  frontmatter-only from the metadata cache. ★ Uncontested.
-- [ ] Sticky date header — a continuous feed loses track of which day it is in. ★ Uncontested.
-- [ ] On this day — the same calendar date across previous years as its own stream. A filter over `_sorted`.
-  [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review) already does this with ~200-char
-  excerpts and fixed spans; ours is the full rendered note in the stream. Better, not new — scope it that way.
-- [ ] In-stream date seek, with a timeline in the gutter. [Calendar](https://github.com/liamcain/obsidian-calendar-plugin)
-  and [Jump to Date](https://github.com/TfTHacker/obsidian42-jump-to-date) both *open a file*; this scrolls the
-  stream instead. Pairs with F1 — do not rebuild a calendar widget.
-- [ ] Export or copy a contiguous range as one Markdown document — one pass over `_sorted`.
+- [ ] ★ Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing external reaches inside a view.
+- [ ] ★ Skip empty notes — unwritten template dailies are noise; frontmatter-only is visible in the cache.
+- [ ] ★ Sticky date header — a continuous feed loses track of which day it is in.
+- [ ] On this day — one calendar date across years, a filter over `_sorted`.
+  [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review) shows ~200-char excerpts; ours
+  is the full note. Better, not new.
+- [ ] In-stream date seek, timeline in the gutter. [Calendar](https://github.com/liamcain/obsidian-calendar-plugin)
+  and [Jump to Date](https://github.com/TfTHacker/obsidian42-jump-to-date) *open a file*; this scrolls. Pairs
+  with F1; not another calendar widget.
+- [ ] Export a contiguous range as one Markdown document — one pass over `_sorted`.
 - [ ] Oldest-first toggle — mind the `state.notes` / `_sorted` pagination invariant.
 - [ ] Period scope: this week / month / year — a slice of `_sorted`.
-- [ ] Periodic Notes support — weekly/monthly/quarterly interleaved. Target
-  [Journals](https://forum.obsidian.md/t/plugin-journals/76946) (~110k installs, active), not Periodic Notes,
-  which is abandoned. Widens the audience most.
-- [ ] Stats header — only if scoped to the loaded stream. Core Word count, Better Word Count and the heatmap
-  plugins already cover per-file and per-vault counts, and Calendar shows a per-day writing meter.
+- [ ] Periodic Notes support — target [Journals](https://forum.obsidian.md/t/plugin-journals/76946) (active),
+  not Periodic Notes (abandoned). Widens the audience most.
+- [ ] Stats header — only scoped to the loaded stream; core Word count and the heatmap plugins own the rest.
 
-Out of scope: random note (core ships "Open random note"), task rollup (the Tasks plugin owns it, and
-read-only cannot check a box), and folder/tag modes (dilutes what a plugin named Daily Notes Stream is).
+Out of scope: random note (core ships it), task rollup (Tasks owns it, and read-only cannot check a box),
+folder/tag modes (dilutes what the plugin is).
 
 ## Deferred code health
 Reviewed 2026-07 and deliberately not fixed; each has a trigger for revisiting.
