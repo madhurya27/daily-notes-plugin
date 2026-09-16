@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { resolve } from "path";
-import { execFileSync } from "child_process";
 
 const repoRoot = resolve(__dirname, "..");
 const readJson = (name: string) => JSON.parse(readFileSync(resolve(repoRoot, name), "utf8"));
@@ -10,17 +9,26 @@ const manifest = readJson("manifest.json") as Record<string, unknown>;
 const versions = readJson("versions.json") as Record<string, string>;
 const pkg = readJson("package.json") as Record<string, unknown>;
 
-/** The GitHub account that owns `origin`, i.e. the account reviewers will see. */
-function repoOwner(): string {
-    const url = execFileSync("git", ["remote", "get-url", "origin"], { cwd: repoRoot, encoding: "utf8" }).trim();
-    const owner = /github\.com[/:]([^/]+)\//.exec(url)?.[1];
-    if (!owner) throw new Error(`Could not read the GitHub owner from ${url}`);
-    return owner;
+/**
+ * The `owner/repo` this plugin is published from, read from package.json rather
+ * than `git remote`: a fork, a tarball and a shallow checkout all have to agree
+ * on it, and it is the slug the obsidian-releases submission lists.
+ */
+function repoSlug(): string {
+    const url = (pkg.repository as { url?: string } | undefined)?.url ?? "";
+    const slug = /github\.com\/([^/]+\/[^/.]+)/.exec(url)?.[1];
+    if (!slug) throw new Error(`package.json declares no GitHub repository, found ${JSON.stringify(url)}`);
+    return slug;
 }
 
 describe("manifest.json — marketplace submission requirements", () => {
     it("points authorUrl at the GitHub account that owns the repository", () => {
-        expect(manifest.authorUrl).toBe(`https://github.com/${repoOwner()}`);
+        const [owner] = repoSlug().split("/");
+        expect(manifest.authorUrl).toBe(`https://github.com/${owner}`);
+    });
+
+    it("declares the repository it is published from", () => {
+        expect(repoSlug()).toBe("madhurya27/daily-notes-plugin");
     });
 
     it("omits fundingUrl, which is rejected unless it is a real funding page", () => {

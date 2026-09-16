@@ -3,6 +3,10 @@
     "version": "0.1.0",
     "packageManager": "pnpm@11.24.0",
     "description": "Infinite scroll view for daily notes.",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/madhurya27/daily-notes-plugin.git"
+    },
     "main": "main.js",
     "type": "module",
     "scripts": {
