@@ -1,164 +1,109 @@
-# Testing: Daily Notes Stream Plugin
+# Testing
 
-## 1. Automated tests
+## Setup
+
 ```bash
-pnpm test
-```
-Covers date parsing and sorting for root-folder and nested `YYYY/MM/` structures.
-
-`pnpm run test:e2e` runs every spec twice — once as **desktop**, once as **mobile**
-(`emulateMobile` at a 420px viewport, so `is-mobile` and `is-phone` both apply).
-Failures name the project, so a rule that is right on one layout and wrong on the
-other shows up as a single red row rather than a mystery. Run one with
-`pnpm exec playwright test --project=mobile`. `E2E_SHOW_WINDOW=1` opens the window
-on a second display when there is one.
-
-## 2. Test vault setup
-```bash
-pnpm run build && pnpm run seed
-```
-Writes `PluginTest/` (gitignored) with everything the checklist below names: 122
-daily notes in `Notes/`, the two dated notes referenced by frontmatter, nested
-lists, repeated headings, a heading holding a link, `test-image.svg`, and a dated
-`.png` plus a dated note outside the folder that must *not* appear. Core daily
-notes is pre-enabled at `Notes` / `YYYY-MM-DD`.
-
-The filler notes cycle through seven shapes rather than repeating one — long
-notes, a wide code block (which must scroll inside itself, its first line
-wrapping clear of the copy button) and a wide table (scrolling likewise),
-tasks and a blockquote, H1–H6 nesting, and one with no frontmatter at all, so the
-properties panel is tested by its absence too. `--days N` changes how many:
-```bash
-pnpm run seed --days 400   # deep history
-pnpm run seed --days 12    # barely past one batch
+pnpm test                          # unit
+pnpm run test:e2e                  # every spec twice, desktop and mobile
+pnpm exec playwright test --project=mobile   # just one project
+pnpm run build && pnpm run seed    # write PluginTest/ and install the build into it
+pnpm run open --help               # every option, with its default
 ```
 
-Open it once via **Open folder as vault**, or let the opener do it:
-```bash
-pnpm run open --help       # every option, with its default
-pnpm run open              # phone-sized window, mobile emulation ON
-pnpm run open --ipad       # tablet-sized window, mobile emulation ON (no is-phone)
-pnpm run open --landscape  # the phone or iPad size on its side
-pnpm run open --desktop    # ordinary window, emulation off
-pnpm run open --keep-size  # emulation on, window left at its saved size
-pnpm run open --position 900,60   # place the window; combines with the others
-pnpm run open --secondary         # open on the second display (--display N for others)
-```
-It follows your system light/dark setting from the first paint. The window opens
-on the **main** display unless you ask otherwise — it is there to
-be watched. The hidden e2e run is the opposite: it parks in the corner of a second
-display when there is one, so the flash before it hides is off your working screen.
-Phone mode has no draggable region — Obsidian is frameless on macOS and the phone
-layout collapses the tab strip that carries it — so `--position` is how the window
-gets moved, short of holding ⌃⌘ and dragging.
-That runs its own Obsidian against `.dev/obsidian-userdata`, so it can sit beside
-your real Obsidian without touching its config or vault list. It answers the
-trust prompt, enables the plugin, switches mobile emulation, sizes the window to
-420px so Obsidian's phone layout (`is-phone`) engages on top of `is-mobile` — it
-switches at exactly 600px, live as you resize — opens
-the stream and detaches, leaving the window yours. Re-running reuses the existing
-tab and clears any duplicate a failed run left behind.
+`seed` writes 122 daily notes in `Notes/` plus everything the checklist names: the two dated notes, nested
+lists, repeated headings, a heading holding a link, `test-image.svg`, and a dated `.png` and out-of-folder
+dated note that must *not* appear. Filler notes cycle seven shapes — long notes, a wide code block, a wide
+table, tasks and a blockquote, H1–H6 nesting, and one with no frontmatter, so the properties panel is tested
+by its absence too. `--days N` changes the count (`400` for deep history, `12` for barely past one batch), and
+a path argument seeds elsewhere. Re-seeding rewrites the notes but leaves `.obsidian` alone, so your layout
+survives.
 
-Re-running the seed rewrites the notes but leaves `.obsidian` alone, so the layout
-and settings you set up survive.
+`open` runs its own Obsidian against `.dev/obsidian-userdata`, beside your real one. It opens on the main
+display — it is meant to be watched, unlike the hidden e2e window. Phone mode has no draggable region, so
+`--position` is how that window moves.
 
-Pass a path to seed somewhere else: `pnpm run seed ~/Vaults/Mine`.
+Deploying a new build is the same `build && seed`, then **Reload app without saving**.
 
-## 3. Deploy a new build
-```bash
-pnpm run build && pnpm run seed
-```
-Same command — it copies `main.js`, `manifest.json` and `styles.css` into the
-vault's plugin folder. Then **Reload app without saving** in Obsidian.
+## Verification
 
-## 4. Verification
-
-Items marked **[e2e]** are covered automatically by `pnpm run test:e2e` against a
-real Obsidian instance; the rest still need a human.
+**[e2e]** items are covered by `pnpm run test:e2e`; the rest need a human.
 
 ### Core
-- Notes display newest-first; date headers are correct. **[e2e]**
+
+- Notes newest-first, date headers correct. **[e2e]**
 - Clicking a header opens the original file.
-- Image `test-image.svg` renders in **2026-02-01**; `[[2026-01-15]]` link navigates correctly and back.
+- `test-image.svg` renders in **2026-02-01**; `[[2026-01-15]]` navigates there and back.
 - Scrolling to the bottom loads the next batch without duplicates. **[e2e]**
 - Tall window, short notes → loading continues past the first batch.
 
 ### Collapsible content
-- Clicking a header chevron collapses its content; chevron rotates. **[e2e]**
-- Expanding a header keeps nested sections that were collapsed themselves collapsed.
-- Clicking a link (or selecting text) inside a header does not collapse the section.
-- Clicking a parent bullet chevron collapses sub-bullets.
-- Two headings with the same text collapse independently of each other.
 
-### Keyboard & screen reader
-- Tab reaches note titles and every chevron; Enter or Space toggles a chevron without scrolling the stream. **[e2e]**
-- A screen reader announces each chevron as a button and reads its expanded/collapsed state.
+- A header chevron collapses its content; the chevron rotates. **[e2e]**
+- Expanding a header leaves already-collapsed nested sections collapsed.
+- A link click or text selection inside a header does not collapse it.
+- A parent bullet's chevron collapses its sub-bullets.
+- Two headings with the same text collapse independently.
+
+### Keyboard and screen reader
+
+- Tab reaches note titles and every chevron; Enter or Space toggles without scrolling the stream. **[e2e]**
+- A screen reader announces each chevron as a button, with its expanded state.
 
 ### Scroll preservation
-- Toggle any setting in **Settings → Daily Notes Stream** → view refreshes but scroll position is retained.
+
+- Toggling any setting refreshes the view but keeps scroll position.
 
 ### Live updates
-- Create a new daily note → appears at correct position immediately. **[e2e]**
-- Create the first note in an empty vault → replaces the empty-state message without reopening.
-- Edit a visible daily note → stream updates in real-time.
-- Edit its frontmatter → properties update, no frontmatter leaks into the body.
-- Rename a daily note → header and sort order update; collapsed sections stay collapsed.
-- Delete a daily note → disappears from stream.
-- A dated `.png`, or a dated note outside the folder → neither appears. **[e2e]**
+
+- New daily note appears at the right position immediately. **[e2e]**
+- The first note in an empty vault replaces the empty state without reopening.
+- Editing a visible note updates the stream.
+- Editing frontmatter updates properties, and none leaks into the body.
+- Renaming updates header and sort order, and keeps collapsed sections collapsed.
+- Deleting removes it.
+- A dated `.png` or an out-of-folder dated note: neither appears. **[e2e]**
 
 ### Properties
-- **Settings → Show note properties ON**: "Properties" header appears for notes with frontmatter; icons shown next to property names.
-- Clicking "Properties" header toggles collapse; chevron rotates.
+
+- **Show note properties ON**: a "Properties" header appears for notes with frontmatter, icons beside names.
+- Clicking the header toggles collapse; the chevron rotates.
 - **2026-02-01**: `tags: test, image, link`, `aliases: Feb 1st Test`, `mood: productive`.
 - **2026-01-15**: `tags: backlink, test`, `type: daily`, `location: Home Office`.
-- **Collapse properties by default ON**: properties start hidden until you toggle a note's panel; that choice then sticks for that note across edits and reopens. **[e2e]**
-- Frontmatter is **not** duplicated in the note body.
+- **Collapse properties by default ON**: panels start hidden, and a note's own choice then sticks across edits
+  and reopens. **[e2e]**
+- Frontmatter is not duplicated in the body.
 
 ### Mobile
-`isDesktopOnly: false` promises this works on a phone; no static check can keep
-that promise, so this section is run by hand before a release.
 
-**Emulate first** — `pnpm run open` gets you `is-mobile` and `is-phone` in one
-command; `--ipad` gets the tablet layout, `is-mobile` without `is-phone`;
-`--landscape` turns either on its side. By hand it is `this.app.emulateMobile(true)` in the desktop console (`Cmd+Opt+I`),
-`false` to leave, plus dragging the window under ~600px on either side for the
-phone layout. This flips `Platform.isMobile` and loads the mobile CSS, so
-it catches layout and touch-target problems in seconds. It is not a substitute
-for a device: it keeps Electron's Chromium, so it cannot reproduce an iOS
-WKWebView bug.
+Run before a release: `isDesktopOnly: false` is a promise no static check keeps.
 
-**Then a real device.** Getting the plugin onto one:
+Emulate first — `pnpm run open` gives `is-mobile` and `is-phone`, `--ipad` the tablet layout without
+`is-phone`, `--landscape` either on its side. This loads the mobile CSS, so it catches layout and touch-target
+problems in seconds, but it keeps Electron's Chromium and cannot reproduce a WKWebView bug.
+
+Then a real device:
+
 | Platform | Route |
 | --- | --- |
-| iOS | Vault in iCloud Drive: copy the three built files on the Mac into `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/<vault>/.obsidian/plugins/daily-notes-stream/`. The Files app hides dot-folders, so copying on the phone does not work. |
-| iOS, no cable | BRAT, pointed at the repo, installing a published pre-release — also exercises the real release artifacts. |
+| iOS | Vault in iCloud Drive: copy the three built files on the Mac into `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/<vault>/.obsidian/plugins/daily-notes-stream/`. The Files app hides dot-folders. |
+| iOS, no cable | BRAT against a published pre-release — also exercises the real release artifacts. |
 | Either | Obsidian Sync with "Installed plugins" enabled. |
-| Android | Any file manager, straight into `<vault>/.obsidian/plugins/daily-notes-stream/`. Dot-folders are visible. |
+| Android | Any file manager, into `<vault>/.obsidian/plugins/daily-notes-stream/`. |
 
 Checks:
-- Layout: notes fill the width with no horizontal scroll; the properties panel
-  stays readable at the narrowest width; long code blocks and tables scroll
-  inside themselves rather than the page.
-- Touch targets: the collapse chevrons on headers, list items and the properties
-  row are tappable without zooming, and a tap on heading *text* still selects
-  rather than toggling.
-- Infinite scroll under momentum: a hard flick to the bottom loads the next batch
-  without duplicates or a stall, and repeated flicks keep loading.
-- Backgrounding: scroll down, switch apps, return — the view is still there at
-  the same position and keeps scrolling.
-- Live updates: edit a visible note in another pane/tab and confirm it re-renders
-  in place.
-- Rotation: portrait ↔ landscape reflows without clipping or a lost scroll
-  position.
-- Console: no errors in the mobile console (iOS: Safari → Develop → your device;
-  Android: `chrome://inspect`).
 
-**No Android device?** Lower risk than it sounds — Android's WebView is Chromium,
-the same engine family as desktop Obsidian, so desktop plus emulation covers that
-engine. iOS is the genuinely different one (WKWebView) and the one to test on
-hardware. If you do want real Android, an Android Studio emulator with a Google
-Play system image installs Obsidian from the Play Store, and `adb push` puts the
-plugin in the vault.
+- Notes fill the width with no horizontal scroll; code blocks and tables scroll inside themselves.
+- Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading
+  *text* still selects.
+- A hard flick to the bottom loads the next batch without duplicates or a stall; repeated flicks keep loading.
+- Backgrounding and returning keeps position and keeps scrolling.
+- Editing a visible note elsewhere re-renders it in place.
+- Rotation reflows without clipping or losing position.
+- No console errors (iOS: Safari → Develop; Android: `chrome://inspect`).
 
-## 5. Debugging
-Open the Developer Console (`Cmd+Opt+I`). Look for `DailyNotesStream:` prefixed logs. "No daily notes found" means the daily notes plugin isn't configured or no files match.
+iOS is the one that matters: Android's WebView is Chromium, so desktop plus emulation covers that engine.
+
+## Debugging
+
+Developer Console (`Cmd+Opt+I`), `DailyNotesStream:` prefixed logs. "No daily notes found" means the core daily
+notes plugin is unconfigured or nothing matches.

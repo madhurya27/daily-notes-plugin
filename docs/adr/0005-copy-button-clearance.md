@@ -9,11 +9,9 @@ Obsidian wraps rendered code (`white-space: pre-wrap`) and pins its
 `.copy-code-button` absolutely to the block's top-right corner, so the end of a
 long first line sits under the icon and cannot be read.
 
-Core Obsidian does not solve this. It hides the button until hover
-(`pre:not(:hover) > button.copy-code-button { display: none }`) and re-shows it
-unconditionally under `.is-mobile`, where there is no hover — so on a phone or
-tablet the overlap is permanent, and on desktop it lasts as long as the pointer
-is over the block (measured: 8px of text covered).
+Core hides the button until hover, then re-shows it unconditionally under
+`.is-mobile` where there is no hover. So the overlap is permanent on a phone and
+lasts as long as the pointer is over the block on desktop (8px of text covered).
 
 ## Decision
 
@@ -21,17 +19,15 @@ is over the block (measured: 8px of text covered).
 and 1.5em tall, for the first line to wrap around. It applies on every platform,
 hover or not: no character is ever hidden.
 
-The height is load-bearing. `pre` has `overflow-x: auto`, so it contains the
-float; at 2.5em a one-line code block grew from 48px to 64px. At 1.5em the
-rendered height of both a one-line and a wrapped block is unchanged, and the
-float still spans the button. An e2e test measures text rects against the
-button's and asserts zero overlap.
+The height is load-bearing: `pre` has `overflow-x: auto` and contains the float,
+so at 2.5em a one-line block grew from 48px to 64px. At 1.5em neither a one-line
+nor a wrapped block changes height and the float still spans the button. An e2e
+test asserts zero overlap between text and button rects.
 
 ## Consequences
 
-- The first line of every code block is ~3em narrower, including on desktop
-  where the button is invisible until hover. That is the price of the rule
-  having no state to depend on.
+- The first line is ~3em narrower everywhere, including desktop before hover —
+  the price of a rule with no state to depend on.
 - Stricter than core Obsidian, so the stream and a normal reading view wrap a
   long first line at different points.
 - If Obsidian restyles or moves the button, the reserved corner is stale — the
