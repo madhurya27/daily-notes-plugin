@@ -57,7 +57,9 @@ export function makeStubbedView(app: object = makeApp()) {
     const view = new DailyNotesStreamView(new WorkspaceLeaf(app), plugin);
     (view as any).renderer = {
         createNoteElement: vi.fn().mockResolvedValue(document.createElement("div")),
+        delegate: vi.fn(),
     };
+    (view as any).collapsible = { delegate: vi.fn() };
     (view as any).scroll = {
         attach: vi.fn(),
         detach: vi.fn(),

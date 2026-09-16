@@ -121,6 +121,24 @@ describe("plugin submission compliance", () => {
         expect(manifest.id).not.toContain("obsidian");
     });
 
+    it("registers every DOM listener through the component that owns it", () => {
+        // AGENTS.md: register* helpers, so unload releases them. Chevrons and
+        // titles are rebuilt on every re-render, so they delegate to one
+        // listener on the stream container instead of binding per element.
+        for (const { name, text } of sources) {
+            expect(text, name).not.toMatch(/\.addEventListener\(/);
+            expect(text, name).not.toMatch(/\.onClickEvent\(/);
+        }
+    });
+
+    it("debounces the file-system event it re-renders from", () => {
+        // AGENTS.md: debounce file-system handlers. Obsidian autosaves while
+        // typing, and each save would otherwise re-render the whole note.
+        const view = sources.find(({ name }) => name === "DailyNotesStreamView.ts")!;
+        expect(view.text).toMatch(/debounce\(/);
+        expect(view.text).toMatch(/flushModified/);
+    });
+
     it("ships the licence the directory requires", () => {
         expect(existsSync(resolve(repoRoot, "LICENSE"))).toBe(true);
         expect(readFileSync(resolve(repoRoot, "LICENSE"), "utf8").trim().length).toBeGreaterThan(0);

@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, TAbstractFile } from "obsidian";
+import { Debouncer, ItemView, WorkspaceLeaf, TFile, TAbstractFile, debounce } from "obsidian";
 import type DailyNotesStreamPlugin from "./main";
 import { StreamState } from "./StreamState";
 import { NoteRenderer } from "./NoteRenderer";
@@ -6,6 +6,9 @@ import { CollapsibleManager } from "./CollapsibleManager";
 import { InfiniteScrollController } from "./InfiniteScrollController";
 import { captureAnchor, restoreAnchor } from "./ScrollAnchorManager";
 import { getReadableLineLength } from "./obsidianInternals";
+
+/** Obsidian autosaves as you type; one render per save is wasted work. */
+const MODIFY_DEBOUNCE_MS = 300;
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
 
@@ -15,6 +18,7 @@ export class DailyNotesStreamView extends ItemView {
     private plugin: DailyNotesStreamPlugin;
     private state: StreamState;
     private renderer: NoteRenderer;
+    private collapsible: CollapsibleManager;
     private scroll: InfiniteScrollController;
     private streamContainerEl!: HTMLElement;
 
@@ -23,15 +27,19 @@ export class DailyNotesStreamView extends ItemView {
     private queue: Promise<void> = Promise.resolve();
     private loadPending = false;
 
+    /** Notes saved since the last flush, by path. */
+    private readonly pendingModified = new Map<string, TFile>();
+
     constructor(leaf: WorkspaceLeaf, plugin: DailyNotesStreamPlugin) {
         super(leaf);
         this.plugin = plugin;
         this.state = new StreamState();
         this.scroll = new InfiniteScrollController();
+        this.collapsible = new CollapsibleManager(plugin.collapseStore);
         this.renderer = new NoteRenderer(
             this.app,
             this,
-            new CollapsibleManager(plugin.collapseStore),
+            this.collapsible,
             // A closure, not the object: loadSettings() reassigns plugin.settings.
             () => plugin.settings
         );
@@ -71,6 +79,9 @@ export class DailyNotesStreamView extends ItemView {
         }
         this.state.reset();
 
+        this.collapsible.delegate(this, this.streamContainerEl);
+        this.renderer.delegate(this, this.streamContainerEl);
+
         this.registerDomEvent(this.streamContainerEl, "click", (event) => {
             const target = event.target as HTMLElement;
             if (!target.matches(".internal-link")) return;
@@ -97,19 +108,35 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     async onClose() {
+        this.flushModified.cancel();
         this.scroll.detach();
     }
 
     onFileModify(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => {
-            const el = this.findNoteElement(file);
-            if (!el) return;
-            const newEl = await this.renderer.createNoteElement(file);
-            this.streamContainerEl.insertBefore(newEl, el);
-            el.remove();
-        });
+        // Keyed by path, so a burst touching two notes still re-renders both
+        // while repeated saves of one collapse into a single render.
+        this.pendingModified.set(file.path, file);
+        this.flushModified();
     }
+
+    private flushModified: Debouncer<[], void> = debounce(
+        () => {
+            const files = [...this.pendingModified.values()];
+            this.pendingModified.clear();
+            for (const file of files) {
+                void this.enqueue(async () => {
+                    const el = this.findNoteElement(file);
+                    if (!el) return;
+                    const newEl = await this.renderer.createNoteElement(file);
+                    this.streamContainerEl.insertBefore(newEl, el);
+                    el.remove();
+                });
+            }
+        },
+        MODIFY_DEBOUNCE_MS,
+        true
+    );
 
     onFileCreate(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
