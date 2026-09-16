@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import DailyNotesStreamPlugin from "../src/main";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
@@ -23,7 +23,25 @@ async function loadedPlugin() {
     return plugin;
 }
 
+/** Every local image the README points at, however it is written. */
+function referencedImages(): string[] {
+    const markdown = [...readme.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((m) => m[1]!);
+    const html = [...readme.matchAll(/<img[^>]+src="([^"]+)"/g)].map((m) => m[1]!);
+    return [...markdown, ...html].filter((src) => !src.startsWith("http"));
+}
+
 describe("README", () => {
+    it("shows the plugin rather than only describing it", () => {
+        // A screenshot is the first thing a marketplace reader looks for.
+        expect(referencedImages().length).toBeGreaterThan(0);
+    });
+
+    it("points every image at a file that exists", () => {
+        for (const src of referencedImages()) {
+            expect(existsSync(resolve(repoRoot, src)), `${src} is missing`).toBe(true);
+        }
+    });
+
     it("titles the plugin exactly as the manifest names it", () => {
         expect(readme.split("\n")[0]).toBe(`# ${manifest.name}`);
     });

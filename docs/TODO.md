@@ -10,7 +10,7 @@
   - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**
   - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**; review the history first
   - [x] Dry-run the release workflow — `0.1.0` ran green and its draft release holds the three assets, each downloading to a byte-identical copy of the local build. Publish that draft once the repo is public
-  - [ ] README screenshot or GIF, desktop and phone layouts
+  - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`
   - [x] GitHub repo description (mirrors the manifest's) and topics (`obsidian`, `obsidian-plugin`, `obsidian-md`, `daily-notes`, `typescript`)
 
 ## Deferred code health
