@@ -305,4 +305,55 @@ describe("DailyNoteService", () => {
             expect(svc.insertSorted(newFile)).toBe(-1);
         });
     });
+    describe("refreshIfSettingsChanged: reacting to the daily-notes config", () => {
+        it("rebuilds and reports true when the date format changed", () => {
+            __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+
+            __setMockSettings({ format: "YYYY/MM/YYYY-MM-DD", folder: "Notes" });
+            __setMockNotes(["Notes/2025/01/2025-01-01.md", "Notes/2025/01/2025-01-02.md"]);
+
+            expect(svc.refreshIfSettingsChanged()).toBe(true);
+            expect(svc.length).toBe(2);
+            expect(svc.getBatch(0, 1)[0]?.path).toBe("Notes/2025/01/2025-01-02.md");
+        });
+
+        it("rebuilds and reports true when the folder changed", () => {
+            __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+
+            __setMockSettings({ format: "YYYY-MM-DD", folder: "Journal" });
+            __setMockNotes(["Journal/2025-01-01.md", "Journal/2025-01-02.md"]);
+
+            expect(svc.refreshIfSettingsChanged()).toBe(true);
+            expect(svc.length).toBe(2);
+        });
+
+        it("reports false and leaves the cache alone when the settings are unchanged", () => {
+            __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+            const before = svc.getBatch(0, svc.length);
+
+            // A note appearing on disk is the vault events' business, not a rebuild's.
+            __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]);
+
+            expect(svc.refreshIfSettingsChanged()).toBe(false);
+            expect(svc.getBatch(0, svc.length)).toEqual(before);
+        });
+
+        it("reports true on the first call when initialize() never ran", () => {
+            __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            const svc = new DailyNoteService();
+
+            expect(svc.refreshIfSettingsChanged()).toBe(true);
+            expect(svc.length).toBe(1);
+        });
+    });
 });

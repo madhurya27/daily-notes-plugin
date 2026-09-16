@@ -18,3 +18,4 @@
 - [x] Persisted collapse state per note, including the properties panel
 - [x] Keyboard and screen-reader support for collapse chevrons and note titles
 - [x] E2E tests against the real Obsidian app (Playwright over CDP, throwaway vault)
+- [x] Reload the stream when Obsidian's daily-note format or folder changes

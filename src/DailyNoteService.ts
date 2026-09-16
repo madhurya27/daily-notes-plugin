@@ -13,10 +13,26 @@ interface DateFormat {
 
 export class DailyNoteService {
     private _sorted: TFile[] = [];
+    /** The daily-notes config the cache was built from; null before the first build. */
+    private builtFrom: string | null = null;
 
     /** Call once on plugin load. */
     initialize(): void {
-        this._sorted = this.buildSorted();
+        const format = this.readFormat();
+        this._sorted = this.buildSorted(format);
+        this.builtFrom = this.signature(format);
+    }
+
+    /**
+     * Rebuilds the cache when Obsidian's daily-notes format or folder changed,
+     * which redefines what counts as a daily note. Returns whether it rebuilt.
+     */
+    refreshIfSettingsChanged(): boolean {
+        const format = this.readFormat();
+        if (this.signature(format) === this.builtFrom) return false;
+        this._sorted = this.buildSorted(format);
+        this.builtFrom = this.signature(format);
+        return true;
     }
 
     /** Newest first. */
@@ -59,9 +75,11 @@ export class DailyNoteService {
         return this._sorted.length;
     }
 
-    private buildSorted(): TFile[] {
-        const format = this.readFormat();
+    private signature(format: DateFormat): string {
+        return `${format.folder}\u0000${format.path}`;
+    }
 
+    private buildSorted(format: DateFormat): TFile[] {
         // getAllDailyNotes() is already folder-scoped: no path round-trip needed.
         const notesWithDates = Object.values(getAllDailyNotes())
             .map((file) => ({ file, date: this.parseBasename(file, format) }))

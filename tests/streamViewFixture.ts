@@ -13,6 +13,7 @@ export function makePlugin() {
         service: {
             getBatch: vi.fn().mockReturnValue([]),
             initialize: vi.fn(),
+            refreshIfSettingsChanged: vi.fn().mockReturnValue(false),
             insertSorted: vi.fn().mockReturnValue(-1),
             removeSorted: vi.fn().mockReturnValue(-1),
         },
@@ -24,6 +25,7 @@ export function makePlugin() {
 export function makeApp() {
     return {
         vault: {
+            configDir: ".obsidian",
             on: vi.fn().mockReturnValue({}),
             cachedRead: vi.fn().mockResolvedValue(""),
         },

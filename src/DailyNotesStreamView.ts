@@ -5,10 +5,13 @@ import { NoteRenderer } from "./NoteRenderer";
 import { CollapsibleManager } from "./CollapsibleManager";
 import { InfiniteScrollController } from "./InfiniteScrollController";
 import { captureAnchor, restoreAnchor } from "./ScrollAnchorManager";
-import { getReadableLineLength } from "./obsidianInternals";
+import { getReadableLineLength, onVaultConfigChange } from "./obsidianInternals";
 
 /** Obsidian autosaves as you type; one render per save is wasted work. */
 const MODIFY_DEBOUNCE_MS = 300;
+
+/** The format field writes per keystroke, and a half-typed format rebuilds the stream. */
+const CONFIG_DEBOUNCE_MS = 1000;
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
 
@@ -65,6 +68,11 @@ export class DailyNotesStreamView extends ItemView {
         syncReadableWidth();
         this.registerEvent(this.app.workspace.on("css-change", syncReadableWidth));
 
+        // Obsidian's daily-notes format and folder decide what the stream even
+        // contains, and nothing re-reads them: registered before initialize() so
+        // that correcting broken settings recovers the view.
+        this.registerEvent(onVaultConfigChange(this.app, () => this.checkDailyNoteSettings()));
+
         // Not in onload(): getAllDailyNotes() throws if the vault or the configured
         // daily-notes folder is not ready.
         try {
@@ -108,6 +116,7 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     async onClose() {
+        this.checkDailyNoteSettings.cancel();
         this.flushModified.cancel();
         this.scroll.detach();
     }
@@ -228,6 +237,30 @@ export class DailyNotesStreamView extends ItemView {
 
     refresh(): Promise<void> {
         return this.enqueue(() => this.rerenderAll());
+    }
+
+    /**
+     * A config write redefines which files are daily notes, so the cache and
+     * every rendered note are suspect.
+     */
+    private checkDailyNoteSettings: Debouncer<[], void> = debounce(
+        () => {
+            void this.enqueue(async () => {
+                if (!this.plugin.service.refreshIfSettingsChanged()) return;
+                await this.reload();
+            });
+        },
+        CONFIG_DEBOUNCE_MS,
+        true
+    );
+
+    /** Discards the stream and loads the first batch of the new note set. */
+    private async reload(): Promise<void> {
+        this.streamContainerEl.empty();
+        this.scroll.detach();
+        this.state.reset();
+        this.scroll.attach(this.contentEl, this.streamContainerEl, () => this.loadMoreNotes());
+        await this.loadBatch();
     }
 
     private async rerenderAll(): Promise<void> {

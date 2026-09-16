@@ -62,6 +62,8 @@ Deploying a new build is the same `build && seed`, then **Reload app without sav
 - Renaming updates header and sort order, and keeps collapsed sections collapsed.
 - Deleting removes it.
 - A dated `.png` or an out-of-folder dated note: neither appears. **[e2e]**
+- Changing the daily-note folder or date format in Obsidian's settings reloads the stream, without
+  reopening the view. **[e2e]**
 
 ### Properties
 

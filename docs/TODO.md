@@ -9,8 +9,6 @@ Ordered by priority, from the 2026-09 comparison against
   only DOM, swapping in a fixed-height placeholder so scroll position survives. Needs an ADR.
 - [ ] Date navigation: jump to specific date — spec'd as F1 in `docs/IMPROVEMENTS.md`. Also the mitigation for
   unbounded growth: an entry point other than the top.
-- [ ] Refresh when the daily-note format or folder changes — `service.initialize()` runs once in `onOpen()`,
-  so changing Obsidian's core daily-notes settings leaves the stream silently stale until the view reopens.
 - [ ] Create today's note from the view — spec'd as F2 in `docs/IMPROVEMENTS.md`. Covers the empty state too:
   a vault with no daily notes currently renders blank.
 - [ ] Filtering: filter by tag/header — land after note unloading; retrofitting it over windowing is harder.
@@ -24,6 +22,7 @@ Ordered by priority, from the 2026-09 comparison against
   - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`
   - [x] GitHub repo description (mirrors the manifest's) and topics (`obsidian`, `obsidian-plugin`, `obsidian-md`, `daily-notes`, `typescript`)
 - [ ] Position the README against Daily Notes Editor — a live-updating reading feed, not an inline editor.
+- [ ] Default to showing metadata properties
 
 ## Features
 New capability, as opposed to the fixes above. Embedded editors are ruled out by `docs/decisions.md`.
