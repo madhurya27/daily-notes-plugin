@@ -4,56 +4,69 @@
 
 ```bash
 pnpm install       # install deps
-pnpm run dev       # watch mode → main.js (inline sourcemaps)
-pnpm run build     # type-check + production build (minified)
+pnpm run dev       # watch mode → main.js
+pnpm run build     # type-check + production build
 pnpm run lint      # ESLint
-pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is hand-wrapped, so it is ignored.
-pnpm test          # vitest run (mocks in tests/mocks/, jsdom via tests/setup.ts, stubbed view in tests/streamViewFixture.ts)
-pnpm run test:coverage  # vitest run --coverage (100% required)
+pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is ignored — hand-wrapped.
+pnpm test          # vitest run
+pnpm run test:coverage  # 100% required
 pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
+
+pnpm run build && pnpm run seed   # write PluginTest/ (gitignored) and install the build into it
+pnpm run open                     # launch Obsidian on it; --help lists the flags
+
 CAPTURE_SCREENSHOTS=1 E2E_SHOW_WINDOW=1 pnpm exec playwright test screenshots.spec.ts  # rewrite docs/images/
 ```
 
-Seed and deploy to the local test vault:
-```bash
-pnpm run build && pnpm run seed   # writes PluginTest/ (gitignored) and installs the build into it
-```
-`pnpm run open` then launches a separate Obsidian (own `--user-data-dir` under `.dev/`, CDP-attached) on that vault with the plugin enabled, the stream view open and `app.emulateMobile(true)` applied — `--desktop` skips the emulation, `--ipad` sizes the window for the tablet layout (820x1180: `is-mobile`, no `is-phone`), `--landscape` swaps width and height of either mobile size, `--keep-size` keeps the saved size, `--position x,y` places the window (phone mode has no drag region to move it by), `--secondary`/`--display N` puts it on another screen — `--help` lists them all, and an unrecognised `--flag` is an error rather than a silent default. Attaching over CDP makes Playwright emulate a light colour scheme, so the script clears it with `emulateMedia({ colorScheme: null })` as soon as it attaches — without that the window opens light and only snaps to the system theme when the script detaches (the e2e fixture does the same). Placement is written every run rather than only when asked: bounds persist per vault, so otherwise a window reopens wherever the previous run left it. The default is the main display — this window is meant to be watched, unlike the hidden e2e one. Three ordering constraints: emulation rebuilds the workspace, so it is applied *before* the view is opened or the leaf is discarded; window bounds are written to the user-data dir before launch, since Obsidian reads them per vault at startup and `is-phone` keys off window size (either dimension under 600px, so a phone stays `is-phone` in landscape); and any surviving Electron helper from a previous run holds the single-instance lock, so the script kills that process group first or the new launch exits without opening its debugging port. `scripts/seed-test-vault.mjs` writes 120 filler notes (`--days N` to change it) cycling through seven content shapes, plus the two the docs name by date. It rewrites the notes `docs/TESTING.md`'s checklist names but leaves an existing `.obsidian` alone, so a vault you have opened keeps its settings. Takes an optional target path.
+Screenshots need both variables: without `E2E_SHOW_WINDOW` the window is hidden, produces no frames, and
+`page.screenshot()` waits until the test times out.
 
 ## Architecture
 
 Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 
 - `src/main.ts` — plugin lifecycle; registers view, ribbon icon, command, settings tab.
-- `src/DailyNoteService.ts` — fetches/parses all daily notes via `obsidian-daily-notes-interface`, handles nested folder formats (e.g. `YYYY/MM/YYYY-MM-DD`), returns paginated batches sorted newest-first.
-- `src/DailyNotesStreamView.ts` — `ItemView` subclass; infinite scroll (`IntersectionObserver`, batch 10), vault event handlers (`modify`/`create`/`delete`/`rename`), `MarkdownRenderer.render()`, collapsible headers (H1–H6) and lists, frontmatter panel.
-- `src/obsidianInternals.ts` — the single place unsupported Obsidian internals are read (`getReadableLineLength`, which has no public API).
-- `src/settings.ts` — `DailyNotesStreamSettings` interface, defaults, `PluginSettingTab`.
+- `src/DailyNoteService.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
+- `src/DailyNotesStreamView.ts` — `ItemView` subclass; infinite scroll, vault events, `MarkdownRenderer.render()`, collapsible sections, properties panel.
+- `src/obsidianInternals.ts` — the single place unsupported internals are read (`getReadableLineLength`).
+- `src/settings.ts` — settings interface, defaults, `PluginSettingTab`.
 
-**E2E**: `e2e/` drives the *real* Obsidian app, every spec twice — a `desktop` and a `mobile` Playwright project, the latter applying `emulateMobile(true)` at a 420px viewport (`is-mobile` comes from the call, `is-phone` only from a window dimension under 600px) once per worker, before any test runs. Obsidian's mobile stylesheet differs enough that a CSS rule can be correct on one layout and wrong on the other, and jsdom unit tests load no stylesheet at all, so anything about what is actually *visible* belongs here. `e2e/obsidian.ts` seeds a throwaway vault (14 daily notes + the built plugin), launches the installed Obsidian with its own `--user-data-dir` and `--remote-debugging-port`, and attaches Playwright over CDP — so the user's real vault and config are never touched. It answers the first-run trust prompt, enables the plugin through `app.plugins`, and closes the settings pane (an open modal keeps the leaf deferred, and a deferred view never renders). Tests share one instance and open a fresh view each via `openStream()`. The window is kept off the desktop and never takes focus: `open -n -g -j` stops LaunchServices activating the app, but Obsidian shows and focuses its own window twice while starting (first paint, then vault open), so the fixture seeds the vault's window bounds to Obsidian's 300x200 minimum parked in the bottom-right corner of a display — the second one when there is one, keeping the flash off the main screen. The corner must be a point a display actually contains: bounds landing on no screen are rejected and Obsidian centres a full-size window instead, which an extended desktop makes easy to hit (a guess past the main display's edge stops being clamped once a second display is not there). The renderer is told over CDP to lay out at 1024x800 (420x800 for the mobile project) regardless and `watchAndHide()` arms a bounded System Events loop *before* the window paints — it hides the window within ~50ms and hands focus back to whichever app had it, until startup ends and `hideApp()` settles the final state (Electron leaves `document.visibilityState` at `"visible"` while hidden, so macOS is the only authority — `obsidian.isHidden()`, `isFrontmost()` and `windowBounds()` ask it; a harness test asserts the 300x200 size, since the full-size fallback is silent otherwise). Set `E2E_SHOW_WINDOW=1` to watch a run instead — it parks the window on a second display when there is one. Every instance is torn down even when startup throws, and `global-setup.ts` kills anything a crashed run stranded. Unit tests mock the `obsidian` module; only these exercise real `MarkdownRenderer` output, real `moment` parsing, and real vault events.
+Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
+`obsidian-daily-notes-interface` from `tests/mocks/`.
 
-**Screenshots**: `e2e/screenshots.spec.ts` captures `docs/images/` from the real app, one image per Playwright project so the desktop and phone shots come from the same run. It is skipped unless `CAPTURE_SCREENSHOTS=1`, so an ordinary e2e run never rewrites files in `docs/`, and it needs `E2E_SHOW_WINDOW=1`: a hidden window produces no frames and `page.screenshot()` waits for one until the test times out. It overwrites the newest few notes with shorter prose than the fixture's edge-case bodies (a seven-column table photographs as scaffolding) and collapses the left sidebar, which carries the throwaway vault's generated name.
+**The test split is a contract** ([ADR 0002](docs/adr/0002-real-obsidian-e2e.md)): jsdom loads no stylesheet, so
+a visibility assertion there proves nothing. Anything about real rendering, real events, or what is visible on
+screen belongs in `e2e/`, which drives the installed app against a throwaway vault. Every spec runs twice,
+desktop and mobile.
 
-**Build**: esbuild `src/main.ts` → `main.js` (CJS, `obsidian` external). **Tests**: Vitest with mocks for `obsidian` and `obsidian-daily-notes-interface` from `tests/mocks/` and jsdom (`tests/setup.ts`). 100% coverage required, including view logic.
+## Invariants
 
-**Release**: `.github/workflows/release.yml` fires on a pushed tag matching the manifest version exactly (no leading `v` — `pnpm version` writes both files through `version-bump.mjs`). It verifies tag against manifest, installs from the frozen lockfile, runs format/lint/tests, builds, and drafts a GitHub release with `main.js`, `manifest.json` and `styles.css` attached individually. Actions are pinned to full commit SHAs; checkout does not persist credentials, and pnpm's version comes from `package.json#packageManager` (the setup action passes no version input — without the field the job fails).
+Traps that span files, so no single file's comments can hold them.
+
+- **`state.notes` always equals `service._sorted.slice(0, state.length)`.** Breaking it desyncs `getBatch()`
+  pagination — notes skipped or duplicated on further scroll. `create`/`delete`/`rename` must route through
+  `service.insertSorted`/`removeSorted`, and a note is rendered only when its global index falls in
+  `[0, offset)`.
+- **`rename` gets `(file, oldPath)`.** Obsidian mutates `TFile` in place, so the DOM's `data-source-path` is the
+  *old* path: look the element up by `oldPath`, remove from cache and state by `file.path`.
+- **Re-render is driven by `metadataCache.on("changed")`, not `vault.on("modify")`** — the cache lags the write,
+  and the renderer reads the cache.
+- **TS strictness**: `noUncheckedIndexedAccess` (indexing returns `T | undefined`) and `noImplicitReturns`.
+  Lifecycle properties assigned in `onload()` need `!` assertions.
+
+## Release
+
+Tag must equal the manifest version exactly, no leading `v`; `pnpm version` writes every file through
+`version-bump.mjs`. The workflow gates on format, lint and coverage before drafting the release.
+`tests/releaseWorkflow.test.ts` guards its shape.
 
 ## Documentation
 
-Update docs in the same branch as the code change that makes them stale:
-- `docs/adr/` — one numbered record per non-obvious decision, written in the branch that makes it. Rationale and rejected options live *only* here; everything else links to it. `docs/adr/README.md` holds the index and the rules.
+Update docs in the same branch as the change that makes them stale:
+
+- `docs/adr/` — one numbered record per non-obvious decision. Rationale and rejected options live *only* here; everything else links to it.
 - `README.md` — user-facing features, install, usage.
-- `docs/TESTING.md` — manual verification checklist (mirrors current behavior).
-- `docs/DONE.md` / `docs/TODO.md` — move items between shipped and planned as work completes.
-- `AGENTS.md` — plugin-dev conventions (manifest, security, mobile); don't edit its wording — fix the code/config to match it instead.
-- This file (`CLAUDE.md`) — architecture, key patterns, build/test setup.
-
-## Key Patterns
-
-- **Infinite scroll**: sentinel `<div>` at bottom of `streamContainerEl`; `loadMoreNotes()` inserts before it on intersection. Sentinel must always be last child. `IntersectionObserver` fires only on intersection *changes*, so `scroll.recheck()` re-observes after non-empty batches and out-of-range creates — never on an empty batch (loops).
-- **Live updates**: vault events registered via `this.registerEvent(...)` in `onOpen`. Re-render is driven by `metadataCache.on("changed")`, not `vault.on("modify")` — the cache lags the write and the renderer reads it; it replaces the DOM element in-place. `create`/`delete`/`rename` route through `service.insertSorted`/`removeSorted` — single source of truth for sort order *and* keeping the service's full-note cache aligned with the view's loaded range (`state.length`). A note is rendered/tracked locally only when its returned global index falls within `[0, offset)`. **Invariant**: `state.notes` must always equal `service._sorted.slice(0, state.length)` — breaking it desyncs `getBatch()` pagination (skipped/duplicated notes on further scroll). `rename` gets `(file, oldPath)`: Obsidian mutates `TFile` in place, so the rendered DOM's `data-source-path` (set at render time) is the *old* path — use `oldPath` for the DOM lookup, `file.path` for cache/state removal.
-- **Rendered markdown**: the content div carries `markdown-rendered` alongside `daily-note-content`. Obsidian scopes its whole reading-view stylesheet to that class, so without it a rendered note falls back to browser defaults — most visibly lists, which indent 40px per level instead of Obsidian's `3ch` then `--list-indent`. Obsidian wraps rendered code and pins a copy button to the block's top-right corner, so `pre::before` floats an empty box there for the first line to wrap around — 1.5em tall, short enough that a one-line block does not grow to contain the float (`overflow-x: auto` makes `pre` contain it). **[e2e]**
-- **Collapsible sections**: `CollapsibleManager.attachCollapseToggle()` is the single wiring point for every chevron — headers, list items, and the properties panel (which also toggles from its whole heading row and persists under the reserved key `:properties`, defaulting to `settings.propertiesCollapsed`). It prepends the `collapse-indicator` chevron and binds the toggle to the chevron only (headers and lists alike), so links and text selection inside a heading still work. It applies stored state only when collapsed: the rendered DOM starts expanded, and an expand pass would reveal content hidden by a collapsed ancestor. Header collapse hides siblings until same-or-higher heading, and expanding skips over nested `is-collapsed` sections so their content stays hidden; list collapse uses `is-collapsed` CSS class on `<li>`. Stored state is keyed by slugified text, so repeats within a note are suffixed (`slug`, `slug-2`) — the first occurrence keeps the bare key and existing saved state.
-- **Mutation queue**: `loadMoreNotes`, the vault-event handlers, and `refresh` all mutate state + DOM across awaits, so each runs through `enqueue()` — a promise chain that serializes them. Without it a delete arriving mid-batch is re-added by the batch's `state.reset`. `loadPending` (set synchronously) keeps a visible sentinel from queueing duplicate loads.
-- **Settings refresh**: `saveSettings()` calls `view.refresh()` on all open leaves; preserves scroll via anchor-based strategy.
-- **TS strictness**: `strict: true` plus `noUncheckedIndexedAccess` (array index access returns `T | undefined`) and `noImplicitReturns`. Obsidian lifecycle properties assigned in `onload()` (not the constructor) need `!` definite-assignment assertions to satisfy `strictPropertyInitialization`.
+- `docs/TESTING.md` — manual verification checklist.
+- `docs/DONE.md` / `docs/TODO.md` — move items as work completes.
+- `AGENTS.md` — plugin-dev conventions; don't edit its wording, fix the code to match it.
+- This file — commands, architecture, invariants.
