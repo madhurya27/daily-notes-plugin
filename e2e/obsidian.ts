@@ -12,19 +12,16 @@ const OBSIDIAN_BUNDLE = process.env.OBSIDIAN_BUNDLE ?? "/Applications/Obsidian.a
 const SHOW_WINDOW = process.env.E2E_SHOW_WINDOW === "1";
 const VAULT_ID = "e2e0000000000001";
 
-// A hidden window is an occluded window, and Chromium stops servicing occluded
-// renderers: timers slow to a crawl and IntersectionObserver stops firing, which
-// is exactly what the infinite-scroll tests wait on.
+// Hidden means occluded, and Chromium throttles occluded renderers: timers crawl
+// and IntersectionObserver stops firing — what the scroll tests wait on.
 const NO_THROTTLE = [
     "--disable-backgrounding-occluded-windows",
     "--disable-renderer-backgrounding",
     "--disable-background-timer-throttling",
 ];
 /**
- * The physical window is shrunk to Obsidian's minimum and parked in a screen
- * corner, so the unavoidable flash before the hide lands is a small square
- * rather than a full-size window. The renderer is then told to lay out at
- * VIEWPORT regardless, so tests see an ordinary viewport.
+ * Shrunk to Obsidian's minimum and parked in a corner, so the flash before the
+ * hide is a small square. The renderer lays out at VIEWPORT regardless.
  */
 const MIN_WINDOW = { width: 300, height: 200 };
 const VIEWPORT = { width: 1024, height: 800 };
@@ -116,11 +113,8 @@ function seedVault(): string {
 export interface ObsidianApp {
     page: Page;
     vaultPath: string;
-    /** Whether macOS currently has the app hidden. */
     isHidden: () => boolean;
-    /** Whether macOS currently has the app in front of everything else. */
     isFrontmost: () => boolean;
-    /** The window's real size and position, as macOS sees it. */
     windowBounds: () => { width: number; height: number; x: number; y: number } | null;
 }
 
@@ -138,14 +132,12 @@ async function launch(): Promise<{
         })
     );
 
-    // Obsidian keeps window bounds per vault. Bounds fully off the screen are
-    // rejected outright (it falls back to a centred 1024x800); a corner is
-    // clamped to fit, which is what we want.
+    // Bounds are per vault. Fully off-screen is rejected (centred 1024x800
+    // instead); a corner is clamped to fit, which is what we want.
     if (!SHOW_WINDOW) {
-        // The corner has to be a point some display actually contains: bounds
-        // landing on no screen are rejected, and Obsidian then centres a
-        // full-size window, which flashes over the user's work before the hide.
-        // An extended desktop is where a "past the edge" guess stops clamping.
+        // The corner must be a point some display contains, or Obsidian centres
+        // a full-size window over the user's work. An extended desktop is where
+        // a "past the edge" guess stops being clamped.
         const screen = secondaryScreen() ?? mainScreen();
         writeFileSync(
             join(userDataDir, `${VAULT_ID}.json`),
@@ -158,8 +150,7 @@ async function launch(): Promise<{
             })
         );
     } else {
-        // A watched run is still a run: park it on a second display if there is
-        // one, rather than over whatever the user is doing on their main screen.
+        // Park a watched run on a second display rather than over the user's work.
         const secondary = secondaryScreen();
         if (secondary) {
             writeFileSync(
@@ -180,16 +171,14 @@ async function launch(): Promise<{
     const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE];
     // Whoever owns the screen right now gets it back if Obsidian grabs focus.
     const focusOwner = SHOW_WINDOW ? null : frontmostApp();
-    // detached: Electron spawns helper processes, and killing only the parent
-    // orphans them. Its own process group can be signalled as a unit.
+    // detached: Electron's helpers outlive a parent-only kill; signal the group.
     const proc: ChildProcess | null = SHOW_WINDOW
         ? spawn(OBSIDIAN, args, { stdio: "ignore", detached: true })
         : launchHidden(args, userDataDir);
 
     let browser: Browser | null = null;
     let hider: ChildProcess | null = null;
-    // Defined before startup runs: a throw anywhere below must still tear the
-    // instance down, or a failed run leaves an Obsidian window in the dock.
+    // Defined before startup: a throw below must still tear the instance down.
     const dispose = async () => {
         hider?.kill();
         await browser?.close().catch(() => {});
@@ -200,15 +189,13 @@ async function launch(): Promise<{
     };
 
     try {
-        // Armed before the window paints: the CDP port is not open yet, so
-        // there is nothing to hide, but there is also nothing left to miss.
+        // Armed before first paint — nothing to hide yet, nothing missed either.
         if (!SHOW_WINDOW) hider = watchAndHide(await awaitMainProcess(userDataDir), focusOwner);
         const app = await startUp((browser = await connectWithRetry(port)), userDataDir, vaultPath);
         if (hider) {
             hider.kill();
             hider = null;
-            // Startup is over, so nothing will show the window again; make the
-            // hidden state one Node observed rather than one AppleScript left.
+            // Startup over: settle the hidden state from Node, not AppleScript.
             hideApp(userDataDir);
         }
         return { app, dispose };
@@ -222,14 +209,12 @@ async function launch(): Promise<{
 async function startUp(browser: Browser, userDataDir: string, vaultPath: string): Promise<ObsidianApp> {
     const context = browser.contexts()[0]!;
     const page = context.pages()[0]!;
-    // The window itself is 300x200 in a corner; lay the page out at a normal
-    // size so viewport-sensitive behaviour (infinite scroll) is realistic.
+    // The window is 300x200; lay the page out normally so scroll behaves.
     if (!SHOW_WINDOW) {
         const cdp = await context.newCDPSession(page);
         await cdp.send("Emulation.setDeviceMetricsOverride", { ...VIEWPORT, deviceScaleFactor: 1, mobile: false });
     }
-    // Playwright emulates a light color scheme on attach; null restores the
-    // system preference so the window matches the rest of the desktop.
+    // Playwright emulates light on attach; null restores the system preference.
     await page.emulateMedia({ colorScheme: null });
     await page.waitForLoadState("domcontentloaded");
     // layoutReady fires once the workspace (and plugin loading) has settled.
@@ -237,8 +222,7 @@ async function startUp(browser: Browser, userDataDir: string, vaultPath: string)
         timeout: 60_000,
     });
 
-    // Opening a vault that ships plugins raises a one-time trust prompt, and its
-    // modal overlay swallows every click until it is answered.
+    // A vault shipping plugins raises a trust prompt whose overlay eats clicks.
     const trustButton = page.locator(".modal-container button", {
         hasText: "Trust author and enable plugins",
     });
@@ -255,8 +239,7 @@ async function startUp(browser: Browser, userDataDir: string, vaultPath: string)
         timeout: 30_000,
     });
 
-    // Enabling plugins leaves the settings pane open. It covers the workspace,
-    // which keeps our leaf deferred — a deferred view never renders.
+    // An open settings pane keeps the leaf deferred, and a deferred view never renders.
     await page.evaluate(() => window.app.setting?.close?.());
     await expect(page.locator(".modal-container")).toHaveCount(0);
 
@@ -285,10 +268,8 @@ async function startUp(browser: Browser, userDataDir: string, vaultPath: string)
 }
 
 /**
- * Launches Obsidian through LaunchServices with -g -j so it starts hidden and
- * never steals focus. `open` exits immediately and hands back no pid, so the
- * caller gets null and cleans up by matching the user-data-dir instead — which
- * also catches the helper processes, since they inherit the flag.
+ * LaunchServices with -g -j: starts hidden, never steals focus. `open` returns no
+ * pid, so cleanup matches the user-data-dir — which catches the helpers too.
  */
 function launchHidden(args: string[], userDataDir: string): null {
     execFileSync("open", ["-n", "-g", "-j", "-a", OBSIDIAN_BUNDLE, "--args", ...args], { stdio: "ignore" });
@@ -325,8 +306,7 @@ function mainScreen(): Screen {
 
 /**
  * The display beside the main one, in the top-left coordinates Obsidian stores
- * window bounds in — NSScreen reports Cocoa frames, whose origin is the main
- * display's bottom-left with y growing upwards.
+ * bounds in. NSScreen reports Cocoa frames: origin bottom-left, y upwards.
  */
 function secondaryScreen(): Screen | null {
     const script =

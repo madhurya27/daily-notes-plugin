@@ -1,14 +1,9 @@
 import { App } from "obsidian";
 
 /**
- * Persists collapse state for headers and list items using Obsidian's
- * vault-scoped localStorage API.
- *
- * sectionKey for headers: slugified header text (e.g. "my-heading")
- * sectionKey for list items: "li-{depth}-{own text}"
- *
- * Maintains a per-file index so clearForFile() can remove all entries
- * without key enumeration (which the Obsidian API does not expose).
+ * Collapse state in Obsidian's vault-scoped localStorage. Keys: slugified text
+ * for headers, `li-{depth}-{own text}` for list items. A per-file index lets
+ * clearForFile() work without key enumeration, which the API does not expose.
  */
 export class CollapsibleStateStore {
     constructor(private readonly app: App) {}
@@ -17,10 +12,7 @@ export class CollapsibleStateStore {
         return this.collapsedOr(filePath, sectionKey, false);
     }
 
-    /**
-     * Saved state for a section, or `fallback` when it has none — the
-     * properties panel defaults to a setting until the user touches it.
-     */
+    /** Saved state, or `fallback` — the properties panel defaults to a setting. */
     collapsedOr(filePath: string, sectionKey: string, fallback: boolean): boolean {
         const saved: unknown = this.app.loadLocalStorage(this.sectionStorageKey(filePath, sectionKey));
         return typeof saved === "boolean" ? saved : fallback;

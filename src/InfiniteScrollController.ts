@@ -1,20 +1,8 @@
-/**
- * Wraps IntersectionObserver to implement infinite scroll with a sentinel element.
- *
- * The sentinel is always appended as the last child of the container on attach,
- * enforcing its position rather than assuming it.
- */
+/** Infinite scroll via a sentinel, re-appended as the last child on every attach. */
 export class InfiniteScrollController {
     private sentinel: HTMLElement | null = null;
     private observer: IntersectionObserver | null = null;
 
-    /**
-     * Attaches the controller to a container.
-     *
-     * @param scrollRoot - The scrolling element (used as IntersectionObserver root)
-     * @param container  - The element to append the sentinel into
-     * @param onTrigger  - Called when the sentinel enters the viewport
-     */
     attach(scrollRoot: HTMLElement, container: HTMLElement, onTrigger: () => Promise<void>): void {
         this.detach();
 
@@ -40,19 +28,13 @@ export class InfiniteScrollController {
         this.observer.observe(this.sentinel);
     }
 
-    /**
-     * Re-observes the sentinel, forcing a fresh callback. Needed because
-     * IntersectionObserver only fires on intersection *changes*.
-     */
+    /** Forces a fresh callback: IntersectionObserver fires only on *changes*. */
     recheck(): void {
         if (!this.observer || !this.sentinel) return;
         this.observer.unobserve(this.sentinel);
         this.observer.observe(this.sentinel);
     }
 
-    /**
-     * Disconnects the observer and removes the sentinel.
-     */
     detach(): void {
         if (this.observer) {
             this.observer.disconnect();

@@ -18,9 +18,8 @@ export class DailyNotesStreamView extends ItemView {
     private scroll: InfiniteScrollController;
     private streamContainerEl!: HTMLElement;
 
-    // Vault events and batch loads both mutate state + DOM across awaits, so
-    // they run one at a time: an event interleaving with an in-flight batch
-    // would leave state and the service cache disagreeing.
+    // Serialized: an event interleaving with an in-flight batch would leave
+    // state and the service cache disagreeing.
     private queue: Promise<void> = Promise.resolve();
     private loadPending = false;
 
@@ -51,17 +50,15 @@ export class DailyNotesStreamView extends ItemView {
     async onOpen() {
         this.streamContainerEl = this.contentEl.createDiv({ cls: "daily-notes-stream-container" });
 
-        // Mirror Obsidian's "Readable line length" setting so the stream view
-        // respects the same layout constraint as regular notes.
+        // Mirrors Obsidian's "Readable line length" setting.
         const syncReadableWidth = () => {
             this.contentEl.toggleClass("is-readable-line-width", getReadableLineLength(this.app));
         };
         syncReadableWidth();
         this.registerEvent(this.app.workspace.on("css-change", syncReadableWidth));
 
-        // Initialize the service here, not in onload(), because getAllDailyNotes()
-        // throws if the vault / daily notes folder isn't ready yet at plugin load time.
-        // It also throws if the configured daily notes folder doesn't exist in the vault.
+        // Not in onload(): getAllDailyNotes() throws if the vault or the configured
+        // daily-notes folder is not ready.
         try {
             this.plugin.service.initialize();
         } catch (e) {
@@ -74,7 +71,6 @@ export class DailyNotesStreamView extends ItemView {
         }
         this.state.reset();
 
-        // Internal-link click handler
         this.registerDomEvent(this.streamContainerEl, "click", (event) => {
             const target = event.target as HTMLElement;
             if (!target.matches(".internal-link")) return;
@@ -89,25 +85,20 @@ export class DailyNotesStreamView extends ItemView {
             }
         });
 
-        // Vault events. Re-render on metadataCache "changed", not vault
-        // "modify": the cache lags the write, and the renderer reads it for
-        // frontmatter offsets and properties.
+        // metadataCache "changed", not vault "modify": the cache lags the write,
+        // and the renderer reads it for frontmatter offsets and properties.
         this.registerEvent(this.app.metadataCache.on("changed", (f) => this.onFileModify(f)));
         this.registerEvent(this.app.vault.on("create", (f) => this.onFileCreate(f)));
         this.registerEvent(this.app.vault.on("delete", (f) => this.onFileDelete(f)));
         this.registerEvent(this.app.vault.on("rename", (f, oldPath) => this.onFileRename(f, oldPath)));
 
-        // Sentinel + observer — triggers initial load because sentinel is visible
+        // A visible sentinel triggers the initial load.
         this.scroll.attach(this.contentEl, this.streamContainerEl, () => this.loadMoreNotes());
     }
 
     async onClose() {
         this.scroll.detach();
     }
-
-    // -------------------------------------------------------------------------
-    // Vault event handlers
-    // -------------------------------------------------------------------------
 
     onFileModify(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
@@ -123,9 +114,8 @@ export class DailyNotesStreamView extends ItemView {
     onFileCreate(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
         void this.enqueue(async () => {
-            // insertSorted is the single source of truth for sort order — it also
-            // keeps the service's cache in sync so later getBatch() calls stay
-            // aligned with `this.state.length`. Returns -1 for non-daily-note files.
+            // Single source of truth for sort order, and what keeps the service
+            // cache aligned with `this.state.length`. -1 when not a daily note.
             const globalIndex = this.plugin.service.insertSorted(file);
             if (globalIndex === -1) return;
             if (globalIndex >= this.state.length) {
@@ -141,10 +131,9 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     /**
-     * Removes a note from the DOM, the state, and the service cache by its
-     * rendered path (which differs from `file.path` after a rename — the DOM
-     * element's data-source-path is set at render time). Collapse state is the
-     * caller's business: delete drops it, rename carries it over.
+     * Keyed by rendered path, which differs from `file.path` after a rename:
+     * data-source-path is set at render time. Collapse state is the caller's —
+     * delete drops it, rename carries it over.
      */
     private removeNote(file: TFile, renderedPath: string): void {
         const el = this.findNoteElementByPath(renderedPath);
@@ -172,10 +161,6 @@ export class DailyNotesStreamView extends ItemView {
         });
         this.onFileCreate(file);
     }
-
-    // -------------------------------------------------------------------------
-    // Load more (infinite scroll)
-    // -------------------------------------------------------------------------
 
     loadMoreNotes(): Promise<void> {
         if (this.loadPending) return this.queue;
@@ -214,10 +199,6 @@ export class DailyNotesStreamView extends ItemView {
         this.scroll.recheck();
     }
 
-    // -------------------------------------------------------------------------
-    // Refresh (settings change)
-    // -------------------------------------------------------------------------
-
     refresh(): Promise<void> {
         return this.enqueue(() => this.rerenderAll());
     }
@@ -238,20 +219,17 @@ export class DailyNotesStreamView extends ItemView {
             this.streamContainerEl.appendChild(el);
         }
 
-        // Re-attach scroll (appends new sentinel at end)
         this.scroll.attach(this.contentEl, this.streamContainerEl, () => this.loadMoreNotes());
 
         if (snapshot) {
             restoreAnchor(snapshot, this.contentEl, (f) => this.findNoteElement(f));
         }
 
-        // Restore state
         this.state.reset(notes);
     }
 
     /**
-     * Runs `task` after every previously queued mutation completes, so no two
-     * of them interleave at an await.
+     * Runs `task` after every queued mutation, so none interleave at an await.
      */
     private enqueue(task: () => Promise<void>): Promise<void> {
         this.queue = this.queue

@@ -18,21 +18,13 @@ export interface CollapsibleSection {
     apply(collapsed: boolean): void;
 }
 
-/**
- * Post-processes a rendered markdown content element to add collapsible
- * chevrons to headers and list items.
- *
- * Reads initial collapsed state from CollapsibleStateStore and writes on toggle.
- */
+/** Adds collapse chevrons to headers and list items, persisting state per note. */
 export class CollapsibleManager {
     constructor(private readonly store: CollapsibleStateStore) {}
 
     /**
-     * Prepends a chevron to `host`, applies the section's stored state, and
-     * binds the toggle to the chevron alone — clicks on the heading text or a
-     * link inside it must not collapse anything.
-     *
-     * Returns the toggle so a caller can bind extra hosts to it.
+     * Binds the toggle to the chevron alone: a click on heading text or a link
+     * inside it must not collapse. Returns the toggle, for binding extra hosts.
      */
     attachCollapseToggle(host: HTMLElement, section: CollapsibleSection): () => void {
         const indicator = document.createElement("span");
@@ -43,8 +35,8 @@ export class CollapsibleManager {
         host.prepend(indicator);
 
         let collapsed = this.store.collapsedOr(section.filePath, section.sectionKey, section.defaultCollapsed);
-        // The rendered DOM starts expanded, so only a collapsed section needs
-        // applying — an expand pass here would reveal ancestors' hidden content.
+        // The DOM starts expanded; an expand pass would reveal content hidden
+        // by a collapsed ancestor.
         if (collapsed) section.apply(true);
         indicator.setAttribute("aria-expanded", String(!collapsed));
 
@@ -78,9 +70,8 @@ export class CollapsibleManager {
     }
 
     /**
-     * Two headings with the same text would otherwise share one stored state.
-     * The first occurrence keeps the bare key, so state saved before this
-     * disambiguation still applies.
+     * Same-text headings would share one stored state. The first occurrence keeps
+     * the bare key, so state saved before this disambiguation still applies.
      */
     private uniqueKey(key: string, seenKeys: Map<string, number>): string {
         const occurrence = (seenKeys.get(key) ?? 0) + 1;
@@ -125,8 +116,8 @@ export class CollapsibleManager {
 
     private applyHeaderCollapse(header: HTMLElement, isCollapsed: boolean): void {
         const level = parseInt(header.tagName.substring(1));
-        // While expanding, a nested heading that is itself collapsed keeps its own
-        // content hidden: skip siblings until a heading at that level or higher.
+        // A nested collapsed heading keeps its content hidden: skip siblings
+        // until a heading at that level or higher.
         let collapsedNestedLevel: number | null = null;
         let nextEl = header.nextElementSibling as HTMLElement | null;
         while (nextEl) {
@@ -150,9 +141,8 @@ export class CollapsibleManager {
     }
 
     /**
-     * Text directly inside a list item, excluding nested sub-lists — used as a
-     * stable collapse-state key so it survives edits elsewhere in the note
-     * (a positional index would shift and desync saved state on every edit).
+     * Own text, excluding nested sub-lists: a stable collapse key. A positional
+     * index would shift and desync saved state on every edit elsewhere.
      */
     private ownText(li: HTMLElement): string {
         let text = "";

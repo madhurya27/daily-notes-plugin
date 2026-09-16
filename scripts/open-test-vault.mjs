@@ -1,13 +1,12 @@
 /**
- * Opens PluginTest/ in Obsidian with the plugin enabled and mobile emulation on,
- * then leaves the window running and detaches.
+ * Opens PluginTest/ in Obsidian, plugin enabled and mobile emulation on, then
+ * detaches and leaves the window running.
  *
  *   node scripts/open-test-vault.mjs [options] [vault]   (--help lists the options)
  *
- * Runs its own Obsidian instance against `.dev/obsidian-userdata`, so your real
- * Obsidian config and vaults are never touched — the two can run side by side.
- * That directory persists, so the trust prompt and any settings you change stay
- * put between runs; delete it for a clean slate.
+ * Own instance against `.dev/obsidian-userdata`, so your real config and vaults
+ * are untouched and both can run at once. That directory persists — settings and
+ * the trust prompt stay put; delete it for a clean slate.
  */
 import { chromium } from "@playwright/test";
 import { execFileSync, spawn } from "child_process";
@@ -22,10 +21,9 @@ const PLUGIN_ID = "daily-notes-stream";
 const VIEW_TYPE = "daily-notes-stream-view";
 const VAULT_ID = "dev00000000000001";
 /**
- * Emulated window sizes, portrait; --landscape swaps the two. `is-mobile` comes
- * from emulateMobile, `is-phone` from either window dimension being under
- * 600px — so a phone keeps the phone layout on its side, and the iPad size is
- * the tablet layout in both orientations: mobile CSS without the phone one.
+ * Portrait sizes; --landscape swaps them. `is-mobile` comes from emulateMobile,
+ * `is-phone` from either dimension under 600px — so a phone stays a phone on its
+ * side, and the iPad stays tablet-only: mobile CSS without the phone layer.
  */
 const MOBILE_WINDOWS = {
     phone: { width: 420, height: 900 },
@@ -143,10 +141,9 @@ const connect = async (port) => {
 };
 
 /**
- * Every display, top-left origin first — the coordinate space Obsidian stores
- * window bounds in. NSScreen reports Cocoa coordinates instead: the origin is
- * the bottom-left of the *main* display and y grows upwards, so each frame is
- * flipped against the main display's height.
+ * Every display in top-left origin, the space Obsidian stores bounds in. NSScreen
+ * reports Cocoa frames — origin bottom-left of the *main* display, y upwards — so
+ * each is flipped against the main display's height.
  */
 const screens = () => {
     const script =
@@ -169,9 +166,8 @@ const screens = () => {
 const FALLBACK_SCREEN = { x: 0, y: 0, width: 1440, height: 900 };
 
 /**
- * Electron leaves helper processes behind, and any survivor holds the
- * single-instance lock: a fresh launch then exits silently and never opens its
- * debugging port. Clear the whole group before launching another.
+ * A surviving Electron helper holds the single-instance lock, and the next launch
+ * then exits silently without opening its debugging port. Clear the whole group.
  */
 const stopExisting = () => {
     const running = () => {
@@ -200,12 +196,12 @@ writeFileSync(
     JSON.stringify({ vaults: { [VAULT_ID]: { path: vault, ts: Date.now(), open: true } }, updateDisabled: true })
 );
 
-// Obsidian stores window bounds per vault and reads them at startup, so writing
-// them here opens the window in place rather than moving it on screen after.
+// Bounds are per vault and read at startup: writing them here opens the window
+// in place instead of moving it afterwards.
 {
     const boundsPath = join(userDataDir, `${VAULT_ID}.json`);
-    // --keep-size means the size is whatever the last session saved; keep the
-    // rest of the file too, since Obsidian stores zoom and maximised state in it.
+    // --keep-size keeps the last session's size, and the rest of the file with
+    // it — Obsidian stores zoom and maximised state there too.
     let bounds = { x: 60, y: 40, isMaximized: false, zoom: 0 };
     if (existsSync(boundsPath)) {
         try {

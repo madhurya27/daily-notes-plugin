@@ -14,25 +14,17 @@ interface DateFormat {
 export class DailyNoteService {
     private _sorted: TFile[] = [];
 
-    /**
-     * Builds and caches the sorted notes list. Call once on plugin load.
-     */
+    /** Call once on plugin load. */
     initialize(): void {
         this._sorted = this.buildSorted();
     }
 
-    /**
-     * Returns a paginated slice of the sorted daily notes (newest first).
-     */
+    /** Newest first. */
     getBatch(offset: number, limit: number): TFile[] {
         return this._sorted.slice(offset, offset + limit);
     }
 
-    /**
-     * Inserts a file into the sorted cache at the correct position (binary search).
-     * Returns the insertion index, or -1 if the file is not a daily note or was
-     * already present.
-     */
+    /** Returns the insertion index, or -1 when not a daily note or already present. */
     insertSorted(file: TFile): number {
         const format = this.readFormat();
         const date = this.parseDate(file, format);
@@ -56,10 +48,7 @@ export class DailyNoteService {
         return lo;
     }
 
-    /**
-     * Removes a file from the sorted cache by path.
-     * Returns the removed index, or -1 if not found.
-     */
+    /** Returns the removed index, or -1 when absent. */
     removeSorted(filePath: string): number {
         const index = this._sorted.findIndex((f) => f.path === filePath);
         if (index !== -1) this._sorted.splice(index, 1);
@@ -73,8 +62,7 @@ export class DailyNoteService {
     private buildSorted(): TFile[] {
         const format = this.readFormat();
 
-        // getAllDailyNotes() is already scoped to the daily-notes folder, so the
-        // basename match is enough here — no path round-trip needed.
+        // getAllDailyNotes() is already folder-scoped: no path round-trip needed.
         const notesWithDates = Object.values(getAllDailyNotes())
             .map((file) => ({ file, date: this.parseBasename(file, format) }))
             .filter((n): n is { file: TFile; date: NonNullable<typeof n.date> } => n.date !== null);
@@ -102,11 +90,8 @@ export class DailyNoteService {
     }
 
     /**
-     * Parses a file's daily-note date, or null if it is not a daily note.
-     *
-     * Vault events fire for every file, so a basename match alone would let
-     * `Attachments/2026-07-07.png` in: the date must also round-trip back to
-     * the file's own path.
+     * Vault events fire for every file, so a basename match alone would admit
+     * `Attachments/2026-07-07.png`: the date must round-trip back to this path.
      */
     private parseDate(file: TFile, format: DateFormat) {
         const date = this.parseBasename(file, format);
