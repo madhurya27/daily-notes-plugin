@@ -79,6 +79,22 @@ describe("release workflow", () => {
         expect(pkg.packageManager).toMatch(/^pnpm@\d+\.\d+\.\d+$/);
     });
 
+    it("runs a Node version the pinned pnpm can start under", () => {
+        // setup-node's `cache: pnpm` shells out to pnpm before anything else
+        // runs, so a Node older than pnpm's floor fails the job at setup.
+        // pnpm 11 requires Node >= 22.13; jsdom and vitest rule out 21 and 23.
+        const PNPM_NODE_FLOOR: Record<string, number> = { "11": 22 };
+        const pkg = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8")) as {
+            packageManager: string;
+        };
+        const pnpmMajor = /^pnpm@(\d+)\./.exec(pkg.packageManager)?.[1];
+        const floor = PNPM_NODE_FLOOR[pnpmMajor!];
+        expect(floor, `no known Node floor for pnpm ${pnpmMajor}`).toBeDefined();
+
+        const setupNode = steps().find((step) => step.uses?.startsWith("actions/setup-node@"));
+        expect(Number(setupNode?.with?.["node-version"])).toBeGreaterThanOrEqual(floor!);
+    });
+
     it("pins every action to a full commit SHA", () => {
         const used = steps()
             .map((step) => step.uses)
