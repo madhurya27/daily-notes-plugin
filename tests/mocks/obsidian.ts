@@ -192,6 +192,37 @@ export class MarkdownView {
 
 export class Component {}
 
+export function debounce<T extends unknown[]>(cb: (...args: T) => unknown, timeout = 0, resetTimer = false) {
+    let handle: ReturnType<typeof setTimeout> | null = null;
+    let lastArgs: T;
+    const debounced = (...args: T) => {
+        lastArgs = args;
+        if (handle !== null) {
+            if (!resetTimer) return debounced;
+            clearTimeout(handle);
+        }
+        handle = setTimeout(() => {
+            handle = null;
+            cb(...lastArgs);
+        }, timeout);
+        return debounced;
+    };
+    debounced.cancel = () => {
+        if (handle !== null) clearTimeout(handle);
+        handle = null;
+        return debounced;
+    };
+    debounced.run = () => {
+        if (handle !== null) {
+            clearTimeout(handle);
+            handle = null;
+            cb(...lastArgs);
+        }
+        return undefined;
+    };
+    return debounced;
+}
+
 export class PluginSettingTab {
     app: any;
     containerEl: HTMLElement = document.createElement("div");

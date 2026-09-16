@@ -1,4 +1,4 @@
-import { setIcon } from "obsidian";
+import { Component, setIcon } from "obsidian";
 import { CollapsibleStateStore } from "./CollapsibleStateStore";
 
 function slugify(text: string): string {
@@ -21,6 +21,55 @@ export interface CollapsibleSection {
 /** Adds collapse chevrons to headers and list items, persisting state per note. */
 export class CollapsibleManager {
     constructor(private readonly store: CollapsibleStateStore) {}
+
+    /** Element → its toggle. Weak, so elements dropped by a re-render are collectable. */
+    private readonly toggles = new WeakMap<HTMLElement, () => void>();
+
+    /**
+     * Makes a second element toggle the same section — the properties heading
+     * row, which holds no links or selectable prose, unlike a markdown heading.
+     */
+    attachCollapseHost(host: HTMLElement, toggle: () => void): void {
+        this.toggles.set(host, toggle);
+    }
+
+    /**
+     * One listener pair for the whole stream. Chevrons are rebuilt on every
+     * re-render, so registering per chevron would pile registrations on the
+     * component until it unloads.
+     */
+    delegate(component: Component, root: HTMLElement): void {
+        component.registerDomEvent(root, "click", (evt) => {
+            const toggle = this.toggleFor(evt.target);
+            if (!toggle) return;
+            evt.stopPropagation();
+            toggle();
+        });
+
+        component.registerDomEvent(root, "keydown", (evt) => {
+            if (evt.key !== "Enter" && evt.key !== " ") return;
+            const toggle = this.toggleFor(evt.target);
+            if (!toggle) return;
+            evt.preventDefault(); // Space would scroll the stream
+            evt.stopPropagation();
+            toggle();
+        });
+    }
+
+    /**
+     * The toggle of the nearest element an event landed in, if it has one.
+     * Walking up finds the chevron before the row that also hosts it, so a
+     * click on either runs the toggle exactly once.
+     */
+    private toggleFor(target: EventTarget | null): (() => void) | undefined {
+        let el = target as HTMLElement | null;
+        while (el) {
+            const toggle = this.toggles.get(el);
+            if (toggle) return toggle;
+            el = el.parentElement;
+        }
+        return undefined;
+    }
 
     /**
      * Binds the toggle to the chevron alone: a click on heading text or a link
@@ -47,18 +96,7 @@ export class CollapsibleManager {
             this.store.setCollapsed(section.filePath, section.sectionKey, collapsed);
         };
 
-        indicator.onClickEvent((e) => {
-            e.stopPropagation();
-            toggle();
-        });
-
-        indicator.addEventListener("keydown", (e) => {
-            if (e.key !== "Enter" && e.key !== " ") return;
-            e.preventDefault(); // Space would scroll the stream
-            e.stopPropagation();
-            toggle();
-        });
-
+        this.toggles.set(indicator, toggle);
         return toggle;
     }
 

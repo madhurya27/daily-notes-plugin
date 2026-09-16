@@ -51,6 +51,10 @@ Traps that span files, so no single file's comments can hold them.
   *old* path: look the element up by `oldPath`, remove from cache and state by `file.path`.
 - **Re-render is driven by `metadataCache.on("changed")`, not `vault.on("modify")`** — the cache lags the write,
   and the renderer reads the cache.
+- **Delegated listeners**: chevrons and note titles are rebuilt on every re-render, so nothing binds a
+  listener per element — `CollapsibleManager.delegate()` and `NoteRenderer.delegate()` register one listener
+  each on the stream container, resolving the target through a `WeakMap`. Binding per element would pile
+  registrations on the view until it closes.
 - **TS strictness**: `noUncheckedIndexedAccess` (indexing returns `T | undefined`) and `noImplicitReturns`.
   Lifecycle properties assigned in `onload()` need `!` assertions.
 

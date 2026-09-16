@@ -53,23 +53,7 @@ export class NoteRenderer {
             // handler opens the note itself.
             href: "#",
         });
-        dateLink.onClickEvent((event) => {
-            event.preventDefault();
-            const existing = this.app.workspace
-                .getLeavesOfType("markdown")
-                // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
-                .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
-            if (existing) {
-                void this.app.workspace.revealLeaf(existing);
-                return;
-            }
-            this.app.workspace
-                .getLeaf(false)
-                .openFile(file)
-                .catch((error) => {
-                    console.error("DailyNotesStream: Failed to open file", error);
-                });
-        });
+        this.titles.set(dateLink, file);
 
         // Properties (frontmatter)
         this.renderProperties(noteContainer, file);
@@ -130,7 +114,41 @@ export class NoteRenderer {
             defaultCollapsed: this.getSettings().propertiesCollapsed,
             apply: (collapsed) => metadataContainer.toggleClass("is-collapsed", collapsed),
         });
-        heading.onClickEvent(() => toggle());
+        this.collapsible.attachCollapseHost(heading, toggle);
+    }
+
+    /** Title → its note. Weak, so titles dropped by a re-render are collectable. */
+    private readonly titles = new WeakMap<HTMLElement, TFile>();
+
+    /**
+     * One listener for the whole stream: a title per note would pile
+     * registrations on the component until it unloads.
+     */
+    delegate(component: Component, root: HTMLElement): void {
+        component.registerDomEvent(root, "click", (evt) => {
+            const title = (evt.target as HTMLElement | null)?.closest<HTMLElement>(".daily-note-title");
+            const file = title ? this.titles.get(title) : undefined;
+            if (!file) return;
+            evt.preventDefault();
+            this.openNote(file);
+        });
+    }
+
+    private openNote(file: TFile): void {
+        const existing = this.app.workspace
+            .getLeavesOfType("markdown")
+            // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
+            .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
+        if (existing) {
+            void this.app.workspace.revealLeaf(existing);
+            return;
+        }
+        this.app.workspace
+            .getLeaf(false)
+            .openFile(file)
+            .catch((error) => {
+                console.error("DailyNotesStream: Failed to open file", error);
+            });
     }
 
     private renderPropertyRow(container: HTMLElement, key: string, value: unknown): void {

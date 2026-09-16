@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../src/DailyNotesStreamView";
 import { TFile } from "./mocks/obsidian";
 import { StreamState } from "../src/StreamState";
@@ -244,14 +244,70 @@ describe("DailyNotesStreamView — vault event handlers", () => {
         });
     });
 
+    describe("onFileModify — debounce", () => {
+        beforeEach(() => vi.useFakeTimers());
+        afterEach(() => vi.useRealTimers());
+
+        function wireContainer(paths: string[]) {
+            const container = document.createElement("div");
+            const els = new Map(paths.map((p) => [p, document.createElement("div")]));
+            for (const el of els.values()) container.appendChild(el);
+            (view as any).streamContainerEl = container;
+            (view as any).findNoteElement = vi.fn((f: TFile) => els.get(f.path) ?? null);
+            (view as any).renderer.createNoteElement = vi
+                .fn()
+                .mockImplementation(() => Promise.resolve(document.createElement("div")));
+            return container;
+        }
+
+        it("renders nothing until the window elapses", () => {
+            wireContainer(["Notes/2025-01-01.md"]);
+            view.onFileModify(new TFile("Notes/2025-01-01.md"));
+            vi.advanceTimersByTime(299);
+            expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
+        });
+
+        it("collapses a burst of saves into one re-render", async () => {
+            wireContainer(["Notes/2025-01-01.md"]);
+            const file = new TFile("Notes/2025-01-01.md");
+            for (let i = 0; i < 5; i++) {
+                view.onFileModify(file);
+                vi.advanceTimersByTime(100);
+            }
+            vi.advanceTimersByTime(300);
+            await vi.runAllTimersAsync();
+            expect((view as any).renderer.createNoteElement).toHaveBeenCalledTimes(1);
+        });
+
+        it("re-renders every file touched during the window", async () => {
+            wireContainer(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]);
+            view.onFileModify(new TFile("Notes/2025-01-01.md"));
+            view.onFileModify(new TFile("Notes/2025-01-02.md"));
+            vi.advanceTimersByTime(300);
+            await vi.runAllTimersAsync();
+            expect((view as any).renderer.createNoteElement).toHaveBeenCalledTimes(2);
+        });
+
+        it("drops a pending re-render when the view closes", async () => {
+            wireContainer(["Notes/2025-01-01.md"]);
+            view.onFileModify(new TFile("Notes/2025-01-01.md"));
+            await view.onClose();
+            vi.advanceTimersByTime(300);
+            await vi.runAllTimersAsync();
+            expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
+        });
+    });
+
     describe("onFileModify", () => {
         it("does nothing for a non-TFile argument", () => {
             expect(() => view.onFileModify({ path: "not-a-tfile" } as any)).not.toThrow();
             expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
         });
 
-        it("does nothing when the note element is not in the DOM", () => {
+        it("does nothing when the note element is not in the DOM", async () => {
             view.onFileModify(new TFile("Notes/2025-01-01.md"));
+            (view as any).flushModified.run();
+            await flushPromises();
             expect((view as any).renderer.createNoteElement).not.toHaveBeenCalled();
         });
 
@@ -266,6 +322,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             (view as any).renderer.createNoteElement = vi.fn().mockResolvedValue(newEl);
 
             view.onFileModify(file);
+            (view as any).flushModified.run();
             await flushPromises();
 
             expect(container.contains(newEl)).toBe(true);
@@ -282,6 +339,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             (view as any).renderer.createNoteElement = vi.fn().mockRejectedValue(new Error("render failed"));
 
             view.onFileModify(new TFile("Notes/2025-01-01.md"));
+            (view as any).flushModified.run();
             await flushPromises();
 
             expect(consoleSpy).toHaveBeenCalled();
