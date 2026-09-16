@@ -11,7 +11,7 @@
   - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**; review the history first
   - [x] Dry-run the release workflow — `0.1.0` ran green and its draft release holds the three assets, each downloading to a byte-identical copy of the local build. Publish that draft once the repo is public
   - [ ] README screenshot or GIF, desktop and phone layouts
-  - [ ] GitHub repo description and topics (both empty)
+  - [x] GitHub repo description (mirrors the manifest's) and topics (`obsidian`, `obsidian-plugin`, `obsidian-md`, `daily-notes`, `typescript`)
 
 ## Deferred code health
 Reviewed 2026-07 and deliberately not fixed; each has a trigger for revisiting.
