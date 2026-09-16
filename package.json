@@ -1,6 +1,6 @@
 {
     "name": "daily-notes-stream",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "packageManager": "pnpm@11.24.0",
     "description": "Infinite scroll view for daily notes.",
     "main": "main.js",
