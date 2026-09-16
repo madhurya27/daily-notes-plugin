@@ -540,4 +540,32 @@ export interface MobileLayoutOptions {
 /** The viewport each project lays out at. */
 export const LAYOUT_VIEWPORT = { desktop: VIEWPORT, mobile: PHONE_VIEWPORT };
 
+/**
+ * Opens a *fresh* stream view and returns its container locator. Tests share one
+ * Obsidian instance, so an existing view would carry the previous test's loaded
+ * range and scroll position into this one.
+ */
+export async function openStream(page: Page) {
+    await page.evaluate(async () => {
+        const type = "daily-notes-stream-view";
+        const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+        window.app.workspace.detachLeavesOfType(type);
+
+        // Tearing down the emptied tab outlives the leaf count dropping to 0, and
+        // a view opened inside that window gets cleaned up with it. Retry until
+        // one sticks rather than guessing a settle delay.
+        for (let attempt = 0; attempt < 5; attempt++) {
+            await wait(300);
+            await window.app.commands.executeCommandById("daily-notes-stream:open-stream");
+            await wait(300);
+            if (window.app.workspace.getLeavesOfType(type).length > 0) return;
+        }
+        throw new Error("stream view never opened");
+    });
+    const container = page.locator(".daily-notes-stream-container");
+    await expect(container).toBeVisible();
+    await expect(container.locator(".daily-note-block").first()).toBeVisible();
+    return container;
+}
+
 export { expect };

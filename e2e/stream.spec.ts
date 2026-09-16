@@ -1,32 +1,4 @@
-import { test, expect, SEEDED_DAYS } from "./obsidian";
-
-/**
- * Opens a *fresh* stream view and returns its container locator. Tests share one
- * Obsidian instance, so an existing view would carry the previous test's loaded
- * range and scroll position into this one.
- */
-async function openStream(page: import("@playwright/test").Page) {
-    await page.evaluate(async () => {
-        const type = "daily-notes-stream-view";
-        const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-        window.app.workspace.detachLeavesOfType(type);
-
-        // Tearing down the emptied tab outlives the leaf count dropping to 0, and
-        // a view opened inside that window gets cleaned up with it. Retry until
-        // one sticks rather than guessing a settle delay.
-        for (let attempt = 0; attempt < 5; attempt++) {
-            await wait(300);
-            await window.app.commands.executeCommandById("daily-notes-stream:open-stream");
-            await wait(300);
-            if (window.app.workspace.getLeavesOfType(type).length > 0) return;
-        }
-        throw new Error("stream view never opened");
-    });
-    const container = page.locator(".daily-notes-stream-container");
-    await expect(container).toBeVisible();
-    await expect(container.locator(".daily-note-block").first()).toBeVisible();
-    return container;
-}
+import { test, expect, openStream, SEEDED_DAYS } from "./obsidian";
 
 test.describe("daily notes stream in real Obsidian", () => {
     test("renders daily notes as real rendered markdown", async ({ obsidian }) => {

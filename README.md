@@ -2,6 +2,12 @@
 
 A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first.
 
+## Screenshots
+
+| Desktop | Phone |
+| --- | --- |
+| <img src="docs/images/stream-desktop.png" alt="The stream on desktop: three dated notes flowing one after another" width="520"> | <img src="docs/images/stream-phone.png" alt="The same stream in Obsidian's phone layout" width="200"> |
+
 ## Features
 
 - Continuous stream sorted newest-first with infinite scroll (batch 10)
