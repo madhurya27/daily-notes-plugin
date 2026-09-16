@@ -9,7 +9,7 @@
 - [ ] Publish to Obsidian community plugins — M1–M6 done; before M7's manual submission steps:
   - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**
   - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**; review the history first
-  - [ ] Dry-run the release workflow — it has never run; `0.1.0` is the first real tag (1.0.0 stays unspent for submission) and only drafts a release, so check the three assets download individually
+  - [x] Dry-run the release workflow — `0.1.0` ran green and its draft release holds the three assets, each downloading to a byte-identical copy of the local build. Publish that draft once the repo is public
   - [ ] README screenshot or GIF, desktop and phone layouts
   - [ ] GitHub repo description and topics (both empty)
 
