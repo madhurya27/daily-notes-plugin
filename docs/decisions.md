@@ -87,8 +87,12 @@ ignores the padding and lands 1.5px high.
 
 ## 2026-09-21 — The properties panel is Obsidian's, headed like a note heading
 
-**Decision:** the heading is a sibling above `.metadata-content`, laid out as a
-content heading — the same negative margin, padding and chevron offset — and
+**Decision:** the panel is Obsidian's own stylesheet, not a copy of it: the
+stream renders its classes and adds only what Obsidian cannot give a read-only
+panel — the key and value typography its `input` selectors miss, collapsing,
+the heading's place among the note's headings, and the read-only affordances.
+The heading is a sibling above `.metadata-content`, laid out as a content
+heading — the same negative margin, padding and chevron offset — and
 collapsing hides the box outright. Obsidian's own rules do the rest: the chevron
 hidden until the row is hovered, and the row toggling on click.
 
@@ -96,6 +100,9 @@ hidden until the row is hovered, and the row toggling on click.
 Obsidian's offsets assume the margin its editor pane keeps clear and its own
 icon size, so kept they set the panel a step in from the note and its chevron a
 hair from the word.
+
+**Rejected:** restating Obsidian's sizing (`font-size`, row padding, key width,
+icon size) — the panel drifted to 13px text in rows built for a 28px field.
 
 **Rejected:** a gutter of its own (`margin-left: var(--size-4-6)`) — it lands
 Obsidian's geometry inside the note, indented past every heading around it.
@@ -105,10 +112,6 @@ and Obsidian puts it above.
 
 **Rejected:** chevron-only, as headings and list items are — it needs the
 chevron forced visible, a control Obsidian deliberately hides.
-
-**Rejected:** Obsidian's `--metadata-input-height` — it reserves the height of
-a field the reader can click into, half as tall again as the line of text a
-read-only row actually holds.
 
 **Rejected:** `tabindex="0"` on the heading, for keyboard reach — Obsidian rings
 it on `:focus`, so a click left that ring around the row. The chevron takes

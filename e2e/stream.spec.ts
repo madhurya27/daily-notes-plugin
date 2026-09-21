@@ -529,7 +529,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(Math.abs(geometry.titleText - geometry.titleChevron - headingGap)).toBeLessThan(1);
     });
 
-    test("sizes a property row to its text, not to an editable field", async ({ obsidian }) => {
+    test("renders the properties panel at the size Obsidian's own does", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
             const plugin = window.app.plugins.plugins["daily-notes-stream"];
@@ -537,28 +537,48 @@ test.describe("daily notes stream in real Obsidian", () => {
             plugin.settings.propertiesCollapsed = false;
             await plugin.saveSettings();
         });
-        const container = await openStream(page);
-        const panel = container.locator(".metadata-container").first();
-        if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
-            await panel.locator(".metadata-properties-heading").click();
-        }
-        await expect(panel.locator(".metadata-property").first()).toBeVisible();
 
-        // Obsidian reserves an input's height per row, for a field the reader
-        // can click into; the stream only ever shows a line of text.
-        const row = await panel
-            .locator(".metadata-property")
-            .first()
-            .evaluate((el) => {
-                const style = getComputedStyle(el);
+        // The panel Obsidian draws for the same note, to measure the stream's
+        // against: every rule for these classes is already in its stylesheet,
+        // and anything the stream restates is a chance to drift from it.
+        const measure = (root: Element) => {
+            const size = (sel: string) => {
+                const el = root.querySelector(sel)!;
                 return {
-                    height: el.getBoundingClientRect().height,
-                    text: parseFloat(getComputedStyle(el.querySelector(".metadata-property-value-text")!).lineHeight),
-                    padding: parseFloat(style.paddingTop) + parseFloat(style.paddingBottom),
+                    height: Math.round(el.getBoundingClientRect().height),
+                    fontSize: getComputedStyle(el).fontSize,
                 };
-            });
+            };
+            return {
+                title: size(".metadata-properties-title"),
+                row: size(".metadata-property"),
+                key: size(".metadata-property-key"),
+                keyText: size(".metadata-property-key-input"),
+                value: size(".metadata-property-value"),
+                icon: Math.round(root.querySelector(".metadata-property-icon svg")!.getBoundingClientRect().width),
+            };
+        };
 
-        expect(row.height).toBeLessThanOrEqual(row.text + row.padding + 1);
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-14.md");
+            await window.app.workspace.getLeaf(false).openFile(file!);
+        });
+        const note = page.locator(".workspace-leaf.mod-active .view-content").first();
+        await expect(note.locator(".metadata-property").first()).toBeVisible();
+        const native = await note.evaluate(measure);
+
+        const container = await openStream(page);
+        await expect(container.locator(".metadata-property").first()).toBeVisible();
+        const stream = await container.evaluate(measure);
+
+        expect(stream.icon).toBe(native.icon);
+        for (const part of ["title", "row", "key", "keyText", "value"] as const) {
+            expect(stream[part].fontSize, part).toBe(native[part].fontSize);
+            // Obsidian fills a row with inputs and the stream with text, so a
+            // box can round a pixel apart; anything more is a rule it is
+            // missing.
+            expect(Math.abs(stream[part].height - native[part].height), part).toBeLessThanOrEqual(1);
+        }
     });
 
     test("collapses the properties box away entirely", async ({ obsidian }) => {
