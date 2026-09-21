@@ -45,8 +45,7 @@ screen belongs in `e2e/`, which drives the installed app against a throwaway vau
 desktop and mobile.
 
 **Look at a UI change before handing it over.** Screenshot it from the e2e harness, desktop and mobile, and
-inspect the image. Measurements against Obsidian's own rendering prove a rule was matched, not that the result
-looks right — a pill whose every measured value matched still had its last letter on the border.
+inspect the image: measurements prove a rule was matched, not that the result looks right.
 
 ## Invariants
 
