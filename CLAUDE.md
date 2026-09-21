@@ -44,6 +44,10 @@ a visibility assertion there proves nothing. Anything about real rendering, real
 screen belongs in `e2e/`, which drives the installed app against a throwaway vault. Every spec runs twice,
 desktop and mobile.
 
+**Look at a UI change before handing it over.** Screenshot it from the e2e harness, desktop and mobile, and
+inspect the image. Measurements against Obsidian's own rendering prove a rule was matched, not that the result
+looks right — a pill whose every measured value matched still had its last letter on the border.
+
 ## Invariants
 
 Traps that span files, so no single file's comments can hold them.
