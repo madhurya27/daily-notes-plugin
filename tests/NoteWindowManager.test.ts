@@ -156,6 +156,78 @@ describe("NoteWindowManager.add", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Estimating an unseen note
+// ---------------------------------------------------------------------------
+
+/**
+ * A fixed constant cannot be right for two vaults, or for one vault at two
+ * window widths: the fixture's notes measure ~709px against an estimate of 400.
+ */
+describe("NoteWindowManager estimates", () => {
+    /** Renders, then unloads, a block measuring `px` — one measurement. */
+    async function observeHeight(manager: NoteWindowManager, px: number, heights: number[]) {
+        const block = manager.add(new TFile(`Notes/2025-01-${px}.md`));
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        heights.push(px);
+        fire(observers.unload, block, false);
+    }
+
+    /** A manager whose measurement returns each queued height in turn. */
+    function makeMeasuring() {
+        const heights: number[] = [];
+        const { manager } = makeManager(makeRenderer(), () => heights[heights.length - 1] ?? 0);
+        return { manager, heights };
+    }
+
+    it("falls back to the constant before anything has been measured", () => {
+        const { manager } = makeManager();
+        expect(placeholderHeight(manager.add(FILE))).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
+    });
+
+    it("reserves what notes in this vault actually measured", async () => {
+        const { manager, heights } = makeMeasuring();
+        await observeHeight(manager, 700, heights);
+
+        expect(placeholderHeight(manager.add(FILE))).toBe("700px");
+    });
+
+    // The median, not the mean: one enormous note should not stretch every
+    // placeholder after it.
+    it("is not dragged off by a single outlier", async () => {
+        const { manager, heights } = makeMeasuring();
+        for (const px of [700, 720, 680, 9000, 710]) await observeHeight(manager, px, heights);
+
+        expect(placeholderHeight(manager.add(FILE))).toBe("710px");
+    });
+
+    // Resizing the window changes every note's height, so the estimate has to
+    // age out what it learned at the old width rather than averaging forever.
+    it("forgets measurements older than its window", async () => {
+        const { manager, heights } = makeMeasuring();
+        for (let i = 0; i < 50; i++) await observeHeight(manager, 900, heights);
+        for (let i = 0; i < 26; i++) await observeHeight(manager, 300, heights);
+
+        expect(placeholderHeight(manager.add(FILE))).toBe("300px");
+    });
+
+    it("keeps an explicit height ahead of the estimate", async () => {
+        const { manager, heights } = makeMeasuring();
+        await observeHeight(manager, 700, heights);
+
+        expect(placeholderHeight(manager.add(FILE, 120))).toBe("120px");
+    });
+
+    it("ignores a measurement of nothing, so an unlaid-out block sets no floor", async () => {
+        const { manager, heights } = makeMeasuring();
+        await observeHeight(manager, 0, heights);
+
+        expect(placeholderHeight(manager.add(FILE))).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Hysteresis
 // ---------------------------------------------------------------------------
 

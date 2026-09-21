@@ -31,7 +31,9 @@ DOM per note, which is what keeps a jump to a distant date (`docs/IMPROVEMENTS.m
 ## Consequences
 
 - Scroll extent is approximate until a note has rendered once: a never-rendered
-  block reserves an estimate, corrected on first render.
+  block reserves the median of what this vault's notes measured, corrected on
+  first render. The fixed constant it replaced was 400px against notes that
+  measure ~709px.
 - A settings refresh rebuilds the stream as placeholders, so it costs the same
   at ten notes and at a thousand.
 - Anything that scrolls to a note may land on a placeholder. That works — the

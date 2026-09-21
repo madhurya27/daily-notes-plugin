@@ -49,12 +49,19 @@ test.describe("a multi-year vault scrolled to the end", () => {
         // Chromium's Nodes metric counts detached nodes until they are
         // collected, so the live tree is what says whether the DOM is bounded.
         const liveNodes = await container.evaluate((el) => el.querySelectorAll("*").length);
+        // Says whether ESTIMATED_NOTE_HEIGHT_PX is anywhere near a real note.
+        const placeholderPx = await container.evaluate((el) =>
+            Array.from(el.querySelectorAll<HTMLElement>(".daily-note-block:not(.is-unloaded)"), (b) =>
+                Math.round(b.getBoundingClientRect().height)
+            )
+        );
 
         // eslint-disable-next-line no-console -- the number this test exists to report
         console.log(
             `[memory] ${SEEDED_DAYS} notes | rendered ${renderedAtEnd} | ` +
                 `heap ${first.heapMb.toFixed(1)} → ${end.heapMb.toFixed(1)} MB | ` +
-                `nodes ${first.nodes} → ${end.nodes} (${liveNodes} live in the stream)`
+                `nodes ${first.nodes} → ${end.nodes} (${liveNodes} live in the stream) | ` +
+                `rendered heights ${placeholderPx.join(", ")}`
         );
 
         // The whole point: what is rendered follows the viewport, not the vault.

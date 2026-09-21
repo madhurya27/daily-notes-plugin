@@ -2,10 +2,16 @@ import { Component, TFile } from "obsidian";
 import type { NoteRenderer } from "./NoteRenderer";
 
 /**
- * What a block reserves before it has ever been rendered. Wrong by design —
- * the first render replaces it with the measured height.
+ * What a block reserves before this vault has measured anything. A guess only
+ * until the first note is unloaded, after which the vault's own notes say.
  */
 export const ESTIMATED_NOTE_HEIGHT_PX = 400;
+
+/**
+ * How many measurements the estimate is drawn from. Short enough that a window
+ * resize, which changes every note's height, is forgotten quickly.
+ */
+const MEASUREMENT_WINDOW = 50;
 
 /**
  * Both margins are viewports, not pixels: how far ahead of the reader the
@@ -44,6 +50,8 @@ export class NoteWindowManager {
     private renderObserver: IntersectionObserver | null = null;
     private unloadObserver: IntersectionObserver | null = null;
     private scrollRoot: HTMLElement | null = null;
+    /** Recent measured note heights, oldest first; the estimate is their median. */
+    private readonly measured: number[] = [];
     /** The height the current margins were computed from. */
     private rootHeight = 0;
 
@@ -94,13 +102,30 @@ export class NoteWindowManager {
         this.attach(this.scrollRoot);
     }
 
-    /** An unloaded block for `file`, reserving `height` until it renders. */
-    add(file: TFile, height: number = ESTIMATED_NOTE_HEIGHT_PX): HTMLElement {
+    /** An unloaded block for `file`, reserving `height` — or the estimate. */
+    add(file: TFile, height?: number): HTMLElement {
+        const reserved = height ?? this.estimate();
         const block = this.renderer.createBlock(file);
-        this.windows.set(block, { file, component: null, rendering: false, unloadWanted: false, height });
-        this.markUnloaded(block, height);
+        this.windows.set(block, {
+            file,
+            component: null,
+            rendering: false,
+            unloadWanted: false,
+            height: reserved,
+        });
+        this.markUnloaded(block, reserved);
         this.observe(block);
         return block;
+    }
+
+    /**
+     * The median of what this vault's notes measured, which beats any constant:
+     * note length varies by vault, and every height varies by window width.
+     */
+    private estimate(): number {
+        if (this.measured.length === 0) return ESTIMATED_NOTE_HEIGHT_PX;
+        const sorted = [...this.measured].sort((a, b) => a - b);
+        return sorted[sorted.length >> 1]!;
     }
 
     /**
@@ -187,6 +212,11 @@ export class NoteWindowManager {
 
     private unloadNow(block: HTMLElement, window: NoteWindow): void {
         window.height = this.measure(block);
+        // A block that was never laid out measures zero and says nothing.
+        if (window.height > 0) {
+            this.measured.push(window.height);
+            if (this.measured.length > MEASUREMENT_WINDOW) this.measured.shift();
+        }
         this.discard(window);
         block.empty();
         this.markUnloaded(block, window.height);

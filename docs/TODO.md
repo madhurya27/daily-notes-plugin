@@ -46,6 +46,13 @@ solved elsewhere; only what operates on *the stream* is ours.** ★ marks the re
 Out of scope: random note (core ships it), task rollup (Tasks owns it, and read-only cannot check a box),
 folder/tag modes (dilutes what the plugin is).
 
+## Deferred, contingent on how unloading behaves in real use
+Only worth doing if the placeholder estimate proves visibly wrong; Chromium's
+own scroll anchoring absorbs most of it today
+([ADR 0006](adr/0006-unload-off-screen-notes.md)).
+- [ ] Correct `scrollTop` by the delta when a block **above** the viewport renders and changes height — removes the jump whatever the estimate. Needs `overflow-anchor: none` on the container, which means owning behaviour Chromium currently handles.
+- [ ] Estimate per note from `TFile.stat.size` — only if the median proves too coarse for a vault of uneven notes.
+
 ## Deferred code health
 Reviewed 2026-07 and deliberately not fixed; each has a trigger for revisiting.
 - [ ] Split `DailyNotesStreamView` (view vs. stream-update coordinator) — revisit when it outgrows ~400 lines (370 today), likely with inline editing or filtering.
