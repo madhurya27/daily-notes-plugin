@@ -71,3 +71,16 @@ pane's own layer never lands and the box sits 3px above its label.
 
 **Rejected:** adding `markdown-preview-view` to the content element — it brings
 the whole pane stylesheet, padding and line width included.
+
+## 2026-09-21 — A list chevron spans the line box, offset by the list padding
+
+**Decision:** the indicator takes `height: calc(var(--line-height-normal) * 1em)`
+at `top: var(--list-spacing)`, as reading view does, rather than a 16px box
+centred by hand.
+
+**Why:** a line box and its text share a centre, so centring on the line box
+centres on the words; `top` clears the list item's padding, which absolute
+positioning measures from the inside of.
+
+**Rejected:** halving the difference between line height and icon size — it
+ignores the padding and lands 1.5px high.

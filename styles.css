@@ -214,10 +214,16 @@
 }
 
 /* List Item Collapse Alignment */
+/* Reading view gives the indicator the whole line box and centres the icon in
+   it, which puts the icon on the middle of the words: half-leading is split
+   evenly, so a line box and its text share a centre. `top` then has to clear
+   the list item's own padding, which absolute positioning measures from the
+   inside of — without it the icon rides a pixel and a half high. */
 .daily-note-content li.is-collapsible > .collapse-indicator {
     position: absolute;
     left: calc(-1 * var(--size-4-8, 2rem));
-    top: calc((var(--line-height-normal, 1.5) * 1em - var(--size-4-4, 1rem)) / 2);
+    top: var(--list-spacing, 0);
+    height: calc(var(--line-height-normal, 1.5) * 1em);
 }
 
 /* A task item hangs its checkbox in the same margin the chevron parks in, so

@@ -90,6 +90,29 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(chevronBox!.x + chevronBox!.width).toBeLessThanOrEqual(checkboxBox!.x);
     });
 
+    test("centres a list chevron on its label", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+
+        // Both shapes the vault seeds: a plain bullet with children, and a task.
+        for (const label of ["Groceries", "Parent task"]) {
+            const item = container.locator(".daily-note-content li.is-collapsible", { hasText: label }).first();
+            await expect(item).toBeVisible();
+
+            const offset = await item.evaluate((li) => {
+                const chevron = li.querySelector(":scope > .collapse-indicator")!;
+                const text = Array.from(li.childNodes).find((n) => n.nodeType === 3 && n.textContent!.trim())!;
+                const range = document.createRange();
+                range.selectNodeContents(text);
+                const words = range.getBoundingClientRect();
+                const box = chevron.getBoundingClientRect();
+                return box.top + box.height / 2 - (words.top + words.height / 2);
+            });
+
+            expect(Math.abs(offset), label).toBeLessThan(1);
+        }
+    });
+
     test("centres a task's checkbox on its label", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
