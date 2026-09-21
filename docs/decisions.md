@@ -185,3 +185,26 @@ last letter sat on the border.
 **Rejected:** styling the rest of a pill in `styles.css` — every other rule is
 already in Obsidian's stylesheet, and restating one is a chance to drift from it.
 
+
+## 2026-09-21 — More air around the note separator
+
+**Decision:** the rule between notes gets 4rem above and below it
+(`--size-4-16`), up from 3rem.
+
+**Why:** at 3rem the rule sat closer to the note it closes than a reader needs,
+and the stream read as a stack rather than a sequence of days. 4rem is the
+widest spacing that still fits two notes on a phone screen.
+
+**Rejected:** dropping the rule and separating on whitespace alone — the accent
+date heading is a strong enough boundary on short notes, but the rule is what
+carries a note that ends mid-thought.
+
+**Rejected:** an asymmetric 4rem/6rem, which reads better on the desktop by
+tying the rule to the note above it — on a phone the 6rem gap pushes the next
+note under the floating navbar, and fixing that means a second number to keep
+in sync for a desktop-only gain.
+
+**Rejected:** a sticky date header, which answers "which day am I in?" on a note
+longer than a screen. Sticky offsets resolve against the scrollport, and both
+layouts pad it — the header pins a rem low on the desktop and mid-air on mobile,
+so it needs a per-layout offset read off Obsidian's own chrome.

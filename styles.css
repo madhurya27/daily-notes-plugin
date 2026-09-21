@@ -3,7 +3,7 @@
 .daily-notes-stream-container {
     display: flex;
     flex-direction: column;
-    gap: var(--size-4-12, 3rem);
+    gap: var(--size-4-16, 4rem);
     padding: var(--size-4-4, 1rem);
     user-select: text;
     cursor: auto;
@@ -17,7 +17,7 @@
 
 .daily-note-block {
     border-bottom: var(--border-width) solid var(--background-modifier-border);
-    padding-bottom: var(--size-4-12, 3rem);
+    padding-bottom: var(--size-4-16, 4rem);
 }
 
 /* An unloaded note: no content, but the height it had, so nothing shifts. */
