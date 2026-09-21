@@ -1,13 +1,12 @@
 /**
- * The edit-reload loop: links the plugin's assets into PluginTest/, watches
- * them, and reloads the plugin in the open window after every change.
+ * The edit-reload loop: links the build into PluginTest/, watches it, and
+ * reloads the plugin in the open window after every change.
  *
  *   node scripts/dev-vault.mjs [vault]
  *
- * `seed` installs copies, so a rebuild never reached the vault. Links make the
- * vault read the repo's own files, and `main.js` is the one esbuild rewrites —
- * watching it covers a TypeScript change without knowing anything about the
- * build. `styles.css` needs no build at all.
+ * Why links and a reload: docs/decisions.md. Watching the linked files covers a
+ * TypeScript change without knowing anything about the build — `main.js` is
+ * what esbuild rewrites — and `styles.css` needs no build at all.
  */
 import { spawn } from "child_process";
 import { existsSync, rmSync, statSync, symlinkSync, watch } from "fs";
@@ -37,8 +36,8 @@ export function linkAssets(repo, vault) {
 
 /**
  * Returns a test for "this event carries a write". Reloading makes Obsidian
- * re-read the linked files, and macOS reports that read as a change too — left
- * alone, every reload asks for the next one.
+ * re-read the linked files, and macOS reports that read as a change — left
+ * alone, every reload asks for the next.
  */
 export function createChangeFilter(mtimeOf) {
     const seen = new Map();
@@ -57,9 +56,8 @@ export function createChangeFilter(mtimeOf) {
 
 /**
  * Returns the function to call on every change. One reload per burst: esbuild
- * writes `main.js` in more than one step and macOS reports one save as several
- * events, and a reload takes longer than either — so changes arriving during
- * one wait for it and share a single run after.
+ * writes `main.js` in more than one step, and a reload outlasts the writing, so
+ * changes arriving during one share a single run after it.
  */
 export function createReloader(reload, delay) {
     let timer = null;

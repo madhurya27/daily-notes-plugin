@@ -1,13 +1,12 @@
 /**
  * Reloads the plugin in the window `pnpm run open` left running, over the
- * debugging port it was launched with.
+ * debugging port it was launched with. Why here and not in the vault:
+ * docs/decisions.md.
  *
  *   node scripts/reload-plugin.mjs
  *
- * Obsidian reads a plugin's files once, at load; disabling and re-enabling it
- * re-runs `onload` and re-injects `styles.css`. That is what the Hot Reload
- * community plugin does from inside the vault — the open window already exposes
- * the port to do it from here, so the test vault stays a plain vault.
+ * Disabling and re-enabling re-runs `onload` and re-injects `styles.css`, which
+ * Obsidian otherwise reads once, at load.
  */
 import { chromium } from "@playwright/test";
 import { execSync } from "child_process";

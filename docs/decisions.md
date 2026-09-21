@@ -117,21 +117,18 @@ chevron forced visible, a control Obsidian deliberately hides.
 it on `:focus`, so a click left that ring around the row. The chevron takes
 focus instead, and reveals itself on `:focus-visible`.
 
-## 2026-09-21 — The dev loop reloads the plugin over Obsidian's debugging port
+## 2026-09-21 — The dev loop reloads the plugin over the debugging port
 
-**Decision:** `pnpm run dev:vault` links the build into the test vault, watches the three files it links,
-and reloads the plugin by disabling and re-enabling it over the `--remote-debugging-port` that
-`pnpm run open` already exposes.
+**Decision:** `pnpm run dev:vault` links the build into the test vault, watches
+those files, and reloads the plugin by disabling and re-enabling it over the
+`--remote-debugging-port` `pnpm run open` already exposes.
 
-**Why:** `seed` installs copies, so a rebuild never reached the vault, and Obsidian reads a plugin's files
-once, at load. Links plus a reload close both halves without the vault knowing anything about it.
+**Why:** `seed` installs copies, so a rebuild never reached the vault, and
+Obsidian reads a plugin's files once, at load. Links and a reload close the two
+halves of that.
 
-**Rejected:** the Hot Reload community plugin — it does the same from inside, but the test vault then
-carries a second plugin, and the window `open` returns already answers to automation.
+**Rejected:** the Hot Reload community plugin — the same thing from inside, at
+the price of a second plugin in the vault.
 
-**Rejected:** Cmd+R, or reloading the whole window — a phone-emulated window has no such hotkey, and a
-full reload throws away the scroll position the change is usually about.
-
-**Rejected:** reacting to the raw watch events — a reload makes Obsidian re-read the linked files, and
-macOS reports that read as a change, so each reload asked for the next. `createChangeFilter` compares
-mtimes; `createReloader` collapses a burst and waits for a reload in flight.
+**Rejected:** Cmd+R — a phone-emulated window has no such hotkey, and reloading
+the window throws away the scroll position the change is usually about.
