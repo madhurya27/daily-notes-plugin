@@ -446,7 +446,7 @@ describe("NoteRenderer renderProperties", () => {
         expect(el.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(true);
     });
 
-    it("leaves the panel alone when the heading row itself is clicked", async () => {
+    it("toggles from the heading row, as Obsidian's own panel does", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(
             app as any,
@@ -457,10 +457,28 @@ describe("NoteRenderer renderProperties", () => {
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const container = el.querySelector(".metadata-container")!;
 
-        // The chevron alone toggles, as it does for a heading or a list item.
-        (el.querySelector(".metadata-properties-heading-label") as HTMLElement).click();
+        // Obsidian hides this chevron unless the pointer is over the row and a
+        // phone never hovers, so the row itself has to be the target.
+        (el.querySelector(".metadata-properties-title") as HTMLElement).click();
 
-        expect(container.classList.contains("is-collapsed")).toBe(false);
+        expect(container.classList.contains("is-collapsed")).toBe(true);
+    });
+
+    it("puts the heading outside the box, as Obsidian's own panel does", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
+        const renderer = new NoteRenderer(
+            app as any,
+            new Component(),
+            makeCollapsible(),
+            makeSettings({ showProperties: true })
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+        const heading = el.querySelector(".metadata-properties-heading")!;
+
+        // The grey box is `.metadata-content`; the heading is its sibling above.
+        expect(heading.parentElement!.className).toBe("metadata-container");
+        expect(heading.nextElementSibling!.className).toBe("metadata-content");
+        expect(heading.getAttribute("tabindex")).toBe("0");
     });
 
     async function renderIcons(frontmatter: Record<string, unknown>): Promise<(string | undefined)[]> {

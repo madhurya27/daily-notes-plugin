@@ -114,22 +114,26 @@ export class NoteRenderer {
         if (keys.length === 0) return;
 
         const metadataContainer = container.createDiv({ cls: "metadata-container" });
+
+        // Obsidian's own shape: the heading is a sibling above the box, not a
+        // row inside it, and the whole row is the control.
+        const heading = metadataContainer.createDiv({ cls: "metadata-properties-heading" });
+        heading.setAttribute("tabindex", "0");
+        heading.createDiv({ cls: "metadata-properties-title", text: "Properties" });
+
         const metadataContent = metadataContainer.createDiv({ cls: "metadata-content" });
-
-        const heading = metadataContent.createDiv({ cls: "metadata-properties-heading" });
-        heading.createDiv({ cls: "metadata-properties-heading-label", text: "Properties" });
-
         const metadataProperties = metadataContent.createDiv({ cls: "metadata-properties" });
         for (const key of keys) {
             this.renderPropertyRow(metadataProperties, key, frontmatter[key]);
         }
 
-        this.collapsible.attachCollapseToggle(heading, {
+        const toggle = this.collapsible.attachCollapseToggle(heading, {
             filePath: file.path,
             sectionKey: PROPERTIES_SECTION_KEY,
             defaultCollapsed: this.getSettings().propertiesCollapsed,
             apply: (collapsed) => metadataContainer.toggleClass("is-collapsed", collapsed),
         });
+        this.collapsible.attachCollapseHost(heading, toggle);
     }
 
     /** Title → its note. Weak, so titles dropped by a re-render are collectable. */

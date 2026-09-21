@@ -49,8 +49,18 @@ export class CollapsibleManager {
     }
 
     /**
+     * Makes a second element toggle the same section — the properties heading
+     * row, whose chevron Obsidian hides unless hovered, so a phone would have
+     * nothing to tap.
+     */
+    attachCollapseHost(host: HTMLElement, toggle: () => void): void {
+        this.toggles.set(host, toggle);
+    }
+
+    /**
      * The toggle of the nearest element an event landed in, if it has one.
-     * Walking up catches a click on the icon the chevron holds.
+     * Walking up finds the chevron before the row that also hosts it, so a
+     * click on either runs the toggle exactly once.
      */
     private toggleFor(target: EventTarget | null): (() => void) | undefined {
         let el = target as HTMLElement | null;
@@ -64,7 +74,7 @@ export class CollapsibleManager {
 
     /**
      * Binds the toggle to the chevron alone: a click on heading text or a link
-     * inside it must not collapse.
+     * inside it must not collapse. Returns the toggle, for binding extra hosts.
      */
     attachCollapseToggle(host: HTMLElement, section: CollapsibleSection): () => void {
         const indicator = document.createElement("span");

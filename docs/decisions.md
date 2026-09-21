@@ -85,33 +85,28 @@ positioning measures from the inside of.
 **Rejected:** halving the difference between line height and icon size — it
 ignores the padding and lands 1.5px high.
 
-## 2026-09-21 — Only a chevron collapses anything
+## 2026-09-21 — The properties panel is Obsidian's, indented
 
-**Decision:** the properties heading row no longer toggles; its chevron does,
-as for a markdown heading or a list item. `attachCollapseHost` is gone.
+**Decision:** the heading is a sibling above `.metadata-content` with
+`tabindex="0"`, both it and the property rows take
+`margin-left: var(--size-4-6)`, and Obsidian's own rules do the rest — the
+chevron hanging at `-22px`, hidden until the row is hovered, and the row
+toggling on click.
 
-**Why:** one rule across the stream — every other row needs the chevron, so a
-row that folds on any click is a surprise. The label is selectable now.
+**Why:** the indent is the margin the editor pane keeps clear and the stream
+has not; with it, Obsidian's geometry lands inside the note. The chevron only
+appears under `@media (hover: hover)`, so a phone has nothing to tap unless the
+row is the control — which is what Obsidian does.
 
-**Rejected:** making headings and list items row-clickable instead — a heading
-holds links and prose a click must be free to reach.
+**Rejected:** chevron-only here, for consistency with headings and list items —
+it needs the chevron forced visible, a control Obsidian deliberately hides.
 
-## 2026-09-21 — The properties panel carries its own gutter
-
-**Decision:** the panel's heading and property rows take
-`margin-left: var(--size-4-6)` and the chevron hangs in that, absolutely
-positioned and forced visible. Hover colours the chevron, not the row.
-
-**Why:** in flow the chevron took the icon column and the label the key column,
-so the header read as one more property. Native hangs the chevron 22px outside
-the panel, in a margin the editor pane has and the stream does not.
-
-**Rejected:** indenting every note block to share one gutter — 22px of width
-lost on a phone, for a panel that is off by default.
-
-**Rejected:** the chevron at the row's right end — no indent needed anywhere,
-but nothing else in Obsidian puts it there.
+**Rejected:** the heading inside the box — it then reads as one more property
+row, and Obsidian puts it above.
 
 **Rejected:** padding on `.metadata-container` — Obsidian bleeds the box inside
 it evenly past its edges, so padding shifts the box instead of its rows, hanging
 it off the right of the note.
+
+**Rejected:** indenting every note block to share one gutter — 24px of width
+lost on a phone, for a panel that is off by default.

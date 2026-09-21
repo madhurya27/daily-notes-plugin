@@ -387,7 +387,7 @@ test.describe("daily notes stream in real Obsidian", () => {
 
         await expect(panel).toBeVisible();
         await expect(panel).not.toHaveClass(/is-collapsed/);
-        await firstNote.locator(".metadata-properties-heading > .collapse-indicator").click();
+        await firstNote.locator(".metadata-properties-heading").click();
         await expect(panel).toHaveClass(/is-collapsed/);
 
         // Editing the note re-renders it; the panel must not spring back open.
@@ -415,18 +415,20 @@ test.describe("daily notes stream in real Obsidian", () => {
         // Collapse state persists per note, and an earlier test may have left
         // this panel closed; its keys are then not there to measure.
         if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
-            await panel.locator(".metadata-properties-heading > .collapse-indicator").click();
+            await panel.locator(".metadata-properties-heading").click();
         }
-        const label = block.locator(".metadata-properties-heading-label");
-        const key = block.locator(".metadata-property-key").first();
-        await expect(label).toBeVisible();
-        await expect(key).toBeVisible();
+        const heading = block.locator(".metadata-properties-heading");
+        const rows = block.locator(".metadata-properties");
+        await expect(heading).toBeVisible();
+        await expect(rows).toBeVisible();
+        // Obsidian puts the heading above the box, not in it.
+        await expect(block.locator(".metadata-content > .metadata-properties-heading")).toHaveCount(0);
 
-        // Obsidian hangs the chevron in a gutter and starts the label on the
-        // same column as the keys; in flow it landed in the key column instead,
-        // reading as one more property row.
-        const [labelBox, keyBox] = await Promise.all([label.boundingBox(), key.boundingBox()]);
-        expect(Math.abs(labelBox!.x - keyBox!.x)).toBeLessThan(1);
+        // Obsidian hangs the chevron outside the panel and starts the heading
+        // on the panel's own left edge; in flow the chevron took the icon
+        // column and the heading read as one more property row.
+        const [headingBox, rowsBox] = await Promise.all([heading.boundingBox(), rows.boundingBox()]);
+        expect(Math.abs(headingBox!.x - rowsBox!.x)).toBeLessThan(1);
     });
 
     test("keeps the properties box centred on the note", async ({ obsidian }) => {
@@ -449,24 +451,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(Math.abs(leftBleed - rightBleed)).toBeLessThan(1);
     });
 
-    test("shows the properties chevron without a pointer over it", async ({ obsidian }) => {
-        const { page } = obsidian;
-        await page.evaluate(async () => {
-            const plugin = window.app.plugins.plugins["daily-notes-stream"];
-            plugin.settings.showProperties = true;
-            await plugin.saveSettings();
-        });
-        const container = await openStream(page);
-        const chevron = container.locator(".metadata-properties-heading > .collapse-indicator").first();
-        await expect(chevron).toBeVisible();
-        await page.mouse.move(0, 0);
-
-        // Obsidian fades this indicator in on hover, which a phone never does:
-        // the one control that collapses the panel has to be on screen.
-        await expect(chevron).toHaveCSS("opacity", "1");
-    });
-
-    test("colours only the chevron under the pointer", async ({ obsidian }) => {
+    test("reveals the properties chevron on hover, as Obsidian does", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
             const plugin = window.app.plugins.plugins["daily-notes-stream"];
@@ -477,19 +462,13 @@ test.describe("daily notes stream in real Obsidian", () => {
         const heading = container.locator(".metadata-properties-heading").first();
         const chevron = heading.locator("> .collapse-indicator");
         await expect(chevron).toBeVisible();
-
-        const colourOf = (target: typeof heading) => target.evaluate((el) => getComputedStyle(el).color);
-        // An earlier test clicked this chevron and left the pointer on it, so
-        // the baseline has to be read with the pointer elsewhere.
         await page.mouse.move(0, 0);
-        const [headingBefore, chevronBefore] = await Promise.all([colourOf(heading), colourOf(chevron)]);
 
-        await chevron.hover();
-
-        // Only the chevron answers to the pointer: it is the only thing a click
-        // does anything to.
-        expect(await colourOf(chevron)).not.toBe(chevronBefore);
-        expect(await colourOf(heading)).toBe(headingBefore);
+        // Obsidian keeps this indicator hidden until the row is hovered, and
+        // the row itself is the control — a phone taps that instead.
+        await expect(chevron).toHaveCSS("opacity", "0");
+        await heading.hover();
+        await expect(chevron).toHaveCSS("opacity", "1");
     });
 
     test("keeps the properties chevron inside the note", async ({ obsidian }) => {
@@ -522,7 +501,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         // Collapse state persists per note, and an earlier test may have left
         // this panel closed; its icons are then not there to measure.
         if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
-            await panel.locator(".metadata-properties-heading > .collapse-indicator").click();
+            await panel.locator(".metadata-properties-heading").click();
         }
         const icon = panel.locator(".metadata-property-icon").first();
         await expect(icon).toBeVisible();

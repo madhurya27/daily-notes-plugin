@@ -73,56 +73,22 @@
     display: none;
 }
 
-/* The gutter the chevron hangs in, as the editor's own pane provides one. It
-   indents the panel's rows, never the box around them: Obsidian bleeds that box
-   evenly past its container, so padding there shifts it off the note. */
-.daily-notes-stream-container .metadata-content > .metadata-properties-heading,
+/* Obsidian styles this heading itself — title, spacing and the focus ring —
+   and hangs the chevron 22px to its left, in a margin the editor pane keeps
+   clear. The stream has none, so the heading indents by that much and the
+   chevron hangs into the gap, level with the note's other text. */
+.daily-notes-stream-container .metadata-properties-heading,
 .daily-notes-stream-container .metadata-content > .metadata-properties {
     margin-left: var(--size-4-6, 1.5rem);
 }
 
-.daily-notes-stream-container .metadata-properties-heading {
-    position: relative;
-    display: flex;
-    align-items: center;
-    padding: var(--size-4-2) 0;
-    color: var(--text-faint);
-    font-weight: var(--nav-item-weight, 500);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: var(--font-ui-smaller);
-}
-
-/* Obsidian parks this indicator 22px left of its properties panel, in the
-   margin the editor pane keeps clear. The stream has no such margin, so the
-   panel carries its own gutter and the chevron hangs in that — outside the
-   columns, and still inside the note. */
 .daily-notes-stream-container .metadata-properties-heading > .collapse-indicator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Obsidian fades this one in on hover; a phone has no hover, and it is the
-       only thing that collapses the panel. */
-    opacity: 1;
-    position: absolute;
-    left: calc(-1 * var(--size-4-6, 1.5rem));
-    cursor: pointer;
-    touch-action: manipulation;
     transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
     transform: rotate(90deg);
 }
 
-.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator:is(:hover, :active) {
-    color: var(--text-muted);
-}
-
 .daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading > .collapse-indicator {
     transform: rotate(0deg);
-}
-
-.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator svg {
-    width: var(--size-4-3);
-    height: var(--size-4-3);
 }
 
 .daily-notes-stream-container .metadata-property {
