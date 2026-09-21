@@ -402,6 +402,59 @@ test.describe("daily notes stream in real Obsidian", () => {
         );
     });
 
+    test("lines the properties header up with the properties, not inside them", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const block = container.locator(".daily-note-block").first();
+        const panel = block.locator(".metadata-container");
+        // Collapse state persists per note, and an earlier test may have left
+        // this panel closed; its keys are then not there to measure.
+        if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
+            await panel.locator(".metadata-properties-heading > .collapse-indicator").click();
+        }
+        const label = block.locator(".metadata-properties-heading-label");
+        const key = block.locator(".metadata-property-key").first();
+        await expect(label).toBeVisible();
+        await expect(key).toBeVisible();
+
+        // Obsidian hangs the chevron in a gutter and starts the label on the
+        // same column as the keys; in flow it landed in the key column instead,
+        // reading as one more property row.
+        const [labelBox, keyBox] = await Promise.all([label.boundingBox(), key.boundingBox()]);
+        expect(Math.abs(labelBox!.x - keyBox!.x)).toBeLessThan(1);
+    });
+
+    test("colours only the chevron under the pointer", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const heading = container.locator(".metadata-properties-heading").first();
+        const chevron = heading.locator("> .collapse-indicator");
+        await expect(chevron).toBeVisible();
+
+        const colourOf = (target: typeof heading) => target.evaluate((el) => getComputedStyle(el).color);
+        // An earlier test clicked this chevron and left the pointer on it, so
+        // the baseline has to be read with the pointer elsewhere.
+        await page.mouse.move(0, 0);
+        const [headingBefore, chevronBefore] = await Promise.all([colourOf(heading), colourOf(chevron)]);
+
+        await chevron.hover();
+
+        // Only the chevron answers to the pointer: it is the only thing a click
+        // does anything to.
+        expect(await colourOf(chevron)).not.toBe(chevronBefore);
+        expect(await colourOf(heading)).toBe(headingBefore);
+    });
+
     test("keeps the properties chevron inside the note", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {

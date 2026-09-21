@@ -59,7 +59,9 @@
 }
 
 /* Daily Note Properties - Mimic Native Styling */
+/* The gutter the chevron hangs in, as the editor's own pane provides one. */
 .daily-notes-stream-container .metadata-container {
+    padding-left: var(--size-4-6, 1.5rem);
     margin-bottom: var(--p-spacing);
     font-size: var(--font-ui-small);
     display: block;
@@ -74,6 +76,7 @@
 }
 
 .daily-notes-stream-container .metadata-properties-heading {
+    position: relative;
     display: flex;
     align-items: center;
     padding: var(--size-4-2) 0;
@@ -84,24 +87,24 @@
     font-size: var(--font-ui-smaller);
 }
 
-.daily-notes-stream-container .metadata-properties-heading:has(> .collapse-indicator:is(:hover, :active)) {
-    color: var(--text-muted);
-}
-
-/* Obsidian parks this indicator at `left: -22px`, in the margin its own
-   properties panel keeps clear. The stream starts at the container edge and has
-   no such margin, so the chevron hung outside the note: put it back in flow. */
+/* Obsidian parks this indicator 22px left of its properties panel, in the
+   margin the editor pane keeps clear. The stream has no such margin, so the
+   panel carries its own gutter and the chevron hangs in that — outside the
+   columns, and still inside the note. */
 .daily-notes-stream-container .metadata-properties-heading > .collapse-indicator {
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    left: 0;
+    position: absolute;
+    left: calc(-1 * var(--size-4-6, 1.5rem));
     cursor: pointer;
     touch-action: manipulation;
-    margin-right: var(--size-4-1);
     transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
     transform: rotate(90deg);
+}
+
+.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator:is(:hover, :active) {
+    color: var(--text-muted);
 }
 
 .daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading > .collapse-indicator {

@@ -95,3 +95,19 @@ row that folds on any click is a surprise. The label is selectable now.
 
 **Rejected:** making headings and list items row-clickable instead — a heading
 holds links and prose a click must be free to reach.
+
+## 2026-09-21 — The properties panel carries its own gutter
+
+**Decision:** `.metadata-container` takes `padding-left: var(--size-4-6)` and
+the chevron hangs in it, absolutely positioned. Hover colours the chevron, not
+the row.
+
+**Why:** in flow the chevron took the icon column and the label the key column,
+so the header read as one more property. Native hangs the chevron 22px outside
+the panel, in a margin the editor pane has and the stream does not.
+
+**Rejected:** indenting every note block to share one gutter — 22px of width
+lost on a phone, for a panel that is off by default.
+
+**Rejected:** the chevron at the row's right end — no indent needed anywhere,
+but nothing else in Obsidian puts it there.
