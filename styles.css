@@ -300,3 +300,11 @@
 .daily-note-block .metadata-property-icon {
     cursor: default;
 }
+
+/* MarkdownRenderer emits a real checkbox, and the browser toggles it on click.
+   Obsidian's reading view wires that back to the file; a standalone render does
+   not, so the tick is DOM-only and the next re-render drops it. The stream is
+   read-only: make the checkbox show state without offering to change it. */
+.daily-note-content input.task-list-item-checkbox {
+    pointer-events: none;
+}

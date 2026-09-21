@@ -48,3 +48,15 @@ the one place a reader can see which declaration uses it.
 
 **Rejected:** a fixed placeholder height for every note — the scrollbar jumps
 by the difference the moment a note renders.
+
+## 2026-09-21 — Task checkboxes are inert
+
+**Decision:** `pointer-events: none` on a rendered task's checkbox. It shows
+the file's state and refuses the click.
+
+**Why:** `MarkdownRenderer.render` emits a real `<input>`, which the browser
+toggles; only Obsidian's own reading view writes that back. Here the tick lives
+in the DOM alone, and unloading or a re-render silently reverts it.
+
+**Rejected:** writing the toggle back to the file — the stream is read-only,
+and mapping a rendered element to its source line is a feature of its own.

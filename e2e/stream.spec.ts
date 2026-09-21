@@ -90,6 +90,24 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(chevronBox!.x + chevronBox!.width).toBeLessThanOrEqual(checkboxBox!.x);
     });
 
+    test("ignores a click on a task checkbox", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const checkbox = container
+            .locator(".daily-note-content li.task-list-item", { hasText: "Parent task" })
+            .first()
+            .locator("> input.task-list-item-checkbox");
+
+        await expect(checkbox).not.toBeChecked();
+        // force: the checkbox is inert, so Playwright's actionability check
+        // would otherwise wait for pointer events it will never receive.
+        await checkbox.click({ force: true });
+
+        // The stream is read-only and the renderer never writes back, so a
+        // toggle here would be a lie the next re-render silently undoes.
+        await expect(checkbox).not.toBeChecked();
+    });
+
     test("indents nested lists the way Obsidian's reading view does", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
