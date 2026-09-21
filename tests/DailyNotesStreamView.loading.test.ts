@@ -65,7 +65,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         const container = document.createElement("div");
         (view as any).streamContainerEl = container;
         await (view as any).loadMoreNotes();
-        expect((view as any).renderer.createNoteElement).toHaveBeenCalledTimes(2);
+        expect((view as any).window.add).toHaveBeenCalledTimes(2);
         expect((view as any).state.length).toBe(2);
     });
 
@@ -84,9 +84,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         const doomed = new TFile("Notes/2025-01-02.md");
         plugin.service.getBatch = vi.fn().mockReturnValue([kept, doomed]);
         const doomedEl = document.createElement("div");
-        (view as any).renderer.createNoteElement = vi.fn(async (f: TFile) =>
-            f === doomed ? doomedEl : document.createElement("div")
-        );
+        (view as any).window.add = vi.fn((f: TFile) => (f === doomed ? doomedEl : document.createElement("div")));
         (view as any).findNoteElementByPath = vi.fn((path: string) => (path === doomed.path ? doomedEl : null));
         plugin.service.removeSorted = vi.fn().mockReturnValue(1);
         const container = document.createElement("div");
@@ -179,10 +177,25 @@ describe("DailyNotesStreamView — refresh", () => {
         expect(state.notes[0]?.basename).toBe("2025-01-01");
     });
 
-    it("calls createNoteElement once per note", async () => {
+    it("rebuilds one placeholder per note", async () => {
         state.reset([new TFile("Notes/2025-01-03.md"), new TFile("Notes/2025-01-01.md")]);
         await (view as any).refresh();
-        expect((view as any).renderer.createNoteElement).toHaveBeenCalledTimes(2);
+        expect((view as any).window.add).toHaveBeenCalledTimes(2);
+    });
+
+    // Rebuilt placeholders reserve the height the old blocks had, or the
+    // stream's scroll extent collapses the moment a refresh runs.
+    it("carries each block's height into its replacement", async () => {
+        const file = new TFile("Notes/2025-01-03.md");
+        state.reset([file]);
+        const old = document.createElement("div");
+        (view as any).blocks.set(file.path, old);
+        (view as any).window.heightOf = vi.fn().mockReturnValue(512);
+
+        await (view as any).refresh();
+
+        expect((view as any).window.heightOf).toHaveBeenCalledWith(old);
+        expect((view as any).window.add).toHaveBeenCalledWith(file, 512);
     });
 
     it("calls restoreAnchor when a scroll anchor was captured", async () => {

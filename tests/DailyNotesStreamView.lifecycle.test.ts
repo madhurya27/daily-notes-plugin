@@ -34,7 +34,10 @@ describe("DailyNotesStreamView — view API", () => {
         const freshView = new DailyNotesStreamView(new WorkspaceLeaf(app) as any, plugin);
 
         plugin.settings = { showProperties: true, propertiesCollapsed: false }; // as loadSettings() would
-        const el = await (freshView as any).renderer.createNoteElement(new TFile("Notes/2025-01-01.md"));
+        const file = new TFile("Notes/2025-01-01.md");
+        const renderer = (freshView as any).renderer;
+        const el = renderer.createBlock(file);
+        await renderer.renderInto(el, file);
 
         expect(el.querySelector(".metadata-container")).not.toBeNull();
     });
@@ -139,12 +142,12 @@ describe("DailyNotesStreamView — internal-link click handler", () => {
         expect(app.workspace.openLinkText).not.toHaveBeenCalled();
     });
 
-    it("uses sourcePath from the nearest .daily-note-content ancestor", async () => {
+    it("uses sourcePath from the nearest .daily-note-block ancestor", async () => {
         const container = await openClickableView();
-        const noteContent = container.appendChild(document.createElement("div"));
-        noteContent.classList.add("daily-note-content");
-        noteContent.dataset.sourcePath = "Notes/2025-01-01.md";
-        appendInternalLink(noteContent, "SomeNote").click();
+        const block = container.appendChild(document.createElement("div"));
+        block.classList.add("daily-note-block");
+        block.dataset.sourcePath = "Notes/2025-01-01.md";
+        appendInternalLink(block, "SomeNote").click();
         expect(app.workspace.openLinkText).toHaveBeenCalledWith("SomeNote", "Notes/2025-01-01.md", false);
     });
 

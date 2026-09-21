@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 import { DailyNotesStreamView } from "../src/DailyNotesStreamView";
-import { WorkspaceLeaf } from "./mocks/obsidian";
+import { Component, WorkspaceLeaf } from "./mocks/obsidian";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 import { CollapsibleStateStore } from "../src/CollapsibleStateStore";
 import { StreamState } from "../src/StreamState";
@@ -58,8 +58,19 @@ export function makeStubbedView(app: object = makeApp()) {
     const plugin = makePlugin();
     const view = new DailyNotesStreamView(new WorkspaceLeaf(app), plugin);
     (view as any).renderer = {
-        createNoteElement: vi.fn().mockResolvedValue(document.createElement("div")),
+        createBlock: vi.fn(() => document.createElement("div")),
+        renderInto: vi.fn().mockResolvedValue(new Component()),
+        discard: vi.fn(),
         delegate: vi.fn(),
+    };
+    // The window manager hands back placeholders; rendering is its business.
+    (view as any).window = {
+        attach: vi.fn(),
+        detach: vi.fn(),
+        add: vi.fn(() => document.createElement("div")),
+        remove: vi.fn(),
+        refresh: vi.fn().mockResolvedValue(undefined),
+        heightOf: vi.fn().mockReturnValue(undefined),
     };
     (view as any).collapsible = { delegate: vi.fn() };
     (view as any).scroll = {

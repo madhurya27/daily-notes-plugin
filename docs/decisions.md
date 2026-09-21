@@ -32,3 +32,19 @@ the Markdown ourselves.
 does — four prototype patches, and why its view cannot react to vault events.
 
 **Rejected:** no edit affordance at all — a spotted typo has nowhere to go.
+
+## 2026-09-20 — A placeholder's height is a CSS custom property
+
+**Decision:** `NoteWindowManager` sets `--daily-note-placeholder-height` on an
+unloaded block; `styles.css` decides what to do with it. The compliance rule
+against styling from JavaScript now allows `style.setProperty("--…")` and
+nothing else.
+
+**Why:** the height is whatever the note measured before it was unloaded, so no
+class can carry it, and the rule is worth keeping for everything else.
+
+**Rejected:** assigning `style.height` directly — the same inline style, minus
+the one place a reader can see which declaration uses it.
+
+**Rejected:** a fixed placeholder height for every note — the scrollbar jumps
+by the difference the moment a note renders.
