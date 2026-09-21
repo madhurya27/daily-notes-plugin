@@ -581,6 +581,62 @@ test.describe("daily notes stream in real Obsidian", () => {
         }
     });
 
+    test("draws a tag property as the pill Obsidian's own panel draws", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            plugin.settings.propertiesCollapsed = false;
+            await plugin.saveSettings();
+        });
+
+        // Only what the tag styling decides. A pill's own box is not
+        // comparable: its width follows its word, and Obsidian's editable one
+        // is padded out by a remove button the read-only stream never draws.
+        const measure = (root: Element) => {
+            const pill = root.querySelector('.metadata-property-value[data-property-type="tags"] .multi-select-pill')!;
+            const content = pill.querySelector(".multi-select-pill-content")!;
+            const style = getComputedStyle(pill);
+            return {
+                text: content.textContent,
+                contentHeight: Math.round(content.getBoundingClientRect().height),
+                radius: style.borderTopLeftRadius,
+                background: style.backgroundColor,
+                color: style.color,
+                fontSize: style.fontSize,
+                padding: style.padding,
+                marginInlineStart: getComputedStyle(content).marginInlineStart,
+            };
+        };
+
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-14.md");
+            await window.app.workspace.getLeaf(false).openFile(file!);
+        });
+        const note = page.locator(".workspace-leaf.mod-active .view-content").first();
+        await expect(note.locator(".multi-select-pill").first()).toBeVisible();
+        const native = await note.evaluate(measure);
+
+        const container = await openStream(page);
+        await expect(container.locator(".multi-select-pill").first()).toBeVisible();
+        const stream = await container.evaluate(measure);
+
+        expect(stream).toEqual(native);
+        // A pill, not a rectangle: the radius rounds its ends fully, and the
+        // word sits evenly inside it. Obsidian's trailing space is the remove
+        // button's margin, so a read-only pill has to supply its own.
+        const pill = await container
+            .locator(".multi-select-pill")
+            .first()
+            .evaluate((el) => {
+                const box = el.getBoundingClientRect();
+                const word = el.querySelector(".multi-select-pill-content")!.getBoundingClientRect();
+                return { height: box.height, before: word.left - box.left, after: box.right - word.right };
+            });
+        expect(parseFloat(stream.radius)).toBeGreaterThanOrEqual(pill.height / 2);
+        expect(pill.after).toBeCloseTo(pill.before, 0);
+    });
+
     test("centres a property's icon on the words in its row", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
@@ -635,6 +691,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         const heading = panel.locator(".metadata-properties-heading");
         if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) await heading.click();
 
+        const expandedTop = (await heading.boundingBox())!.y;
         await heading.click();
         await expect(panel).toHaveClass(/is-collapsed/);
 
@@ -642,7 +699,11 @@ test.describe("daily notes stream in real Obsidian", () => {
         // mobile, filled — standing under the heading.
         await expect(block.locator(".metadata-content")).toBeHidden();
         const [panelBox, headingBox] = await Promise.all([panel.boundingBox(), heading.boundingBox()]);
-        expect(panelBox!.height).toBeLessThanOrEqual(headingBox!.height + 1);
+        expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(headingBox!.y + headingBox!.height + 1);
+
+        // Only what is under the heading goes: the heading itself must not
+        // jump, or collapsing twice reads as the panel twitching.
+        expect(Math.abs(headingBox!.y - expandedTop)).toBeLessThanOrEqual(1);
     });
 
     test("draws no focus ring when the properties heading is clicked", async ({ obsidian }) => {

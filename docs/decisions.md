@@ -166,3 +166,22 @@ instead answered in 800ms against the guard's 100ms.
 to catch the first activation — Obsidian opens its debugging port 30ms *after*
 it fronts itself, so nothing outside the app can be armed in time. Not worth
 copying and re-signing 1GB to save one 150ms blip per launch.
+
+## 2026-09-21 — List properties render as Obsidian's pills
+
+**Decision:** `tags` and other list properties render the `multi-select-pill`
+markup, with `data-property-type="tags"` on a tag value so its pills take the
+tag colours. A scalar `tags: a, b` splits on commas, as Obsidian's own panel
+shows it.
+
+**Why:** the panel restates no styling of its own ([ADR 0002](adr/0002-real-obsidian-e2e.md)
+measures it against Obsidian's); matching the markup was enough to get pills,
+and a comma-joined string was the one place it looked unlike the rest of the app.
+
+One rule is the stream's own: Obsidian pads the near side of a pill's word and
+leaves the far side to the remove button's margin, so without that button the
+last letter sat on the border.
+
+**Rejected:** styling the rest of a pill in `styles.css` — every other rule is
+already in Obsidian's stylesheet, and restating one is a chance to drift from it.
+

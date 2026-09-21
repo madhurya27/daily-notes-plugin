@@ -94,10 +94,11 @@
     font-size: var(--metadata-input-font-size);
 }
 
-/* Collapsed is heading-only. The box goes, and with it the panel's padding and
-   the heading's bottom margin — the space they leave still reads as a box. */
+/* Collapsed is heading-only: everything under the heading goes, the panel's
+   bottom padding and the heading's bottom margin included. The top padding
+   stays — dropping it slid the heading up as the box closed. */
 .daily-notes-stream-container .metadata-container.is-collapsed {
-    padding: 0;
+    padding-bottom: 0;
 }
 
 .daily-notes-stream-container .metadata-container.is-collapsed .metadata-content {
@@ -324,4 +325,11 @@
 .daily-note-content input.task-list-item-checkbox {
     top: 0.2em;
     pointer-events: none;
+}
+
+/* Obsidian pads the near side of a pill's word and leaves the far side to the
+   remove button's margin — an editing control a read-only pill never draws, so
+   its last letter would sit on the border. */
+.daily-notes-stream-container .multi-select-pill-content {
+    margin-inline-end: var(--pill-padding-x);
 }
