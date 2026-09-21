@@ -4,6 +4,7 @@ import { StreamState } from "./StreamState";
 import { NoteRenderer } from "./NoteRenderer";
 import { CollapsibleManager } from "./CollapsibleManager";
 import { InfiniteScrollController } from "./InfiniteScrollController";
+import { NoteWindowManager } from "./NoteWindowManager";
 import { captureAnchor, restoreAnchor } from "./ScrollAnchorManager";
 import { getReadableLineLength, onVaultConfigChange } from "./obsidianInternals";
 
@@ -23,7 +24,11 @@ export class DailyNotesStreamView extends ItemView {
     private renderer: NoteRenderer;
     private collapsible: CollapsibleManager;
     private scroll: InfiniteScrollController;
+    private window: NoteWindowManager;
     private streamContainerEl!: HTMLElement;
+
+    /** Every loaded note's block, by the path it was rendered under. */
+    private readonly blocks = new Map<string, HTMLElement>();
 
     // Serialized: an event interleaving with an in-flight batch would leave
     // state and the service cache disagreeing.
@@ -46,6 +51,7 @@ export class DailyNotesStreamView extends ItemView {
             // A closure, not the object: loadSettings() reassigns plugin.settings.
             () => plugin.settings
         );
+        this.window = new NoteWindowManager(this.renderer, this.enqueue.bind(this));
     }
 
     getViewType(): string {
@@ -95,7 +101,7 @@ export class DailyNotesStreamView extends ItemView {
             if (!target.matches(".internal-link")) return;
             event.preventDefault();
             const linkText = target.getAttribute("data-href");
-            const sourceContainer = target.closest<HTMLElement>(".daily-note-content");
+            const sourceContainer = target.closest<HTMLElement>(".daily-note-block");
             const sourcePath = sourceContainer?.dataset.sourcePath ?? "";
             if (linkText) {
                 this.app.workspace.openLinkText(linkText, sourcePath, false).catch((e) => {
@@ -111,14 +117,23 @@ export class DailyNotesStreamView extends ItemView {
         this.registerEvent(this.app.vault.on("delete", (f) => this.onFileDelete(f)));
         this.registerEvent(this.app.vault.on("rename", (f, oldPath) => this.onFileRename(f, oldPath)));
 
+        this.window.attach(this.contentEl);
+
         // A visible sentinel triggers the initial load.
         this.scroll.attach(this.contentEl, this.streamContainerEl, () => this.loadMoreNotes());
+    }
+
+    /** Obsidian calls this on a pane resize; the margins are viewports. */
+    onResize(): void {
+        this.window.refreshMargins();
     }
 
     async onClose() {
         this.checkDailyNoteSettings.cancel();
         this.flushModified.cancel();
         this.scroll.detach();
+        this.window.detach();
+        this.blocks.clear();
     }
 
     onFileModify(file: TAbstractFile) {
@@ -137,9 +152,7 @@ export class DailyNotesStreamView extends ItemView {
                 void this.enqueue(async () => {
                     const el = this.findNoteElement(file);
                     if (!el) return;
-                    const newEl = await this.renderer.createNoteElement(file);
-                    this.streamContainerEl.insertBefore(newEl, el);
-                    el.remove();
+                    await this.window.refresh(el);
                 });
             }
         },
@@ -160,8 +173,7 @@ export class DailyNotesStreamView extends ItemView {
                 return;
             }
 
-            const newEl = await this.renderer.createNoteElement(file);
-            this.insertElementAt(newEl, globalIndex);
+            this.insertElementAt(this.trackBlock(file), globalIndex);
             this.state.insert(globalIndex, file);
         });
     }
@@ -173,7 +185,11 @@ export class DailyNotesStreamView extends ItemView {
      */
     private removeNote(file: TFile, renderedPath: string): void {
         const el = this.findNoteElementByPath(renderedPath);
-        if (el) el.remove();
+        if (el) {
+            this.window.remove(el);
+            el.remove();
+            this.blocks.delete(renderedPath);
+        }
 
         const globalIndex = this.plugin.service.removeSorted(file.path);
         if (globalIndex !== -1 && globalIndex < this.state.length) {
@@ -228,7 +244,7 @@ export class DailyNotesStreamView extends ItemView {
         this.findEmptyState()?.remove();
 
         for (const file of batch) {
-            this.insertBeforeSentinel(await this.renderer.createNoteElement(file));
+            this.insertBeforeSentinel(this.trackBlock(file));
         }
         this.state.append(batch);
 
@@ -258,25 +274,33 @@ export class DailyNotesStreamView extends ItemView {
     private async reload(): Promise<void> {
         this.streamContainerEl.empty();
         this.scroll.detach();
+        this.resetWindow();
         this.state.reset();
         this.scroll.attach(this.contentEl, this.streamContainerEl, () => this.loadMoreNotes());
         await this.loadBatch();
     }
 
+    /**
+     * Rebuilds the stream as placeholders of the heights it already has, and
+     * lets the window manager fill in what is near the viewport. Nothing here
+     * renders, so a refresh costs the same whether ten notes are loaded or a
+     * thousand.
+     */
     private async rerenderAll(): Promise<void> {
         const snapshot = captureAnchor(this.state.notes, this.streamContainerEl, this.contentEl, (f) =>
             this.findNoteElement(f)
         );
 
+        const notes = [...this.state.notes];
+        const heights = new Map([...this.blocks].map(([path, block]) => [path, this.window.heightOf(block)]));
+
         this.streamContainerEl.empty();
         this.scroll.detach();
-
-        const notes = [...this.state.notes];
+        this.resetWindow();
         this.state.reset();
 
         for (const file of notes) {
-            const el = await this.renderer.createNoteElement(file);
-            this.streamContainerEl.appendChild(el);
+            this.streamContainerEl.appendChild(this.trackBlock(file, heights.get(file.path)));
         }
 
         this.scroll.attach(this.contentEl, this.streamContainerEl, () => this.loadMoreNotes());
@@ -311,9 +335,21 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     private findNoteElementByPath(path: string): HTMLElement | null {
-        const selector = `.daily-note-content[data-source-path="${CSS.escape(path)}"]`;
-        const contentEl = this.streamContainerEl.querySelector(selector);
-        return (contentEl?.closest(".daily-note-block") as HTMLElement) ?? null;
+        return this.blocks.get(path) ?? null;
+    }
+
+    /** An unloaded block for `file`, indexed by path and watched for scroll. */
+    private trackBlock(file: TFile, height?: number): HTMLElement {
+        const block = this.window.add(file, height);
+        this.blocks.set(file.path, block);
+        return block;
+    }
+
+    /** Frees every note and starts the observers over on the new container. */
+    private resetWindow(): void {
+        this.window.detach();
+        this.blocks.clear();
+        this.window.attach(this.contentEl);
     }
 
     /** The sentinel must stay the last child, so everything lands before it. */

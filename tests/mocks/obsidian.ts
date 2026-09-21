@@ -163,18 +163,56 @@ class MockHTMLElement {
     }
 }
 
-export class ItemView {
+/**
+ * Obsidian's parent/child lifecycle, which is what frees a note's rendered
+ * subtree: `children` and `loaded` are the mock's window onto it.
+ */
+export class Component {
+    children: Component[] = [];
+    loaded = false;
+
+    load() {
+        if (this.loaded) return;
+        this.loaded = true;
+        for (const child of this.children) child.load();
+    }
+
+    unload() {
+        if (!this.loaded) return;
+        this.loaded = false;
+        while (this.children.length) this.removeChild(this.children[0]!);
+    }
+
+    addChild<T extends Component>(child: T): T {
+        this.children.push(child);
+        if (this.loaded) child.load();
+        return child;
+    }
+
+    removeChild<T extends Component>(child: T): T {
+        const index = this.children.indexOf(child);
+        if (index !== -1) this.children.splice(index, 1);
+        child.unload();
+        return child;
+    }
+
+    registerDomEvent(el: HTMLElement, type: string, cb: EventListener) {
+        el.addEventListener(type, cb);
+    }
+}
+
+/** A view is a Component: it owns what its notes register. */
+export class ItemView extends Component {
     contentEl: any;
     app: any;
     constructor(leaf: WorkspaceLeaf) {
+        super();
         this.app = leaf.app;
         this.contentEl = new MockHTMLElement();
+        this.load();
     }
     registerEvent() {}
     register() {}
-    registerDomEvent(el: any, type: string, cb: any) {
-        el.addEventListener(type, cb);
-    }
 }
 
 export const MarkdownRenderer = {
@@ -189,8 +227,6 @@ export const setIcon = (el: any, iconName: string) => {
 export class MarkdownView {
     file: any = null;
 }
-
-export class Component {}
 
 export function debounce<T extends unknown[]>(cb: (...args: T) => unknown, timeout = 0, resetTimer = false) {
     let handle: ReturnType<typeof setTimeout> | null = null;

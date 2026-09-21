@@ -40,12 +40,28 @@ export class NoteRenderer {
         private readonly getSettings: () => DailyNotesStreamSettings
     ) {}
 
-    async createNoteElement(file: TFile): Promise<HTMLElement> {
-        const noteContainer = document.createElement("div");
-        noteContainer.addClass("daily-note-block");
+    /**
+     * The block a note always has, rendered or not: `renderInto` fills it and
+     * unloading empties it, so the path stays resolvable either way.
+     */
+    createBlock(file: TFile): HTMLElement {
+        const block = document.createElement("div");
+        block.addClass("daily-note-block");
+        block.dataset.sourcePath = file.path;
+        return block;
+    }
 
-        // Header
-        const header = noteContainer.createDiv({ cls: "daily-note-header" });
+    /**
+     * Fills an empty block. The note renders into a child component, not the
+     * view: what MarkdownRenderer registers lives until that child is
+     * discarded, and otherwise outlives the DOM it belongs to.
+     */
+    async renderInto(block: HTMLElement, file: TFile): Promise<Component> {
+        const noteComponent = new Component();
+        noteComponent.load();
+        this.component.addChild(noteComponent);
+
+        const header = block.createDiv({ cls: "daily-note-header" });
         const dateLink = header.createEl("a", {
             text: file.basename,
             cls: "daily-note-title",
@@ -55,15 +71,12 @@ export class NoteRenderer {
         });
         this.titles.set(dateLink, file);
 
-        // Properties (frontmatter)
-        this.renderProperties(noteContainer, file);
+        this.renderProperties(block, file);
 
-        // Content
         // "markdown-rendered" is how Obsidian scopes its whole reading-view
         // stylesheet — list indent included. Without it a rendered note falls
         // back to the browser's defaults.
-        const contentEl = noteContainer.createDiv({ cls: "daily-note-content markdown-rendered" });
-        contentEl.dataset.sourcePath = file.path;
+        const contentEl = block.createDiv({ cls: "daily-note-content markdown-rendered" });
 
         try {
             let markdown = await this.app.vault.cachedRead(file);
@@ -74,7 +87,7 @@ export class NoteRenderer {
                 markdown = markdown.slice(frontmatterPos.end.offset).trim();
             }
 
-            await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, this.component);
+            await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, noteComponent);
 
             this.collapsible.makeCollapsible(contentEl, file.path);
         } catch (error) {
@@ -82,7 +95,12 @@ export class NoteRenderer {
             contentEl.setText("Error rendering note");
         }
 
-        return noteContainer;
+        return noteComponent;
+    }
+
+    /** Frees everything the note registered while it was rendered. */
+    discard(noteComponent: Component): void {
+        this.component.removeChild(noteComponent);
     }
 
     private renderProperties(container: HTMLElement, file: TFile): void {

@@ -11,6 +11,7 @@ pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is 
 pnpm test          # vitest run
 pnpm run test:coverage  # 100% required
 pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
+pnpm run test:memory    # e2e/memory.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
 
 pnpm run build && pnpm run seed   # write PluginTest/ (gitignored) and install the build into it
 pnpm run open                     # launch Obsidian on it; --help lists the flags
@@ -27,7 +28,8 @@ Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 
 - `src/main.ts` — plugin lifecycle; registers view, ribbon icon, command, settings tab.
 - `src/DailyNoteService.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
-- `src/DailyNotesStreamView.ts` — `ItemView` subclass; infinite scroll, vault events, `MarkdownRenderer.render()`, collapsible sections, properties panel.
+- `src/DailyNotesStreamView.ts` — `ItemView` subclass; infinite scroll, vault events, collapsible sections, properties panel.
+- `src/NoteWindowManager.ts` — renders a block near the viewport, empties it well past; owns each note's `Component`.
 - `src/obsidianInternals.ts` — the single place unsupported internals are read (`getReadableLineLength`, the
   `vault` "raw" event behind `onVaultConfigChange`).
 - `src/settings.ts` — settings interface, defaults, `PluginSettingTab`.
@@ -52,6 +54,10 @@ Traps that span files, so no single file's comments can hold them.
   *old* path: look the element up by `oldPath`, remove from cache and state by `file.path`.
 - **Re-render is driven by `metadataCache.on("changed")`, not `vault.on("modify")`** — the cache lags the write,
   and the renderer reads the cache.
+- **A block may hold no content.** Only notes near the viewport are rendered ([ADR 0006](docs/adr/0006-unload-off-screen-notes.md));
+  everything else is an empty `.daily-note-block` reserving its height. Never assume a block's children exist,
+  and never key anything off them — `data-source-path` is on the block, and the view's path→block index is the
+  only lookup.
 - **Delegated listeners**: chevrons and note titles are rebuilt on every re-render, so nothing binds a
   listener per element — `CollapsibleManager.delegate()` and `NoteRenderer.delegate()` register one listener
   each on the stream container, resolving the target through a `WeakMap`. Binding per element would pile

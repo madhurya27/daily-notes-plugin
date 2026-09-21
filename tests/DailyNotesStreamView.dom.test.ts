@@ -13,42 +13,34 @@ describe("DailyNotesStreamView — findNoteElement", () => {
         delete (view as any).findNoteElementByPath; // ...and the lookup it delegates to
     });
 
-    it("returns the .daily-note-block ancestor when a matching element exists", () => {
-        const container = document.createElement("div");
+    /** What loadBatch does: the view owns the path → block index. */
+    function track(path: string): HTMLElement {
         const block = document.createElement("div");
         block.classList.add("daily-note-block");
-        const content = document.createElement("div");
-        content.classList.add("daily-note-content");
-        content.dataset.sourcePath = "Notes/2025-01-01.md";
-        block.appendChild(content);
-        container.appendChild(block);
-        (view as any).streamContainerEl = container;
+        (view as any).blocks.set(path, block);
+        return block;
+    }
 
-        const result = (view as any).findNoteElement(new TFile("Notes/2025-01-01.md"));
-        expect(result).toBe(block);
+    // A per-lookup querySelector made captureAnchor O(n^2) across a refresh,
+    // and the window manager adds another hot caller.
+    it("resolves a note through the index, not a DOM query", () => {
+        const container = document.createElement("div");
+        (view as any).streamContainerEl = container;
+        container.querySelector = vi.fn(() => null);
+        const block = track("Notes/2025-01-01.md");
+
+        expect((view as any).findNoteElement(new TFile("Notes/2025-01-01.md"))).toBe(block);
+        expect(container.querySelector).not.toHaveBeenCalled();
     });
 
     it("matches paths containing CSS selector metacharacters", () => {
         const path = 'Notes/2025-01-01 [a\\b"c].md';
-        const container = document.createElement("div");
-        const block = document.createElement("div");
-        block.classList.add("daily-note-block");
-        const content = document.createElement("div");
-        content.classList.add("daily-note-content");
-        content.dataset.sourcePath = path;
-        block.appendChild(content);
-        container.appendChild(block);
-        (view as any).streamContainerEl = container;
-
+        const block = track(path);
         expect((view as any).findNoteElement(new TFile(path))).toBe(block);
     });
 
-    it("returns null when no matching element exists in the container", () => {
-        const container = document.createElement("div");
-        (view as any).streamContainerEl = container;
-
-        const result = (view as any).findNoteElement(new TFile("Notes/2025-01-01.md"));
-        expect(result).toBeNull();
+    it("returns null for a note that is not loaded", () => {
+        expect((view as any).findNoteElement(new TFile("Notes/2025-01-01.md"))).toBeNull();
     });
 });
 

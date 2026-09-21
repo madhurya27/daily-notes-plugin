@@ -20,3 +20,4 @@ Rules:
 | [0003](0003-metadata-cache-rerender.md) | Re-render from `metadataCache`, not `vault.modify` | Accepted |
 | [0004](0004-serialize-view-mutations.md) | Serialize view mutations through one queue | Accepted |
 | [0005](0005-copy-button-clearance.md) | Reserve the copy button's corner in rendered code | Accepted |
+| [0006](0006-unload-off-screen-notes.md) | Unload the content of off-screen notes | Accepted |

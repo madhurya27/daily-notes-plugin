@@ -140,6 +140,78 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(blocks).toHaveCount(SEEDED_DAYS);
     });
 
+    // jsdom loads no stylesheet and lays nothing out, so unloading can only be
+    // proven here: a block far above the viewport keeps its height and loses
+    // its content (ADR 0006).
+    test.describe("off-screen notes", () => {
+        /** Three notes tall enough that the top one can be pushed past the unload margin. */
+        const TALL_NOTES = ["2026-03-20.md", "2026-03-19.md", "2026-03-18.md"];
+
+        test.beforeEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate(async (names: string[]) => {
+                const body = (name: string) =>
+                    `# ${name}\n\n` + Array.from({ length: 300 }, (_, i) => `Line ${i} of ${name}.`).join("\n\n");
+                for (const name of names) {
+                    await window.app.vault.create(`Notes/${name}`, body(name));
+                }
+            }, TALL_NOTES);
+        });
+
+        test.afterEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate(async (names: string[]) => {
+                for (const name of names) {
+                    const file = window.app.vault.getAbstractFileByPath(`Notes/${name}`);
+                    if (file) await window.app.vault.delete(file);
+                }
+            }, TALL_NOTES);
+        });
+
+        test("drops the content of a note scrolled far above, keeping its height", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const container = await openStream(page);
+            const top = container.locator(".daily-note-block").first();
+
+            await expect(top.locator(".daily-note-content")).toBeVisible();
+            const renderedHeight = (await top.boundingBox())!.height;
+
+            await container.locator(".daily-note-block").nth(3).scrollIntoViewIfNeeded();
+
+            await expect(top).toHaveClass(/is-unloaded/);
+            await expect(top.locator(".daily-note-content")).toHaveCount(0);
+            // The placeholder holds the space the note had, so nothing below moves.
+            expect((await top.boundingBox())!.height).toBeCloseTo(renderedHeight, -1);
+        });
+
+        test("leaves the scroll position where it was when a note unloads", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const container = await openStream(page);
+            const top = container.locator(".daily-note-block").first();
+
+            await container.locator(".daily-note-block").nth(3).scrollIntoViewIfNeeded();
+            await expect(top).toHaveClass(/is-unloaded/);
+
+            const scroller = container.locator("xpath=..");
+            const before = await scroller.evaluate((el) => el.scrollTop);
+            await page.waitForTimeout(500);
+
+            expect(await scroller.evaluate((el) => el.scrollTop)).toBe(before);
+        });
+
+        test("renders the note again when it comes back into view", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const container = await openStream(page);
+            const top = container.locator(".daily-note-block").first();
+
+            await container.locator(".daily-note-block").nth(3).scrollIntoViewIfNeeded();
+            await expect(top).toHaveClass(/is-unloaded/);
+
+            await top.scrollIntoViewIfNeeded();
+
+            await expect(top).not.toHaveClass(/is-unloaded/);
+            await expect(top.locator(".daily-note-content h1")).toHaveText("2026-03-20.md");
+        });
+    });
+
     test("shows a note created while the view is open", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);

@@ -20,6 +20,12 @@
     padding-bottom: var(--size-4-12, 3rem);
 }
 
+/* An unloaded note: no content, but the height it had, so nothing shifts. */
+.daily-note-block.is-unloaded {
+    height: var(--daily-note-placeholder-height);
+    overflow: hidden;
+}
+
 .daily-note-header {
     margin-bottom: var(--size-4-4, 1rem);
 }

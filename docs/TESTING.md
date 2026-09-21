@@ -53,6 +53,15 @@ Deploying a new build is the same `build && seed`, then **Reload app without sav
 
 - Toggling any setting refreshes the view but keeps scroll position.
 
+### Off-screen notes
+
+- Scroll far down a large vault: notes well above lose their content but not
+  their space — nothing below them shifts. **[e2e]**
+- Scroll back up: they come back, collapse state included. **[e2e]**
+- Renderer memory settles while scrolling to the end of a multi-year vault
+  rather than climbing with every batch. **[e2e]** — `pnpm run test:memory`
+  seeds three years and reports what is rendered, the heap and the live DOM.
+
 ### Live updates
 
 - New daily note appears at the right position immediately. **[e2e]**
