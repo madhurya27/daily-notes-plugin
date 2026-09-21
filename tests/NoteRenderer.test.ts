@@ -82,7 +82,7 @@ function makeSettings(overrides: Partial<DailyNotesStreamSettings> = {}): () => 
 }
 
 // ---------------------------------------------------------------------------
-// createNoteElement
+// renderInto
 // ---------------------------------------------------------------------------
 
 describe("NoteRenderer.renderInto", () => {
