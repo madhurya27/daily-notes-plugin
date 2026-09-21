@@ -94,10 +94,11 @@
     font-size: var(--metadata-input-font-size);
 }
 
-/* Collapsed is heading-only. The box goes, and with it the panel's padding and
-   the heading's bottom margin — the space they leave still reads as a box. */
+/* Collapsed is heading-only: everything under the heading goes, the panel's
+   bottom padding and the heading's bottom margin included. The top padding
+   stays — dropping it slid the heading up as the box closed. */
 .daily-notes-stream-container .metadata-container.is-collapsed {
-    padding: 0;
+    padding-bottom: 0;
 }
 
 .daily-notes-stream-container .metadata-container.is-collapsed .metadata-content {

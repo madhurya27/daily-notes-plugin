@@ -691,6 +691,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         const heading = panel.locator(".metadata-properties-heading");
         if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) await heading.click();
 
+        const expandedTop = (await heading.boundingBox())!.y;
         await heading.click();
         await expect(panel).toHaveClass(/is-collapsed/);
 
@@ -698,7 +699,11 @@ test.describe("daily notes stream in real Obsidian", () => {
         // mobile, filled — standing under the heading.
         await expect(block.locator(".metadata-content")).toBeHidden();
         const [panelBox, headingBox] = await Promise.all([panel.boundingBox(), heading.boundingBox()]);
-        expect(panelBox!.height).toBeLessThanOrEqual(headingBox!.height + 1);
+        expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(headingBox!.y + headingBox!.height + 1);
+
+        // Only what is under the heading goes: the heading itself must not
+        // jump, or collapsing twice reads as the panel twitching.
+        expect(Math.abs(headingBox!.y - expandedTop)).toBeLessThanOrEqual(1);
     });
 
     test("draws no focus ring when the properties heading is clicked", async ({ obsidian }) => {

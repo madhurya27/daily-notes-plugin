@@ -88,7 +88,7 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - **Show note properties ON**: a "Properties" header appears for notes with frontmatter, icons beside names.
 - Clicking the header toggles collapse; the chevron rotates, and no focus ring stays behind. **[e2e]**
 - "Properties" starts where the note's own headings do, chevron and all. **[e2e]**
-- Collapsed leaves the heading alone, with no empty box beneath it. **[e2e]**
+- Collapsed leaves the heading alone, with no empty box beneath it and no jump in its position. **[e2e]**
 - The panel matches the one Obsidian draws for the same note: text size, row height, icons. **[e2e]**
 - List properties are pills: tags in the tag colours, one per tag, `tags: a, b` included. **[e2e]**
 - **2026-02-01**: `tags: test, image, link`, `aliases: Feb 1st Test`, `mood: productive`.
