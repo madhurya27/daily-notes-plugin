@@ -85,33 +85,30 @@
     margin-bottom: 0;
 }
 
-/* Obsidian styles this heading itself — its title and spacing — and hangs the
-   chevron to its left, in a margin the editor pane keeps clear. The stream has
-   none, so the heading indents by that much and the chevron hangs into the gap,
-   level with the note's other text. */
-.daily-notes-stream-container .metadata-properties-heading,
-.daily-notes-stream-container .metadata-content > .metadata-properties {
-    margin-left: var(--size-4-6, 1.5rem);
-}
+/* "Properties" is a heading of the note like any other, so it sits on the same
+   line as `## Morning` and hangs its chevron in the same margin — the negative
+   margin and matching padding the content headings use.
 
-/* Obsidian's heading is an inline-block, and the line box around it keeps a
-   descender's worth of space below — visible as a gap under a collapsed panel.
-   A block box as wide as its text has neither. */
+   The block box also drops the descender's worth of space Obsidian's
+   inline-block heading leaves below it, which showed as a gap under a collapsed
+   panel. */
 .daily-notes-stream-container .metadata-properties-heading {
     display: block;
     width: fit-content;
+    margin-left: calc(-1 * var(--size-4-4));
+    padding-left: var(--size-4-4);
 }
 
 /* Obsidian parks this chevron 22px left of the heading and pads it by 6px,
-   offsets that assume its own icon size; the stream's icon is wider, so the
-   chevron all but touched the word beside it. It gets the gutter instead:
-   centred on the heading's line, a clear step out from the text. */
+   offsets that assume its own icon size. Here it takes the margin the heading
+   just opened, at the size and offset a content heading's chevron uses, so the
+   two line up and stand the same distance from their words. */
 .daily-notes-stream-container .metadata-properties-heading > .collapse-indicator {
     position: absolute;
     display: flex;
     align-items: center;
     justify-content: center;
-    inset-inline-start: calc(-1 * var(--size-4-6, 1.5rem));
+    inset-inline-start: 0;
     top: 50%;
     width: var(--size-4-4, 1rem);
     height: var(--size-4-4, 1rem);

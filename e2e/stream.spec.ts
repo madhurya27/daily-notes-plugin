@@ -424,11 +424,14 @@ test.describe("daily notes stream in real Obsidian", () => {
         // Obsidian puts the heading above the box, not in it.
         await expect(block.locator(".metadata-content > .metadata-properties-heading")).toHaveCount(0);
 
-        // Obsidian hangs the chevron outside the panel and starts the heading
-        // on the panel's own left edge; in flow the chevron took the icon
+        // Obsidian hangs the chevron outside the panel and starts the heading's
+        // word on the panel's own left edge; in flow the chevron took the icon
         // column and the heading read as one more property row.
-        const [headingBox, rowsBox] = await Promise.all([heading.boundingBox(), rows.boundingBox()]);
-        expect(Math.abs(headingBox!.x - rowsBox!.x)).toBeLessThan(1);
+        const [titleBox, rowsBox] = await Promise.all([
+            block.locator(".metadata-properties-title").boundingBox(),
+            rows.boundingBox(),
+        ]);
+        expect(Math.abs(titleBox!.x - rowsBox!.x)).toBeLessThan(1);
     });
 
     test("keeps the properties box centred on the note", async ({ obsidian }) => {
@@ -484,12 +487,19 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(chevron).toBeVisible();
 
         // Obsidian hangs this indicator in a left margin its own properties
-        // panel keeps clear; the stream has none, so it fell outside the note.
-        const [blockBox, chevronBox] = await Promise.all([block.boundingBox(), chevron.boundingBox()]);
-        expect(chevronBox!.x).toBeGreaterThanOrEqual(blockBox!.x);
+        // panel keeps clear. Here it hangs exactly where a content heading's
+        // does — in the stream's padding, and never off the pane, which on a
+        // phone has less of that padding to give.
+        const [paneBox, chevronBox, headingChevronBox] = await Promise.all([
+            page.locator(".workspace-leaf-content[data-type='daily-notes-stream-view'] .view-content").boundingBox(),
+            chevron.boundingBox(),
+            block.locator(".daily-note-content h2.is-collapsible > .collapse-indicator").first().boundingBox(),
+        ]);
+        expect(chevronBox!.x).toBeCloseTo(headingChevronBox!.x, 0);
+        expect(chevronBox!.x).toBeGreaterThanOrEqual(paneBox!.x);
     });
 
-    test("keeps the properties chevron clear of the heading text", async ({ obsidian }) => {
+    test("sets the properties heading on the same line as the note's own headings", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
             const plugin = window.app.plugins.plugins["daily-notes-stream"];
@@ -497,15 +507,26 @@ test.describe("daily notes stream in real Obsidian", () => {
             await plugin.saveSettings();
         });
         const container = await openStream(page);
-        const heading = container.locator(".metadata-properties-heading").first();
-        await heading.hover(); // the chevron has no box until it is revealed
-        const chevron = heading.locator("> .collapse-indicator");
-        const title = heading.locator(".metadata-properties-title");
+        const block = container.locator(".daily-note-block").first();
+        await expect(block.locator(".metadata-properties-title")).toBeVisible();
 
-        // Obsidian's own offsets assume its icon size; with the stream's the
-        // chevron ran into the word beside it.
-        const [chevronBox, titleBox] = await Promise.all([chevron.boundingBox(), title.boundingBox()]);
-        expect(titleBox!.x - (chevronBox!.x + chevronBox!.width)).toBeGreaterThanOrEqual(4);
+        // "Properties" is a heading of the note like any other: its word starts
+        // where "Morning" does, and its chevron sits the same step to the left.
+        const geometry = await block.evaluate((el) => {
+            const box = (node: Element) => node.getBoundingClientRect();
+            const heading = el.querySelector(".daily-note-content h2.is-collapsible")!;
+            const title = el.querySelector(".metadata-properties-title")!;
+            return {
+                headingText: box(heading).left + parseFloat(getComputedStyle(heading).paddingLeft),
+                headingChevron: box(heading.querySelector(":scope > .collapse-indicator")!).right,
+                titleText: box(title).left,
+                titleChevron: box(el.querySelector(".metadata-properties-heading > .collapse-indicator")!).right,
+            };
+        });
+
+        expect(Math.abs(geometry.titleText - geometry.headingText)).toBeLessThan(1);
+        const headingGap = geometry.headingText - geometry.headingChevron;
+        expect(Math.abs(geometry.titleText - geometry.titleChevron - headingGap)).toBeLessThan(1);
     });
 
     test("collapses the properties box away entirely", async ({ obsidian }) => {
