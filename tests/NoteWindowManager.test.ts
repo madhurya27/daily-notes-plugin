@@ -74,10 +74,17 @@ function makeRenderer(opts: { render?: (block: HTMLElement) => void | Promise<vo
 /** Tasks run inline: the view's queue is serialization, not deferral. */
 const runInline = (task: () => Promise<void>) => void task();
 
-function makeManager(renderer = makeRenderer(), measure = () => 500) {
+/** jsdom reports no layout, so a scroll root states its height outright. */
+function makeScrollRoot(clientHeight: number): HTMLElement {
+    const root = document.createElement("div");
+    Object.defineProperty(root, "clientHeight", { value: clientHeight, configurable: true });
+    return root;
+}
+
+function makeManager(renderer = makeRenderer(), measure = () => 500, scrollRoot = makeScrollRoot(800)) {
     const manager = new NoteWindowManager(renderer as never, runInline, measure);
-    manager.attach(document.createElement("div"));
-    return { manager, renderer };
+    manager.attach(scrollRoot);
+    return { manager, renderer, scrollRoot };
 }
 
 /** Settles the render promise chain. */
@@ -148,10 +155,56 @@ describe("NoteWindowManager.add", () => {
 // ---------------------------------------------------------------------------
 
 describe("NoteWindowManager margins", () => {
+    const marginsPx = () => observers.margins.slice(-2).map((m) => parseInt(m, 10));
+
     it("unloads further out than it renders, so a block on the edge cannot thrash", () => {
         makeManager();
-        const [render, unload] = observers.margins.map((m) => parseInt(m, 10));
+        const [render, unload] = marginsPx();
         expect(render).toBeLessThan(unload!);
+    });
+
+    // A margin in pixels means a different number of screenfuls on a phone
+    // than on a tall monitor; what matters is how far ahead of the reader it is.
+    it("measures both margins in viewports", () => {
+        makeManager(makeRenderer(), () => 500, makeScrollRoot(1000));
+        expect(marginsPx()).toEqual([1500, 4000]);
+    });
+
+    it("scales with a shorter scroll root", () => {
+        makeManager(makeRenderer(), () => 500, makeScrollRoot(600));
+        expect(marginsPx()).toEqual([900, 2400]);
+    });
+
+    // A pane dragged to nothing, or a root not laid out yet, would otherwise
+    // render and unload the same block on every scroll.
+    it("holds a floor under a scroll root with no height", () => {
+        makeManager(makeRenderer(), () => 500, makeScrollRoot(0));
+        expect(marginsPx()).toEqual([600, 1600]);
+    });
+
+    it("recomputes the margins when the pane is resized", () => {
+        const root = makeScrollRoot(800);
+        const { manager } = makeManager(makeRenderer(), () => 500, root);
+
+        Object.defineProperty(root, "clientHeight", { value: 1600, configurable: true });
+        manager.refreshMargins();
+
+        expect(marginsPx()).toEqual([2400, 6400]);
+    });
+
+    it("leaves the observers alone when a resize did not change the height", () => {
+        const { manager } = makeManager();
+        observers.disconnect.mockClear();
+
+        manager.refreshMargins();
+
+        expect(observers.disconnect).not.toHaveBeenCalled();
+    });
+
+    it("ignores a resize before the view is attached", () => {
+        const manager = new NoteWindowManager(makeRenderer() as never, runInline, () => 0);
+        expect(() => manager.refreshMargins()).not.toThrow();
+        expect(observers.margins).toHaveLength(0);
     });
 
     it("leaves a block rendered between the two margins", async () => {

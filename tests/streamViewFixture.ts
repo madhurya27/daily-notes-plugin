@@ -71,6 +71,7 @@ export function makeStubbedView(app: object = makeApp()) {
         remove: vi.fn(),
         refresh: vi.fn().mockResolvedValue(undefined),
         heightOf: vi.fn().mockReturnValue(undefined),
+        refreshMargins: vi.fn(),
     };
     (view as any).collapsible = { delegate: vi.fn() };
     (view as any).scroll = {

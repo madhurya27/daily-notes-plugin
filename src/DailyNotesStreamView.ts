@@ -123,6 +123,11 @@ export class DailyNotesStreamView extends ItemView {
         this.scroll.attach(this.contentEl, this.streamContainerEl, () => this.loadMoreNotes());
     }
 
+    /** Obsidian calls this on a pane resize; the margins are viewports. */
+    onResize(): void {
+        this.window.refreshMargins();
+    }
+
     async onClose() {
         this.checkDailyNoteSettings.cancel();
         this.flushModified.cancel();

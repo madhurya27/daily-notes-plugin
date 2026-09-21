@@ -43,6 +43,16 @@ describe("DailyNotesStreamView — view API", () => {
     });
 });
 
+describe("DailyNotesStreamView — onResize", () => {
+    // Obsidian calls onResize when the pane is dragged; the render and unload
+    // margins are viewports, so a new height means new margins.
+    it("recomputes the window margins", async () => {
+        const { view } = await makeViewSetup();
+        view.onResize();
+        expect((view as any).window.refreshMargins).toHaveBeenCalled();
+    });
+});
+
 describe("DailyNotesStreamView — onOpen error path", () => {
     let view: DailyNotesStreamView;
 

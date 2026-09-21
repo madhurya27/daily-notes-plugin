@@ -7,10 +7,15 @@ import type { NoteRenderer } from "./NoteRenderer";
  */
 export const ESTIMATED_NOTE_HEIGHT_PX = 400;
 
-/** Render before a block reaches the viewport... */
-const RENDER_MARGIN_PX = 1000;
-/** ...and hold it well past the render margin, so an edge block cannot thrash. */
-const UNLOAD_MARGIN_PX = 2500;
+/**
+ * Both margins are viewports, not pixels: how far ahead of the reader the
+ * stream works is the same question on a phone and on a tall monitor.
+ */
+const RENDER_VIEWPORTS = 1.5;
+/** Well past the render margin, so a block on the edge cannot thrash. */
+const UNLOAD_VIEWPORTS = 4;
+/** A pane dragged to nothing, or a root not laid out yet, still gets a window. */
+const MIN_VIEWPORT_PX = 400;
 
 interface NoteWindow {
     file: TFile;
@@ -31,6 +36,9 @@ export class NoteWindowManager {
     private readonly windows = new Map<HTMLElement, NoteWindow>();
     private renderObserver: IntersectionObserver | null = null;
     private unloadObserver: IntersectionObserver | null = null;
+    private scrollRoot: HTMLElement | null = null;
+    /** The height the current margins were computed from. */
+    private rootHeight = 0;
 
     constructor(
         private readonly renderer: NoteRenderer,
@@ -45,6 +53,8 @@ export class NoteWindowManager {
 
     attach(scrollRoot: HTMLElement): void {
         this.detachObservers();
+        this.scrollRoot = scrollRoot;
+        this.rootHeight = Math.max(scrollRoot.clientHeight, MIN_VIEWPORT_PX);
 
         this.renderObserver = new IntersectionObserver(
             (entries) => {
@@ -52,7 +62,7 @@ export class NoteWindowManager {
                     if (entry.isIntersecting) this.render(entry.target as HTMLElement);
                 }
             },
-            { root: scrollRoot, rootMargin: `${RENDER_MARGIN_PX}px` }
+            { root: scrollRoot, rootMargin: `${Math.round(this.rootHeight * RENDER_VIEWPORTS)}px` }
         );
 
         this.unloadObserver = new IntersectionObserver(
@@ -61,10 +71,20 @@ export class NoteWindowManager {
                     if (!entry.isIntersecting) this.unload(entry.target as HTMLElement);
                 }
             },
-            { root: scrollRoot, rootMargin: `${UNLOAD_MARGIN_PX}px` }
+            { root: scrollRoot, rootMargin: `${Math.round(this.rootHeight * UNLOAD_VIEWPORTS)}px` }
         );
 
         for (const block of this.windows.keys()) this.observe(block);
+    }
+
+    /**
+     * Rebuilds the observers against the pane's new height. A no-op when the
+     * height did not change, so dragging a split costs nothing.
+     */
+    refreshMargins(): void {
+        if (!this.scrollRoot) return;
+        if (Math.max(this.scrollRoot.clientHeight, MIN_VIEWPORT_PX) === this.rootHeight) return;
+        this.attach(this.scrollRoot);
     }
 
     /** An unloaded block for `file`, reserving `height` until it renders. */
@@ -106,6 +126,7 @@ export class NoteWindowManager {
 
     detach(): void {
         this.detachObservers();
+        this.scrollRoot = null;
         for (const window of this.windows.values()) this.discard(window);
         this.windows.clear();
     }

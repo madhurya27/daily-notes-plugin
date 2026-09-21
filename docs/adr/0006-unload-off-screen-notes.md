@@ -15,9 +15,11 @@ stream can usefully scroll.
 ## Decision
 
 Every loaded note has a `.daily-note-block`; only blocks near the viewport hold
-content. `NoteWindowManager` renders a block when it comes within 1000px of the
-viewport and empties it once it is 2500px away, reserving the height it
-measured so nothing below moves. Each note renders into its own `Component`,
+content. `NoteWindowManager` renders a block when it comes within 1.5 viewports and
+empties it once it is 4 viewports away, reserving the height it measured so
+nothing below moves. The margins are viewports rather than pixels — how far
+ahead of the reader the stream works is the same question on a phone and on a
+tall monitor — recomputed from the pane's height on `onResize`. Each note renders into its own `Component`,
 discarded with its DOM.
 
 The block element, not its content, carries `data-source-path` and is what the
@@ -42,3 +44,4 @@ DOM per note, which is what keeps a jump to a distant date (`docs/IMPROVEMENTS.m
 - **Remove blocks entirely and rebuild on scroll-back** — loses the scroll height, so the scrollbar jumps on every unload.
 - **Cap the number of loaded notes** — breaks the stream premise; the vault should be scrollable to its end.
 - **One observer for both edges** — a block sitting on the boundary renders and unloads on every jitter.
+- **Fixed pixel margins** — a phone and a tall monitor would get a different number of screenfuls of lead.
