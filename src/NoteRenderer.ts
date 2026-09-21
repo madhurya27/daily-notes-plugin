@@ -124,15 +124,12 @@ export class NoteRenderer {
             this.renderPropertyRow(metadataProperties, key, frontmatter[key]);
         }
 
-        // The whole heading row toggles here — unlike a markdown heading it
-        // holds no links or selectable prose.
-        const toggle = this.collapsible.attachCollapseToggle(heading, {
+        this.collapsible.attachCollapseToggle(heading, {
             filePath: file.path,
             sectionKey: PROPERTIES_SECTION_KEY,
             defaultCollapsed: this.getSettings().propertiesCollapsed,
             apply: (collapsed) => metadataContainer.toggleClass("is-collapsed", collapsed),
         });
-        this.collapsible.attachCollapseHost(heading, toggle);
     }
 
     /** Title → its note. Weak, so titles dropped by a re-render are collectable. */

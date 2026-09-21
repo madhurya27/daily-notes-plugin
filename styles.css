@@ -77,24 +77,28 @@
     display: flex;
     align-items: center;
     padding: var(--size-4-2) 0;
-    cursor: pointer;
     color: var(--text-faint);
     font-weight: var(--nav-item-weight, 500);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-size: var(--font-ui-smaller);
-    user-select: none;
-    touch-action: manipulation;
 }
 
-.daily-notes-stream-container .metadata-properties-heading:is(:hover, :active) {
+.daily-notes-stream-container .metadata-properties-heading:has(> .collapse-indicator:is(:hover, :active)) {
     color: var(--text-muted);
 }
 
+/* Obsidian parks this indicator at `left: -22px`, in the margin its own
+   properties panel keeps clear. The stream starts at the container edge and has
+   no such margin, so the chevron hung outside the note: put it back in flow. */
 .daily-notes-stream-container .metadata-properties-heading > .collapse-indicator {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    left: 0;
+    cursor: pointer;
+    touch-action: manipulation;
     margin-right: var(--size-4-1);
     transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
     transform: rotate(90deg);

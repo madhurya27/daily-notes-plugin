@@ -387,7 +387,7 @@ test.describe("daily notes stream in real Obsidian", () => {
 
         await expect(panel).toBeVisible();
         await expect(panel).not.toHaveClass(/is-collapsed/);
-        await firstNote.locator(".metadata-properties-heading").click();
+        await firstNote.locator(".metadata-properties-heading > .collapse-indicator").click();
         await expect(panel).toHaveClass(/is-collapsed/);
 
         // Editing the note re-renders it; the panel must not spring back open.
@@ -402,6 +402,24 @@ test.describe("daily notes stream in real Obsidian", () => {
         );
     });
 
+    test("keeps the properties chevron inside the note", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const block = container.locator(".daily-note-block").first();
+        const chevron = block.locator(".metadata-properties-heading > .collapse-indicator");
+        await expect(chevron).toBeVisible();
+
+        // Obsidian hangs this indicator in a left margin its own properties
+        // panel keeps clear; the stream has none, so it fell outside the note.
+        const [blockBox, chevronBox] = await Promise.all([block.boundingBox(), chevron.boundingBox()]);
+        expect(chevronBox!.x).toBeGreaterThanOrEqual(blockBox!.x);
+    });
+
     test("does not offer a pointer on property icons nothing can click", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
@@ -414,7 +432,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         // Collapse state persists per note, and an earlier test may have left
         // this panel closed; its icons are then not there to measure.
         if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
-            await panel.locator(".metadata-properties-heading").click();
+            await panel.locator(".metadata-properties-heading > .collapse-indicator").click();
         }
         const icon = panel.locator(".metadata-property-icon").first();
         await expect(icon).toBeVisible();

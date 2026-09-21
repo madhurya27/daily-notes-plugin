@@ -84,3 +84,14 @@ positioning measures from the inside of.
 
 **Rejected:** halving the difference between line height and icon size — it
 ignores the padding and lands 1.5px high.
+
+## 2026-09-21 — Only a chevron collapses anything
+
+**Decision:** the properties heading row no longer toggles; its chevron does,
+as for a markdown heading or a list item. `attachCollapseHost` is gone.
+
+**Why:** one rule across the stream — every other row needs the chevron, so a
+row that folds on any click is a surprise. The label is selectable now.
+
+**Rejected:** making headings and list items row-clickable instead — a heading
+holds links and prose a click must be free to reach.

@@ -26,14 +26,6 @@ export class CollapsibleManager {
     private readonly toggles = new WeakMap<HTMLElement, () => void>();
 
     /**
-     * Makes a second element toggle the same section — the properties heading
-     * row, which holds no links or selectable prose, unlike a markdown heading.
-     */
-    attachCollapseHost(host: HTMLElement, toggle: () => void): void {
-        this.toggles.set(host, toggle);
-    }
-
-    /**
      * One listener pair for the whole stream. Chevrons are rebuilt on every
      * re-render, so registering per chevron would pile registrations on the
      * component until it unloads.
@@ -58,8 +50,7 @@ export class CollapsibleManager {
 
     /**
      * The toggle of the nearest element an event landed in, if it has one.
-     * Walking up finds the chevron before the row that also hosts it, so a
-     * click on either runs the toggle exactly once.
+     * Walking up catches a click on the icon the chevron holds.
      */
     private toggleFor(target: EventTarget | null): (() => void) | undefined {
         let el = target as HTMLElement | null;
@@ -73,7 +64,7 @@ export class CollapsibleManager {
 
     /**
      * Binds the toggle to the chevron alone: a click on heading text or a link
-     * inside it must not collapse. Returns the toggle, for binding extra hosts.
+     * inside it must not collapse.
      */
     attachCollapseToggle(host: HTMLElement, section: CollapsibleSection): () => void {
         const indicator = document.createElement("span");

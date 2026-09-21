@@ -425,13 +425,13 @@ describe("NoteRenderer renderProperties", () => {
         const file = new TFile("Notes/2025-01-01.md");
 
         const first = mount(renderer, await renderNote(renderer, file));
-        (first.querySelector(".metadata-properties-heading") as HTMLElement).click();
+        (first.querySelector(".metadata-properties-heading > .collapse-indicator") as HTMLElement).click();
 
         const second = mount(renderer, await renderNote(renderer, file));
         expect(second.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(false);
     });
 
-    it("toggles from the chevron as well as the heading row", async () => {
+    it("toggles from the chevron", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(
             app as any,
@@ -446,7 +446,7 @@ describe("NoteRenderer renderProperties", () => {
         expect(el.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(true);
     });
 
-    it("heading click toggles collapsed state", async () => {
+    it("leaves the panel alone when the heading row itself is clicked", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(
             app as any,
@@ -455,11 +455,11 @@ describe("NoteRenderer renderProperties", () => {
             makeSettings({ showProperties: true })
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
-        const heading = el.querySelector(".metadata-properties-heading") as HTMLElement;
         const container = el.querySelector(".metadata-container")!;
-        heading.click();
-        expect(container.classList.contains("is-collapsed")).toBe(true);
-        heading.click();
+
+        // The chevron alone toggles, as it does for a heading or a list item.
+        (el.querySelector(".metadata-properties-heading-label") as HTMLElement).click();
+
         expect(container.classList.contains("is-collapsed")).toBe(false);
     });
 
