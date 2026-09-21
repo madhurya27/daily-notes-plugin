@@ -13,9 +13,12 @@ function makeApp(opts: { readResult?: string; fileCache?: any; leaves?: any[] } 
     const { readResult = "", fileCache = null, leaves = [] } = opts;
     const mockOpenFile = vi.fn().mockResolvedValue(undefined);
     const mockLeaf = { openFile: mockOpenFile };
+    const openGlobalSearch = vi.fn();
     return {
         vault: { cachedRead: vi.fn().mockResolvedValue(readResult) },
         metadataCache: { getFileCache: vi.fn().mockReturnValue(fileCache) },
+        internalPlugins: { getPluginById: vi.fn().mockReturnValue({ instance: { openGlobalSearch } }) },
+        _openGlobalSearch: openGlobalSearch,
         workspace: {
             getLeavesOfType: vi.fn().mockReturnValue(leaves),
             getLeaf: vi.fn().mockReturnValue(mockLeaf),
@@ -621,5 +624,73 @@ describe("NoteRenderer — delegated listeners", () => {
         root.click();
         expect(app.workspace.getLeaf).not.toHaveBeenCalled();
         root.remove();
+    });
+});
+
+describe("NoteRenderer tag click", () => {
+    /** Inline tags come from MarkdownRenderer, mocked here; this is its output. */
+    function addInlineTag(block: HTMLElement, tag: string): HTMLElement {
+        const link = block.querySelector(".daily-note-content")!.createEl("a", { cls: "tag", text: tag });
+        link.setAttribute("href", tag);
+        return link;
+    }
+
+    async function renderWithProperties(app: ReturnType<typeof makeApp>) {
+        const renderer = new NoteRenderer(
+            app as any,
+            new Component(),
+            makeCollapsible(),
+            makeSettings({ showProperties: true })
+        );
+        return mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+    }
+
+    it("searches for an inline tag the click landed on", async () => {
+        const app = makeApp();
+        const renderer = new NoteRenderer(app as any, new Component(), makeCollapsible(), makeSettings());
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        addInlineTag(el, "#work").click();
+
+        expect(app._openGlobalSearch).toHaveBeenCalledWith("tag:#work");
+    });
+
+    it("keeps the href from navigating the view away", async () => {
+        const app = makeApp();
+        const renderer = new NoteRenderer(app as any, new Component(), makeCollapsible(), makeSettings());
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+        addInlineTag(el, "#work").dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("searches for a tag pill in the properties panel", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tags: ["work", "daily"] } } });
+        const el = await renderWithProperties(app);
+
+        (el.querySelectorAll(".multi-select-pill")[1] as HTMLElement).click();
+
+        expect(app._openGlobalSearch).toHaveBeenCalledWith("tag:#daily");
+    });
+
+    it("leaves a pill of a property Obsidian does not type as a tag alone", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { aliases: ["w"] } } });
+        const el = await renderWithProperties(app);
+
+        (el.querySelector(".multi-select-pill") as HTMLElement).click();
+
+        expect(app._openGlobalSearch).not.toHaveBeenCalled();
+    });
+
+    it("does not open the note when the click was on one of its tags", async () => {
+        const app = makeApp();
+        const renderer = new NoteRenderer(app as any, new Component(), makeCollapsible(), makeSettings());
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        addInlineTag(el, "#work").click();
+
+        expect(app.workspace.getLeaf).not.toHaveBeenCalled();
     });
 });

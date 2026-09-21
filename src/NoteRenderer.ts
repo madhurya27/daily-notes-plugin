@@ -1,5 +1,6 @@
 import { App, Component, MarkdownRenderer, MarkdownView, TFile, setIcon } from "obsidian";
 import { CollapsibleManager } from "./CollapsibleManager";
+import { openTagSearch } from "./obsidianInternals";
 import type { DailyNotesStreamSettings } from "./settings";
 
 /** Reserved key for the properties panel; a heading slug can never contain ":". */
@@ -24,6 +25,9 @@ function propertyIcon(key: string): string {
     if (name.includes("date") || name.includes("time")) return "calendar";
     return "file-text";
 }
+
+/** Marks the values whose pills search, so a click can tell them apart. */
+const TAG_VALUE_CLASS = "daily-note-tags-value";
 
 /** Keys Obsidian types as tags, so their pills take the tag colours. */
 const TAG_KEYS = new Set(["tags", "tag"]);
@@ -161,12 +165,35 @@ export class NoteRenderer {
      */
     delegate(component: Component, root: HTMLElement): void {
         component.registerDomEvent(root, "click", (evt) => {
-            const title = (evt.target as HTMLElement | null)?.closest<HTMLElement>(".daily-note-title");
+            // A click's target is the element under the pointer, never a text node.
+            const target = evt.target as HTMLElement;
+
+            const tag = this.tagAt(target);
+            if (tag) {
+                evt.preventDefault();
+                openTagSearch(this.app, tag);
+                return;
+            }
+
+            const title = target.closest<HTMLElement>(".daily-note-title");
             const file = title ? this.titles.get(title) : undefined;
             if (!file) return;
             evt.preventDefault();
             this.openNote(file);
         });
+    }
+
+    /**
+     * The tag a click landed on, inline in the note or as a property pill.
+     * A pill only counts where the property is one Obsidian types as tags:
+     * an alias pill carries no tag.
+     */
+    private tagAt(target: HTMLElement): string | null {
+        const inline = target.closest<HTMLElement>("a.tag");
+        if (inline) return inline.textContent;
+
+        const pill = target.closest<HTMLElement>(`.${TAG_VALUE_CLASS} .multi-select-pill`);
+        return pill?.textContent ?? null;
     }
 
     private openNote(file: TFile): void {
@@ -204,7 +231,10 @@ export class NoteRenderer {
 
     /** Obsidian's multi-select shape, minus the editing affordances it has. */
     private renderPills(valueEl: HTMLElement, key: string, items: string[]): void {
-        if (TAG_KEYS.has(key.toLowerCase())) valueEl.dataset.propertyType = "tags";
+        if (TAG_KEYS.has(key.toLowerCase())) {
+            valueEl.dataset.propertyType = "tags";
+            valueEl.addClass(TAG_VALUE_CLASS);
+        }
         const pills = valueEl.createDiv({ cls: "multi-select-container" });
         for (const item of items) {
             const pill = pills.createDiv({ cls: "multi-select-pill" });
