@@ -581,6 +581,43 @@ test.describe("daily notes stream in real Obsidian", () => {
         }
     });
 
+    test("centres a property's icon on the words in its row", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            plugin.settings.propertiesCollapsed = false;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const panel = container.locator(".metadata-container").first();
+        if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
+            await panel.locator(".metadata-properties-heading").click();
+        }
+        await expect(panel.locator(".metadata-property").first()).toBeVisible();
+
+        // Obsidian centres both in a row the height of an input. A span takes
+        // no height, so the stream's key sat on its own line box while the icon
+        // stayed centred in the full row.
+        const centres = await panel
+            .locator(".metadata-property")
+            .first()
+            .evaluate((el) => {
+                const middle = (sel: string) => {
+                    const r = el.querySelector(sel)!.getBoundingClientRect();
+                    return r.top + r.height / 2;
+                };
+                return {
+                    icon: middle(".metadata-property-icon svg"),
+                    key: middle(".metadata-property-key-input"),
+                    value: middle(".metadata-property-value-text"),
+                };
+            });
+
+        expect(Math.abs(centres.icon - centres.key)).toBeLessThanOrEqual(1);
+        expect(Math.abs(centres.icon - centres.value)).toBeLessThanOrEqual(1);
+    });
+
     test("collapses the properties box away entirely", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
