@@ -489,6 +489,66 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(chevronBox!.x).toBeGreaterThanOrEqual(blockBox!.x);
     });
 
+    test("keeps the properties chevron clear of the heading text", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const heading = container.locator(".metadata-properties-heading").first();
+        await heading.hover(); // the chevron has no box until it is revealed
+        const chevron = heading.locator("> .collapse-indicator");
+        const title = heading.locator(".metadata-properties-title");
+
+        // Obsidian's own offsets assume its icon size; with the stream's the
+        // chevron ran into the word beside it.
+        const [chevronBox, titleBox] = await Promise.all([chevron.boundingBox(), title.boundingBox()]);
+        expect(titleBox!.x - (chevronBox!.x + chevronBox!.width)).toBeGreaterThanOrEqual(4);
+    });
+
+    test("collapses the properties box away entirely", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            plugin.settings.propertiesCollapsed = false;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const block = container.locator(".daily-note-block").first();
+        const panel = block.locator(".metadata-container");
+        const heading = panel.locator(".metadata-properties-heading");
+        if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) await heading.click();
+
+        await heading.click();
+        await expect(panel).toHaveClass(/is-collapsed/);
+
+        // Hiding the rows alone left the box that holds them — padded and, on
+        // mobile, filled — standing under the heading.
+        await expect(block.locator(".metadata-content")).toBeHidden();
+        const [panelBox, headingBox] = await Promise.all([panel.boundingBox(), heading.boundingBox()]);
+        expect(panelBox!.height).toBeLessThanOrEqual(headingBox!.height + 1);
+    });
+
+    test("draws no focus ring when the properties heading is clicked", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const heading = container.locator(".metadata-properties-heading").first();
+        await heading.click();
+
+        // Obsidian rings this heading on :focus; the stream is read-only, so a
+        // click on it must collapse the panel and leave nothing behind.
+        await expect(heading).not.toBeFocused();
+        expect(await heading.evaluate((el) => getComputedStyle(el, "::before").boxShadow)).toBe("none");
+    });
+
     test("does not offer a pointer on property icons nothing can click", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {

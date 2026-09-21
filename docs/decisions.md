@@ -87,11 +87,10 @@ ignores the padding and lands 1.5px high.
 
 ## 2026-09-21 — The properties panel is Obsidian's, indented
 
-**Decision:** the heading is a sibling above `.metadata-content` with
-`tabindex="0"`, both it and the property rows take
-`margin-left: var(--size-4-6)`, and Obsidian's own rules do the rest — the
-chevron hanging at `-22px`, hidden until the row is hovered, and the row
-toggling on click.
+**Decision:** the heading is a sibling above `.metadata-content`, both it and
+the property rows take `margin-left: var(--size-4-6)`, the stream places the
+chevron in that gutter itself, and Obsidian's own rules do the rest — the
+chevron hidden until the row is hovered, and the row toggling on click.
 
 **Why:** the indent is the margin the editor pane keeps clear and the stream
 has not; with it, Obsidian's geometry lands inside the note. The chevron only
@@ -101,8 +100,20 @@ row is the control — which is what Obsidian does.
 **Rejected:** chevron-only here, for consistency with headings and list items —
 it needs the chevron forced visible, a control Obsidian deliberately hides.
 
+**Rejected:** Obsidian's own chevron offsets (`-22px`, 6px of padding) — they
+assume its icon size, and the stream's wider icon then all but touched the word
+beside it.
+
+**Rejected:** `tabindex="0"` on the heading, for keyboard reach — Obsidian rings
+the heading on `:focus`, so a click left that ring drawn around the row. The
+chevron carries focus instead, and reveals itself on `:focus-visible`.
+
 **Rejected:** the heading inside the box — it then reads as one more property
 row, and Obsidian puts it above.
+
+**Rejected:** collapsing the property rows alone — the box around them, its
+padding and the heading's own line box stayed behind as an empty slab. Collapsed
+now hides `.metadata-content` outright.
 
 **Rejected:** padding on `.metadata-container` — Obsidian bleeds the box inside
 it evenly past its edges, so padding shifts the box instead of its rows, hanging

@@ -478,7 +478,25 @@ describe("NoteRenderer renderProperties", () => {
         // The grey box is `.metadata-content`; the heading is its sibling above.
         expect(heading.parentElement!.className).toBe("metadata-container");
         expect(heading.nextElementSibling!.className).toBe("metadata-content");
-        expect(heading.getAttribute("tabindex")).toBe("0");
+    });
+
+    it("leaves the heading unfocusable, so clicking it draws no focus ring", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
+        const renderer = new NoteRenderer(
+            app as any,
+            new Component(),
+            makeCollapsible(),
+            makeSettings({ showProperties: true })
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        // Obsidian rings this heading on :focus, and a tabindex makes a click
+        // focus it: the ring then sat around the row until something else took
+        // focus. The chevron carries the keyboard affordance instead.
+        expect(el.querySelector(".metadata-properties-heading")!.hasAttribute("tabindex")).toBe(false);
+        expect(el.querySelector(".metadata-properties-heading > .collapse-indicator")!.getAttribute("tabindex")).toBe(
+            "0"
+        );
     });
 
     async function renderIcons(frontmatter: Record<string, unknown>): Promise<(string | undefined)[]> {

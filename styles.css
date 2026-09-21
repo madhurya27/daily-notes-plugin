@@ -69,26 +69,77 @@
     display: block;
 }
 
-.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties {
+/* Collapsed is heading-only: hiding the rows alone left the box around them —
+   padded, and on mobile filled — standing empty under the heading. The panel's
+   own padding and the heading's bottom margin go with it, or the gap they leave
+   reads as the box still being there. */
+.daily-notes-stream-container .metadata-container.is-collapsed {
+    padding: 0;
+}
+
+.daily-notes-stream-container .metadata-container.is-collapsed .metadata-content {
     display: none;
 }
 
-/* Obsidian styles this heading itself — title, spacing and the focus ring —
-   and hangs the chevron 22px to its left, in a margin the editor pane keeps
-   clear. The stream has none, so the heading indents by that much and the
-   chevron hangs into the gap, level with the note's other text. */
+.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading {
+    margin-bottom: 0;
+}
+
+/* Obsidian styles this heading itself — its title and spacing — and hangs the
+   chevron to its left, in a margin the editor pane keeps clear. The stream has
+   none, so the heading indents by that much and the chevron hangs into the gap,
+   level with the note's other text. */
 .daily-notes-stream-container .metadata-properties-heading,
 .daily-notes-stream-container .metadata-content > .metadata-properties {
     margin-left: var(--size-4-6, 1.5rem);
 }
 
+/* Obsidian's heading is an inline-block, and the line box around it keeps a
+   descender's worth of space below — visible as a gap under a collapsed panel.
+   A block box as wide as its text has neither. */
+.daily-notes-stream-container .metadata-properties-heading {
+    display: block;
+    width: fit-content;
+}
+
+/* Obsidian parks this chevron 22px left of the heading and pads it by 6px,
+   offsets that assume its own icon size; the stream's icon is wider, so the
+   chevron all but touched the word beside it. It gets the gutter instead:
+   centred on the heading's line, a clear step out from the text. */
 .daily-notes-stream-container .metadata-properties-heading > .collapse-indicator {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inset-inline-start: calc(-1 * var(--size-4-6, 1.5rem));
+    top: 50%;
+    width: var(--size-4-4, 1rem);
+    height: var(--size-4-4, 1rem);
+    padding: 0;
+    color: var(--text-faint);
+    cursor: pointer;
+    touch-action: manipulation;
     transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
-    transform: rotate(90deg);
+    transform: translateY(-50%) rotate(90deg);
+}
+
+.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator svg {
+    width: var(--size-4-4, 1rem);
+    height: var(--size-4-4, 1rem);
+}
+
+/* Obsidian fades the chevron in on hover; keyboard focus has to reveal it too,
+   since the heading itself is not in the tab order. */
+.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator:focus-visible {
+    opacity: 1;
+}
+
+.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator:is(:hover, :active) {
+    color: var(--text-muted);
 }
 
 .daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading > .collapse-indicator {
-    transform: rotate(0deg);
+    transform: translateY(-50%) rotate(0deg);
 }
 
 .daily-notes-stream-container .metadata-property {
