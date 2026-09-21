@@ -59,9 +59,7 @@
 }
 
 /* Daily Note Properties - Mimic Native Styling */
-/* The gutter the chevron hangs in, as the editor's own pane provides one. */
 .daily-notes-stream-container .metadata-container {
-    padding-left: var(--size-4-6, 1.5rem);
     margin-bottom: var(--p-spacing);
     font-size: var(--font-ui-small);
     display: block;
@@ -73,6 +71,14 @@
 
 .daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties {
     display: none;
+}
+
+/* The gutter the chevron hangs in, as the editor's own pane provides one. It
+   indents the panel's rows, never the box around them: Obsidian bleeds that box
+   evenly past its container, so padding there shifts it off the note. */
+.daily-notes-stream-container .metadata-content > .metadata-properties-heading,
+.daily-notes-stream-container .metadata-content > .metadata-properties {
+    margin-left: var(--size-4-6, 1.5rem);
 }
 
 .daily-notes-stream-container .metadata-properties-heading {
@@ -95,6 +101,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    /* Obsidian fades this one in on hover; a phone has no hover, and it is the
+       only thing that collapses the panel. */
+    opacity: 1;
     position: absolute;
     left: calc(-1 * var(--size-4-6, 1.5rem));
     cursor: pointer;

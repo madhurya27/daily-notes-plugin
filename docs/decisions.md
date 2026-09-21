@@ -98,9 +98,9 @@ holds links and prose a click must be free to reach.
 
 ## 2026-09-21 — The properties panel carries its own gutter
 
-**Decision:** `.metadata-container` takes `padding-left: var(--size-4-6)` and
-the chevron hangs in it, absolutely positioned. Hover colours the chevron, not
-the row.
+**Decision:** the panel's heading and property rows take
+`margin-left: var(--size-4-6)` and the chevron hangs in that, absolutely
+positioned and forced visible. Hover colours the chevron, not the row.
 
 **Why:** in flow the chevron took the icon column and the label the key column,
 so the header read as one more property. Native hangs the chevron 22px outside
@@ -111,3 +111,7 @@ lost on a phone, for a panel that is off by default.
 
 **Rejected:** the chevron at the row's right end — no indent needed anywhere,
 but nothing else in Obsidian puts it there.
+
+**Rejected:** padding on `.metadata-container` — Obsidian bleeds the box inside
+it evenly past its edges, so padding shifts the box instead of its rows, hanging
+it off the right of the note.

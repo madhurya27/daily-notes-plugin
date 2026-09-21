@@ -429,6 +429,43 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(Math.abs(labelBox!.x - keyBox!.x)).toBeLessThan(1);
     });
 
+    test("keeps the properties box centred on the note", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const block = container.locator(".daily-note-block").first();
+        const box = block.locator(".metadata-content").first();
+        await expect(box).toBeVisible();
+
+        // Obsidian bleeds this box evenly past its container on both sides; a
+        // gutter taken out of the container shifts it instead of narrowing it.
+        const [blockBox, boxBox] = await Promise.all([block.boundingBox(), box.boundingBox()]);
+        const leftBleed = blockBox!.x - boxBox!.x;
+        const rightBleed = boxBox!.x + boxBox!.width - (blockBox!.x + blockBox!.width);
+        expect(Math.abs(leftBleed - rightBleed)).toBeLessThan(1);
+    });
+
+    test("shows the properties chevron without a pointer over it", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const chevron = container.locator(".metadata-properties-heading > .collapse-indicator").first();
+        await expect(chevron).toBeVisible();
+        await page.mouse.move(0, 0);
+
+        // Obsidian fades this indicator in on hover, which a phone never does:
+        // the one control that collapses the panel has to be on screen.
+        await expect(chevron).toHaveCSS("opacity", "1");
+    });
+
     test("colours only the chevron under the pointer", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
