@@ -31,3 +31,21 @@ export function onVaultConfigChange(app: App, handler: () => void): EventRef {
         if (path.startsWith(`${configDir}/`)) handler();
     });
 }
+
+/** The core search plugin's unpublished handle, reached through the registry. */
+type InternalPlugins = {
+    getPluginById(id: "global-search"): { instance?: { openGlobalSearch(query: string): void } } | undefined;
+};
+
+/**
+ * Opens the search pane on a tag, the way clicking a tag anywhere else in
+ * Obsidian does. No public API exposes the search pane, so the core plugin is
+ * reached by id; a user who disabled it gets nothing rather than an error.
+ */
+export function openTagSearch(app: App, tag: string): void {
+    const plugins = (app as unknown as { internalPlugins?: InternalPlugins }).internalPlugins;
+    const search = plugins?.getPluginById("global-search")?.instance;
+    if (!search) return;
+    const name = tag.startsWith("#") ? tag : `#${tag}`;
+    search.openGlobalSearch(/\s/.test(name) ? `tag:"${name}"` : `tag:${name}`);
+}

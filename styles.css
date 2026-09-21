@@ -333,3 +333,9 @@
 .daily-notes-stream-container .multi-select-pill-content {
     margin-inline-end: var(--pill-padding-x);
 }
+
+/* A tag pill searches, like a tag anywhere else in Obsidian; the read-only
+   panel draws a div rather than the editable input Obsidian points at. */
+.daily-notes-stream-container .daily-note-tags-value .multi-select-pill {
+    cursor: var(--cursor-link);
+}

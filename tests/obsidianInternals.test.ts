@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { App } from "obsidian";
-import { getReadableLineLength, onVaultConfigChange } from "../src/obsidianInternals";
+import { getReadableLineLength, onVaultConfigChange, openTagSearch } from "../src/obsidianInternals";
 
 /** Builds an App-shaped object; `config` is the internal vault config under test. */
 const makeApp = (config?: unknown): App => ({ vault: { config } }) as unknown as App;
@@ -63,5 +63,55 @@ describe("onVaultConfigChange", () => {
     it("returns the event ref, so the caller can register it for cleanup", () => {
         const { app, ref } = makeVaultApp(".obsidian");
         expect(onVaultConfigChange(app, vi.fn())).toBe(ref);
+    });
+});
+
+describe("openTagSearch", () => {
+    /** An App whose global-search plugin is present, absent, or instance-less. */
+    function makeSearchApp(plugin: unknown) {
+        const getPluginById = vi.fn().mockReturnValue(plugin);
+        return { app: { internalPlugins: { getPluginById } } as unknown as App, getPluginById };
+    }
+
+    it("opens the global search with the tag as its query", () => {
+        const openGlobalSearch = vi.fn();
+        const { app, getPluginById } = makeSearchApp({ instance: { openGlobalSearch } });
+
+        openTagSearch(app, "work");
+
+        expect(getPluginById).toHaveBeenCalledWith("global-search");
+        expect(openGlobalSearch).toHaveBeenCalledWith("tag:#work");
+    });
+
+    it("takes a tag already written with its hash", () => {
+        const openGlobalSearch = vi.fn();
+        const { app } = makeSearchApp({ instance: { openGlobalSearch } });
+
+        openTagSearch(app, "#work/daily");
+
+        expect(openGlobalSearch).toHaveBeenCalledWith("tag:#work/daily");
+    });
+
+    it("quotes a tag holding a space, so the query stays one term", () => {
+        const openGlobalSearch = vi.fn();
+        const { app } = makeSearchApp({ instance: { openGlobalSearch } });
+
+        openTagSearch(app, "on hold");
+
+        expect(openGlobalSearch).toHaveBeenCalledWith('tag:"#on hold"');
+    });
+
+    it("does nothing when the search plugin is disabled", () => {
+        const { app } = makeSearchApp(undefined);
+        expect(() => openTagSearch(app, "work")).not.toThrow();
+    });
+
+    it("does nothing when the plugin exposes no instance", () => {
+        const { app } = makeSearchApp({});
+        expect(() => openTagSearch(app, "work")).not.toThrow();
+    });
+
+    it("does nothing when the internal plugin registry is unavailable", () => {
+        expect(() => openTagSearch({} as App, "work")).not.toThrow();
     });
 });

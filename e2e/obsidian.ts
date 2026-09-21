@@ -65,7 +65,7 @@ function noteBody(day: number): string {
         "",
         "## Morning",
         "",
-        `Ran ${day} km before work.`,
+        `Ran ${day} km before work. #running`,
         "",
         "### Warm-up",
         "",

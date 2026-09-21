@@ -581,6 +581,34 @@ test.describe("daily notes stream in real Obsidian", () => {
         }
     });
 
+    test("opens the search pane on an inline tag, as Obsidian does everywhere else", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+
+        await container.locator(".daily-note-content a.tag").first().click();
+
+        const search = page.locator(".workspace-leaf-content[data-type='search']");
+        await expect(search).toBeVisible();
+        await expect(search.locator('input[type="search"]')).toHaveValue("tag:#running");
+    });
+
+    test("opens the search pane on a tag pill in the properties panel", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            plugin.settings.propertiesCollapsed = false;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+
+        await container.locator(".multi-select-pill").first().click();
+
+        const search = page.locator(".workspace-leaf-content[data-type='search']");
+        await expect(search).toBeVisible();
+        await expect(search.locator('input[type="search"]')).toHaveValue("tag:#daily");
+    });
+
     test("draws a tag property as the pill Obsidian's own panel draws", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {

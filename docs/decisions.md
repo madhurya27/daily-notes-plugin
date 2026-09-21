@@ -202,3 +202,16 @@ next note under the floating navbar.
 **Rejected:** a sticky date header — sticky offsets resolve against the padded
 scrollport, so it pins low on the desktop and mid-air on mobile, needing an
 offset read off Obsidian's own chrome.
+
+## 2026-09-21 — A tag click opens the search pane
+
+**Decision:** clicking a tag in the stream — inline in the note or as a pill in
+the properties panel — opens Obsidian's search on `tag:#name`, through the
+core global-search plugin reached by id in `src/obsidianInternals.ts`.
+
+**Why:** a tag is a link everywhere else in Obsidian; in the stream it was
+inert. No public API exposes the search pane, so the core plugin is reached by
+id and a user who disabled it gets nothing rather than an error.
+
+**Rejected:** opening the tag pane, or a filtered stream of our own — neither
+is what a tag click does in the rest of the app.
