@@ -60,3 +60,14 @@ in the DOM alone, and unloading or a re-render silently reverts it.
 
 **Rejected:** writing the toggle back to the file — the stream is read-only,
 and mapping a rendered element to its source line is a feature of its own.
+
+## 2026-09-21 — The stream repeats the checkbox nudge reading view applies
+
+**Decision:** `top: 0.2em` on a task checkbox in `styles.css`, the value
+`.markdown-preview-view` sets.
+
+**Why:** the stream renders under `markdown-rendered` alone, so the preview
+pane's own layer never lands and the box sits 3px above its label.
+
+**Rejected:** adding `markdown-preview-view` to the content element — it brings
+the whole pane stylesheet, padding and line width included.

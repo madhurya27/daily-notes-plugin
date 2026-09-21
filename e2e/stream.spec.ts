@@ -90,6 +90,28 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(chevronBox!.x + chevronBox!.width).toBeLessThanOrEqual(checkboxBox!.x);
     });
 
+    test("centres a task's checkbox on its label", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const task = container.locator(".daily-note-content li.task-list-item", { hasText: "Parent task" }).first();
+        await expect(task).toBeVisible();
+
+        // Obsidian nudges the checkbox down from `.markdown-preview-view`, a
+        // class the stream does not carry: without a rule of our own the box
+        // rides visibly above the words beside it.
+        const offset = await task.evaluate((li) => {
+            const box = li.querySelector(":scope > input.task-list-item-checkbox")!;
+            const label = Array.from(li.childNodes).find((n) => n.nodeType === 3 && n.textContent!.trim())!;
+            const range = document.createRange();
+            range.selectNodeContents(label);
+            const text = range.getBoundingClientRect();
+            const check = box.getBoundingClientRect();
+            return check.top + check.height / 2 - (text.top + text.height / 2);
+        });
+
+        expect(Math.abs(offset)).toBeLessThan(1);
+    });
+
     test("ignores a click on a task checkbox", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);

@@ -301,6 +301,14 @@
     cursor: default;
 }
 
+/* Obsidian nudges a task's checkbox onto the line of its label from
+   `.markdown-preview-view`, and the stream renders under `.markdown-rendered`
+   alone — the reading-view stylesheet without the preview pane's own layer. The
+   same 0.2em here, or the box rides 3px above the words beside it. */
+.daily-note-content input.task-list-item-checkbox {
+    top: 0.2em;
+}
+
 /* MarkdownRenderer emits a real checkbox, and the browser toggles it on click.
    Obsidian's reading view wires that back to the file; a standalone render does
    not, so the tick is DOM-only and the next re-render drops it. The stream is
