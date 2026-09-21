@@ -14,22 +14,13 @@ import { createServer } from "net";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { layoutFrom } from "./window-layout.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
 const PLUGIN_ID = "daily-notes-stream";
 const VIEW_TYPE = "daily-notes-stream-view";
 const VAULT_ID = "dev00000000000001";
-/**
- * Portrait sizes; --landscape swaps them. `is-mobile` comes from emulateMobile,
- * `is-phone` from either dimension under 600px — so a phone stays a phone on its
- * side, and the iPad stays tablet-only: mobile CSS without the phone layer.
- */
-const MOBILE_WINDOWS = {
-    phone: { width: 420, height: 900 },
-    ipad: { width: 820, height: 1180 },
-};
-
 const args = process.argv.slice(2);
 
 const USAGE = `pnpm run open [options] [vault]
@@ -40,8 +31,8 @@ showing and mobile emulation on, then detaches and leaves the window up.
 Size and layout (default: phone portrait)
   --ipad          tablet window, 820x1180 — is-mobile without is-phone
   --landscape     turn the phone or iPad size on its side
-  --desktop       ordinary window, no mobile emulation
-  --keep-size     emulate, but leave the window at its saved size
+  --desktop       desktop window, 1280x860, no mobile emulation
+  --keep-size     leave the window at the size it last had
 
 Placement (default: 40,40 on the main display)
   --position x,y  place the window (phone mode has no drag region to move it by)
@@ -53,7 +44,10 @@ Placement (default: 40,40 on the main display)
 is-phone follows the window: either dimension under 600px turns it on, so a
 phone keeps the phone layout in landscape and an iPad never takes it.
 Everything runs against .dev/obsidian-userdata — your real Obsidian config and
-vaults are untouched, and the two can run side by side.`;
+vaults are untouched, and the two can run side by side.
+
+To change layout later, leave the window up and switch it in place — no
+relaunch, no reindex: pnpm run layout --desktop`;
 
 if (args.includes("--help") || args.includes("-h")) {
     console.log(USAGE);
@@ -94,11 +88,7 @@ const parsePosition = (value) => {
     return { x: Number(match[1]), y: Number(match[2]) };
 };
 
-const device = args.includes("--desktop") ? "desktop" : args.includes("--ipad") ? "ipad" : "phone";
-const mobile = device !== "desktop";
-const portrait = mobile && !args.includes("--keep-size") ? MOBILE_WINDOWS[device] : null;
-const windowSize =
-    portrait && args.includes("--landscape") ? { width: portrait.height, height: portrait.width } : portrait;
+const { mobile, size: windowSize } = layoutFrom(args);
 const position = parsePosition(flagValue("--position"));
 // 1 is the main display; --secondary is shorthand for the next one along.
 const displayArg = flagValue("--display") ?? (args.includes("--secondary") ? "2" : undefined);
@@ -311,6 +301,6 @@ const classes = [layout.mobile && "is-mobile", layout.phone && "is-phone"].filte
 console.log(
     `Obsidian is open on ${vault} with the stream view showing.\n` +
         `Layout: ${classes || "desktop"}${windowSize ? ` in a ${windowSize.width}x${windowSize.height} window` : ""}, ${layout.theme}.\n` +
-        "Toggle emulation in the console any time: this.app.emulateMobile(false)\n" +
+        "Switch layout in place, without a relaunch: pnpm run layout --desktop\n" +
         "Other sizes, placement and displays: pnpm run open --help"
 );

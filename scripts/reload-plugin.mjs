@@ -22,7 +22,8 @@ export function debugPort(psOutput) {
     return match ? Number(match[1]) : null;
 }
 
-function runningPort() {
+/** The port the open window is listening on, or null when none is. */
+export function runningPort() {
     const listing = execSync("ps -Ao args", { encoding: "utf8" })
         .split("\n")
         .filter((line) => line.includes("--remote-debugging-port="))

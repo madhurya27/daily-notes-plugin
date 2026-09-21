@@ -132,3 +132,19 @@ the price of a second plugin in the vault.
 
 **Rejected:** Cmd+R — a phone-emulated window has no such hotkey, and reloading
 the window throws away the scroll position the change is usually about.
+
+## 2026-09-21 — Layout switches in the open window, size and all
+
+**Decision:** `pnpm run layout` sets the window's bounds and then calls
+`emulateMobile`, in the window `pnpm run open` left running.
+
+**Why:** the two belong together. `emulateMobile` alone leaves a desktop layout
+in a 420px window, which shows the sidebar and nothing else, and `is-phone`
+follows the viewport, so the size has to be right before the reload.
+
+**Rejected:** relaunching with `pnpm run open --desktop` — a cold start and a
+reindex for a switch that takes a renderer reload. It still sizes its window,
+for the layout asked for at launch.
+
+**Rejected:** `app.emulateMobile()` from the console — the toggle, without the
+window it needs.
