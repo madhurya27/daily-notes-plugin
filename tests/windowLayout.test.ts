@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 // @ts-expect-error -- plain ESM scripts, outside the TypeScript program
 import { layoutFrom } from "../scripts/window-layout.mjs";
 // @ts-expect-error -- plain ESM scripts, outside the TypeScript program
-import { applyLayout } from "../scripts/window-layout.mjs";
+import { emulateDevice } from "../scripts/window-layout.mjs";
 
 describe("layoutFrom", () => {
     it("opens a phone in portrait by default", () => {
@@ -32,19 +32,15 @@ describe("layoutFrom", () => {
     });
 });
 
-describe("applyLayout", () => {
+describe("emulateDevice", () => {
     /**
      * A page whose `evaluate` runs the callback here, against jsdom's window,
      * and whose `waitForFunction` gives up rather than polling: a predicate that
      * is not already true is one this window never satisfies.
      */
     const fakePage = (isMobile: boolean, { reloads = true } = {}) => {
-        const bounds: { width: number; height: number }[] = [];
         const emulated: boolean[] = [];
-        (window as unknown as { electron: unknown }).electron = {
-            remote: { getCurrentWindow: () => ({ setBounds: (size: never) => bounds.push(size) }) },
-        };
-        const app = {
+        (window as unknown as { app: unknown }).app = {
             isMobile,
             // The real one reloads the renderer, which drops every global the
             // old document carried.
@@ -54,9 +50,7 @@ describe("applyLayout", () => {
             },
             workspace: { layoutReady: true },
         };
-        (window as unknown as { app: unknown }).app = app;
         return {
-            bounds,
             emulated,
             evaluate: async (fn: (arg: never) => unknown, arg: never) => fn(arg),
             waitForFunction: async (fn: (arg: never) => unknown, arg: never) => {
@@ -65,29 +59,20 @@ describe("applyLayout", () => {
         };
     };
 
-    it("resizes the window before emulating, so is-phone follows the new width", async () => {
+    it("turns emulation on for a phone", async () => {
         const page = fakePage(false);
-        await expect(applyLayout(page, layoutFrom([]))).resolves.toBe(true);
-        expect(page.bounds).toEqual([{ width: 420, height: 900 }]);
-        expect(page.emulated).toEqual([true]);
-    });
-
-    it("leaves the window alone under --keep-size", async () => {
-        const page = fakePage(false);
-        await applyLayout(page, layoutFrom(["--keep-size"]));
-        expect(page.bounds).toEqual([]);
+        await expect(emulateDevice(page, true)).resolves.toBe(true);
         expect(page.emulated).toEqual([true]);
     });
 
     it("waits for the document the reload brings back, not the one that answered first", async () => {
         const page = fakePage(false, { reloads: false });
-        await expect(applyLayout(page, layoutFrom([]))).rejects.toThrow("timed out");
+        await expect(emulateDevice(page, true)).rejects.toThrow("timed out");
     });
 
-    it("reports no reload when the emulation already matches", async () => {
+    it("does nothing when the emulation already matches", async () => {
         const page = fakePage(true);
-        await expect(applyLayout(page, layoutFrom([]))).resolves.toBe(false);
-        expect(page.bounds).toEqual([{ width: 420, height: 900 }]);
+        await expect(emulateDevice(page, true)).resolves.toBe(false);
         expect(page.emulated).toEqual([]);
     });
 });

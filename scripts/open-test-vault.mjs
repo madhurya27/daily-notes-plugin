@@ -14,7 +14,7 @@ import { createServer } from "net";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { applyLayout, layoutFrom } from "./window-layout.mjs";
+import { emulateDevice, layoutFrom } from "./window-layout.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
@@ -44,10 +44,7 @@ Placement (default: 40,40 on the main display)
 is-phone follows the window: either dimension under 600px turns it on, so a
 phone keeps the phone layout in landscape and an iPad never takes it.
 Everything runs against .dev/obsidian-userdata — your real Obsidian config and
-vaults are untouched, and the two can run side by side.
-
-To change layout later, leave the window up and switch it in place — no
-relaunch, no reindex: pnpm run layout --desktop`;
+vaults are untouched, and the two can run side by side.`;
 
 if (args.includes("--help") || args.includes("-h")) {
     console.log(USAGE);
@@ -271,9 +268,8 @@ await page.waitForFunction((pluginId) => Boolean(window.app.plugins.plugins[plug
 await page.evaluate(() => window.app.setting?.close?.());
 
 // emulateMobile reloads the renderer, taking any open leaf with it, so it has
-// to happen before the view is opened. The window is already the size the
-// launch bounds asked for, so only the emulation is left to apply.
-await applyLayout(page, { ...layout, size: null });
+// to happen before the view is opened.
+await emulateDevice(page, layout.mobile);
 
 // Obsidian restores the previous session's leaves, so reuse a stream view if
 // one came back rather than stacking up a new tab on every run.
@@ -305,6 +301,5 @@ const classes = [shown.mobile && "is-mobile", shown.phone && "is-phone"].filter(
 console.log(
     `Obsidian is open on ${vault} with the stream view showing.\n` +
         `Layout: ${classes || "desktop"}${windowSize ? ` in a ${windowSize.width}x${windowSize.height} window` : ""}, ${shown.theme}.\n` +
-        "Switch layout in place, without a relaunch: pnpm run layout --desktop\n" +
         "Other sizes, placement and displays: pnpm run open --help"
 );

@@ -1,6 +1,6 @@
 /**
- * The layout flags `pnpm run open` and `pnpm run layout` share, and the window
- * each one wants.
+ * What `pnpm run open`'s layout flags mean: the window to open, and the
+ * emulation to apply once it is up.
  *
  * `is-mobile` comes from emulateMobile, `is-phone` from either dimension under
  * 600px — so a phone stays a phone on its side, the iPad stays tablet-only, and
@@ -31,20 +31,13 @@ export function layoutFrom(args) {
  */
 const OLD_DOCUMENT = "__layoutSwitchPending";
 
-/**
- * Resizes the window and emulates the device, in that order: `is-phone` follows
- * the viewport, so the size has to be right before the reload. Returns whether
- * emulation changed — the reload that costs the wait.
- */
-export async function applyLayout(page, layout) {
-    if (layout.size) {
-        await page.evaluate((size) => window.electron.remote.getCurrentWindow().setBounds(size, false), layout.size);
-    }
-    if (layout.mobile === (await page.evaluate(() => window.app.isMobile))) return false;
+/** Emulates the device, and waits out the renderer reload that costs. */
+export async function emulateDevice(page, mobile) {
+    if (mobile === (await page.evaluate(() => window.app.isMobile))) return false;
     await page.evaluate((key) => (window[key] = true), OLD_DOCUMENT);
     // The reload tears this call's context down with it — that is the result,
     // not an error.
-    await page.evaluate((on) => window.app.emulateMobile(on), layout.mobile).catch(() => {});
+    await page.evaluate((on) => window.app.emulateMobile(on), mobile).catch(() => {});
     await page.waitForFunction(
         (key) => window[key] === undefined && window.app?.workspace?.layoutReady === true,
         OLD_DOCUMENT,

@@ -16,7 +16,6 @@
         "seed": "node scripts/seed-test-vault.mjs",
         "dev:vault": "node scripts/dev-vault.mjs",
         "reload": "node scripts/reload-plugin.mjs",
-        "layout": "node scripts/layout.mjs",
         "open": "node scripts/open-test-vault.mjs",
         "lint": "eslint .",
         "format": "prettier --write .",
