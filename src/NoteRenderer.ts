@@ -25,8 +25,23 @@ function propertyIcon(key: string): string {
     return "file-text";
 }
 
+/** Keys Obsidian types as tags, so their pills take the tag colours. */
+const TAG_KEYS = new Set(["tags", "tag"]);
+
+/**
+ * The items a list property shows a pill for. A tags key is always a list —
+ * `tags: work, daily` reaches the cache as one scalar, and Obsidian still
+ * draws two tags.
+ */
+function pillItems(key: string, value: unknown): string[] | null {
+    if (Array.isArray(value)) return value.map(String);
+    if (TAG_KEYS.has(key.toLowerCase()) && typeof value === "string") {
+        return value.split(",").map((item) => item.trim());
+    }
+    return null;
+}
+
 function displayValue(value: unknown): string {
-    if (Array.isArray(value)) return value.map(String).join(", ");
     if (typeof value === "object" && value !== null) return JSON.stringify(value);
     if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
     return "";
@@ -179,6 +194,21 @@ export class NoteRenderer {
         keyContainer.createSpan({ cls: "metadata-property-key-input", text: key });
 
         const valueEl = propertyRow.createDiv({ cls: "metadata-property-value" });
+        const items = pillItems(key, value);
+        if (items) {
+            this.renderPills(valueEl, key, items);
+            return;
+        }
         valueEl.createSpan({ cls: "metadata-property-value-text", text: displayValue(value) });
+    }
+
+    /** Obsidian's multi-select shape, minus the editing affordances it has. */
+    private renderPills(valueEl: HTMLElement, key: string, items: string[]): void {
+        if (TAG_KEYS.has(key.toLowerCase())) valueEl.dataset.propertyType = "tags";
+        const pills = valueEl.createDiv({ cls: "multi-select-container" });
+        for (const item of items) {
+            const pill = pills.createDiv({ cls: "multi-select-pill" });
+            pill.createDiv({ cls: "multi-select-pill-content" }).createSpan({ text: item });
+        }
     }
 }

@@ -353,8 +353,8 @@ describe("NoteRenderer renderProperties", () => {
         expect(el.querySelector(".metadata-container")).not.toBeNull();
     });
 
-    it("renders array values as comma-separated string", async () => {
-        const app = makeApp({ fileCache: { frontmatter: { tags: ["work", "daily"] } } });
+    it("renders list values as Obsidian's pills, one per item", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { aliases: ["work", "daily"] } } });
         const renderer = new NoteRenderer(
             app as any,
             new Component(),
@@ -362,7 +362,37 @@ describe("NoteRenderer renderProperties", () => {
             makeSettings({ showProperties: true })
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
-        expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("work, daily");
+        const pills = el.querySelectorAll(".metadata-property-value .multi-select-container .multi-select-pill");
+        expect([...pills].map((p) => p.textContent)).toEqual(["work", "daily"]);
+        expect(el.querySelector(".multi-select-pill > .multi-select-pill-content")).not.toBeNull();
+    });
+
+    // Obsidian colours a pill as a tag off the value's type, not its key.
+    it("types a tags property so its pills take the tag colours", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tags: ["work"], aliases: ["w"] } } });
+        const renderer = new NoteRenderer(
+            app as any,
+            new Component(),
+            makeCollapsible(),
+            makeSettings({ showProperties: true })
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+        const values = el.querySelectorAll<HTMLElement>(".metadata-property-value");
+        expect(values[0]?.dataset.propertyType).toBe("tags");
+        expect(values[1]?.dataset.propertyType).toBeUndefined();
+    });
+
+    // `tags: work, daily` is a scalar in the cache; Obsidian still shows two tags.
+    it("splits a scalar tags value into a pill per tag", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tag: "work, daily" } } });
+        const renderer = new NoteRenderer(
+            app as any,
+            new Component(),
+            makeCollapsible(),
+            makeSettings({ showProperties: true })
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+        expect([...el.querySelectorAll(".multi-select-pill")].map((p) => p.textContent)).toEqual(["work", "daily"]);
     });
 
     it("renders object values as JSON string", async () => {

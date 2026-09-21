@@ -581,6 +581,55 @@ test.describe("daily notes stream in real Obsidian", () => {
         }
     });
 
+    test("draws a tag property as the pill Obsidian's own panel draws", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            plugin.settings.propertiesCollapsed = false;
+            await plugin.saveSettings();
+        });
+
+        // Only what the tag styling decides. A pill's own box is not
+        // comparable: its width follows its word, and Obsidian's editable one
+        // is padded out by a remove button the read-only stream never draws.
+        const measure = (root: Element) => {
+            const pill = root.querySelector('.metadata-property-value[data-property-type="tags"] .multi-select-pill')!;
+            const content = pill.querySelector(".multi-select-pill-content")!;
+            const style = getComputedStyle(pill);
+            return {
+                text: content.textContent,
+                contentHeight: Math.round(content.getBoundingClientRect().height),
+                radius: style.borderTopLeftRadius,
+                background: style.backgroundColor,
+                color: style.color,
+                fontSize: style.fontSize,
+                padding: style.padding,
+                marginInlineStart: getComputedStyle(content).marginInlineStart,
+            };
+        };
+
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-14.md");
+            await window.app.workspace.getLeaf(false).openFile(file!);
+        });
+        const note = page.locator(".workspace-leaf.mod-active .view-content").first();
+        await expect(note.locator(".multi-select-pill").first()).toBeVisible();
+        const native = await note.evaluate(measure);
+
+        const container = await openStream(page);
+        await expect(container.locator(".multi-select-pill").first()).toBeVisible();
+        const stream = await container.evaluate(measure);
+
+        expect(stream).toEqual(native);
+        // A pill, not a rectangle: the radius rounds its ends fully.
+        const height = await container
+            .locator(".multi-select-pill")
+            .first()
+            .evaluate((el) => el.getBoundingClientRect().height);
+        expect(parseFloat(stream.radius)).toBeGreaterThanOrEqual(height / 2);
+    });
+
     test("centres a property's icon on the words in its row", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
