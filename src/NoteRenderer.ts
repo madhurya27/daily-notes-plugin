@@ -116,9 +116,9 @@ export class NoteRenderer {
         const metadataContainer = container.createDiv({ cls: "metadata-container" });
 
         // Obsidian's own shape: the heading is a sibling above the box, not a
-        // row inside it, and the whole row is the control.
-        // No tabindex: Obsidian rings this heading on :focus, and a click would
-        // then leave that ring behind. The chevron is the focusable control.
+        // row inside it, and the whole row is the control. It stays out of the
+        // tab order — Obsidian rings it on :focus, and a click would then leave
+        // that ring behind — so the chevron is what takes focus.
         const heading = metadataContainer.createDiv({ cls: "metadata-properties-heading" });
         heading.createDiv({ cls: "metadata-properties-title", text: "Properties" });
 

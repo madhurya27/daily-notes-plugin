@@ -69,10 +69,8 @@
     display: block;
 }
 
-/* Collapsed is heading-only: hiding the rows alone left the box around them —
-   padded, and on mobile filled — standing empty under the heading. The panel's
-   own padding and the heading's bottom margin go with it, or the gap they leave
-   reads as the box still being there. */
+/* Collapsed is heading-only. The box goes, and with it the panel's padding and
+   the heading's bottom margin — the space they leave still reads as a box. */
 .daily-notes-stream-container .metadata-container.is-collapsed {
     padding: 0;
 }
@@ -85,13 +83,10 @@
     margin-bottom: 0;
 }
 
-/* "Properties" is a heading of the note like any other, so it sits on the same
-   line as `## Morning` and hangs its chevron in the same margin — the negative
-   margin and matching padding the content headings use.
-
-   The block box also drops the descender's worth of space Obsidian's
-   inline-block heading leaves below it, which showed as a gap under a collapsed
-   panel. */
+/* "Properties" is a heading of the note like any other: the content headings'
+   negative margin and matching padding, so its word starts where `## Morning`
+   does and its chevron shares their margin. A block box also drops the
+   descender's space Obsidian's inline-block heading keeps below it. */
 .daily-notes-stream-container .metadata-properties-heading {
     display: block;
     width: fit-content;
@@ -99,10 +94,8 @@
     padding-left: var(--size-4-4);
 }
 
-/* Obsidian parks this chevron 22px left of the heading and pads it by 6px,
-   offsets that assume its own icon size. Here it takes the margin the heading
-   just opened, at the size and offset a content heading's chevron uses, so the
-   two line up and stand the same distance from their words. */
+/* The size and offset a content heading's chevron uses, in the margin the
+   heading just opened: the two line up, the same step from their words. */
 .daily-notes-stream-container .metadata-properties-heading > .collapse-indicator {
     position: absolute;
     display: flex;
@@ -126,7 +119,7 @@
 }
 
 /* Obsidian fades the chevron in on hover; keyboard focus has to reveal it too,
-   since the heading itself is not in the tab order. */
+   as it is the only thing here in the tab order. */
 .daily-notes-stream-container .metadata-properties-heading > .collapse-indicator:focus-visible {
     opacity: 1;
 }
@@ -243,12 +236,11 @@
     transform: rotate(0deg);
 }
 
-/* List Item Collapse Alignment */
-/* Reading view gives the indicator the whole line box and centres the icon in
-   it, which puts the icon on the middle of the words: half-leading is split
-   evenly, so a line box and its text share a centre. `top` then has to clear
-   the list item's own padding, which absolute positioning measures from the
-   inside of — without it the icon rides a pixel and a half high. */
+/* List Item Collapse Alignment
+
+   Reading view gives the indicator the whole line box: a line box and its text
+   share a centre, so centring the icon in it centres it on the words. `top`
+   clears the item's padding, which absolute positioning measures from inside. */
 .daily-note-content li.is-collapsible > .collapse-indicator {
     position: absolute;
     left: calc(-1 * var(--size-4-8, 2rem));
@@ -337,18 +329,14 @@
     cursor: default;
 }
 
-/* Obsidian nudges a task's checkbox onto the line of its label from
-   `.markdown-preview-view`, and the stream renders under `.markdown-rendered`
-   alone — the reading-view stylesheet without the preview pane's own layer. The
-   same 0.2em here, or the box rides 3px above the words beside it. */
+/* `top`: Obsidian nudges the box onto its label's line from
+   `.markdown-preview-view`, a layer the stream never loads — without the same
+   0.2em it rides 3px high.
+
+   `pointer-events`: the browser toggles this real `<input>` on click, and only
+   reading view writes that back. Here the tick is DOM-only and the next
+   re-render drops it, so the box shows state without offering to change it. */
 .daily-note-content input.task-list-item-checkbox {
     top: 0.2em;
-}
-
-/* MarkdownRenderer emits a real checkbox, and the browser toggles it on click.
-   Obsidian's reading view wires that back to the file; a standalone render does
-   not, so the tick is DOM-only and the next re-render drops it. The stream is
-   read-only: make the checkbox show state without offering to change it. */
-.daily-note-content input.task-list-item-checkbox {
     pointer-events: none;
 }

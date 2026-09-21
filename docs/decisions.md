@@ -87,45 +87,25 @@ ignores the padding and lands 1.5px high.
 
 ## 2026-09-21 — The properties panel is Obsidian's, headed like a note heading
 
-**Decision:** the heading is a sibling above `.metadata-content` and is laid out
-as a content heading — the same negative margin, padding and chevron offset, so
-"Properties" starts where `## Morning` does. Obsidian's own rules do the rest:
-the chevron hidden until the row is hovered, and the row toggling on click.
+**Decision:** the heading is a sibling above `.metadata-content`, laid out as a
+content heading — the same negative margin, padding and chevron offset — and
+collapsing hides the box outright. Obsidian's own rules do the rest: the chevron
+hidden until the row is hovered, and the row toggling on click.
 
-**Why:** the reader sees one column of headings down the note, and the chevrons
-one column beside it. Obsidian's own offsets assume the margin its editor pane
-keeps clear and its own icon size; kept, they set the panel a step in from the
-note and its chevron a hair from the word.
+**Why:** one column of headings down the note, one of chevrons beside it.
+Obsidian's offsets assume the margin its editor pane keeps clear and its own
+icon size, so kept they set the panel a step in from the note and its chevron a
+hair from the word.
 
 **Rejected:** a gutter of its own (`margin-left: var(--size-4-6)`) — it lands
-Obsidian's geometry inside the note, but indents the panel past every heading
-around it.
+Obsidian's geometry inside the note, indented past every heading around it.
 
-**Rejected:** chevron-only here, for consistency with headings and list items —
-it needs the chevron forced visible, a control Obsidian deliberately hides.
+**Rejected:** the heading inside the box — it reads as one more property row,
+and Obsidian puts it above.
 
-**Rejected:** Obsidian's own chevron offsets (`-22px`, 6px of padding) — they
-assume its icon size, and the stream's wider icon then all but touched the word
-beside it.
-
-**Rejected:** matching the rows' left edge with the heading's box rather than
-its word — the box bleeds left into the chevron's margin, as a content
-heading's does.
+**Rejected:** chevron-only, as headings and list items are — it needs the
+chevron forced visible, a control Obsidian deliberately hides.
 
 **Rejected:** `tabindex="0"` on the heading, for keyboard reach — Obsidian rings
-the heading on `:focus`, so a click left that ring drawn around the row. The
-chevron carries focus instead, and reveals itself on `:focus-visible`.
-
-**Rejected:** the heading inside the box — it then reads as one more property
-row, and Obsidian puts it above.
-
-**Rejected:** collapsing the property rows alone — the box around them, its
-padding and the heading's own line box stayed behind as an empty slab. Collapsed
-now hides `.metadata-content` outright.
-
-**Rejected:** padding on `.metadata-container` — Obsidian bleeds the box inside
-it evenly past its edges, so padding shifts the box instead of its rows, hanging
-it off the right of the note.
-
-**Rejected:** indenting every note block to share one gutter — 24px of width
-lost on a phone, for a panel that is off by default.
+it on `:focus`, so a click left that ring around the row. The chevron takes
+focus instead, and reveals itself on `:focus-visible`.
