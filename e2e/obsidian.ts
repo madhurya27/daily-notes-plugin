@@ -333,11 +333,13 @@ function secondaryScreen(): Screen | null {
 }
 
 /**
- * Hides the window from inside the app. `open -g -j` stops LaunchServices
- * activating it, not Obsidian activating itself — at first paint, when the vault
- * opens, and on the reload `emulateMobile` triggers. A hidden app that is
- * frontmost still swallows keystrokes, so both events are answered. A reload
- * drops the listeners; callers re-arm after one.
+ * Takes the window out of the user's way from inside the app. `open -g -j` stops
+ * LaunchServices activating it, not Obsidian activating itself — at first paint,
+ * when the vault opens, and on the reload `emulateMobile` triggers.
+ *
+ * An accessory process has no menu bar and macOS will not front it, so the grabs
+ * stop rather than get undone; the listeners cover the window between launch and
+ * this call. A reload drops them, and the policy with them: callers re-arm.
  */
 async function guardFocus(page: Page): Promise<void> {
     await page.evaluate(() => {
@@ -346,6 +348,7 @@ async function guardFocus(page: Page): Promise<void> {
         const hide = () => remote.app.hide();
         win.on("show", hide);
         win.on("focus", hide);
+        remote.app.setActivationPolicy("accessory");
         hide();
     });
 }
@@ -435,7 +438,8 @@ async function connectWithRetry(port: number): Promise<Browser> {
             return await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
         } catch (error) {
             lastError = error;
-            await new Promise((r) => setTimeout(r, 500));
+            // Tight: the window is unguarded until this connects.
+            await new Promise((r) => setTimeout(r, 50));
         }
     }
     throw new Error(`Could not attach to Obsidian on port ${port}: ${String(lastError)}`);

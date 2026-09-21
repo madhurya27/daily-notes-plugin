@@ -161,3 +161,8 @@ stole the keyboard for about a second at a time on a one-screen machine.
 **Rejected:** the AppleScript watcher this replaces — resolving the process by
 unix id blocked 1.3s, long past the first grab; watching the frontmost process
 instead answered in 800ms against the guard's 100ms.
+
+**Rejected:** patching a copy of the app bundle with `LSUIElement`, the only way
+to catch the first activation — Obsidian opens its debugging port 30ms *after*
+it fronts itself, so nothing outside the app can be armed in time. Not worth
+copying and re-signing 1GB to save one 150ms blip per launch.
