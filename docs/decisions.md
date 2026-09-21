@@ -178,6 +178,10 @@ shows it.
 measures it against Obsidian's); matching the markup was enough to get pills,
 and a comma-joined string was the one place it looked unlike the rest of the app.
 
-**Rejected:** styling a pill in `styles.css` — every rule is already in
-Obsidian's stylesheet, and restating one is a chance to drift from it.
+One rule is the stream's own: Obsidian pads the near side of a pill's word and
+leaves the far side to the remove button's margin, so without that button the
+last letter sat on the border.
+
+**Rejected:** styling the rest of a pill in `styles.css` — every other rule is
+already in Obsidian's stylesheet, and restating one is a chance to drift from it.
 

@@ -622,12 +622,19 @@ test.describe("daily notes stream in real Obsidian", () => {
         const stream = await container.evaluate(measure);
 
         expect(stream).toEqual(native);
-        // A pill, not a rectangle: the radius rounds its ends fully.
-        const height = await container
+        // A pill, not a rectangle: the radius rounds its ends fully, and the
+        // word sits evenly inside it. Obsidian's trailing space is the remove
+        // button's margin, so a read-only pill has to supply its own.
+        const pill = await container
             .locator(".multi-select-pill")
             .first()
-            .evaluate((el) => el.getBoundingClientRect().height);
-        expect(parseFloat(stream.radius)).toBeGreaterThanOrEqual(height / 2);
+            .evaluate((el) => {
+                const box = el.getBoundingClientRect();
+                const word = el.querySelector(".multi-select-pill-content")!.getBoundingClientRect();
+                return { height: box.height, before: word.left - box.left, after: box.right - word.right };
+            });
+        expect(parseFloat(stream.radius)).toBeGreaterThanOrEqual(pill.height / 2);
+        expect(pill.after).toBeCloseTo(pill.before, 0);
     });
 
     test("centres a property's icon on the words in its row", async ({ obsidian }) => {

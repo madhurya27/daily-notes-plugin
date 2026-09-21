@@ -325,3 +325,10 @@
     top: 0.2em;
     pointer-events: none;
 }
+
+/* Obsidian pads the near side of a pill's word and leaves the far side to the
+   remove button's margin — an editing control a read-only pill never draws, so
+   its last letter would sit on the border. */
+.daily-notes-stream-container .multi-select-pill-content {
+    margin-inline-end: var(--pill-padding-x);
+}
