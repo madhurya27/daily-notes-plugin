@@ -14,7 +14,7 @@ import { createServer } from "net";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { boundsFor, emulateDevice, layoutFrom, screensFrom } from "./window-layout.mjs";
+import { boundsFor, emulateDevice, layoutFrom } from "./window-layout.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
@@ -36,8 +36,6 @@ Size and layout (default: phone portrait)
 
 Placement (default: 40,40 on the main display)
   --position x,y  place the window (phone mode has no drag region to move it by)
-  --secondary     open on the second display
-  --display N     open on display N, counting from 1
 
   --help, -h      this message
 
@@ -52,15 +50,7 @@ if (args.includes("--help") || args.includes("-h")) {
 }
 
 // A silently ignored typo (--ipad2) opens the wrong layout and looks like a bug.
-const KNOWN_FLAGS = new Set([
-    "--desktop",
-    "--ipad",
-    "--landscape",
-    "--keep-size",
-    "--position",
-    "--secondary",
-    "--display",
-]);
+const KNOWN_FLAGS = new Set(["--desktop", "--ipad", "--landscape", "--keep-size", "--position"]);
 const unknown = args.filter((arg) => arg.startsWith("--") && !KNOWN_FLAGS.has(arg.split("=")[0]));
 if (unknown.length) {
     console.error(`Unknown option${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}\nRun: pnpm run open --help`);
@@ -88,15 +78,8 @@ const parsePosition = (value) => {
 const layout = layoutFrom(args);
 const windowSize = layout.size;
 const position = parsePosition(flagValue("--position"));
-// 1 is the main display; --secondary is shorthand for the next one along.
-const displayArg = flagValue("--display") ?? (args.includes("--secondary") ? "2" : undefined);
-const display = displayArg === undefined ? null : Number(displayArg);
-if (display !== null && (!Number.isInteger(display) || display < 1)) {
-    console.error(`--display wants a screen number from 1, got: ${displayArg}`);
-    process.exit(1);
-}
 // A value consumed by a flag is not the vault path.
-const consumed = new Set(["--position", "--display"]);
+const consumed = new Set(["--position"]);
 const positional = args.filter((arg, index) => !arg.startsWith("--") && !consumed.has(args[index - 1]));
 const vault = resolve(positional[0] ?? join(REPO, "PluginTest"));
 const userDataDir = join(REPO, ".dev", "obsidian-userdata");
@@ -127,25 +110,6 @@ const connect = async (port) => {
         }
     }
 };
-
-/** Every display macOS reports, or null when it will not say. */
-const screens = () => {
-    const script =
-        "ObjC.import('AppKit'); $.NSScreen.screens.js.map(s => " +
-        "[s.frame.origin.x, s.frame.origin.y, s.frame.size.width, s.frame.size.height].join(',')).join(';')";
-    try {
-        return screensFrom(
-            execFileSync("osascript", ["-l", "JavaScript", "-e", script], {
-                encoding: "utf8",
-                stdio: ["ignore", "pipe", "ignore"],
-            }).trim()
-        );
-    } catch {
-        return null;
-    }
-};
-
-const FALLBACK_SCREEN = { x: 0, y: 0, width: 1440, height: 900 };
 
 /**
  * A surviving Electron helper holds the single-instance lock, and the next launch
@@ -190,21 +154,9 @@ writeFileSync(
             // A corrupt bounds file is not worth failing the launch over.
         }
     }
-    const displays = screens();
-    let screen = displays?.[0] ?? FALLBACK_SCREEN;
-    if (display !== null) {
-        const chosen = displays?.[display - 1];
-        if (!chosen) {
-            const found = displays?.length ?? 0;
-            console.error(`No display ${display}: macOS reports ${found} screen${found === 1 ? "" : "s"}.`);
-            process.exit(1);
-        }
-        screen = chosen;
-    }
     // Placed every run, not only when asked: bounds persist, so without this a
-    // window opens wherever the last run left it. This one is meant to be
-    // watched, so it takes the main display unless asked otherwise.
-    writeFileSync(boundsPath, JSON.stringify(boundsFor({ saved, screen, size: windowSize, position })));
+    // window opens wherever the last run left it.
+    writeFileSync(boundsPath, JSON.stringify(boundsFor({ saved, size: windowSize, position })));
 }
 
 const port = await freePort();
@@ -278,5 +230,5 @@ const classes = [shown.mobile && "is-mobile", shown.phone && "is-phone"].filter(
 console.log(
     `Obsidian is open on ${vault} with the stream view showing.\n` +
         `Layout: ${classes || "desktop"}${windowSize ? ` in a ${windowSize.width}x${windowSize.height} window` : ""}, ${shown.theme}.\n` +
-        "Other sizes, placement and displays: pnpm run open --help"
+        "Other sizes and placement: pnpm run open --help"
 );

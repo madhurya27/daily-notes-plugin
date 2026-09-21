@@ -44,34 +44,18 @@ export async function emulateDevice(page, mobile) {
     return true;
 }
 
-/**
- * The NSScreen frames `osascript` prints, in the top-left space Obsidian stores
- * bounds in: Cocoa's origin is the main display's bottom-left, y upwards, so
- * each frame is flipped against that height. Null when the output is unreadable
- * — macOS clamps a stray window back onto a display anyway.
- */
-export function screensFrom(output) {
-    const frames = output.split(";").map((frame) => frame.split(",").map(Number));
-    const mainHeight = frames[0]?.[3];
-    if (!mainHeight) return null;
-    return frames.map(([x, y, width, height]) => ({ x, y: mainHeight - (y + height), width, height }));
-}
-
-/** How far into the display a window opens, and the room it leaves each side. */
+/** How far into the main display a window opens. */
 const MARGIN = 40;
 
 /**
  * Where the window opens and how big. Saved bounds carry the rest of the file —
  * Obsidian keeps zoom there too — but never a maximised state, which would
- * swallow the size just asked for.
+ * swallow the size just asked for. A window too big for the screen needs no
+ * clamping: macOS shrinks it to fit.
  */
-export function boundsFor({ saved = {}, screen, size, position = null }) {
-    const bounds = { zoom: 0, ...saved, x: screen.x + MARGIN, y: screen.y + MARGIN, isMaximized: false };
-    if (size) {
-        bounds.width = Math.min(size.width, screen.width - MARGIN * 2);
-        bounds.height = Math.min(size.height, screen.height - MARGIN * 2);
-    }
-    // An explicit position wins over the display's corner.
+export function boundsFor({ saved = {}, size, position = null }) {
+    const bounds = { zoom: 0, ...saved, x: MARGIN, y: MARGIN, isMaximized: false, ...size };
+    // An explicit position wins over the corner.
     if (position) {
         bounds.x = position.x;
         bounds.y = position.y;
