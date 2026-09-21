@@ -30,8 +30,19 @@ const PHONE_VIEWPORT = { width: 420, height: 800 };
 const PLUGIN_ID = "daily-notes-stream";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** Daily notes seeded into every fixture vault, newest last. */
-export const SEEDED_DAYS = 14;
+/**
+ * Daily notes seeded into every fixture vault. Raise it for a run that needs a
+ * vault the size of a real journal — see `pnpm run test:memory`.
+ */
+export const SEEDED_DAYS = Number(process.env.E2E_SEED_DAYS ?? 14);
+
+/** The newest seeded note; the rest run backwards from here, one per day. */
+const NEWEST_DAY = Date.UTC(2026, 2, 14);
+
+/** `daysBack` days before the newest note, as YYYY-MM-DD. */
+function seededDate(daysBack: number): string {
+    return new Date(NEWEST_DAY - daysBack * 86_400_000).toISOString().slice(0, 10);
+}
 
 function freePort(): Promise<number> {
     return new Promise((res, rej) => {
@@ -92,9 +103,9 @@ function seedVault(): string {
     mkdirSync(join(vault, "Notes"), { recursive: true });
     mkdirSync(join(config, "plugins", PLUGIN_ID), { recursive: true });
 
-    for (let day = 1; day <= SEEDED_DAYS; day++) {
-        const date = `2026-03-${String(day).padStart(2, "0")}`;
-        writeFileSync(join(vault, "Notes", `${date}.md`), noteBody(day));
+    for (let daysBack = 0; daysBack < SEEDED_DAYS; daysBack++) {
+        const date = seededDate(daysBack);
+        writeFileSync(join(vault, "Notes", `${date}.md`), noteBody(SEEDED_DAYS - daysBack));
     }
 
     // Core daily-notes settings the plugin reads through the interface package.

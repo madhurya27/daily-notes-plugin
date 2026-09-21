@@ -11,6 +11,7 @@ pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is 
 pnpm test          # vitest run
 pnpm run test:coverage  # 100% required
 pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
+pnpm run test:memory    # e2e/memory.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
 
 pnpm run build && pnpm run seed   # write PluginTest/ (gitignored) and install the build into it
 pnpm run open                     # launch Obsidian on it; --help lists the flags

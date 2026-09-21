@@ -21,7 +21,8 @@
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",
         "typecheck:e2e": "tsc -noEmit -p tsconfig.e2e.json",
-        "test:e2e": "pnpm run build && pnpm run typecheck:e2e && playwright test"
+        "test:e2e": "pnpm run build && pnpm run typecheck:e2e && playwright test",
+        "test:memory": "pnpm run build && pnpm run typecheck:e2e && E2E_SEED_DAYS=1095 playwright test memory.spec.ts --project=desktop"
     },
     "keywords": [],
     "license": "MIT",
