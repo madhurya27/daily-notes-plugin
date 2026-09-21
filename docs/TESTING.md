@@ -104,6 +104,8 @@ Emulate first — `pnpm run open` gives `is-mobile` and `is-phone`, `--ipad` the
 `is-phone`, `--landscape` either on its side. This loads the mobile CSS, so it catches layout and touch-target
 problems in seconds, but it keeps Electron's Chromium and cannot reproduce a WKWebView bug.
 
+Re-run it to switch — about three seconds, and each flag sizes the window to match, `--desktop` included.
+
 Then a real device:
 
 | Platform | Route |

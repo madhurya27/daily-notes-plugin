@@ -132,3 +132,37 @@ the price of a second plugin in the vault.
 
 **Rejected:** Cmd+R — a phone-emulated window has no such hotkey, and reloading
 the window throws away the scroll position the change is usually about.
+
+## 2026-09-21 — Emulating a device waits for the document the reload brings back
+
+**Decision:** `emulateDevice` stamps the window before calling `emulateMobile`
+and waits for a document that no longer carries the stamp.
+
+**Why:** the reload is asynchronous and the old document answers `layoutReady`
+until it lands, so waiting on that alone returned while the window was still
+mid-switch — it flipped seconds after the script reported the layout it was
+leaving.
+
+**Rejected:** waiting on the reload as a navigation — same guarantee, but it
+reads as page plumbing rather than as the thing being waited for.
+
+**Rejected:** a second command that switched the open window in place instead
+of relaunching — 1.6s against 3s, for one more script to learn and maintain.
+
+## 2026-09-21 — The e2e window is hidden from inside Obsidian
+
+**Decision:** the harness installs `show` and `focus` listeners on the window
+through Electron's remote bridge, hiding the app from its own renderer.
+
+**Why:** Obsidian activates itself at first paint, when the vault opens, and on
+the `emulateMobile` reload. Hidden and frontmost are separate states, so a run
+stole the keyboard for about a second at a time on a one-screen machine.
+
+**Rejected:** the AppleScript watcher this replaces — resolving the process by
+unix id blocked 1.3s, long past the first grab; watching the frontmost process
+instead answered in 800ms against the guard's 100ms.
+
+**Rejected:** patching a copy of the app bundle with `LSUIElement`, the only way
+to catch the first activation — Obsidian opens its debugging port 30ms *after*
+it fronts itself, so nothing outside the app can be armed in time. Not worth
+copying and re-signing 1GB to save one 150ms blip per launch.
