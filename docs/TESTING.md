@@ -22,15 +22,19 @@ survives.
 display — it is meant to be watched, unlike the hidden e2e window. Phone mode has no draggable region, so
 `--position` is how that window moves.
 
-Deploying a new build is the same `build && seed`, then **Reload app without saving**. For an edit-reload
-loop, link the three assets in once instead — `pnpm run dev` then rebuilds straight into the vault, and CSS
-needs no rebuild at all. Re-seeding copies over the links, so relink after it.
+Deploying a new build is the same `build && seed`, then **Reload app without saving** — or leave
+`pnpm run dev:vault` running and skip both:
 
 ```bash
-P="$PWD/PluginTest/.obsidian/plugins/daily-notes-stream"
-for f in main.js styles.css manifest.json; do ln -sf "$PWD/$f" "$P/$f"; done
-pnpm run dev    # watches src/; Cmd+R in Obsidian loads the result
+pnpm run open        # the window to work against
+pnpm run dev:vault   # links the assets in, watches them, reloads the plugin on every save
+pnpm run reload      # the same reload, once, on demand
 ```
+
+`dev:vault` links `main.js`, `styles.css` and `manifest.json` into the vault so it reads the repo's own
+files, and runs the `dev` watcher. Each save reloads the plugin through the debugging port `open` left
+listening — no reload hotkey, which a phone-emulated window does not carry anyway. Re-seeding copies over
+the links; `dev:vault` puts them back.
 
 ## Verification
 
