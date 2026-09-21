@@ -148,3 +148,16 @@ reads as page plumbing rather than as the thing being waited for.
 
 **Rejected:** a second command that switched the open window in place instead
 of relaunching — 1.6s against 3s, for one more script to learn and maintain.
+
+## 2026-09-21 — The e2e window is hidden from inside Obsidian
+
+**Decision:** the harness installs `show` and `focus` listeners on the window
+through Electron's remote bridge, hiding the app from its own renderer.
+
+**Why:** Obsidian activates itself at first paint, when the vault opens, and on
+the `emulateMobile` reload. Hidden and frontmost are separate states, so a run
+stole the keyboard for about a second at a time on a one-screen machine.
+
+**Rejected:** the AppleScript watcher this replaces — resolving the process by
+unix id blocked 1.3s, long past the first grab; watching the frontmost process
+instead answered in 800ms against the guard's 100ms.

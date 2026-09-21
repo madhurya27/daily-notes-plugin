@@ -180,18 +180,14 @@ async function launch(): Promise<{
 
     const port = await freePort();
     const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE];
-    // Whoever owns the screen right now gets it back if Obsidian grabs focus.
-    const focusOwner = SHOW_WINDOW ? null : frontmostApp();
     // detached: Electron's helpers outlive a parent-only kill; signal the group.
     const proc: ChildProcess | null = SHOW_WINDOW
         ? spawn(OBSIDIAN, args, { stdio: "ignore", detached: true })
         : launchHidden(args, userDataDir);
 
     let browser: Browser | null = null;
-    let hider: ChildProcess | null = null;
     // Defined before startup: a throw below must still tear the instance down.
     const dispose = async () => {
-        hider?.kill();
         await browser?.close().catch(() => {});
         if (proc) await killTree(proc);
         else killByUserDataDir(userDataDir);
@@ -200,15 +196,11 @@ async function launch(): Promise<{
     };
 
     try {
-        // Armed before first paint — nothing to hide yet, nothing missed either.
-        if (!SHOW_WINDOW) hider = watchAndHide(await awaitMainProcess(userDataDir), focusOwner);
+        // Armed as soon as Playwright can reach the page; the grab before that
+        // is the only one left.
         const app = await startUp((browser = await connectWithRetry(port)), userDataDir, vaultPath);
-        if (hider) {
-            hider.kill();
-            hider = null;
-            // Startup over: settle the hidden state from Node, not AppleScript.
-            hideApp(userDataDir);
-        }
+        // Settles the hidden state, rather than trust the last event.
+        if (!SHOW_WINDOW) hideApp(userDataDir);
         return { app, dispose };
     } catch (error) {
         await dispose();
@@ -222,6 +214,7 @@ async function startUp(browser: Browser, userDataDir: string, vaultPath: string)
     const page = context.pages()[0]!;
     // The window is 300x200; lay the page out normally so scroll behaves.
     if (!SHOW_WINDOW) {
+        await guardFocus(page);
         const cdp = await context.newCDPSession(page);
         await cdp.send("Emulation.setDeviceMetricsOverride", { ...VIEWPORT, deviceScaleFactor: 1, mobile: false });
     }
@@ -339,58 +332,22 @@ function secondaryScreen(): Screen | null {
     }
 }
 
-/** The app that owns the screen, so focus can be handed straight back to it. */
-function frontmostApp(): string | null {
-    try {
-        const script = 'tell application "System Events" to get name of first process whose frontmost is true';
-        return (
-            execFileSync("osascript", ["-e", script], {
-                encoding: "utf8",
-                stdio: ["ignore", "pipe", "ignore"],
-            }).trim() || null
-        );
-    } catch {
-        return null;
-    }
-}
-
-/** Waits for this run's Electron main process to exist, so it can be addressed. */
-async function awaitMainProcess(userDataDir: string): Promise<number> {
-    const deadline = Date.now() + 30_000;
-    while (Date.now() < deadline) {
-        const pid = mainProcessPid(userDataDir);
-        if (pid !== null) return pid;
-        await new Promise((r) => setTimeout(r, 25));
-    }
-    throw new Error("Obsidian did not start");
-}
-
 /**
- * Keeps the window off the screen for the whole of startup, and gives focus
- * back when it is taken. `open -g -j` only stops LaunchServices activating the
- * app — Obsidian shows and focuses its own window twice, when it first paints
- * and again once the vault has opened. Hiding from Node reacts a poll too late
- * (about a third of a second of stolen focus each time), so the loop lives
- * inside one long-running osascript that reacts within a frame or two. It is
- * bounded rather than infinite: a crashed run must not strand it.
+ * Hides the window from inside the app. `open -g -j` stops LaunchServices
+ * activating it, not Obsidian activating itself — at first paint, when the vault
+ * opens, and on the reload `emulateMobile` triggers. A hidden app that is
+ * frontmost still swallows keystrokes, so both events are answered. A reload
+ * drops the listeners; callers re-arm after one.
  */
-function watchAndHide(pid: number, focusOwner: string | null): ChildProcess {
-    const restore = focusOwner ? `set frontmost of (first process whose name is "${focusOwner}") to true` : "";
-    // The process is resolved once: looking it up by unix id is the slow part,
-    // and every millisecond spent on it is a millisecond of visible window.
-    const script = `tell application "System Events"
-        set p to first process whose unix id is ${pid}
-        repeat 6000 times
-            try
-                if visible of p is true then
-                    set visible of p to false
-                    ${restore}
-                end if
-            end try
-            delay 0.02
-        end repeat
-    end tell`;
-    return spawn("osascript", ["-e", script], { stdio: "ignore" });
+async function guardFocus(page: Page): Promise<void> {
+    await page.evaluate(() => {
+        const { remote } = window.electron;
+        const win = remote.getCurrentWindow();
+        const hide = () => remote.app.hide();
+        win.on("show", hide);
+        win.on("focus", hide);
+        hide();
+    });
 }
 
 /**
@@ -521,6 +478,8 @@ async function applyMobileLayout(page: Page): Promise<void> {
     // emulateMobile tears the workspace down and rebuilds it; every leaf goes
     // with it, so tests must open their own view afterwards (they all do).
     await page.waitForFunction(() => window.app.workspace.layoutReady === true, null, { timeout: 60_000 });
+    // The reload shows the window again, and took the guard with it.
+    if (!SHOW_WINDOW) await guardFocus(page);
 }
 
 /** The per-project option playwright.config.ts sets. */

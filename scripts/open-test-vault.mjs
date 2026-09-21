@@ -202,9 +202,8 @@ writeFileSync(
         screen = chosen;
     }
     // Placed every run, not only when asked: bounds persist, so without this a
-    // window opens wherever the last run happened to put it. This window is one
-    // to watch, so it belongs on the main display unless asked otherwise — the
-    // hidden e2e run is the one that goes to a second screen.
+    // window opens wherever the last run left it. This one is meant to be
+    // watched, so it takes the main display unless asked otherwise.
     writeFileSync(boundsPath, JSON.stringify(boundsFor({ saved, screen, size: windowSize, position })));
 }
 
@@ -223,9 +222,9 @@ await page.emulateMedia({ colorScheme: null });
 await page.waitForFunction(() => window.app?.workspace?.layoutReady === true, null, { timeout: 60_000 });
 
 // A vault that ships plugins raises a one-time trust prompt whose overlay
-// swallows every click until it is answered. It is answered once per vault, so
-// a loaded plugin says the prompt is not coming — without that race, every
-// later run waits the full timeout for a modal that never appears.
+// swallows every click until it is answered. A loaded plugin means it was
+// answered already: without that race, every later run waits the full timeout
+// for a modal that never comes.
 const trust = page.locator(".modal-container button", { hasText: "Trust author and enable plugins" });
 await Promise.race([
     trust.waitFor({ state: "visible", timeout: 10_000 }),
@@ -246,8 +245,7 @@ await page.waitForFunction((pluginId) => Boolean(window.app.plugins.plugins[plug
 // stream leaf deferred — a deferred view never renders.
 await page.evaluate(() => window.app.setting?.close?.());
 
-// emulateMobile reloads the renderer, taking any open leaf with it, so it has
-// to happen before the view is opened.
+// The reload takes any open leaf with it, so this precedes opening the view.
 await emulateDevice(page, layout.mobile);
 
 // Obsidian restores the previous session's leaves, so reuse a stream view if
