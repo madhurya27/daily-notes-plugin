@@ -71,8 +71,13 @@ function makeRenderer(opts: { render?: (block: HTMLElement) => void | Promise<vo
     };
 }
 
-/** Tasks run inline: the view's queue is serialization, not deferral. */
-const runInline = (task: () => Promise<void>) => void task();
+/** The view's queue: one task at a time, in arrival order (ADR 0004). */
+function makeQueue() {
+    let queue = Promise.resolve();
+    return (task: () => Promise<void>) => {
+        queue = queue.then(task);
+    };
+}
 
 /** jsdom reports no layout, so a scroll root states its height outright. */
 function makeScrollRoot(clientHeight: number): HTMLElement {
@@ -82,7 +87,7 @@ function makeScrollRoot(clientHeight: number): HTMLElement {
 }
 
 function makeManager(renderer = makeRenderer(), measure = () => 500, scrollRoot = makeScrollRoot(800)) {
-    const manager = new NoteWindowManager(renderer as never, runInline, measure);
+    const manager = new NoteWindowManager(renderer as never, makeQueue(), measure);
     manager.attach(scrollRoot);
     return { manager, renderer, scrollRoot };
 }
@@ -104,7 +109,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("NoteWindowManager measurement", () => {
     it("measures the laid-out box by default", () => {
-        const manager = new NoteWindowManager(makeRenderer() as never, runInline);
+        const manager = new NoteWindowManager(makeRenderer() as never, makeQueue());
         manager.attach(document.createElement("div"));
         const block = manager.add(FILE);
         block.getBoundingClientRect = () => ({ height: 321 }) as DOMRect;
@@ -202,7 +207,7 @@ describe("NoteWindowManager margins", () => {
     });
 
     it("ignores a resize before the view is attached", () => {
-        const manager = new NoteWindowManager(makeRenderer() as never, runInline, () => 0);
+        const manager = new NoteWindowManager(makeRenderer() as never, makeQueue(), () => 0);
         expect(() => manager.refreshMargins()).not.toThrow();
         expect(observers.margins).toHaveLength(0);
     });
@@ -342,6 +347,105 @@ describe("NoteWindowManager unload", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Fast scrolling
+// ---------------------------------------------------------------------------
+
+/**
+ * A flick can carry a block through both margins between two frames, so the
+ * unload arrives while the render is still awaiting its markdown. An
+ * IntersectionObserver reports changes, so that unload is the only one the
+ * block will get until it comes back into view.
+ */
+describe("NoteWindowManager under a fast scroll", () => {
+    /** Renders slowly enough that an observer entry can land mid-flight. */
+    function makeSlowRenderer() {
+        const renderer = makeRenderer();
+        renderer.renderInto = vi.fn(async (block: HTMLElement) => {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            block.createDiv({ cls: "daily-note-content" });
+            return new Component();
+        });
+        return renderer;
+    }
+
+    const settleSlow = () => new Promise((resolve) => setTimeout(resolve, 50));
+
+    it("leaves no rendered note behind when a block flies past mid-render", async () => {
+        const renderer = makeSlowRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        fire(observers.unload, block, false);
+        await settleSlow();
+
+        expect(block.classList.contains("is-unloaded")).toBe(true);
+        expect(block.querySelector(".daily-note-content")).toBeNull();
+        expect(manager.heightOf(block)).toBeDefined();
+    });
+
+    // The queue is shared with every vault event (ADR 0004), so a flick must
+    // not leave it working through notes nobody is looking at.
+    it("skips the render outright when the block left before its turn came", async () => {
+        const renderer = makeSlowRenderer();
+        const { manager } = makeManager(renderer);
+        const first = manager.add(FILE);
+        const second = manager.add(new TFile("Notes/2025-01-02.md"));
+        document.body.append(first, second);
+
+        fire(observers.render, first, true);
+        fire(observers.render, second, true);
+        // Both blow past while the first one is still rendering.
+        fire(observers.unload, second, false);
+        await settleSlow();
+
+        expect(renderer.renderInto).toHaveBeenCalledTimes(1);
+        expect(second.classList.contains("is-unloaded")).toBe(true);
+    });
+
+    // The unload arrives after renderInto has started, not while it is queued:
+    // the markdown is already on its way and cannot be skipped.
+    it("unloads a block that left while its markdown was in flight", async () => {
+        const renderer = makeSlowRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        await new Promise((resolve) => setTimeout(resolve, 1)); // into the render
+        fire(observers.unload, block, false);
+        await settleSlow();
+
+        expect(renderer.renderInto).toHaveBeenCalledTimes(1);
+        expect(renderer.discard).toHaveBeenCalledTimes(1);
+        expect(block.classList.contains("is-unloaded")).toBe(true);
+    });
+
+    it("ignores an unload for a block it does not own", () => {
+        makeManager();
+        expect(() => fire(observers.unload, document.createElement("div"), false)).not.toThrow();
+    });
+
+    it("renders normally again once the block comes back", async () => {
+        const renderer = makeSlowRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        fire(observers.unload, block, false);
+        await settleSlow();
+
+        fire(observers.render, block, true);
+        await settleSlow();
+
+        expect(block.classList.contains("is-unloaded")).toBe(false);
+        expect(block.querySelector(".daily-note-content")).not.toBeNull();
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Re-render on modify
 // ---------------------------------------------------------------------------
 
@@ -441,7 +545,7 @@ describe("NoteWindowManager teardown", () => {
     });
 
     it("detach before attach is harmless", () => {
-        const manager = new NoteWindowManager(makeRenderer() as never, runInline, () => 0);
+        const manager = new NoteWindowManager(makeRenderer() as never, makeQueue(), () => 0);
         expect(() => manager.detach()).not.toThrow();
     });
 

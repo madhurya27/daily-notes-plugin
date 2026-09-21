@@ -67,6 +67,32 @@ test.describe("a multi-year vault scrolled to the end", () => {
         expect(end.heapMb).toBeLessThan(first.heapMb * 2);
     });
 
+    // The flick a reader actually does: straight to the end in one throw, fast
+    // enough that blocks cross both margins between frames.
+    test("leaves nothing rendered behind after a flick to the end", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const scroller = container.locator("xpath=..");
+
+        let loaded = 0;
+        for (let batch = 0; loaded < SEEDED_DAYS && batch < SEEDED_DAYS; batch++) {
+            await scroller.evaluate((el) => void (el.scrollTop = el.scrollHeight));
+            await expect(container.locator(".daily-note-block")).not.toHaveCount(loaded);
+            loaded = await container.locator(".daily-note-block").count();
+        }
+
+        // Back to the top and down again in single jumps, with no settling.
+        for (const position of [0, 1, 0, 1]) {
+            await scroller.evaluate((el, at) => void (el.scrollTop = at * el.scrollHeight), position);
+        }
+        await page.waitForTimeout(3000);
+
+        const rendered = await container.locator(".daily-note-block:not(.is-unloaded)").count();
+        // eslint-disable-next-line no-console -- the number this test exists to report
+        console.log(`[memory] after four flicks across ${SEEDED_DAYS} notes: ${rendered} rendered`);
+        expect(rendered).toBeLessThan(40);
+    });
+
     test("comes back to life at the top after the round trip", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);

@@ -23,6 +23,13 @@ interface NoteWindow {
     component: Component | null;
     /** Guards against a second render arriving during the first one's await. */
     rendering: boolean;
+    /**
+     * The block left while its render was queued or in flight. An observer
+     * reports changes, so this is the only unload it will get until it comes
+     * back into view — honouring it later is what keeps a fast scroll from
+     * leaving rendered notes behind.
+     */
+    unloadWanted: boolean;
     /** Measured on the last unload; the estimate until then. */
     height: number;
 }
@@ -90,7 +97,7 @@ export class NoteWindowManager {
     /** An unloaded block for `file`, reserving `height` until it renders. */
     add(file: TFile, height: number = ESTIMATED_NOTE_HEIGHT_PX): HTMLElement {
         const block = this.renderer.createBlock(file);
-        this.windows.set(block, { file, component: null, rendering: false, height });
+        this.windows.set(block, { file, component: null, rendering: false, unloadWanted: false, height });
         this.markUnloaded(block, height);
         this.observe(block);
         return block;
@@ -142,6 +149,10 @@ export class NoteWindowManager {
 
         this.enqueue(async () => {
             try {
+                // It flew past before its turn came: rendering it would hold the
+                // queue — shared with every vault event — for nothing.
+                if (window.unloadWanted) return;
+
                 const component = await this.renderer.renderInto(block, window.file);
                 // reload() and rerenderAll() empty the container mid-flight: the
                 // block that comes back from the await may be nobody's child.
@@ -153,16 +164,28 @@ export class NoteWindowManager {
                 window.component = component;
                 block.removeClass("is-unloaded");
                 block.style.removeProperty("--daily-note-placeholder-height");
+
+                if (window.unloadWanted) this.unloadNow(block, window);
             } finally {
                 window.rendering = false;
+                window.unloadWanted = false;
             }
         });
     }
 
     private unload(block: HTMLElement): void {
         const window = this.windows.get(block);
-        if (!window?.component) return;
+        if (!window) return;
+        if (window.rendering) {
+            window.unloadWanted = true;
+            return;
+        }
+        if (!window.component) return;
 
+        this.unloadNow(block, window);
+    }
+
+    private unloadNow(block: HTMLElement, window: NoteWindow): void {
         window.height = this.measure(block);
         this.discard(window);
         block.empty();
