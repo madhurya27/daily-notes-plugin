@@ -4,7 +4,7 @@
 
 ```bash
 pnpm install       # install deps
-pnpm run dev       # watch mode → main.js
+pnpm run dev       # watch mode → main.js (link it into PluginTest/ for an edit-reload loop: docs/TESTING.md)
 pnpm run build     # type-check + production build
 pnpm run lint      # ESLint
 pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is ignored — hand-wrapped.

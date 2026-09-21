@@ -22,7 +22,15 @@ survives.
 display — it is meant to be watched, unlike the hidden e2e window. Phone mode has no draggable region, so
 `--position` is how that window moves.
 
-Deploying a new build is the same `build && seed`, then **Reload app without saving**.
+Deploying a new build is the same `build && seed`, then **Reload app without saving**. For an edit-reload
+loop, link the three assets in once instead — `pnpm run dev` then rebuilds straight into the vault, and CSS
+needs no rebuild at all. Re-seeding copies over the links, so relink after it.
+
+```bash
+P="$PWD/PluginTest/.obsidian/plugins/daily-notes-stream"
+for f in main.js styles.css manifest.json; do ln -sf "$PWD/$f" "$P/$f"; done
+pnpm run dev    # watches src/; Cmd+R in Obsidian loads the result
+```
 
 ## Verification
 
