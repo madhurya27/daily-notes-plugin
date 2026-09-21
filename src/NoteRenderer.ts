@@ -114,18 +114,20 @@ export class NoteRenderer {
         if (keys.length === 0) return;
 
         const metadataContainer = container.createDiv({ cls: "metadata-container" });
+
+        // Obsidian's own shape: the heading is a sibling above the box, not a
+        // row inside it, and the whole row is the control. It stays out of the
+        // tab order — Obsidian rings it on :focus, and a click would then leave
+        // that ring behind — so the chevron is what takes focus.
+        const heading = metadataContainer.createDiv({ cls: "metadata-properties-heading" });
+        heading.createDiv({ cls: "metadata-properties-title", text: "Properties" });
+
         const metadataContent = metadataContainer.createDiv({ cls: "metadata-content" });
-
-        const heading = metadataContent.createDiv({ cls: "metadata-properties-heading" });
-        heading.createDiv({ cls: "metadata-properties-heading-label", text: "Properties" });
-
         const metadataProperties = metadataContent.createDiv({ cls: "metadata-properties" });
         for (const key of keys) {
             this.renderPropertyRow(metadataProperties, key, frontmatter[key]);
         }
 
-        // The whole heading row toggles here — unlike a markdown heading it
-        // holds no links or selectable prose.
         const toggle = this.collapsible.attachCollapseToggle(heading, {
             filePath: file.path,
             sectionKey: PROPERTIES_SECTION_KEY,

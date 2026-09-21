@@ -22,7 +22,15 @@ survives.
 display — it is meant to be watched, unlike the hidden e2e window. Phone mode has no draggable region, so
 `--position` is how that window moves.
 
-Deploying a new build is the same `build && seed`, then **Reload app without saving**.
+Deploying a new build is the same `build && seed`, then **Reload app without saving** — or skip both:
+
+```bash
+pnpm run open        # the window to work against
+pnpm run dev:vault   # links the build in, watches it, reloads the plugin on every save
+pnpm run reload      # that reload, once, by hand
+```
+
+Re-seeding copies over the links; `dev:vault` puts them back.
 
 ## Verification
 
@@ -43,6 +51,7 @@ Deploying a new build is the same `build && seed`, then **Reload app without sav
 - A link click or text selection inside a header does not collapse it.
 - A parent bullet's chevron collapses its sub-bullets.
 - Two headings with the same text collapse independently.
+- A task's checkbox sits on its label's line and ignores clicks: the file decides its state. **[e2e]**
 
 ### Keyboard and screen reader
 
@@ -77,7 +86,10 @@ Deploying a new build is the same `build && seed`, then **Reload app without sav
 ### Properties
 
 - **Show note properties ON**: a "Properties" header appears for notes with frontmatter, icons beside names.
-- Clicking the header toggles collapse; the chevron rotates.
+- Clicking the header toggles collapse; the chevron rotates, and no focus ring stays behind. **[e2e]**
+- "Properties" starts where the note's own headings do, chevron and all. **[e2e]**
+- Collapsed leaves the heading alone, with no empty box beneath it. **[e2e]**
+- The panel matches the one Obsidian draws for the same note: text size, row height, icons. **[e2e]**
 - **2026-02-01**: `tags: test, image, link`, `aliases: Feb 1st Test`, `mood: productive`.
 - **2026-01-15**: `tags: backlink, test`, `type: daily`, `location: Home Office`.
 - **Collapse properties by default ON**: panels start hidden, and a note's own choice then sticks across edits

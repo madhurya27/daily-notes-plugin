@@ -26,14 +26,6 @@ export class CollapsibleManager {
     private readonly toggles = new WeakMap<HTMLElement, () => void>();
 
     /**
-     * Makes a second element toggle the same section — the properties heading
-     * row, which holds no links or selectable prose, unlike a markdown heading.
-     */
-    attachCollapseHost(host: HTMLElement, toggle: () => void): void {
-        this.toggles.set(host, toggle);
-    }
-
-    /**
      * One listener pair for the whole stream. Chevrons are rebuilt on every
      * re-render, so registering per chevron would pile registrations on the
      * component until it unloads.
@@ -54,6 +46,15 @@ export class CollapsibleManager {
             evt.stopPropagation();
             toggle();
         });
+    }
+
+    /**
+     * Makes a second element toggle the same section — the properties heading
+     * row, whose chevron Obsidian hides unless hovered, so a phone would have
+     * nothing to tap.
+     */
+    attachCollapseHost(host: HTMLElement, toggle: () => void): void {
+        this.toggles.set(host, toggle);
     }
 
     /**

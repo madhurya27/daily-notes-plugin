@@ -58,91 +58,103 @@
     margin-bottom: var(--p-spacing);
 }
 
-/* Daily Note Properties - Mimic Native Styling */
+/* Daily Note Properties
+
+   Obsidian's stylesheet already draws every one of these classes, so the stream
+   renders its markup and stays out of the way. What follows is only what the
+   stream needs on top: collapsing, the heading's place among the note's own
+   headings, and the read-only affordances. Restating its sizing here shrank the
+   panel to 13px and left a 17px line in a row built for a 28px field. */
+
+/* The panel belongs to the note, so it reads at the note's text size — what
+   Obsidian's own panel inherits from the editor around it. */
 .daily-notes-stream-container .metadata-container {
-    margin-bottom: var(--p-spacing);
-    font-size: var(--font-ui-small);
-    display: block;
+    font-size: var(--font-text-size);
 }
 
-.daily-notes-stream-container .metadata-properties {
-    display: block;
+/* Obsidian sets a key and a value through `input.metadata-property-key-input`
+   and `.metadata-input-text` — element selectors a read-only span cannot match.
+   Its variables carry the typography across. */
+.daily-notes-stream-container .metadata-property-key-input {
+    /* An input centres its text in the field; a span drew it against the top,
+       leaving the key a row's-worth above the value beside it. */
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    height: var(--input-height);
+    padding: var(--metadata-input-padding);
+    color: var(--metadata-label-text-color);
+    font-size: var(--metadata-label-font-size);
+    font-weight: var(--metadata-label-font-weight);
 }
 
-.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties {
+.daily-notes-stream-container .metadata-property-value-text {
+    padding: var(--metadata-input-padding);
+    color: var(--metadata-input-text-color);
+    font-size: var(--metadata-input-font-size);
+}
+
+/* Collapsed is heading-only. The box goes, and with it the panel's padding and
+   the heading's bottom margin — the space they leave still reads as a box. */
+.daily-notes-stream-container .metadata-container.is-collapsed {
+    padding: 0;
+}
+
+.daily-notes-stream-container .metadata-container.is-collapsed .metadata-content {
     display: none;
 }
 
+.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading {
+    margin-bottom: 0;
+}
+
+/* "Properties" is a heading of the note like any other: the content headings'
+   negative margin and matching padding, so its word starts where `## Morning`
+   does and its chevron shares their margin. A block box also drops the
+   descender's space Obsidian's inline-block heading keeps below it. */
 .daily-notes-stream-container .metadata-properties-heading {
-    display: flex;
-    align-items: center;
-    padding: var(--size-4-2) 0;
-    cursor: pointer;
-    color: var(--text-faint);
-    font-weight: var(--nav-item-weight, 500);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: var(--font-ui-smaller);
-    user-select: none;
-    touch-action: manipulation;
+    display: block;
+    width: fit-content;
+    margin-left: calc(-1 * var(--size-4-4));
+    padding-left: var(--size-4-4);
 }
 
-.daily-notes-stream-container .metadata-properties-heading:is(:hover, :active) {
-    color: var(--text-muted);
-}
-
+/* The size and offset a content heading's chevron uses, in the margin the
+   heading just opened: the two line up, the same step from their words. */
 .daily-notes-stream-container .metadata-properties-heading > .collapse-indicator {
+    position: absolute;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: var(--size-4-1);
+    inset-inline-start: 0;
+    top: 50%;
+    width: var(--size-4-4, 1rem);
+    height: var(--size-4-4, 1rem);
+    padding: 0;
+    color: var(--text-faint);
+    cursor: pointer;
+    touch-action: manipulation;
     transition: transform var(--anim-duration-none, 0.1s) ease-in-out;
-    transform: rotate(90deg);
-}
-
-.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading > .collapse-indicator {
-    transform: rotate(0deg);
+    transform: translateY(-50%) rotate(90deg);
 }
 
 .daily-notes-stream-container .metadata-properties-heading > .collapse-indicator svg {
-    width: var(--size-4-3);
-    height: var(--size-4-3);
+    width: var(--size-4-4, 1rem);
+    height: var(--size-4-4, 1rem);
 }
 
-.daily-notes-stream-container .metadata-property {
-    display: flex;
-    align-items: flex-start;
-    padding: var(--size-4-1) 0;
+/* Obsidian fades the chevron in on hover; keyboard focus has to reveal it too,
+   as it is the only thing here in the tab order. */
+.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator:focus-visible {
+    opacity: 1;
 }
 
-.daily-notes-stream-container .metadata-property-key {
-    display: flex;
-    align-items: center;
-    width: var(--size-4-36, 9rem); /* Using variable for width */
-    min-width: var(--size-4-24, 6rem);
-    flex-shrink: 0;
+.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator:is(:hover, :active) {
     color: var(--text-muted);
-    font-weight: var(--nav-item-weight, 500);
 }
 
-.daily-notes-stream-container .metadata-property-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: var(--size-4-2);
-    color: var(--text-faint);
-    opacity: 0.7;
-}
-
-.daily-notes-stream-container .metadata-property-icon svg {
-    width: var(--size-4-4);
-    height: var(--size-4-4);
-}
-
-.daily-notes-stream-container .metadata-property-value {
-    flex-grow: 1;
-    color: var(--text-normal);
-    word-break: break-word;
+.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading > .collapse-indicator {
+    transform: translateY(-50%) rotate(0deg);
 }
 
 /* Tablet breakpoint */
@@ -161,10 +173,6 @@
 
     .daily-note-title {
         font-size: var(--h2-size);
-    }
-
-    .daily-notes-stream-container .metadata-property-key {
-        width: var(--size-4-24, 6rem);
     }
 }
 
@@ -213,11 +221,16 @@
     transform: rotate(0deg);
 }
 
-/* List Item Collapse Alignment */
+/* List Item Collapse Alignment
+
+   Reading view gives the indicator the whole line box: a line box and its text
+   share a centre, so centring the icon in it centres it on the words. `top`
+   clears the item's padding, which absolute positioning measures from inside. */
 .daily-note-content li.is-collapsible > .collapse-indicator {
     position: absolute;
     left: calc(-1 * var(--size-4-8, 2rem));
-    top: calc((var(--line-height-normal, 1.5) * 1em - var(--size-4-4, 1rem)) / 2);
+    top: var(--list-spacing, 0);
+    height: calc(var(--line-height-normal, 1.5) * 1em);
 }
 
 /* A task item hangs its checkbox in the same margin the chevron parks in, so
@@ -299,4 +312,16 @@
    pointer would promise an interaction that does not exist here. */
 .daily-note-block .metadata-property-icon {
     cursor: default;
+}
+
+/* `top`: Obsidian nudges the box onto its label's line from
+   `.markdown-preview-view`, a layer the stream never loads — without the same
+   0.2em it rides 3px high.
+
+   `pointer-events`: the browser toggles this real `<input>` on click, and only
+   reading view writes that back. Here the tick is DOM-only and the next
+   re-render drops it, so the box shows state without offering to change it. */
+.daily-note-content input.task-list-item-checkbox {
+    top: 0.2em;
+    pointer-events: none;
 }

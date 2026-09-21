@@ -15,6 +15,8 @@ pnpm run test:memory    # e2e/memory.spec.ts against a seeded three-year vault (
 
 pnpm run build && pnpm run seed   # write PluginTest/ (gitignored) and install the build into it
 pnpm run open                     # launch Obsidian on it; --help lists the flags
+pnpm run dev:vault                # link the build into PluginTest/, watch it, reload the plugin on save
+pnpm run reload                   # reload the plugin in the open window, once
 
 CAPTURE_SCREENSHOTS=1 E2E_SHOW_WINDOW=1 pnpm exec playwright test screenshots.spec.ts  # rewrite docs/images/
 ```

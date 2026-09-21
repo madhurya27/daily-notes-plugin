@@ -425,13 +425,13 @@ describe("NoteRenderer renderProperties", () => {
         const file = new TFile("Notes/2025-01-01.md");
 
         const first = mount(renderer, await renderNote(renderer, file));
-        (first.querySelector(".metadata-properties-heading") as HTMLElement).click();
+        (first.querySelector(".metadata-properties-heading > .collapse-indicator") as HTMLElement).click();
 
         const second = mount(renderer, await renderNote(renderer, file));
         expect(second.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(false);
     });
 
-    it("toggles from the chevron as well as the heading row", async () => {
+    it("toggles from the chevron", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(
             app as any,
@@ -446,7 +446,7 @@ describe("NoteRenderer renderProperties", () => {
         expect(el.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(true);
     });
 
-    it("heading click toggles collapsed state", async () => {
+    it("toggles from the heading row, as Obsidian's own panel does", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(
             app as any,
@@ -455,12 +455,48 @@ describe("NoteRenderer renderProperties", () => {
             makeSettings({ showProperties: true })
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
-        const heading = el.querySelector(".metadata-properties-heading") as HTMLElement;
         const container = el.querySelector(".metadata-container")!;
-        heading.click();
+
+        // Obsidian hides this chevron unless the pointer is over the row and a
+        // phone never hovers, so the row itself has to be the target.
+        (el.querySelector(".metadata-properties-title") as HTMLElement).click();
+
         expect(container.classList.contains("is-collapsed")).toBe(true);
-        heading.click();
-        expect(container.classList.contains("is-collapsed")).toBe(false);
+    });
+
+    it("puts the heading outside the box, as Obsidian's own panel does", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
+        const renderer = new NoteRenderer(
+            app as any,
+            new Component(),
+            makeCollapsible(),
+            makeSettings({ showProperties: true })
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+        const heading = el.querySelector(".metadata-properties-heading")!;
+
+        // The grey box is `.metadata-content`; the heading is its sibling above.
+        expect(heading.parentElement!.className).toBe("metadata-container");
+        expect(heading.nextElementSibling!.className).toBe("metadata-content");
+    });
+
+    it("leaves the heading unfocusable, so clicking it draws no focus ring", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
+        const renderer = new NoteRenderer(
+            app as any,
+            new Component(),
+            makeCollapsible(),
+            makeSettings({ showProperties: true })
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        // Obsidian rings this heading on :focus, and a tabindex makes a click
+        // focus it: the ring then sat around the row until something else took
+        // focus. The chevron carries the keyboard affordance instead.
+        expect(el.querySelector(".metadata-properties-heading")!.hasAttribute("tabindex")).toBe(false);
+        expect(el.querySelector(".metadata-properties-heading > .collapse-indicator")!.getAttribute("tabindex")).toBe(
+            "0"
+        );
     });
 
     async function renderIcons(frontmatter: Record<string, unknown>): Promise<(string | undefined)[]> {
