@@ -81,6 +81,7 @@ Deploying a new build is the same `build && seed`, then **Reload app without sav
 - Clicking the header toggles collapse; the chevron rotates, and no focus ring stays behind. **[e2e]**
 - "Properties" starts where the note's own headings do, chevron and all. **[e2e]**
 - Collapsed leaves the heading alone, with no empty box beneath it. **[e2e]**
+- A property row is as tall as its line of text, not an editable field. **[e2e]**
 - **2026-02-01**: `tags: test, image, link`, `aliases: Feb 1st Test`, `mood: productive`.
 - **2026-01-15**: `tags: backlink, test`, `type: daily`, `location: Home Office`.
 - **Collapse properties by default ON**: panels start hidden, and a note's own choice then sticks across edits

@@ -529,6 +529,38 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(Math.abs(geometry.titleText - geometry.titleChevron - headingGap)).toBeLessThan(1);
     });
 
+    test("sizes a property row to its text, not to an editable field", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            plugin.settings.propertiesCollapsed = false;
+            await plugin.saveSettings();
+        });
+        const container = await openStream(page);
+        const panel = container.locator(".metadata-container").first();
+        if (await panel.evaluate((el) => el.classList.contains("is-collapsed"))) {
+            await panel.locator(".metadata-properties-heading").click();
+        }
+        await expect(panel.locator(".metadata-property").first()).toBeVisible();
+
+        // Obsidian reserves an input's height per row, for a field the reader
+        // can click into; the stream only ever shows a line of text.
+        const row = await panel
+            .locator(".metadata-property")
+            .first()
+            .evaluate((el) => {
+                const style = getComputedStyle(el);
+                return {
+                    height: el.getBoundingClientRect().height,
+                    text: parseFloat(getComputedStyle(el.querySelector(".metadata-property-value-text")!).lineHeight),
+                    padding: parseFloat(style.paddingTop) + parseFloat(style.paddingBottom),
+                };
+            });
+
+        expect(row.height).toBeLessThanOrEqual(row.text + row.padding + 1);
+    });
+
     test("collapses the properties box away entirely", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {

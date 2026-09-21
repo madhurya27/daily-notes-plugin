@@ -106,6 +106,10 @@ and Obsidian puts it above.
 **Rejected:** chevron-only, as headings and list items are — it needs the
 chevron forced visible, a control Obsidian deliberately hides.
 
+**Rejected:** Obsidian's `--metadata-input-height` — it reserves the height of
+a field the reader can click into, half as tall again as the line of text a
+read-only row actually holds.
+
 **Rejected:** `tabindex="0"` on the heading, for keyboard reach — Obsidian rings
 it on `:focus`, so a click left that ring around the row. The chevron takes
 focus instead, and reveals itself on `:focus-visible`.

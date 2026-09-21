@@ -59,7 +59,12 @@
 }
 
 /* Daily Note Properties - Mimic Native Styling */
+
+/* `--metadata-input-height` is the height Obsidian reserves per row for a field
+   the reader can click into. The stream shows a line of text instead, so a row
+   only needs its own line — at Obsidian's size it stood half as tall again. */
 .daily-notes-stream-container .metadata-container {
+    --metadata-input-height: calc(var(--font-ui-small) * var(--line-height-tight, 1.3));
     margin-bottom: var(--p-spacing);
     font-size: var(--font-ui-small);
     display: block;
