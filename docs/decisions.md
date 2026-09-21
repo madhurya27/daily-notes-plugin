@@ -148,3 +148,16 @@ for the layout asked for at launch.
 
 **Rejected:** `app.emulateMobile()` from the console — the toggle, without the
 window it needs.
+
+## 2026-09-21 — A layout switch waits for the document the reload brings back
+
+**Decision:** `applyLayout` stamps the window before calling `emulateMobile`
+and waits for a document that no longer carries the stamp.
+
+**Why:** the reload is asynchronous and the old document answers `layoutReady`
+until it lands, so waiting on that alone returned while the window was still
+mid-switch — it flipped seconds after the script reported the layout it was
+leaving.
+
+**Rejected:** waiting on the reload as a navigation — same guarantee, but it
+reads as page plumbing rather than as the thing being waited for.

@@ -14,7 +14,7 @@ import { createServer } from "net";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { layoutFrom } from "./window-layout.mjs";
+import { applyLayout, layoutFrom } from "./window-layout.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
@@ -88,7 +88,8 @@ const parsePosition = (value) => {
     return { x: Number(match[1]), y: Number(match[2]) };
 };
 
-const { mobile, size: windowSize } = layoutFrom(args);
+const layout = layoutFrom(args);
+const windowSize = layout.size;
 const position = parsePosition(flagValue("--position"));
 // 1 is the main display; --secondary is shorthand for the next one along.
 const displayArg = flagValue("--display") ?? (args.includes("--secondary") ? "2" : undefined);
@@ -246,9 +247,14 @@ await page.emulateMedia({ colorScheme: null });
 await page.waitForFunction(() => window.app?.workspace?.layoutReady === true, null, { timeout: 60_000 });
 
 // A vault that ships plugins raises a one-time trust prompt whose overlay
-// swallows every click until it is answered.
+// swallows every click until it is answered. It is answered once per vault, so
+// a loaded plugin says the prompt is not coming — without that race, every
+// later run waits the full timeout for a modal that never appears.
 const trust = page.locator(".modal-container button", { hasText: "Trust author and enable plugins" });
-await trust.waitFor({ state: "visible", timeout: 10_000 }).catch(() => {});
+await Promise.race([
+    trust.waitFor({ state: "visible", timeout: 10_000 }),
+    page.waitForFunction((pluginId) => Boolean(window.app.plugins.plugins[pluginId]), PLUGIN_ID, { timeout: 10_000 }),
+]).catch(() => {});
 if (await trust.count()) await trust.click();
 
 await page.evaluate(async (pluginId) => {
@@ -264,12 +270,10 @@ await page.waitForFunction((pluginId) => Boolean(window.app.plugins.plugins[plug
 // stream leaf deferred — a deferred view never renders.
 await page.evaluate(() => window.app.setting?.close?.());
 
-// emulateMobile tears the workspace down and rebuilds it, taking any open
-// leaf with it, so it has to happen before the view is opened.
-if (mobile !== (await page.evaluate(() => window.app.isMobile))) {
-    await page.evaluate((on) => window.app.emulateMobile(on), mobile);
-    await page.waitForFunction(() => window.app?.workspace?.layoutReady === true, null, { timeout: 60_000 });
-}
+// emulateMobile reloads the renderer, taking any open leaf with it, so it has
+// to happen before the view is opened. The window is already the size the
+// launch bounds asked for, so only the emulation is left to apply.
+await applyLayout(page, { ...layout, size: null });
 
 // Obsidian restores the previous session's leaves, so reuse a stream view if
 // one came back rather than stacking up a new tab on every run.
@@ -290,17 +294,17 @@ await page.waitForFunction(
     { timeout: 30_000 }
 );
 
-const layout = await page.evaluate(() => ({
+const shown = await page.evaluate(() => ({
     mobile: document.body.classList.contains("is-mobile"),
     phone: document.body.classList.contains("is-phone"),
     theme: document.body.className.match(/theme-\w+/)?.[0] ?? "unknown",
 }));
 
 await browser.close();
-const classes = [layout.mobile && "is-mobile", layout.phone && "is-phone"].filter(Boolean).join(" ");
+const classes = [shown.mobile && "is-mobile", shown.phone && "is-phone"].filter(Boolean).join(" ");
 console.log(
     `Obsidian is open on ${vault} with the stream view showing.\n` +
-        `Layout: ${classes || "desktop"}${windowSize ? ` in a ${windowSize.width}x${windowSize.height} window` : ""}, ${layout.theme}.\n` +
+        `Layout: ${classes || "desktop"}${windowSize ? ` in a ${windowSize.width}x${windowSize.height} window` : ""}, ${shown.theme}.\n` +
         "Switch layout in place, without a relaunch: pnpm run layout --desktop\n" +
         "Other sizes, placement and displays: pnpm run open --help"
 );

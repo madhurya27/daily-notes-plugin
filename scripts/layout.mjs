@@ -10,7 +10,7 @@
  */
 import { chromium } from "@playwright/test";
 import { isMain, runningPort } from "./reload-plugin.mjs";
-import { layoutFrom } from "./window-layout.mjs";
+import { applyLayout, layoutFrom } from "./window-layout.mjs";
 
 const VIEW_TYPE = "daily-notes-stream-view";
 
@@ -29,21 +29,6 @@ Turning emulation on or off reloads the renderer, so the stream takes a moment
 to come back. A size-only change is immediate.`;
 
 const KNOWN_FLAGS = new Set(["--desktop", "--ipad", "--landscape", "--keep-size"]);
-
-/** Resizes the window and emulates the device, in that order. */
-export async function applyLayout(page, layout) {
-    if (layout.size) {
-        await page.evaluate((size) => window.electron.remote.getCurrentWindow().setBounds(size, false), layout.size);
-    }
-    // Sizing first means the reload comes up at the new width: is-phone follows
-    // the viewport, not the emulation.
-    if (layout.mobile === (await page.evaluate(() => window.app.isMobile))) return false;
-    // emulateMobile reloads the renderer, which tears this call's context down
-    // with it — the reload is the result, not an error.
-    await page.evaluate((on) => window.app.emulateMobile(on), layout.mobile).catch(() => {});
-    await page.waitForFunction(() => window.app?.workspace?.layoutReady === true, null, { timeout: 60_000 });
-    return true;
-}
 
 async function main() {
     const args = process.argv.slice(2);

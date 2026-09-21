@@ -23,3 +23,32 @@ export function layoutFrom(args) {
         size: landscape ? { width: portrait.height, height: portrait.width } : portrait,
     };
 }
+
+/**
+ * Marks the document `emulateMobile` is about to throw away. The old one keeps
+ * answering `layoutReady` until the reload lands, so waiting on that alone
+ * returns while the window is still mid-switch.
+ */
+const OLD_DOCUMENT = "__layoutSwitchPending";
+
+/**
+ * Resizes the window and emulates the device, in that order: `is-phone` follows
+ * the viewport, so the size has to be right before the reload. Returns whether
+ * emulation changed — the reload that costs the wait.
+ */
+export async function applyLayout(page, layout) {
+    if (layout.size) {
+        await page.evaluate((size) => window.electron.remote.getCurrentWindow().setBounds(size, false), layout.size);
+    }
+    if (layout.mobile === (await page.evaluate(() => window.app.isMobile))) return false;
+    await page.evaluate((key) => (window[key] = true), OLD_DOCUMENT);
+    // The reload tears this call's context down with it — that is the result,
+    // not an error.
+    await page.evaluate((on) => window.app.emulateMobile(on), layout.mobile).catch(() => {});
+    await page.waitForFunction(
+        (key) => window[key] === undefined && window.app?.workspace?.layoutReady === true,
+        OLD_DOCUMENT,
+        { timeout: 60_000 }
+    );
+    return true;
+}
