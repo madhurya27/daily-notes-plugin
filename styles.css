@@ -76,6 +76,10 @@
    and `.metadata-input-text` — element selectors a read-only span cannot match.
    Its variables carry the typography across. */
 .daily-notes-stream-container .metadata-property-key-input {
+    /* An input centres its text in the field; a span drew it against the top,
+       leaving the key a row's-worth above the value beside it. */
+    display: flex;
+    align-items: center;
     flex-grow: 1;
     height: var(--input-height);
     padding: var(--metadata-input-padding);

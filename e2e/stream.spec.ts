@@ -596,15 +596,18 @@ test.describe("daily notes stream in real Obsidian", () => {
         }
         await expect(panel.locator(".metadata-property").first()).toBeVisible();
 
-        // Obsidian centres both in a row the height of an input. A span takes
-        // no height, so the stream's key sat on its own line box while the icon
-        // stayed centred in the full row.
+        // Where the glyphs land, not where their boxes do: the key fills the
+        // row's height, so its box was centred while the word inside it sat
+        // against the top — a phone's taller row especially.
         const centres = await panel
             .locator(".metadata-property")
             .first()
             .evaluate((el) => {
                 const middle = (sel: string) => {
-                    const r = el.querySelector(sel)!.getBoundingClientRect();
+                    const range = document.createRange();
+                    range.selectNodeContents(el.querySelector(sel)!);
+                    const text = range.getBoundingClientRect();
+                    const r = text.height > 0 ? text : el.querySelector(sel)!.getBoundingClientRect();
                     return r.top + r.height / 2;
                 };
                 return {
