@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 // @ts-expect-error -- plain ESM scripts, outside the TypeScript program
 import { layoutFrom } from "../scripts/window-layout.mjs";
 // @ts-expect-error -- plain ESM scripts, outside the TypeScript program
-import { emulateDevice } from "../scripts/window-layout.mjs";
+import { boundsFor, emulateDevice, screensFrom } from "../scripts/window-layout.mjs";
 
 describe("layoutFrom", () => {
     it("opens a phone in portrait by default", () => {
@@ -74,5 +74,70 @@ describe("emulateDevice", () => {
         const page = fakePage(true);
         await expect(emulateDevice(page, true)).resolves.toBe(false);
         expect(page.emulated).toEqual([]);
+    });
+});
+
+describe("screensFrom", () => {
+    it("flips Cocoa frames into the top-left space Obsidian stores bounds in", () => {
+        // Main display 1512x982, a second one directly above it: Cocoa counts y
+        // upwards from the main display's bottom-left, so that one sits at +982.
+        expect(screensFrom("0,0,1512,982;0,982,1920,1080")).toEqual([
+            { x: 0, y: 0, width: 1512, height: 982 },
+            { x: 0, y: -1080, width: 1920, height: 1080 },
+        ]);
+    });
+
+    it("places a display to the left at its own negative x", () => {
+        expect(screensFrom("0,0,1512,982;-1920,0,1920,982")[1]).toEqual({
+            x: -1920,
+            y: 0,
+            width: 1920,
+            height: 982,
+        });
+    });
+
+    it("gives up on output it cannot read, leaving macOS to clamp the window", () => {
+        expect(screensFrom("")).toBeNull();
+    });
+});
+
+describe("boundsFor", () => {
+    const screen = { x: 0, y: 0, width: 1512, height: 982 };
+
+    it("opens in the screen's top-left corner, a margin in", () => {
+        expect(boundsFor({ screen, size: { width: 420, height: 900 } })).toMatchObject({
+            x: 40,
+            y: 40,
+            width: 420,
+            height: 900,
+            isMaximized: false,
+        });
+    });
+
+    it("offsets from the chosen display, not from the main one", () => {
+        expect(boundsFor({ screen: { x: -1920, y: -100, width: 1920, height: 1080 }, size: null })).toMatchObject({
+            x: -1880,
+            y: -60,
+        });
+    });
+
+    it("clamps a window too big for the screen it opens on", () => {
+        expect(boundsFor({ screen, size: { width: 1920, height: 1200 } })).toMatchObject({
+            width: 1432,
+            height: 902,
+        });
+    });
+
+    it("leaves the saved size alone when no size is asked for", () => {
+        const saved = { width: 700, height: 500, zoom: 2 };
+        expect(boundsFor({ saved, screen, size: null })).toMatchObject({ width: 700, height: 500, zoom: 2 });
+    });
+
+    it("lets an explicit position win over the display's corner", () => {
+        expect(boundsFor({ screen, size: null, position: { x: 900, y: 60 } })).toMatchObject({ x: 900, y: 60 });
+    });
+
+    it("never restores a maximised window, whatever the saved bounds say", () => {
+        expect(boundsFor({ saved: { isMaximized: true }, screen, size: null }).isMaximized).toBe(false);
     });
 });

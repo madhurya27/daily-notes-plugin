@@ -14,7 +14,7 @@ import { createServer } from "net";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { emulateDevice, layoutFrom } from "./window-layout.mjs";
+import { boundsFor, emulateDevice, layoutFrom, screensFrom } from "./window-layout.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
@@ -128,26 +128,20 @@ const connect = async (port) => {
     }
 };
 
-/**
- * Every display in top-left origin, the space Obsidian stores bounds in. NSScreen
- * reports Cocoa frames — origin bottom-left of the *main* display, y upwards — so
- * each is flipped against the main display's height.
- */
+/** Every display macOS reports, or null when it will not say. */
 const screens = () => {
     const script =
         "ObjC.import('AppKit'); $.NSScreen.screens.js.map(s => " +
         "[s.frame.origin.x, s.frame.origin.y, s.frame.size.width, s.frame.size.height].join(',')).join(';')";
     try {
-        const out = execFileSync("osascript", ["-l", "JavaScript", "-e", script], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "ignore"],
-        }).trim();
-        const frames = out.split(";").map((frame) => frame.split(",").map(Number));
-        const mainHeight = frames[0]?.[3];
-        if (!mainHeight) return null;
-        return frames.map(([x, y, width, height]) => ({ x, y: mainHeight - (y + height), width, height }));
+        return screensFrom(
+            execFileSync("osascript", ["-l", "JavaScript", "-e", script], {
+                encoding: "utf8",
+                stdio: ["ignore", "pipe", "ignore"],
+            }).trim()
+        );
     } catch {
-        return null; // Fall through: macOS clamps a window back onto a display.
+        return null;
     }
 };
 
@@ -188,12 +182,10 @@ writeFileSync(
 // in place instead of moving it afterwards.
 {
     const boundsPath = join(userDataDir, `${VAULT_ID}.json`);
-    // --keep-size keeps the last session's size, and the rest of the file with
-    // it — Obsidian stores zoom and maximised state there too.
-    let bounds = { x: 60, y: 40, isMaximized: false, zoom: 0 };
+    let saved = {};
     if (existsSync(boundsPath)) {
         try {
-            bounds = { ...bounds, ...JSON.parse(readFileSync(boundsPath, "utf8")) };
+            saved = JSON.parse(readFileSync(boundsPath, "utf8"));
         } catch {
             // A corrupt bounds file is not worth failing the launch over.
         }
@@ -213,20 +205,7 @@ writeFileSync(
     // window opens wherever the last run happened to put it. This window is one
     // to watch, so it belongs on the main display unless asked otherwise — the
     // hidden e2e run is the one that goes to a second screen.
-    bounds.x = screen.x + 40;
-    bounds.y = screen.y + 40;
-    bounds.isMaximized = false;
-    if (windowSize) {
-        bounds.width = Math.min(windowSize.width, screen.width - 80);
-        bounds.height = Math.min(windowSize.height, screen.height - 80);
-    }
-    // An explicit position wins over the display's default corner.
-    if (position) {
-        bounds.x = position.x;
-        bounds.y = position.y;
-        bounds.isMaximized = false;
-    }
-    writeFileSync(boundsPath, JSON.stringify(bounds));
+    writeFileSync(boundsPath, JSON.stringify(boundsFor({ saved, screen, size: windowSize, position })));
 }
 
 const port = await freePort();
