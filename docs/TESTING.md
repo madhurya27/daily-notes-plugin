@@ -86,7 +86,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 ### Live updates
 
 - New daily note appears at the right position immediately. **[e2e]**
-- The first note in an empty vault replaces the empty state without reopening.
+- The first note in an empty vault replaces the empty state without reopening. **[e2e]**
+- Deleting the last daily note brings the empty state back. **[e2e]**
 - Editing a visible note updates the stream.
 - Editing frontmatter updates properties, and none leaks into the body.
 - Renaming updates header and sort order, and keeps collapsed sections collapsed.

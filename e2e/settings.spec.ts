@@ -34,4 +34,27 @@ test.describe("Obsidian's daily-notes settings change under a live stream", () =
         // The whole stream is replaced: the old folder's notes are gone.
         await expect(container.locator(".daily-note-title")).toHaveText(["2026-06-05"]);
     });
+
+    test("says so when the last daily note is deleted, and clears once one is back", async ({ obsidian }) => {
+        const { page, vaultPath } = obsidian;
+        const container = await openStream(page);
+
+        await page.evaluate(async (path) => {
+            await window.app.vault.createFolder("Journal").catch(() => {});
+            await window.app.vault.create(path, "## The only note\n");
+        }, JOURNAL_NOTE);
+        writeDailyNotesConfig(vaultPath, { folder: "Journal", format: "YYYY-MM-DD" });
+        await expect(container.locator(".daily-note-title")).toHaveText(["2026-06-05"]);
+
+        await page.evaluate(async (path) => {
+            await window.app.vault.delete(window.app.vault.getAbstractFileByPath(path)!);
+        }, JOURNAL_NOTE);
+        await expect(container.locator(".daily-notes-empty-state")).toBeVisible();
+
+        await page.evaluate(async (path) => {
+            await window.app.vault.create(path, "## Back again\n");
+        }, JOURNAL_NOTE);
+        await expect(container.locator(".daily-note-title")).toHaveText(["2026-06-05"]);
+        await expect(container.locator(".daily-notes-empty-state")).toHaveCount(0);
+    });
 });

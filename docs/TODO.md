@@ -4,8 +4,6 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
-- [ ] Empty state — a vault with no daily notes renders blank; say so instead. No create button: see
-  `docs/decisions.md` (2026-09-22).
 - [ ] Filtering: filter by tag/header — unblocked by note unloading.
 - [ ] Per-note edit action — open in a split, or append to today's note. Read-only stream stays; see
   `docs/decisions.md` (2026-09-15).
