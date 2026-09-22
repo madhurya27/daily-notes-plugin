@@ -67,3 +67,19 @@ export async function openTagSearch(app: App, tag: string, pane: PaneType | bool
     await leaf.setViewState({ type: "search", active: true });
     (leaf.view as SearchView).setQuery?.(query);
 }
+
+/** No public API: the type manager resolves a key to the widget that draws its row. */
+type MetadataTypeManager = {
+    getTypeInfo?(key: string, value: unknown): { expected: { icon: string } | null; inferred: { icon: string } | null };
+};
+
+/**
+ * The icon Obsidian's own properties panel shows for a key: the one on the type
+ * assigned to it, else on the type its value infers. Null once the internal is
+ * gone, so a caller can fall back.
+ */
+export function getPropertyIcon(app: App, key: string, value: unknown): string | null {
+    const manager = (app as unknown as { metadataTypeManager?: MetadataTypeManager }).metadataTypeManager;
+    const info = manager?.getTypeInfo?.(key, value);
+    return (info?.expected ?? info?.inferred)?.icon ?? null;
+}

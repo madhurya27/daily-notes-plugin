@@ -1,3 +1,4 @@
+import type { Locator } from "@playwright/test";
 import { test, expect, openStream, closeSearchPanes, SEEDED_DAYS } from "./obsidian";
 
 test.describe("daily notes stream in real Obsidian", () => {
@@ -579,6 +580,53 @@ test.describe("daily notes stream in real Obsidian", () => {
             // missing.
             expect(Math.abs(stream[part].height - native[part].height), part).toBeLessThanOrEqual(1);
         }
+    });
+
+    test("shows the icon Obsidian's own properties panel shows for each key", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            plugin.settings.propertiesCollapsed = false;
+            await plugin.saveSettings();
+        });
+
+        // setIcon names the svg after the icon it drew. The two panels label a
+        // row differently: Obsidian with an attribute, the stream with the key
+        // it printed.
+        const iconsByKey = (root: Locator, keyFrom: "attribute" | "text") =>
+            root.evaluate(
+                (el, mode) =>
+                    Object.fromEntries(
+                        Array.from(el.querySelectorAll(".metadata-property")).map((row) => [
+                            mode === "attribute"
+                                ? row.getAttribute("data-property-key")
+                                : row.querySelector(".metadata-property-key-input")!.textContent!.toLowerCase(),
+                            Array.from(row.querySelector(".metadata-property-icon svg")!.classList)
+                                .filter((name) => name !== "svg-icon")
+                                .join(" "),
+                        ])
+                    ),
+                keyFrom
+            );
+
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-14.md");
+            await window.app.workspace.getLeaf(false).openFile(file!);
+        });
+        const note = page.locator(".workspace-leaf.mod-active .view-content").first();
+        await expect(note.locator(".metadata-property").first()).toBeVisible();
+        const native = await iconsByKey(note, "attribute");
+
+        const container = await openStream(page);
+        const block = container.locator(`.daily-note-block[data-source-path="Notes/2026-03-14.md"]`);
+        await expect(block.locator(".metadata-property").first()).toBeVisible();
+        const stream = await iconsByKey(block, "text");
+
+        expect(stream).toEqual(native);
+        // A guard on the comparison itself: identical icons everywhere would
+        // satisfy it while proving nothing about the types.
+        expect(new Set(Object.values(stream).map(String)).size).toBeGreaterThan(1);
     });
 
     test("opens the search pane on an inline tag, as Obsidian does everywhere else", async ({ obsidian }) => {

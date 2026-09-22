@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { App } from "obsidian";
-import { getReadableLineLength, onVaultConfigChange, openTagSearch } from "../src/obsidianInternals";
+import { getPropertyIcon, getReadableLineLength, onVaultConfigChange, openTagSearch } from "../src/obsidianInternals";
 
 /** Builds an App-shaped object; `config` is the internal vault config under test. */
 const makeApp = (config?: unknown): App => ({ vault: { config } }) as unknown as App;
@@ -148,5 +148,48 @@ describe("openTagSearch", () => {
 
     it("does nothing when the internal plugin registry is unavailable", () => {
         expect(() => openTagSearch({} as App, "work")).not.toThrow();
+    });
+});
+
+describe("getPropertyIcon", () => {
+    /** The type manager's shape: `expected` is the assigned type, `inferred` the value's. */
+    const makeTypeApp = (getTypeInfo?: unknown): App =>
+        ({ metadataTypeManager: getTypeInfo ? { getTypeInfo } : {} }) as unknown as App;
+
+    it("takes the icon off the type assigned to the key", () => {
+        const app = makeTypeApp(() => ({
+            expected: { type: "date", icon: "lucide-calendar" },
+            inferred: { type: "text", icon: "lucide-text" },
+        }));
+        expect(getPropertyIcon(app, "created", "2026-09-22")).toBe("lucide-calendar");
+    });
+
+    it("falls back to the type inferred from the value when the key has none assigned", () => {
+        const app = makeTypeApp(() => ({ expected: null, inferred: { type: "number", icon: "lucide-binary" } }));
+        expect(getPropertyIcon(app, "steps", 12000)).toBe("lucide-binary");
+    });
+
+    it("asks about the key and its value, as Obsidian's own property row does", () => {
+        const getTypeInfo = vi.fn().mockReturnValue({ expected: { icon: "lucide-list" }, inferred: null });
+        getPropertyIcon(makeTypeApp(getTypeInfo), "topics", ["a", "b"]);
+        expect(getTypeInfo).toHaveBeenCalledWith("topics", ["a", "b"]);
+    });
+
+    it("returns null when the type manager resolves no type", () => {
+        expect(
+            getPropertyIcon(
+                makeTypeApp(() => undefined),
+                "mystery",
+                null
+            )
+        ).toBeNull();
+    });
+
+    it("returns null when the internal type manager is unavailable", () => {
+        expect(getPropertyIcon({} as App, "tags", ["a"])).toBeNull();
+    });
+
+    it("returns null when the type manager exposes no lookup", () => {
+        expect(getPropertyIcon(makeTypeApp(), "tags", ["a"])).toBeNull();
     });
 });

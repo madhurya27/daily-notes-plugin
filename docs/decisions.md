@@ -3,6 +3,18 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-22 — Property icons come from Obsidian's type manager
+
+**Decision:** `getPropertyIcon` takes the icon off the widget
+`metadataTypeManager.getTypeInfo(key, value)` resolves; the key-name map is the
+fallback when the internal goes.
+
+**Why:** Obsidian draws the icon for the property's *type*, assigned or
+inferred, so a name guess disagreed with the note's own panel everywhere but
+tags — `aliases` is an arrow, text is `lucide-text`, not `file-text`.
+
+**Rejected:** a type→icon table of our own — Obsidian's registry ships new types.
+
 ## 2026-09-22 — A jump lands on the nearest older note
 
 **Decision:** `jumpToDate` loads batches until the target is in the stream,
