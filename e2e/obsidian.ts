@@ -40,7 +40,7 @@ export const SEEDED_DAYS = Number(process.env.E2E_SEED_DAYS ?? 14);
 const NEWEST_DAY = Date.UTC(2026, 2, 14);
 
 /** `daysBack` days before the newest note, as YYYY-MM-DD. */
-function seededDate(daysBack: number): string {
+export function seededDate(daysBack: number): string {
     return new Date(NEWEST_DAY - daysBack * 86_400_000).toISOString().slice(0, 10);
 }
 

@@ -22,3 +22,4 @@
 - [x] Unload off-screen notes: only blocks near the viewport hold content, and a placeholder holds their space
 - [x] Tag click opens Obsidian's search on that tag; mod-click opens it in a new pane
 - [x] Properties panel shown by default
+- [x] Jump to date: a modal from the view header or the command palette, loading the batches in between

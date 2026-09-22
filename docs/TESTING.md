@@ -44,6 +44,15 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - Scrolling to the bottom loads the next batch without duplicates. **[e2e]**
 - Tall window, short notes → loading continues past the first batch.
 
+### Jump to date
+
+- The calendar action in the view header opens the modal; `Daily Notes Stream: Jump to date` opens the view
+  first, then the modal. **[e2e]**
+- A date far back loads the batches in between and puts that note at the top of the pane. **[e2e]**
+- A date with no note lands on the nearest older one. **[e2e]**
+- A date older than the whole vault raises "No daily note on or before that date." and moves nothing. **[e2e]**
+- Enter in the date field jumps, as the button does.
+
 ### Collapsible content
 
 - A header chevron collapses its content; the chevron rotates. **[e2e]**

@@ -6,7 +6,7 @@ import {
     __getSettingsCallCount,
     __resetSettingsCallCount,
 } from "obsidian-daily-notes-interface";
-import { TFile } from "obsidian";
+import { TFile, moment } from "obsidian";
 
 describe("DailyNoteService", () => {
     beforeEach(() => {
@@ -354,6 +354,46 @@ describe("DailyNoteService", () => {
 
             expect(svc.refreshIfSettingsChanged()).toBe(true);
             expect(svc.length).toBe(1);
+        });
+    });
+
+    describe("instance: indexForDate", () => {
+        /** Three notes, newest first: 2025-01-10, 2025-01-05, 2025-01-01. */
+        function svcWithGaps(): DailyNoteService {
+            __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-05.md", "Notes/2025-01-10.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+            return svc;
+        }
+
+        it("finds the note for an exact date", () => {
+            expect(svcWithGaps().indexForDate(moment("2025-01-05", "YYYY-MM-DD", true))).toBe(1);
+        });
+
+        it("falls back to the next note older than a date with no note", () => {
+            expect(svcWithGaps().indexForDate(moment("2025-01-07", "YYYY-MM-DD", true))).toBe(1);
+        });
+
+        it("returns the newest note when the date is newer than all of them", () => {
+            expect(svcWithGaps().indexForDate(moment("2026-01-01", "YYYY-MM-DD", true))).toBe(0);
+        });
+
+        it("returns -1 when every note is newer than the date", () => {
+            expect(svcWithGaps().indexForDate(moment("2024-12-31", "YYYY-MM-DD", true))).toBe(-1);
+        });
+
+        it("returns -1 for an empty stream", () => {
+            const svc = new DailyNoteService();
+            svc.initialize();
+
+            expect(svc.indexForDate(moment("2025-01-05", "YYYY-MM-DD", true))).toBe(-1);
+        });
+
+        it("ignores the time of day: any moment within the day hits that day's note", () => {
+            const midday = moment("2025-01-05", "YYYY-MM-DD", true);
+            midday.add(13, "hours");
+
+            expect(svcWithGaps().indexForDate(midday)).toBe(1);
         });
     });
 });

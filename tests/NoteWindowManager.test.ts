@@ -646,3 +646,34 @@ describe("NoteWindowManager teardown", () => {
         expect(observers.margins).toHaveLength(4);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Layout changes
+// ---------------------------------------------------------------------------
+
+describe("NoteWindowManager.layoutChanges", () => {
+    it("counts a render, so a caller can tell the stream is still settling", async () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        const before = manager.layoutChanges;
+
+        fire(observers.render, block, true);
+        await settle();
+
+        expect(manager.layoutChanges).toBe(before + 1);
+    });
+
+    it("counts an unload: shedding a note's content moves everything below it", async () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        const before = manager.layoutChanges;
+
+        fire(observers.unload, block, false);
+
+        expect(manager.layoutChanges).toBe(before + 1);
+    });
+});

@@ -4,7 +4,7 @@ class MockMoment {
     _isValid: boolean;
 
     constructor(dateStr?: string, format?: string, strict?: boolean) {
-        if (!dateStr) {
+        if (dateStr === undefined) {
             this.date = new Date();
             this._isValid = true;
         } else {
@@ -28,6 +28,22 @@ class MockMoment {
 
     isValid() {
         return this._isValid;
+    }
+    clone() {
+        const copy = new MockMoment();
+        copy.date = new Date(this.date.getTime());
+        copy._isValid = this._isValid;
+        return copy;
+    }
+    /** Only "day" — the sole granularity the plugin truncates to. */
+    startOf(_unit: "day") {
+        this.date.setHours(0, 0, 0, 0);
+        return this;
+    }
+    add(amount: number, unit: "hours" | "days") {
+        const ms = unit === "hours" ? 3600_000 : 86_400_000;
+        this.date = new Date(this.date.getTime() + amount * ms);
+        return this;
     }
     isAfter(other: MockMoment) {
         return this.date.getTime() > other.date.getTime();
@@ -205,6 +221,8 @@ export class Component {
 export class ItemView extends Component {
     contentEl: any;
     app: any;
+    /** View actions, recorded so tests can invoke what onOpen() wired up. */
+    actions: { icon: string; title: string; callback: (_evt: any) => any }[] = [];
     constructor(leaf: WorkspaceLeaf) {
         super();
         this.app = leaf.app;
@@ -213,6 +231,54 @@ export class ItemView extends Component {
     }
     registerEvent() {}
     register() {}
+    addAction(icon: string, title: string, callback: (_evt: any) => any) {
+        this.actions.push({ icon, title, callback });
+        return document.createElement("div");
+    }
+}
+
+/** Records every notice raised, so tests can assert on the message. */
+export class Notice {
+    static shown: string[] = [];
+    static reset() {
+        Notice.shown = [];
+    }
+    constructor(message: string) {
+        Notice.shown.push(message);
+    }
+}
+
+/** Obsidian's keymap scope: the modal owns it, so it needs no teardown. */
+export class Scope {
+    registered: { modifiers: string[]; key: string; callback: () => unknown }[] = [];
+    register(modifiers: string[], key: string, callback: () => unknown) {
+        this.registered.push({ modifiers, key, callback });
+        return callback;
+    }
+    /** Fires what `register` bound to `key`, as a hotkey press would. */
+    press(key: string) {
+        for (const h of this.registered) if (h.key === key) h.callback();
+    }
+}
+
+export class Modal {
+    app: any;
+    scope = new Scope();
+    contentEl: HTMLElement = document.createElement("div");
+    titleEl: HTMLElement = document.createElement("div");
+    constructor(app: any) {
+        this.app = app;
+    }
+    setTitle(title: string) {
+        this.titleEl.textContent = title;
+        return this;
+    }
+    open() {
+        (this as any).onOpen?.();
+    }
+    close() {
+        (this as any).onClose?.();
+    }
 }
 
 export const MarkdownRenderer = {
@@ -297,6 +363,39 @@ export class ToggleComponent {
     }
 }
 
+/** Stands in for Obsidian's TextComponent. */
+export class TextComponent {
+    inputEl: HTMLInputElement = document.createElement("input");
+    constructor(containerEl?: HTMLElement) {
+        containerEl?.appendChild(this.inputEl);
+    }
+    get value() {
+        return this.inputEl.value;
+    }
+    setValue(value: string) {
+        this.inputEl.value = value;
+        return this;
+    }
+}
+
+/** Stands in for Obsidian's ButtonComponent; `click()` fires the handler. */
+export class ButtonComponent {
+    buttonEl: HTMLButtonElement = document.createElement("button");
+    cta = false;
+    setButtonText(text: string) {
+        this.buttonEl.textContent = text;
+        return this;
+    }
+    setCta() {
+        this.cta = true;
+        return this;
+    }
+    onClick(cb: (_evt: any) => unknown) {
+        this.buttonEl.addEventListener("click", cb);
+        return this;
+    }
+}
+
 export class Setting {
     /** Every Setting built since the last reset, in construction order. */
     static created: Setting[] = [];
@@ -307,9 +406,12 @@ export class Setting {
     name = "";
     desc = "";
     toggles: ToggleComponent[] = [];
+    texts: TextComponent[] = [];
+    buttons: ButtonComponent[] = [];
+    readonly itemEl: HTMLElement;
 
     constructor(containerEl: HTMLElement) {
-        containerEl.createDiv({ cls: "setting-item" });
+        this.itemEl = containerEl.createDiv({ cls: "setting-item" });
         Setting.created.push(this);
     }
     setName(name: string) {
@@ -318,6 +420,19 @@ export class Setting {
     }
     setDesc(desc: string) {
         this.desc = desc;
+        return this;
+    }
+    addText(cb: (_text: TextComponent) => unknown) {
+        const text = new TextComponent(this.itemEl);
+        cb(text);
+        this.texts.push(text);
+        return this;
+    }
+    addButton(cb: (_button: ButtonComponent) => unknown) {
+        const button = new ButtonComponent();
+        this.itemEl.appendChild(button.buttonEl);
+        cb(button);
+        this.buttons.push(button);
         return this;
     }
     addToggle(cb: (_toggle: ToggleComponent) => unknown) {

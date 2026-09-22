@@ -16,6 +16,7 @@ export function makePlugin() {
             refreshIfSettingsChanged: vi.fn().mockReturnValue(false),
             insertSorted: vi.fn().mockReturnValue(-1),
             removeSorted: vi.fn().mockReturnValue(-1),
+            indexForDate: vi.fn().mockReturnValue(-1),
         },
         collapseStore: new CollapsibleStateStore(app as any),
     } as any;
@@ -72,6 +73,7 @@ export function makeStubbedView(app: object = makeApp()) {
         refresh: vi.fn().mockResolvedValue(undefined),
         heightOf: vi.fn().mockReturnValue(undefined),
         refreshMargins: vi.fn(),
+        layoutChanges: 0,
     };
     (view as any).collapsible = { delegate: vi.fn() };
     (view as any).scroll = {

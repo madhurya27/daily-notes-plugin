@@ -46,11 +46,16 @@ proto.createDiv = function (params?: { cls?: string; text?: string }) {
     return el;
 };
 
-proto.createEl = function (tag: string, params?: { cls?: string; text?: string; href?: string }) {
+proto.createEl = function (
+    tag: string,
+    params?: { cls?: string; text?: string; href?: string; type?: string; placeholder?: string }
+) {
     const el = document.createElement(tag);
     if (params?.cls) el.addClass(params.cls);
     if (params?.text) el.setText(params.text);
     if (params?.href) el.setAttribute("href", params.href);
+    if (params?.type) el.setAttribute("type", params.type);
+    if (params?.placeholder) el.setAttribute("placeholder", params.placeholder);
     this.appendChild(el);
     return el;
 };
@@ -58,6 +63,9 @@ proto.createEl = function (tag: string, params?: { cls?: string; text?: string; 
 proto.createSpan = function (params?: { cls?: string; text?: string }) {
     return this.createEl("span", params);
 };
+
+/** jsdom implements no scrolling; Obsidian runs on Chromium, which does. */
+proto.scrollIntoView ??= function () {};
 
 proto.onClickEvent = function (handler: (e: MouseEvent) => void) {
     this.addEventListener("click", handler);

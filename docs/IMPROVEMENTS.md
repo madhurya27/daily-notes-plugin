@@ -34,28 +34,6 @@ no `community-plugins.json` entry to append.
 Own branch, released as `1.1.0`. Update `README.md`, `docs/TESTING.md`, and move the item from `TODO.md` to
 `DONE.md` in the same branch.
 
-### F1. Jump to date
-
-Deep history is unreachable through batch-10 scrolling alone.
-
-**Service** — `indexForDate(target: Moment): number`: index of the first note (newest-first) whose day is on or
-before `target`; `-1` when the list is empty or all notes are newer. Binary search `_sorted` at day granularity.
-
-**View** — `async jumpToDate(target: Moment)`:
-
-1. `-1` → `new Notice("No daily note on or before that date.")`, return.
-2. Load batches while `state.length <= index`, through `enqueue()` so it does not fight `loadPending`.
-3. `findNoteElement` then `scrollIntoView({ block: "start" })`. jsdom has no `scrollIntoView` — stub it in
-   `tests/setup.ts`.
-
-**UI** — `JumpToDateModal extends Modal`: an `<input type="date">` and a Jump button; parse with
-`moment(value, "YYYY-MM-DD", true)`. Add `Modal` to the obsidian mock. Reach it from a view action
-(`addAction("calendar-search", …)`) and a `jump-to-date` command that opens the view first. No "scroll to
-today": the stream is newest-first, so today is `scrollTop = 0`.
-
-**Tests** — `indexForDate`: exact hit, target between two notes, newer than all, older than all, empty list.
-Jump loads exactly enough batches; an already-loaded note loads none; invalid input does nothing.
-
 ### F2. Create today's note
 
 Without today's note the stream silently starts at yesterday.
