@@ -1,71 +1,9 @@
-// Mock moment
-class MockMoment {
-    date: Date;
-    _isValid: boolean;
-
-    constructor(dateStr?: string, format?: string, strict?: boolean) {
-        if (dateStr === undefined) {
-            this.date = new Date();
-            this._isValid = true;
-        } else {
-            // Simple parsing for YYYY-MM-DD or YYYY/MM/DD
-            const parts = dateStr.match(/(\d{4})[-/](\d{2})[-/](\d{2})/);
-            // Simple parsing for YYYYMMDD
-            const compact = dateStr.match(/(\d{4})(\d{2})(\d{2})/);
-
-            if (parts) {
-                this.date = new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
-                this._isValid = true;
-            } else if (compact) {
-                this.date = new Date(parseInt(compact[1]), parseInt(compact[2]) - 1, parseInt(compact[3]));
-                this._isValid = true;
-            } else {
-                this.date = new Date("Invalid");
-                this._isValid = false;
-            }
-        }
-    }
-
-    isValid() {
-        return this._isValid;
-    }
-    clone() {
-        const copy = new MockMoment();
-        copy.date = new Date(this.date.getTime());
-        copy._isValid = this._isValid;
-        return copy;
-    }
-    /** Only "day" — the sole granularity the plugin truncates to. */
-    startOf(_unit: "day") {
-        this.date.setHours(0, 0, 0, 0);
-        return this;
-    }
-    add(amount: number, unit: "hours" | "days") {
-        const ms = unit === "hours" ? 3600_000 : 86_400_000;
-        this.date = new Date(this.date.getTime() + amount * ms);
-        return this;
-    }
-    isAfter(other: MockMoment) {
-        return this.date.getTime() > other.date.getTime();
-    }
-    isBefore(other: MockMoment) {
-        return this.date.getTime() < other.date.getTime();
-    }
-    valueOf() {
-        return this.date.getTime();
-    }
-    format(fmt: string) {
-        const pad = (n: number) => String(n).padStart(2, "0");
-        return fmt
-            .replace(/YYYY/g, String(this.date.getFullYear()))
-            .replace(/MM/g, pad(this.date.getMonth() + 1))
-            .replace(/DD/g, pad(this.date.getDate()));
-    }
-}
-
-export function moment(inp?: string, fmt?: string, strict?: boolean) {
-    return new MockMoment(inp, fmt, strict);
-}
+/**
+ * Obsidian bundles moment and re-exports it, so the mock hands back the real
+ * one: the plugin reads the vault's own date format, and a stand-in that only
+ * understood ISO would pass every test a `DD-MM-YYYY` vault fails.
+ */
+export { default as moment } from "moment";
 
 export function normalizePath(path: string): string {
     return path
@@ -281,6 +219,56 @@ export class Modal {
     }
 }
 
+/**
+ * Obsidian's suggester: a prompt input whose every keystroke re-runs
+ * `getSuggestions` and redraws the list. The real one owns the keyboard and the
+ * scrolling; what a test needs is the query-in, choice-out loop, so `type` and
+ * `choose` stand in for the reader.
+ */
+export class SuggestModal<T> extends Modal {
+    inputEl: HTMLInputElement = document.createElement("input");
+    resultContainerEl: HTMLElement = document.createElement("div");
+    /** How many suggestions the list holds; the subclass lowers it. */
+    limit = 100;
+    emptyStateText = "No results";
+    private suggestions: T[] = [];
+
+    constructor(app: any) {
+        super(app);
+        const container = this.contentEl.createDiv({ cls: "prompt-input-container" });
+        container.appendChild(this.inputEl);
+        this.contentEl.appendChild(this.resultContainerEl);
+        this.inputEl.addEventListener("input", () => this.type(this.inputEl.value));
+    }
+
+    setPlaceholder(text: string) {
+        this.inputEl.placeholder = text;
+    }
+
+    /** Obsidian's own: focus the query and draw the unfiltered list. */
+    onOpen() {
+        this.type("");
+    }
+
+    /** Runs the query the reader typed and redraws the list. */
+    type(query: string) {
+        this.inputEl.value = query;
+        const self = this as any;
+        this.suggestions = (self.getSuggestions(query) as T[]).slice(0, this.limit);
+        this.resultContainerEl.empty();
+        for (const suggestion of this.suggestions) {
+            self.renderSuggestion(suggestion, this.resultContainerEl.createDiv({ cls: "suggestion-item" }));
+        }
+    }
+
+    /** Picks the nth suggestion, as clicking or pressing Enter on it would. */
+    choose(index = 0) {
+        const suggestion = this.suggestions[index];
+        if (suggestion === undefined) return;
+        (this as any).onChooseSuggestion(suggestion, new KeyboardEvent("keydown"));
+    }
+}
+
 export const MarkdownRenderer = {
     render: () => Promise.resolve(),
 };
@@ -382,6 +370,17 @@ export class TextComponent {
 export class ButtonComponent {
     buttonEl: HTMLButtonElement = document.createElement("button");
     cta = false;
+    constructor(containerEl?: HTMLElement) {
+        containerEl?.appendChild(this.buttonEl);
+    }
+    setIcon(iconName: string) {
+        setIcon(this.buttonEl, iconName);
+        return this;
+    }
+    setTooltip(tooltip: string) {
+        this.buttonEl.setAttribute("aria-label", tooltip);
+        return this;
+    }
     setButtonText(text: string) {
         this.buttonEl.textContent = text;
         return this;

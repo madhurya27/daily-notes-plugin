@@ -1,42 +1,116 @@
-import { App, Modal, Setting, TextComponent, moment } from "obsidian";
-import type { Moment } from "./DailyNoteService";
+import { App, ButtonComponent, SuggestModal, moment } from "obsidian";
+import type { DailyNoteService, Moment } from "./DailyNoteService";
 
-const DATE_FORMAT = "YYYY-MM-DD";
+/** The one format every reader can fall back on, whatever their vault uses. */
+const ISO_FORMAT = "YYYY-MM-DD";
 
-/** Asks for a date and hands back the moment it parses to. */
-export class JumpToDateModal extends Modal {
+/** As many dates as a reader scans before narrowing the query instead. */
+export const JUMP_SUGGESTION_LIMIT = 50;
+
+/** A date the reader can jump to; `fallback` when no note carries it. */
+interface JumpChoice {
+    date: Moment;
+    /** The date as this vault's filenames spell it. */
+    label: string;
+    /** What the jump will do instead, when the date itself has no note. */
+    fallback: string | null;
+}
+
+/**
+ * Offers the days this vault actually has a note for, so a jump lands on one
+ * the reader chose rather than on the silent nearest older note. A date with no
+ * note is still reachable — as one entry that says what it will do.
+ */
+export class JumpToDateModal extends SuggestModal<JumpChoice> {
+    private readonly service: DailyNoteService;
     private readonly onSubmit: (_target: Moment) => void;
+    /** Snapshotted on open: the vault cannot change under a modal. */
+    private readonly choices: JumpChoice[];
 
-    constructor(app: App, onSubmit: (_target: Moment) => void) {
+    constructor(app: App, service: DailyNoteService, onSubmit: (_target: Moment) => void) {
         super(app);
+        this.service = service;
         this.onSubmit = onSubmit;
+        this.limit = JUMP_SUGGESTION_LIMIT;
+        this.choices = service.dates().map((date) => this.choice(date, null));
+
+        this.setPlaceholder(`Jump to a date, e.g. ${service.formatDate(moment())}`);
+        this.emptyStateText = "No daily note, and no date to jump to.";
+        this.addCalendarButton();
     }
 
-    onOpen(): void {
-        this.setTitle("Jump to date");
+    getSuggestions(query: string): JumpChoice[] {
+        const needle = query.trim().toLowerCase();
+        if (!needle) return this.choices;
 
-        // A native date control: the platform's own picker, desktop and mobile.
-        // Full width, with the button under it, the way Obsidian's own modals
-        // lay a single field out — a Setting row would strand it at the right.
-        const field = new TextComponent(this.contentEl);
-        field.inputEl.type = "date";
-        field.inputEl.addClass("daily-notes-jump-input");
+        // Both haystacks: the reader may reach for ISO whatever their own
+        // filenames look like.
+        const matches = this.choices.filter(
+            (choice) => choice.label.toLowerCase().includes(needle) || choice.date.format(ISO_FORMAT).includes(needle)
+        );
+        if (matches.length > 0) return matches;
 
-        const submit = () => {
-            const target = moment(field.inputEl.value, DATE_FORMAT, true);
-            if (!target.isValid()) return;
-            this.close();
-            this.onSubmit(target);
-        };
+        const typed = this.readDate(query.trim());
+        return typed ? [this.choice(typed, "Jump to the nearest older note")] : [];
+    }
 
-        new Setting(this.contentEl).addButton((button) => button.setButtonText("Jump").setCta().onClick(submit));
+    renderSuggestion(choice: JumpChoice, el: HTMLElement): void {
+        el.createDiv({ text: choice.fallback ? `${choice.label} has no note` : choice.label });
+        if (choice.fallback) el.createDiv({ cls: "daily-notes-jump-fallback", text: choice.fallback });
+    }
 
-        // The modal owns its scope, so Enter needs no teardown of ours.
-        this.scope.register([], "Enter", submit);
-        field.inputEl.focus();
+    onChooseSuggestion(choice: JumpChoice): void {
+        this.onSubmit(choice.date);
     }
 
     onClose(): void {
         this.contentEl.empty();
+    }
+
+    /** This vault's own spelling first, then ISO. */
+    private readDate(text: string): Moment | null {
+        const own = this.service.parseNoteDate(text);
+        if (own) return own;
+        const iso = moment(text, ISO_FORMAT, true);
+        return iso.isValid() ? iso : null;
+    }
+
+    private choice(date: Moment, fallback: string | null): JumpChoice {
+        return { date, label: this.service.formatDate(date), fallback };
+    }
+
+    /**
+     * The platform's own date wheel, beside the query rather than instead of
+     * it: typing is faster for a date the reader knows, and picking is easier
+     * for one they are looking for. Left out where `showPicker` is unavailable,
+     * which would leave a button that does nothing.
+     */
+    private addCalendarButton(): void {
+        // SuggestModal always wraps its input in the prompt's container; the
+        // cast states that contract rather than branch on it.
+        const container = this.inputEl.parentElement as HTMLElement;
+        const picker = container.createEl("input", { type: "date", cls: "daily-notes-jump-picker" });
+        if (typeof picker.showPicker !== "function") {
+            picker.remove();
+            return;
+        }
+
+        new ButtonComponent(container)
+            .setIcon("calendar")
+            .setTooltip("Pick a date")
+            .onClick(() => picker.showPicker())
+            .buttonEl.addClass("clickable-icon", "daily-notes-jump-calendar");
+
+        // A property, not a registration: the picker dies with the modal, and
+        // one handler is all a single element can hold.
+        picker.onchange = () => {
+            const picked = moment(picker.value, ISO_FORMAT, true);
+            if (!picked.isValid()) return;
+            // Through the query, not straight to the jump: the reader sees what
+            // they picked, and can correct it without reopening the wheel.
+            this.inputEl.value = this.service.formatDate(picked);
+            this.inputEl.dispatchEvent(new Event("input"));
+            this.inputEl.focus();
+        };
     }
 }

@@ -20,6 +20,14 @@ export default tseslint.config(
         },
     },
     ...obsidianmd.configs.recommended,
+    // The obsidian mock hands tests the real moment, because Obsidian's own
+    // moment is what the plugin calls at run time: a stand-in that only spoke
+    // ISO would pass every test a vault dated DD-MM-YYYY fails. Dev-only —
+    // `obsidian` is external, so the bundle takes moment from the app.
+    {
+        files: ["package.json"],
+        rules: { "depend/ban-dependencies": ["error", { allowed: ["moment"] }] },
+    },
     // Node scripts, not plugin code: Node globals, and no typed linting to
     // configure since they sit outside every tsconfig.
     {

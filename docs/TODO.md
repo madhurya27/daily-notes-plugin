@@ -6,18 +6,12 @@ Ordered by priority, from the 2026-09 comparison against
 
 - [ ] Create today's note from the view — spec'd as F2 in `docs/IMPROVEMENTS.md`. Covers the empty state too:
   a vault with no daily notes currently renders blank.
-- [ ] Jump to date as a suggester over `_sorted`, not a date field — only days that have notes can be picked,
-  so the silent nearest-older fallback (`docs/decisions.md`, 2026-09-22) stops being needed; a query that
-  parses as a missing date offers that jump as one entry instead. Keep the native wheel with a calendar button
-  calling `showPicker()` on a hidden `input[type=date]`, feature-detected, writing the date back into the
-  query. `jumpToDate` and `indexForDate` are untouched — the modal only chooses the date. The e2e mobile
-  project is `emulateMobile` in desktop Chromium, so the wheel itself needs the iOS/Android pass. Falls back
-  to `Platform.isMobile` picking between the two modals if `showPicker` proves unavailable there.
 - [ ] Filtering: filter by tag/header — unblocked by note unloading.
 - [ ] Per-note edit action — open in a split, or append to today's note. Read-only stream stays; see
   `docs/decisions.md` (2026-09-15).
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
-  - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**
+  - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**; includes the jump suggester's date
+        wheel, which the e2e mobile project cannot reach (desktop Chromium)
   - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**; review the history first
   - [x] Dry-run the release workflow — `0.1.0` ran green and its draft release holds the three assets, each downloading to a byte-identical copy of the local build. Publish that draft once the repo is public
   - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`

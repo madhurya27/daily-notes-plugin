@@ -275,7 +275,7 @@ export class DailyNotesStreamView extends ItemView {
 
     /** Asks for a date, then jumps to it. */
     promptJumpToDate(): void {
-        new JumpToDateModal(this.app, (target) => void this.jumpToDate(target)).open();
+        new JumpToDateModal(this.app, this.plugin.service, (target) => void this.jumpToDate(target)).open();
     }
 
     /**

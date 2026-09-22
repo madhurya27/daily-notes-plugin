@@ -17,6 +17,9 @@ export function makePlugin() {
             insertSorted: vi.fn().mockReturnValue(-1),
             removeSorted: vi.fn().mockReturnValue(-1),
             indexForDate: vi.fn().mockReturnValue(-1),
+            dates: vi.fn().mockReturnValue([]),
+            formatDate: vi.fn().mockReturnValue(""),
+            parseNoteDate: vi.fn().mockReturnValue(null),
         },
         collapseStore: new CollapsibleStateStore(app as any),
     } as any;

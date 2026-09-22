@@ -40,6 +40,7 @@
         "globals": "14.0.0",
         "jiti": "2.6.1",
         "jsdom": "^28.1.0",
+        "moment": "2.29.4",
         "obsidian": "1.13.1",
         "prettier": "3.9.6",
         "tslib": "2.4.0",

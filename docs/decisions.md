@@ -3,6 +3,41 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-22 — The obsidian mock hands tests the real moment
+
+**Decision:** `tests/mocks/obsidian.ts` re-exports moment, a devDependency, in
+place of the hand-written stand-in. `depend/ban-dependencies` allows it for
+`package.json` only.
+
+**Why:** the stand-in ignored the format argument and understood ISO alone, so
+every test of a vault dated `DD-MM-YYYY` passed while the plugin failed. The
+bundle is unaffected: `obsidian` is external, and the app supplies moment.
+
+**Rejected:** teaching the stand-in each format — reimplementing moment to test
+code that calls moment.
+
+## 2026-09-22 — The jump prompt suggests the dates the vault has
+
+**Decision:** a `SuggestModal` over every note's date, written and matched in
+the vault's own daily-note format, with `YYYY-MM-DD` as a second haystack. A
+query that parses as a date no note carries is offered as one entry that says
+it will land on the nearest older note. A calendar button hands the query to
+the platform's date wheel through `showPicker()`, and is left out where that is
+unavailable.
+
+**Why:** a date field accepts days the vault has nothing for, so the nearest-
+older fallback happened silently and the reader could not tell a jump from a
+miss. Suggesting the real dates makes the common case a pick, and leaves the
+fallback something chosen. The format is read per vault because filenames are:
+a `DD-MM-YYYY` reader should not be offered ISO.
+
+**Rejected:** a date field with the fallback left silent — what this replaces.
+
+**Rejected:** `prepareFuzzySearch` — fuzzy over digits matches far too loosely.
+
+**Rejected:** keeping the date field on mobile behind `Platform.isMobile` — two
+paths to hold in step before the mobile pass has said either is needed.
+
 ## 2026-09-22 — Property icons come from Obsidian's type manager
 
 **Decision:** `getPropertyIcon` takes the icon off the widget
@@ -24,7 +59,8 @@ that old raises a notice and moves nothing.
 **Why:** a continuous feed has to leave the reader somewhere real, and the
 common case is a half-remembered date. Batches are cheap under
 [ADR 0006](adr/0006-unload-off-screen-notes.md): what is passed over stays
-placeholders.
+placeholders. The suggester above makes the fallback visible before it happens;
+this stays the behaviour behind it.
 
 **Rejected:** an error rather than the older note.
 

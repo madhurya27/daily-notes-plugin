@@ -340,7 +340,29 @@
     cursor: var(--cursor-link);
 }
 
-/* The jump modal's date field: one field, so it takes the modal's width. */
-.daily-notes-jump-input {
-    width: 100%;
+/* The jump suggester's calendar button, in the prompt beside the query. The
+   offset clears the prompt's own clear button, which is absolutely positioned
+   over the rightmost 48px on phone and desktop alike. The picker behind it is
+   never seen: it exists only for showPicker() to hang the date wheel off. */
+.prompt-input-container .daily-notes-jump-calendar {
+    position: absolute;
+    right: var(--size-4-12);
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.daily-notes-jump-picker {
+    position: absolute;
+    width: 0;
+    height: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* The line under a date no note carries, saying where the jump will land. */
+.daily-notes-jump-fallback {
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
 }

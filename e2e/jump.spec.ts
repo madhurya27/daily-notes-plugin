@@ -1,16 +1,29 @@
 import { test, expect, openStream, seededDate, SEEDED_DAYS } from "./obsidian";
 
-/** Fills the jump modal and submits it. */
-async function jumpTo(page: import("@playwright/test").Page, date: string) {
+/** Opens the jump suggester and returns its prompt. */
+async function openSuggester(page: import("@playwright/test").Page) {
     await page.locator('.view-action[aria-label="Jump to date"]').click();
-    const modal = page.locator(".modal");
-    await expect(modal).toBeVisible();
-    await modal.locator('input[type="date"]').fill(date);
-    await modal.getByRole("button", { name: "Jump" }).click();
-    await expect(modal).toBeHidden();
+    const prompt = page.locator(".prompt");
+    await expect(prompt).toBeVisible();
+    return prompt;
+}
+
+/** Types `date` into the suggester and takes the first thing it offers. */
+async function jumpTo(page: import("@playwright/test").Page, date: string) {
+    const prompt = await openSuggester(page);
+    await prompt.locator("input.prompt-input").fill(date);
+    await prompt.locator(".suggestion-item").first().click();
+    await expect(prompt).toBeHidden();
 }
 
 test.describe("jump to date", () => {
+    // Tests share one Obsidian instance, and a suggester left open puts a
+    // modal backdrop over the next test's first click.
+    test.afterEach(async ({ obsidian }) => {
+        await obsidian.page.keyboard.press("Escape");
+        await expect(obsidian.page.locator(".modal-container")).toHaveCount(0);
+    });
+
     test("loads past the first batch and brings the note to the top", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
@@ -37,6 +50,60 @@ test.describe("jump to date", () => {
                 })
             )
             .toBeLessThan(40);
+    });
+
+    // Only days the vault has a note for are listed, so the reader can no
+    // longer ask for one that silently lands somewhere else.
+    test("offers the vault's own dates, newest first", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+
+        const prompt = await openSuggester(page);
+        const items = prompt.locator(".suggestion-item");
+
+        await expect(items).toHaveCount(SEEDED_DAYS);
+        await expect(items.first()).toHaveText(seededDate(0));
+        await expect(items.last()).toHaveText(seededDate(SEEDED_DAYS - 1));
+    });
+
+    test("narrows to what is typed", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+
+        const prompt = await openSuggester(page);
+        await prompt.locator("input.prompt-input").fill(seededDate(3));
+
+        await expect(prompt.locator(".suggestion-item")).toHaveText([seededDate(3)]);
+    });
+
+    test("says a date has no note before jumping anywhere near it", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+
+        // A day past the end of the vault: no note carries it.
+        const prompt = await openSuggester(page);
+        await prompt.locator("input.prompt-input").fill(seededDate(-1));
+
+        await expect(prompt.locator(".suggestion-item")).toContainText("has no note");
+        await expect(prompt.locator(".daily-notes-jump-fallback")).toHaveText("Jump to the nearest older note");
+    });
+
+    test("fills the query from the platform's own date picker", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+
+        const prompt = await openSuggester(page);
+        const target = seededDate(2);
+
+        // The wheel itself is the platform's, so the test drives the hidden
+        // control the calendar button hands to it and checks what comes back.
+        await prompt.locator(".daily-notes-jump-picker").evaluate((el, value) => {
+            (el as HTMLInputElement).value = value;
+            el.dispatchEvent(new Event("change"));
+        }, target);
+
+        await expect(prompt.locator("input.prompt-input")).toHaveValue(target);
+        await expect(prompt.locator(".suggestion-item")).toHaveText([target]);
     });
 
     test("falls back to the nearest older note when the date has none", async ({ obsidian }) => {

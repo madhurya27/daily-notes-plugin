@@ -396,4 +396,54 @@ describe("DailyNoteService", () => {
             expect(svcWithGaps().indexForDate(midday)).toBe(1);
         });
     });
+
+    describe("dates + formatDate: what the jump suggester offers", () => {
+        it("lists every note's date, newest first", () => {
+            __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-03.md", "Notes/2025-01-02.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+
+            expect(svc.dates().map((d) => d.format("YYYY-MM-DD"))).toEqual(["2025-01-03", "2025-01-02", "2025-01-01"]);
+        });
+
+        // The suggester lists what the reader's own filenames say, so a vault
+        // that names its notes DD-MM-YYYY must not be offered ISO dates.
+        it("writes a date the way this vault names its notes", () => {
+            __setMockSettings({ format: "DD-MM-YYYY", folder: "Notes" });
+            const svc = new DailyNoteService();
+            svc.initialize();
+
+            expect(svc.formatDate(moment("2025-01-03", "YYYY-MM-DD", true))).toBe("03-01-2025");
+        });
+
+        it("reads a date back out of the way this vault writes it", () => {
+            __setMockSettings({ format: "DD-MM-YYYY", folder: "Notes" });
+            const svc = new DailyNoteService();
+            svc.initialize();
+
+            expect(svc.parseNoteDate("03-01-2025")?.format("YYYY-MM-DD")).toBe("2025-01-03");
+            expect(svc.parseNoteDate("2025-01-03")).toBeNull();
+        });
+
+        // dates() reads the format live, so between a settings change and the
+        // rebuild that follows it the cache holds notes the new format cannot
+        // name. Those drop out rather than sit in the suggester unparsed.
+        it("drops notes the format in force can no longer read", () => {
+            __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-31.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+            __setMockSettings({ format: "MMMM D, YYYY", folder: "Notes" });
+
+            expect(svc.dates()).toEqual([]);
+        });
+
+        // A nested format names the file after its last segment only.
+        it("writes only the segment the filename carries", () => {
+            __setMockSettings({ format: "YYYY/MM/YYYY-MM-DD", folder: "Notes" });
+            const svc = new DailyNoteService();
+            svc.initialize();
+
+            expect(svc.formatDate(moment("2025-01-03", "YYYY-MM-DD", true))).toBe("2025-01-03");
+        });
+    });
 });

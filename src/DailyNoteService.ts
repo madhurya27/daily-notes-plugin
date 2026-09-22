@@ -77,6 +77,23 @@ export class DailyNoteService {
         return this._sorted.length;
     }
 
+    /** Every note's date, newest first — the set a jump can land on. */
+    dates(): Moment[] {
+        const format = this.readFormat();
+        return this._sorted.flatMap((file) => this.parseBasename(file, format) ?? []);
+    }
+
+    /** `date` as this vault's filenames spell it, nested formats included. */
+    formatDate(date: Moment): string {
+        return date.format(this.readFormat().basename);
+    }
+
+    /** `text` read as one of this vault's filenames, or null when it is not. */
+    parseNoteDate(text: string): Moment | null {
+        const date = moment(text, this.readFormat().basename, true);
+        return date.isValid() ? date : null;
+    }
+
     /**
      * Binary search of the newest-first cache: the first index whose date is
      * at or before `time`, or `length` when none is. Unparseable entries sort

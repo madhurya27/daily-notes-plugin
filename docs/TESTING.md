@@ -46,10 +46,15 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 
 ### Jump to date
 
-- The header action and `Daily Notes Stream: Jump to date` both reach the modal. **[e2e]**
+- The header action and `Daily Notes Stream: Jump to date` both reach the suggester. **[e2e]**
+- It opens on every date the vault has a note for, newest first. **[e2e]**
+- Typing narrows it, in the vault's own format and in `YYYY-MM-DD`. **[e2e]**
 - A date far back loads the batches between and puts that note at the top of the pane. **[e2e]**
-- No note that day lands on the nearest older one; nothing that old raises a notice. **[e2e]**
-- Enter in the field jumps, as the button does.
+- A date with no note is offered as one entry saying so; choosing it lands on the nearest older. **[e2e]**
+- Nothing that old raises a notice and moves nothing. **[e2e]**
+- The calendar button opens the platform's date wheel, and what is picked fills the query. **[e2e]**
+  Drive the wheel itself by hand on iOS and Android: the e2e mobile project is desktop Chromium.
+- Set the daily-notes format to `DD-MM-YYYY`, then to `MMMM D, YYYY`: the list follows it.
 
 ### Collapsible content
 
