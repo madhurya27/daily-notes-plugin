@@ -23,3 +23,4 @@
 - [x] Tag click opens Obsidian's search on that tag; mod-click opens it in a new pane
 - [x] Properties panel shown by default
 - [x] Jump to date, from the view header or the command palette
+- [x] Flaky e2e scroll-position-on-unload: a block measuring nothing reserved nothing and collapsed
