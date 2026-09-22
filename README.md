@@ -13,7 +13,7 @@ A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first
 - Continuous stream sorted newest-first with infinite scroll (batch 10)
 - Live updates — new/modified/renamed/deleted notes reflect instantly
 - Collapsible headers (H1–H6) and nested lists
-- Frontmatter properties panel (toggleable, collapsible, native-styled)
+- Frontmatter properties panel, shown by default (toggleable, collapsible, native-styled)
 - Nested folder support (e.g. `Notes/2025/03/2025-03-04.md`)
 - Full Markdown rendering: images, embeds, wikilinks, tasks
 - Matches your Obsidian theme via native CSS variables
