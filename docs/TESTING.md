@@ -46,12 +46,10 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 
 ### Jump to date
 
-- The calendar action in the view header opens the modal; `Daily Notes Stream: Jump to date` opens the view
-  first, then the modal. **[e2e]**
-- A date far back loads the batches in between and puts that note at the top of the pane. **[e2e]**
-- A date with no note lands on the nearest older one. **[e2e]**
-- A date older than the whole vault raises "No daily note on or before that date." and moves nothing. **[e2e]**
-- Enter in the date field jumps, as the button does.
+- The header action and `Daily Notes Stream: Jump to date` both reach the modal. **[e2e]**
+- A date far back loads the batches between and puts that note at the top of the pane. **[e2e]**
+- No note that day lands on the nearest older one; nothing that old raises a notice. **[e2e]**
+- Enter in the field jumps, as the button does.
 
 ### Collapsible content
 

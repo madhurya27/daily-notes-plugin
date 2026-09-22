@@ -31,8 +31,8 @@ Reload Obsidian and enable **Daily Notes Stream** in **Settings → Community Pl
 Open via the ribbon icon (calendar-days) or command palette (`Daily Notes Stream: Open stream`).
 
 - Scroll down to load older notes.
-- Jump straight to a date with the calendar action in the view header, or `Daily Notes Stream: Jump to date`.
-  A date with no note lands on the nearest older one.
+- Jump to a date from the calendar action in the view header, or `Daily Notes Stream: Jump to date`; a date
+  with no note lands on the nearest older one.
 - Click a date header to open the original file.
 - Click a tag, inline or in the properties panel, to search for it; mod-click opens the search in a new pane.
 - **Settings**: toggle note properties display and default collapse state.

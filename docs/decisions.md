@@ -3,34 +3,34 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
-## 2026-09-22 — Jumping to a date scrolls to the nearest older note
+## 2026-09-22 — A jump lands on the nearest older note
 
-**Decision:** `jumpToDate` loads batches until the target index is in the
-stream, then scrolls to it. A date with no note lands on the newest note before
-it; a date older than the whole vault raises a notice and moves nothing.
+**Decision:** `jumpToDate` loads batches until the target is in the stream,
+then scrolls to it. No note that day lands on the newest one before it; nothing
+that old raises a notice and moves nothing.
 
-**Why:** the stream is a continuous feed, so a jump has to leave the reader
-somewhere real. Batch loading is cheap under [ADR 0006](adr/0006-unload-off-screen-notes.md)
-— the notes passed over are placeholders, not renders.
+**Why:** a continuous feed has to leave the reader somewhere real, and the
+common case is a half-remembered date. Batches are cheap under
+[ADR 0006](adr/0006-unload-off-screen-notes.md): what is passed over stays
+placeholders.
 
-**Rejected:** an error for a date with no note — the common case is a
-half-remembered date, and the note before it is what the reader wanted.
+**Rejected:** an error rather than the older note.
 
-**Rejected:** rendering only the target and discarding the notes above it —
-breaks the `state.notes` / `_sorted` pagination invariant.
+**Rejected:** rendering only the target — breaks the `state.notes` / `_sorted`
+pagination invariant.
 
-**Decision:** the scroll is re-applied, up to eight passes, until the target is
-at the top of a stream that has stopped rendering — `NoteWindowManager`
-counts its renders and unloads for the purpose. Scrolling to a note renders the
-notes around it, and one above it that outgrows its placeholder estimate pushes
-the target down: a single `scrollIntoView` left it 1600–1850px below the top in
-e2e, on both desktop and mobile.
+## 2026-09-22 — The jump re-applies its scroll until the stream stops rendering
+
+**Decision:** up to eight passes, ending when the target is at the top of the
+pane *and* `NoteWindowManager.layoutChanges` held still across the pass.
+
+**Why:** a note above it outgrows its placeholder estimate and pushes it down.
+One `scrollIntoView` left the target 1600–1850px short in e2e, desktop and
+mobile. The jump-sized answer to the `scrollTop`-correction item in
+[`TODO.md`](TODO.md), which stays open for scrolling in general.
 
 **Rejected:** stopping once the target stops moving — it is at the top the
 instant it is scrolled to, and the renders that displace it land after.
-
-This is the jump-sized answer to the `scrollTop`-correction item in
-[`TODO.md`](TODO.md), which stays open for scrolling in general.
 
 ## 2026-09-15 — The stream reloads on the vault's "raw" config event
 
