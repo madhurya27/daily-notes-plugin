@@ -1,11 +1,12 @@
 import { App, Component, Keymap, MarkdownRenderer, MarkdownView, TFile, setIcon } from "obsidian";
 import { CollapsibleManager } from "./CollapsibleManager";
-import { openTagSearch } from "./obsidianInternals";
+import { getPropertyIcon, openTagSearch } from "./obsidianInternals";
 import type { DailyNotesStreamSettings } from "./settings";
 
 /** Reserved key for the properties panel; a heading slug can never contain ":". */
 const PROPERTIES_SECTION_KEY = ":properties";
 
+/** Key-name guesses, for an Obsidian that no longer resolves property types. */
 const PROPERTY_ICONS: Record<string, string> = {
     tags: "tags",
     tag: "tags",
@@ -18,7 +19,7 @@ const PROPERTY_ICONS: Record<string, string> = {
     cover: "image",
 };
 
-function propertyIcon(key: string): string {
+function fallbackIcon(key: string): string {
     const name = key.toLowerCase();
     const known = PROPERTY_ICONS[name];
     if (known) return known;
@@ -217,7 +218,8 @@ export class NoteRenderer {
         const propertyRow = container.createDiv({ cls: "metadata-property" });
 
         const keyContainer = propertyRow.createDiv({ cls: "metadata-property-key" });
-        setIcon(keyContainer.createDiv({ cls: "metadata-property-icon" }), propertyIcon(key));
+        const icon = getPropertyIcon(this.app, key, value) ?? fallbackIcon(key);
+        setIcon(keyContainer.createDiv({ cls: "metadata-property-icon" }), icon);
         keyContainer.createSpan({ cls: "metadata-property-key-input", text: key });
 
         const valueEl = propertyRow.createDiv({ cls: "metadata-property-value" });

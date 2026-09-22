@@ -539,8 +539,11 @@ describe("NoteRenderer renderProperties", () => {
         );
     });
 
-    async function renderIcons(frontmatter: Record<string, unknown>): Promise<(string | undefined)[]> {
-        const app = makeApp({ fileCache: { frontmatter } });
+    async function renderIcons(
+        frontmatter: Record<string, unknown>,
+        metadataTypeManager?: unknown
+    ): Promise<(string | undefined)[]> {
+        const app = { ...makeApp({ fileCache: { frontmatter } }), metadataTypeManager };
         const renderer = new NoteRenderer(
             app as any,
             new Component(),
@@ -551,6 +554,20 @@ describe("NoteRenderer renderProperties", () => {
         return Array.from(el.querySelectorAll<HTMLElement>(".metadata-property-icon")).map((i) => i.dataset.icon);
     }
 
+    it("takes each icon off the property type Obsidian resolves for the key", async () => {
+        const getTypeInfo = vi.fn((key: string) => ({
+            expected: key === "created" ? { icon: "lucide-calendar" } : null,
+            inferred: { icon: "lucide-text" },
+        }));
+        expect(await renderIcons({ created: "2026-09-22", note: "x" }, { getTypeInfo })).toEqual([
+            "lucide-calendar",
+            "lucide-text",
+        ]);
+        expect(getTypeInfo).toHaveBeenCalledWith("created", "2026-09-22");
+    });
+
+    // The key-name guesses below are the fallback, for a vault whose Obsidian
+    // no longer exposes the type manager.
     it("uses the 'tags' icon for 'tags', 'tag', and 'aliases' keys", async () => {
         expect(await renderIcons({ tags: ["a"], tag: "b", aliases: ["c"] })).toEqual(["tags", "tags", "tags"]);
     });
