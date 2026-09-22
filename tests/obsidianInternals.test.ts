@@ -101,6 +101,41 @@ describe("openTagSearch", () => {
         expect(openGlobalSearch).toHaveBeenCalledWith('tag:"#on hold"');
     });
 
+    it("opens the search in a new pane of the asked-for type", async () => {
+        const openGlobalSearch = vi.fn();
+        const { app } = makeSearchApp({ instance: { openGlobalSearch } });
+        const view = { setQuery: vi.fn() };
+        const leaf = { view, setViewState: vi.fn().mockResolvedValue(undefined) };
+        const getLeaf = vi.fn().mockReturnValue(leaf);
+        (app as unknown as { workspace: unknown }).workspace = { getLeaf };
+
+        await openTagSearch(app, "work", "tab");
+
+        expect(getLeaf).toHaveBeenCalledWith("tab");
+        expect(leaf.setViewState).toHaveBeenCalledWith({ type: "search", active: true });
+        expect(view.setQuery).toHaveBeenCalledWith("tag:#work");
+        expect(openGlobalSearch).not.toHaveBeenCalled();
+    });
+
+    it("takes Keymap's bare `true` as the default new pane, a tab", async () => {
+        const { app } = makeSearchApp({ instance: { openGlobalSearch: vi.fn() } });
+        const leaf = { view: { setQuery: vi.fn() }, setViewState: vi.fn().mockResolvedValue(undefined) };
+        const getLeaf = vi.fn().mockReturnValue(leaf);
+        (app as unknown as { workspace: unknown }).workspace = { getLeaf };
+
+        await openTagSearch(app, "work", true);
+
+        expect(getLeaf).toHaveBeenCalledWith("tab");
+    });
+
+    it("leaves a new pane's query alone when its view exposes none", async () => {
+        const { app } = makeSearchApp({ instance: { openGlobalSearch: vi.fn() } });
+        const leaf = { view: {}, setViewState: vi.fn().mockResolvedValue(undefined) };
+        (app as unknown as { workspace: unknown }).workspace = { getLeaf: vi.fn().mockReturnValue(leaf) };
+
+        await expect(openTagSearch(app, "work", "split")).resolves.toBeUndefined();
+    });
+
     it("does nothing when the search plugin is disabled", () => {
         const { app } = makeSearchApp(undefined);
         expect(() => openTagSearch(app, "work")).not.toThrow();

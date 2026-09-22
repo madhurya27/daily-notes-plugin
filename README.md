@@ -32,7 +32,7 @@ Open via the ribbon icon (calendar-days) or command palette (`Daily Notes Stream
 
 - Scroll down to load older notes.
 - Click a date header to open the original file.
-- Click a tag, inline or in the properties panel, to search for it.
+- Click a tag, inline or in the properties panel, to search for it; mod-click opens the search in a new pane.
 - **Settings**: toggle note properties display and default collapse state.
 
 ## Development

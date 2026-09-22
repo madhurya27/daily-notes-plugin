@@ -215,3 +215,8 @@ id and a user who disabled it gets nothing rather than an error.
 
 **Rejected:** opening the tag pane, or a filtered stream of our own — neither
 is what a tag click does in the rest of the app.
+
+A mod-click opens it in a pane of its own instead, through `Keymap.isModEvent`
+— tab, split or window, as everywhere else. The core plugin only drives the
+sidebar pane, so a new leaf is given the `search` view and its query set
+directly.

@@ -1,4 +1,4 @@
-import { test, expect, openStream, SEEDED_DAYS } from "./obsidian";
+import { test, expect, openStream, closeSearchPanes, SEEDED_DAYS } from "./obsidian";
 
 test.describe("daily notes stream in real Obsidian", () => {
     test("renders daily notes as real rendered markdown", async ({ obsidian }) => {
@@ -585,9 +585,28 @@ test.describe("daily notes stream in real Obsidian", () => {
         const { page } = obsidian;
         const container = await openStream(page);
 
+        await closeSearchPanes(page);
+
         await container.locator(".daily-note-content a.tag").first().click();
 
         const search = page.locator(".workspace-leaf-content[data-type='search']");
+        await expect(search).toBeVisible();
+        await expect(search.locator('input[type="search"]')).toHaveValue("tag:#running");
+    });
+
+    test("opens the search in a new tab when the tag is mod-clicked", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+
+        await closeSearchPanes(page);
+
+        await container
+            .locator(".daily-note-content a.tag")
+            .first()
+            .click({ modifiers: ["ControlOrMeta"] });
+
+        // A tab of the main area, not the sidebar pane a plain click opens.
+        const search = page.locator(".workspace-split.mod-root .workspace-leaf-content[data-type='search']");
         await expect(search).toBeVisible();
         await expect(search.locator('input[type="search"]')).toHaveValue("tag:#running");
     });
@@ -601,6 +620,8 @@ test.describe("daily notes stream in real Obsidian", () => {
             await plugin.saveSettings();
         });
         const container = await openStream(page);
+
+        await closeSearchPanes(page);
 
         await container.locator(".multi-select-pill").first().click();
 
