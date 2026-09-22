@@ -75,7 +75,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
         expect(plugin.ribbonIcons).toEqual([
             { icon: "calendar-days", title: "Open daily notes stream", callback: expect.any(Function) },
         ]);
-        expect(plugin.commands.map((c) => c.id)).toEqual(["open-stream"]);
+        expect(plugin.commands.map((c) => c.id)).toEqual(["open-stream", "jump-to-date"]);
         expect(plugin.settingTabs).toHaveLength(1);
     });
 
@@ -118,7 +118,57 @@ describe.each([
     });
 });
 
+describe("DailyNotesStreamPlugin — jump-to-date command", () => {
+    const trigger = (p: DailyNotesStreamPlugin) => p.commands.find((c) => c.id === "jump-to-date")!.callback();
+
+    /** A leaf holding a stream view, without standing up the real one. */
+    function makeViewLeaf() {
+        const view = Object.create(DailyNotesStreamView.prototype) as DailyNotesStreamView;
+        view.promptJumpToDate = vi.fn();
+        return { leaf: { view } as any, view };
+    }
+
+    it("prompts on the view it activated", async () => {
+        const { plugin } = await loadPlugin();
+        const { leaf, view } = makeViewLeaf();
+        vi.spyOn(plugin, "activateView").mockResolvedValue(leaf);
+
+        trigger(plugin);
+        await flushPromises();
+
+        expect(view.promptJumpToDate).toHaveBeenCalledTimes(1);
+    });
+
+    it("prompts nothing when no stream view came back", async () => {
+        const { plugin } = await loadPlugin();
+        vi.spyOn(plugin, "activateView").mockResolvedValue(null);
+
+        trigger(plugin);
+        await flushPromises();
+
+        expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("logs when activation fails instead of leaving an unhandled rejection", async () => {
+        const { plugin } = await loadPlugin();
+        vi.spyOn(plugin, "activateView").mockRejectedValue(new Error("no leaf"));
+
+        trigger(plugin);
+        await flushPromises();
+
+        expect(errorSpy).toHaveBeenCalledWith("DailyNotesStream: Failed to activate view", expect.any(Error));
+    });
+});
+
 describe("DailyNotesStreamPlugin — activateView", () => {
+    it("hands back the leaf it revealed, for callers that drive the view", async () => {
+        const { plugin, app } = await loadPlugin();
+        const leaf = makeLeaf(app);
+        app.workspace.getLeavesOfType.mockReturnValue([leaf]);
+
+        expect(await plugin.activateView()).toBe(leaf);
+    });
+
     it("opens a new leaf when no stream view is open", async () => {
         const { plugin, app } = await loadPlugin();
         const leaf = makeLeaf(app);

@@ -36,10 +36,26 @@ export default class DailyNotesStreamPlugin extends Plugin {
             },
         });
 
+        this.addCommand({
+            id: "jump-to-date",
+            name: "Jump to date",
+            callback: () => {
+                this.promptJumpToDate().catch((error) => {
+                    console.error("DailyNotesStream: Failed to activate view", error);
+                });
+            },
+        });
+
         this.addSettingTab(new DailyNotesStreamSettingTab(this.app, this));
     }
 
-    async activateView() {
+    /** The stream is the only place a jump means anything, so open it first. */
+    private async promptJumpToDate() {
+        const leaf = await this.activateView();
+        if (leaf?.view instanceof DailyNotesStreamView) leaf.view.promptJumpToDate();
+    }
+
+    async activateView(): Promise<WorkspaceLeaf | null> {
         const { workspace } = this.app;
 
         let leaf: WorkspaceLeaf | null = null;
@@ -58,6 +74,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         if (leaf) {
             await workspace.revealLeaf(leaf);
         }
+        return leaf;
     }
 
     async loadSettings() {

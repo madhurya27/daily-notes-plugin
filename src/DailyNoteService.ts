@@ -11,6 +11,9 @@ interface DateFormat {
     folder: string;
 }
 
+/** `obsidian` exports moment as a value, so the type comes from its return. */
+export type Moment = ReturnType<typeof moment>;
+
 export class DailyNoteService {
     private _sorted: TFile[] = [];
     /** The daily-notes config the cache was built from; null before the first build. */
@@ -46,17 +49,7 @@ export class DailyNoteService {
         const date = this.parseDate(file, format);
         if (!date) return -1;
 
-        let lo = 0;
-        let hi = this._sorted.length;
-        while (lo < hi) {
-            const mid = (lo + hi) >> 1;
-            const midDate = this.parseBasename(this._sorted[mid]!, format);
-            if (midDate && midDate.valueOf() > date.valueOf()) {
-                lo = mid + 1;
-            } else {
-                hi = mid;
-            }
-        }
+        const lo = this.firstIndexOnOrBefore(date.valueOf(), format);
         // A date maps to exactly one path, so the search lands on the duplicate.
         if (this._sorted[lo]?.path === file.path) return -1;
 
@@ -71,8 +64,37 @@ export class DailyNoteService {
         return index;
     }
 
+    /**
+     * Index of the newest note dated on or before `target`, at day
+     * granularity; -1 when every note is newer, or the stream is empty.
+     */
+    indexForDate(target: Moment): number {
+        const index = this.firstIndexOnOrBefore(target.clone().startOf("day").valueOf(), this.readFormat());
+        return index < this._sorted.length ? index : -1;
+    }
+
     get length(): number {
         return this._sorted.length;
+    }
+
+    /**
+     * Binary search of the newest-first cache: the first index whose date is
+     * at or before `time`, or `length` when none is. Unparseable entries sort
+     * as oldest, which cannot happen — buildSorted drops them.
+     */
+    private firstIndexOnOrBefore(time: number, format: DateFormat): number {
+        let lo = 0;
+        let hi = this._sorted.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            const midDate = this.parseBasename(this._sorted[mid]!, format);
+            if (midDate && midDate.valueOf() > time) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        return lo;
     }
 
     private signature(format: DateFormat): string {

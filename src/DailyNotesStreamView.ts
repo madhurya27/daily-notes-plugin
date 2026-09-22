@@ -1,5 +1,7 @@
-import { Debouncer, ItemView, WorkspaceLeaf, TFile, TAbstractFile, debounce } from "obsidian";
+import { Debouncer, ItemView, Notice, WorkspaceLeaf, TFile, TAbstractFile, debounce } from "obsidian";
+import type { Moment } from "./DailyNoteService";
 import type DailyNotesStreamPlugin from "./main";
+import { JumpToDateModal } from "./JumpToDateModal";
 import { StreamState } from "./StreamState";
 import { NoteRenderer } from "./NoteRenderer";
 import { CollapsibleManager } from "./CollapsibleManager";
@@ -17,6 +19,24 @@ const CONFIG_DEBOUNCE_MS = 1000;
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
 
 const BATCH_SIZE = 10;
+
+const NO_NOTE_FOR_DATE = "No daily note on or before that date.";
+
+/** Passes over a jump's scroll before it is left where it landed. */
+const MAX_SCROLL_PASSES = 8;
+
+/** How near the top of the pane counts as arrived. */
+const SCROLL_TOLERANCE_PX = 2;
+
+/**
+ * Two frames: the first gives the scroll a rendering opportunity, the second
+ * is when the IntersectionObserver's callback for it has been delivered.
+ */
+async function observersDelivered(): Promise<void> {
+    for (let frame = 0; frame < 2; frame++) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+}
 
 export class DailyNotesStreamView extends ItemView {
     private plugin: DailyNotesStreamPlugin;
@@ -116,6 +136,8 @@ export class DailyNotesStreamView extends ItemView {
         this.registerEvent(this.app.vault.on("create", (f) => this.onFileCreate(f)));
         this.registerEvent(this.app.vault.on("delete", (f) => this.onFileDelete(f)));
         this.registerEvent(this.app.vault.on("rename", (f, oldPath) => this.onFileRename(f, oldPath)));
+
+        this.addAction("calendar-search", "Jump to date", () => this.promptJumpToDate());
 
         this.window.attach(this.contentEl);
 
@@ -249,6 +271,71 @@ export class DailyNotesStreamView extends ItemView {
         this.state.append(batch);
 
         this.scroll.recheck();
+    }
+
+    /** Asks for a date, then jumps to it. */
+    promptJumpToDate(): void {
+        new JumpToDateModal(this.app, (target) => void this.jumpToDate(target)).open();
+    }
+
+    /**
+     * Scrolls to the newest note dated on or before `target`, loading batches
+     * until it is in the stream. Loading is one enqueued task: interleaving
+     * with a scroll-triggered load would desync state from the service cache.
+     */
+    async jumpToDate(target: Moment): Promise<void> {
+        const index = this.plugin.service.indexForDate(target);
+        let file: TFile | undefined;
+        if (index !== -1) {
+            await this.enqueue(async () => {
+                file = await this.loadThrough(index);
+            });
+        }
+
+        if (!file) {
+            new Notice(NO_NOTE_FOR_DATE);
+            return;
+        }
+        const block = this.findNoteElement(file);
+        if (block) await this.scrollTo(block);
+    }
+
+    /**
+     * Puts `block` at the top of the pane and keeps it there. Scrolling to it
+     * brings the window manager to it, and a note rendering *above* it grows
+     * past its placeholder estimate and pushes it down (ADR 0006), so the
+     * scroll is re-applied until the block is at the top of a stream that has
+     * stopped rendering.
+     */
+    private async scrollTo(block: HTMLElement): Promise<void> {
+        for (let pass = 0; pass < MAX_SCROLL_PASSES; pass++) {
+            const changes = this.window.layoutChanges;
+            block.scrollIntoView({ block: "start" });
+            await observersDelivered();
+            // Drains the renders those observers queued.
+            await this.enqueue(async () => {});
+
+            // The block sits at the top the instant it is scrolled to; the
+            // renders that will push it down land after. Arrived means at the
+            // top *and* nothing rendered or unloaded on this pass.
+            const offset = block.getBoundingClientRect().top - this.contentEl.getBoundingClientRect().top;
+            if (Math.abs(offset) <= SCROLL_TOLERANCE_PX && this.window.layoutChanges === changes) return;
+        }
+        // Out of passes: a note too short to reach the top of a tall pane
+        // cannot, and the stream is scrolled as far as it goes.
+    }
+
+    /**
+     * Batches until `index` is loaded, and the note there. Undefined when the
+     * stream ends first — the cache shrank under the index mid-jump.
+     */
+    private async loadThrough(index: number): Promise<TFile | undefined> {
+        while (this.state.length <= index) {
+            const before = this.state.length;
+            await this.loadBatch();
+            if (this.state.length === before) return undefined;
+        }
+        return this.state.notes[index];
     }
 
     refresh(): Promise<void> {

@@ -339,3 +339,8 @@
 .daily-notes-stream-container .daily-note-tags-value .multi-select-pill {
     cursor: var(--cursor-link);
 }
+
+/* The jump modal's date field: one field, so it takes the modal's width. */
+.daily-notes-jump-input {
+    width: 100%;
+}

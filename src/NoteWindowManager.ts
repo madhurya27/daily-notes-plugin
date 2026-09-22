@@ -47,6 +47,12 @@ interface NoteWindow {
  */
 export class NoteWindowManager {
     private readonly windows = new Map<HTMLElement, NoteWindow>();
+
+    /**
+     * Renders and unloads since load. Both move everything below them, so a
+     * caller holding a scroll position watches this to know the stream settled.
+     */
+    private changes = 0;
     private renderObserver: IntersectionObserver | null = null;
     private unloadObserver: IntersectionObserver | null = null;
     private scrollRoot: HTMLElement | null = null;
@@ -128,6 +134,10 @@ export class NoteWindowManager {
         return sorted[sorted.length >> 1]!;
     }
 
+    get layoutChanges(): number {
+        return this.changes;
+    }
+
     /**
      * The height a rebuilt placeholder should reserve. A rendered block is
      * measured now — its stored height is whatever it last unloaded at.
@@ -199,6 +209,7 @@ export class NoteWindowManager {
 
                 if (window.unloadWanted) this.unloadNow(block, window);
             } finally {
+                this.changes++;
                 window.rendering = false;
                 window.unloadWanted = false;
             }
@@ -227,6 +238,7 @@ export class NoteWindowManager {
         this.discard(window);
         block.empty();
         this.markUnloaded(block, window.height);
+        this.changes++;
     }
 
     /**
