@@ -225,6 +225,22 @@ describe("NoteWindowManager estimates", () => {
 
         expect(placeholderHeight(manager.add(FILE))).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
     });
+
+    // A pane laid out at nothing measures nothing, and reserving that collapses
+    // a note the reader has scrolled past — taking the scroll position with it.
+    it("keeps the height it reserved when the block it unloads measures nothing", async () => {
+        const { manager, heights } = makeMeasuring();
+        await observeHeight(manager, 700, heights);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+
+        heights.push(0);
+        fire(observers.unload, block, false);
+
+        expect(placeholderHeight(block)).toBe("700px");
+    });
 });
 
 // ---------------------------------------------------------------------------
