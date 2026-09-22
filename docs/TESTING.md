@@ -104,11 +104,13 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - Collapsed leaves the heading alone, with no empty box beneath it and no jump in its position. **[e2e]**
 - The panel matches the one Obsidian draws for the same note: text size, row height, icons. **[e2e]**
 - Each icon follows the key's type, as Obsidian's panel does: `aliases` an arrow, text lines, tags a tag. **[e2e]**
-- List properties are pills: tags in the tag colours, one per tag, `tags: a, b` included. **[e2e]**
+- List properties are pills: tags in the tag colours, one per tag. A tag Obsidian's panel calls invalid —
+  `tags: a, b` included — is struck through the same way, and searches nothing. A legacy `tag:` key is plain
+  text, as Obsidian draws it. **[e2e]**
 - Clicking a tag — inline in a note or as a pill — opens search on `tag:#name`. **[e2e]**
 - Cmd/Ctrl-clicking a tag opens that search in a new tab instead of the sidebar. **[e2e]**
-- **2026-02-01**: `tags: test, image, link`, `aliases: Feb 1st Test`, `mood: productive`.
-- **2026-01-15**: `tags: backlink, test`, `type: daily`, `location: Home Office`.
+- **2026-02-01**: `tags: [test, image, link]`, `aliases: Feb 1st Test`, `mood: productive`.
+- **2026-01-15**: `tags: [backlink, test]`, `type: daily`, `location: Home Office`.
 - **Collapse properties by default ON**: panels start hidden, and a note's own choice then sticks across edits
   and reopens. **[e2e]**
 - Frontmatter is not duplicated in the body.

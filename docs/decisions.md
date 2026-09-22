@@ -248,12 +248,13 @@ copying and re-signing 1GB to save one 150ms blip per launch.
 
 **Decision:** `tags` and other list properties render the `multi-select-pill`
 markup, with `data-property-type="tags"` on a tag value so its pills take the
-tag colours. A scalar `tags: a, b` splits on commas, as Obsidian's own panel
-shows it.
+tag colours. A tag pill whose text is no tag name — a scalar `tags: a, b`
+included — is `is-invalid`, struck through, and searches nothing, as in
+Obsidian's own panel. Only `tags` is typed as tags: Obsidian 1.9.10 dropped
+the singular `tag`, and draws it as text.
 
 **Why:** the panel restates no styling of its own ([ADR 0002](adr/0002-real-obsidian-e2e.md)
-measures it against Obsidian's); matching the markup was enough to get pills,
-and a comma-joined string was the one place it looked unlike the rest of the app.
+measures it against Obsidian's); matching the markup was enough to get pills.
 
 One rule is the stream's own: Obsidian pads the near side of a pill's word and
 leaves the far side to the remove button's margin, so without that button the
@@ -261,6 +262,8 @@ last letter sat on the border.
 
 **Rejected:** styling the rest of a pill in `styles.css` — every other rule is
 already in Obsidian's stylesheet, and restating one is a chance to drift from it.
+Splitting `tags: a, b` into two pills — Obsidian never splits a scalar, so the
+stream would show tags the vault's own panel calls invalid.
 
 ## 2026-09-21 — More air around the note separator
 

@@ -95,6 +95,16 @@ function makeSettings(overrides: Partial<DailyNotesStreamSettings> = {}): () => 
 // renderInto
 // ---------------------------------------------------------------------------
 
+async function renderWithProperties(app: ReturnType<typeof makeApp>) {
+    const renderer = new NoteRenderer(
+        app as any,
+        new Component(),
+        makeCollapsible(),
+        makeSettings({ showProperties: true })
+    );
+    return mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+}
+
 describe("NoteRenderer.renderInto", () => {
     let app: ReturnType<typeof makeApp>;
     let renderer: NoteRenderer;
@@ -392,17 +402,43 @@ describe("NoteRenderer renderProperties", () => {
         expect(values[1]?.dataset.propertyType).toBeUndefined();
     });
 
-    // `tags: work, daily` is a scalar in the cache; Obsidian still shows two tags.
-    it("splits a scalar tags value into a pill per tag", async () => {
-        const app = makeApp({ fileCache: { frontmatter: { tag: "work, daily" } } });
-        const renderer = new NoteRenderer(
-            app as any,
-            new Component(),
-            makeCollapsible(),
-            makeSettings({ showProperties: true })
-        );
-        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
-        expect([...el.querySelectorAll(".multi-select-pill")].map((p) => p.textContent)).toEqual(["work", "daily"]);
+    // Obsidian never splits a scalar: `tags: work, daily` is one pill, and no tag name.
+    it("shows a scalar tags value as one invalid pill, as Obsidian does", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tags: "work, daily" } } });
+        const el = await renderWithProperties(app);
+        const pills = [...el.querySelectorAll<HTMLElement>(".multi-select-pill")];
+        expect(pills.map((p) => p.textContent)).toEqual(["work, daily"]);
+        expect(pills[0]?.hasClass("is-invalid")).toBe(true);
+        expect(pills[0]?.getAttribute("aria-label")).toBe("Invalid tag name");
+    });
+
+    it("marks only the tag pills that are no tag name invalid", async () => {
+        const tags = ["work", "1a", "a/b", "-a_b", "é日本", "💡", "a，b", "123", "a b", "a.b", "a!", "a…", "a⸗b"];
+        const app = makeApp({ fileCache: { frontmatter: { tags } } });
+        const el = await renderWithProperties(app);
+        const invalid = [...el.querySelectorAll(".multi-select-pill.is-invalid")].map((p) => p.textContent);
+        expect(invalid).toEqual(["123", "a b", "a.b", "a!", "a…", "a⸗b"]);
+    });
+
+    it("drops a tag's leading # from its pill, but marks it invalid", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tags: ["#work"] } } });
+        const el = await renderWithProperties(app);
+        const pill = el.querySelector<HTMLElement>(".multi-select-pill")!;
+        expect(pill.textContent).toBe("work");
+        expect(pill.hasClass("is-invalid")).toBe(true);
+    });
+
+    it("draws a 'tag' key as text, as Obsidian no longer reads it as tags", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tag: "work" } } });
+        const el = await renderWithProperties(app);
+        expect(el.querySelector(".multi-select-pill")).toBeNull();
+        expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("work");
+    });
+
+    it("never marks a pill invalid outside a tags property", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { aliases: ["a b"] } } });
+        const el = await renderWithProperties(app);
+        expect(el.querySelector(".multi-select-pill.is-invalid")).toBeNull();
     });
 
     it("renders object values as JSON string", async () => {
@@ -568,8 +604,13 @@ describe("NoteRenderer renderProperties", () => {
 
     // The key-name guesses below are the fallback, for a vault whose Obsidian
     // no longer exposes the type manager.
-    it("uses the 'tags' icon for 'tags', 'tag', and 'aliases' keys", async () => {
-        expect(await renderIcons({ tags: ["a"], tag: "b", aliases: ["c"] })).toEqual(["tags", "tags", "tags"]);
+    it("uses the 'tags' icon for 'tags' and 'aliases' keys", async () => {
+        expect(await renderIcons({ tags: ["a"], aliases: ["c"] })).toEqual(["tags", "tags"]);
+    });
+
+    // Obsidian 1.9.10 dropped `tag` for `tags`; it types `tag` as text now.
+    it("gives a 'tag' key no tag icon", async () => {
+        expect(await renderIcons({ tag: "b" })).toEqual(["file-text"]);
     });
 
     it("uses the 'calendar' icon for date/time/created/updated keys", async () => {
@@ -659,16 +700,6 @@ describe("NoteRenderer tag click", () => {
         return link;
     }
 
-    async function renderWithProperties(app: ReturnType<typeof makeApp>) {
-        const renderer = new NoteRenderer(
-            app as any,
-            new Component(),
-            makeCollapsible(),
-            makeSettings({ showProperties: true })
-        );
-        return mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
-    }
-
     it("searches for an inline tag the click landed on", async () => {
         const app = makeApp();
         const renderer = new NoteRenderer(app as any, new Component(), makeCollapsible(), makeSettings());
@@ -697,6 +728,15 @@ describe("NoteRenderer tag click", () => {
         (el.querySelectorAll(".multi-select-pill")[1] as HTMLElement).click();
 
         expect(app._openGlobalSearch).toHaveBeenCalledWith("tag:#daily");
+    });
+
+    it("does not search on an invalid tag pill", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tags: "work, daily" } } });
+        const el = await renderWithProperties(app);
+
+        (el.querySelector(".multi-select-pill") as HTMLElement).click();
+
+        expect(app._openGlobalSearch).not.toHaveBeenCalled();
     });
 
     it("leaves a pill of a property Obsidian does not type as a tag alone", async () => {

@@ -734,6 +734,102 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(pill.after).toBeCloseTo(pill.before, 0);
     });
 
+    test("marks the tag pills invalid that Obsidian's own panel marks", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            plugin.settings.propertiesCollapsed = false;
+            await plugin.saveSettings();
+            const tags = [
+                "work",
+                "#work",
+                "a b",
+                "a,b",
+                "123",
+                "1a",
+                "a/b",
+                "-a_b",
+                "é日本",
+                "💡",
+                "a.b",
+                "a!",
+                "a，b",
+                "a…",
+                "a—b",
+                "a«b»",
+                "a⸗b",
+            ];
+            const list = tags.map((tag) => `  - "${tag}"`).join("\n");
+            await window.app.vault.create("Notes/2026-03-20.md", `---\ntags:\n${list}\n---\n\nA day.\n`);
+        });
+
+        const pills = (root: Element) =>
+            Array.from(
+                root.querySelectorAll(".multi-select-pill"),
+                (pill) => `${pill.textContent} ${pill.classList.contains("is-invalid") ? "invalid" : "valid"}`
+            );
+
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-20.md");
+            await window.app.workspace.getLeaf(false).openFile(file!);
+        });
+        const note = page.locator(".workspace-leaf.mod-active .view-content").first();
+        await expect(note.locator(".multi-select-pill")).toHaveCount(17);
+        const native = await note.evaluate(pills);
+
+        const container = await openStream(page);
+        const block = container.locator('.daily-note-block[data-source-path="Notes/2026-03-20.md"]');
+        await expect(block.locator(".multi-select-pill")).toHaveCount(17);
+        expect(await block.evaluate(pills)).toEqual(native);
+        await expect(block.locator(".multi-select-pill.is-invalid").first()).toHaveCSS(
+            "text-decoration-line",
+            "line-through"
+        );
+        // It names no tag, so it offers no search.
+        await expect(block.locator(".multi-select-pill.is-invalid").first()).toHaveCSS("cursor", "default");
+
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-20.md");
+            await window.app.vault.delete(file);
+        });
+    });
+
+    test("types a scalar tags value and a legacy tag key as Obsidian's own panel does", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            plugin.settings.propertiesCollapsed = false;
+            await plugin.saveSettings();
+            await window.app.vault.create("Notes/2026-03-20.md", "---\ntags: work\ntag: solo\n---\n\nA day.\n");
+        });
+
+        const rows = (root: Element) =>
+            Array.from(root.querySelectorAll(".metadata-property-value"), (value) => ({
+                type: (value as HTMLElement).dataset.propertyType === "tags" ? "tags" : "not tags",
+                pills: Array.from(value.querySelectorAll(".multi-select-pill"), (pill) => pill.textContent),
+            }));
+
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-20.md");
+            await window.app.workspace.getLeaf(false).openFile(file!);
+        });
+        const note = page.locator(".workspace-leaf.mod-active .view-content").first();
+        await expect(note.locator(".metadata-property")).toHaveCount(2);
+        const native = await note.evaluate(rows);
+
+        const container = await openStream(page);
+        const block = container.locator('.daily-note-block[data-source-path="Notes/2026-03-20.md"]');
+        await expect(block.locator(".metadata-property")).toHaveCount(2);
+        expect(await block.evaluate(rows)).toEqual(native);
+
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-20.md");
+            await window.app.vault.delete(file);
+        });
+    });
+
     test("centres a property's icon on the words in its row", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {

@@ -9,7 +9,6 @@ const PROPERTIES_SECTION_KEY = ":properties";
 /** The fallback, for an Obsidian that resolves no property type. */
 const PROPERTY_ICONS: Record<string, string> = {
     tags: "tags",
-    tag: "tags",
     aliases: "tags",
     created: "calendar",
     updated: "calendar",
@@ -30,20 +29,25 @@ function fallbackIcon(key: string): string {
 /** Marks the values whose pills search, so a click can tell them apart. */
 const TAG_VALUE_CLASS = "daily-note-tags-value";
 
-/** Keys Obsidian types as tags, so their pills take the tag colours. */
-const TAG_KEYS = new Set(["tags", "tag"]);
+/** The key Obsidian types as tags, so its pills take the tag colours; `tag` it dropped in 1.9.10. */
+const TAG_KEY = "tags";
 
 /**
- * The items a list property shows a pill for. A tags key is always a list —
- * `tags: work, daily` reaches the cache as one scalar, and Obsidian still
- * draws two tags.
+ * The items a list property shows a pill for. The tags key is always a list,
+ * and a scalar is one item: `tags: work, daily` is the one tag "work, daily".
  */
 function pillItems(key: string, value: unknown): string[] | null {
     if (Array.isArray(value)) return value.map(String);
-    if (TAG_KEYS.has(key.toLowerCase()) && typeof value === "string") {
-        return value.split(",").map((item) => item.trim());
-    }
+    if (key.toLowerCase() === TAG_KEY && typeof value === "string") return [value];
     return null;
+}
+
+/** Whitespace, ASCII punctuation but `-`, `/` and `_`, and the two Unicode punctuation blocks. */
+const NOT_IN_A_TAG = /[\s!-,.:-@[-^`{-~\u2000-\u206F\u2E00-\u2E7F]/u;
+
+/** Whether Obsidian takes this as a tag; `#work` it shows, but marks invalid. */
+function isTagName(tag: string): boolean {
+    return !NOT_IN_A_TAG.test(tag) && !/^\d+$/.test(tag);
 }
 
 function displayValue(value: unknown): string {
@@ -193,7 +197,7 @@ export class NoteRenderer {
         const inline = target.closest<HTMLElement>("a.tag");
         if (inline) return inline.textContent;
 
-        const pill = target.closest<HTMLElement>(`.${TAG_VALUE_CLASS} .multi-select-pill`);
+        const pill = target.closest<HTMLElement>(`.${TAG_VALUE_CLASS} .multi-select-pill:not(.is-invalid)`);
         return pill?.textContent ?? null;
     }
 
@@ -233,14 +237,21 @@ export class NoteRenderer {
 
     /** Obsidian's multi-select shape, minus the editing affordances it has. */
     private renderPills(valueEl: HTMLElement, key: string, items: string[]): void {
-        if (TAG_KEYS.has(key.toLowerCase())) {
+        const isTags = key.toLowerCase() === TAG_KEY;
+        if (isTags) {
             valueEl.dataset.propertyType = "tags";
             valueEl.addClass(TAG_VALUE_CLASS);
         }
         const pills = valueEl.createDiv({ cls: "multi-select-container" });
         for (const item of items) {
             const pill = pills.createDiv({ cls: "multi-select-pill" });
-            pill.createDiv({ cls: "multi-select-pill-content" }).createSpan({ text: item });
+            pill.createDiv({ cls: "multi-select-pill-content" }).createSpan({
+                text: isTags ? item.replace(/^#/, "") : item,
+            });
+            if (isTags && !isTagName(item)) {
+                pill.addClass("is-invalid");
+                pill.setAttribute("aria-label", "Invalid tag name");
+            }
         }
     }
 }
