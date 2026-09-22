@@ -494,6 +494,24 @@ describe("NoteWindowManager under a fast scroll", () => {
         expect(block.classList.contains("is-unloaded")).toBe(true);
     });
 
+    // The observers only report a change, so a block left blank in the window
+    // gets no second event: it would stay empty until the reader scrolls again.
+    it("keeps a block that came back into view while its render was in flight", async () => {
+        const renderer = makeSlowRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        await new Promise((resolve) => setTimeout(resolve, 1)); // into the render
+        fire(observers.unload, block, false);
+        fire(observers.render, block, true);
+        await settleSlow();
+
+        expect(block.classList.contains("is-unloaded")).toBe(false);
+        expect(block.querySelector(".daily-note-content")).not.toBeNull();
+    });
+
     it("ignores an unload for a block it does not own", () => {
         makeManager();
         expect(() => fire(observers.unload, document.createElement("div"), false)).not.toThrow();

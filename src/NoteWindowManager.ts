@@ -169,7 +169,14 @@ export class NoteWindowManager {
 
     private render(block: HTMLElement): void {
         const window = this.windows.get(block);
-        if (!window || window.component || window.rendering) return;
+        if (!window || window.component) return;
+        if (window.rendering) {
+            // Back in view before its render finished: honouring the unload it
+            // asked for would leave it blank, and an observer reports changes,
+            // so no second event would ever come to fill it.
+            window.unloadWanted = false;
+            return;
+        }
         window.rendering = true;
 
         this.enqueue(async () => {
