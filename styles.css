@@ -335,9 +335,14 @@
 }
 
 /* A tag pill searches, like a tag anywhere else in Obsidian; the read-only
-   panel draws a div rather than the editable input Obsidian points at. */
+   panel draws a div rather than the editable input Obsidian points at. An
+   invalid one names no tag, so it searches nothing. */
 .daily-notes-stream-container .daily-note-tags-value .multi-select-pill {
     cursor: var(--cursor-link);
+}
+
+.daily-notes-stream-container .daily-note-tags-value .multi-select-pill.is-invalid {
+    cursor: default;
 }
 
 /* The jump suggester's calendar button, in the prompt beside the query. The
