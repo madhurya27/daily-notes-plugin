@@ -4,8 +4,6 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
-- [ ] Date navigation: jump to specific date — spec'd as F1 in `docs/IMPROVEMENTS.md`. Cheap now that
-  appending a note costs one placeholder ([ADR 0006](docs/adr/0006-unload-off-screen-notes.md)).
 - [ ] Create today's note from the view — spec'd as F2 in `docs/IMPROVEMENTS.md`. Covers the empty state too:
   a vault with no daily notes currently renders blank.
 - [ ] Filtering: filter by tag/header — unblocked by note unloading.
@@ -32,8 +30,8 @@ solved elsewhere; only what operates on *the stream* is ours.** ★ marks the re
   [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review) shows ~200-char excerpts; ours
   is the full note. Better, not new.
 - [ ] In-stream date seek, timeline in the gutter. [Calendar](https://github.com/liamcain/obsidian-calendar-plugin)
-  and [Jump to Date](https://github.com/TfTHacker/obsidian42-jump-to-date) *open a file*; this scrolls. Pairs
-  with F1; not another calendar widget.
+  and [Jump to Date](https://github.com/TfTHacker/obsidian42-jump-to-date) *open a file*; this scrolls. The
+  modal already jumps — this is the continuous version of it, not another calendar widget.
 - [ ] Export a contiguous range as one Markdown document — one pass over `_sorted`.
 - [ ] Oldest-first toggle — mind the `state.notes` / `_sorted` pagination invariant.
 - [ ] Period scope: this week / month / year — a slice of `_sorted`.
@@ -53,5 +51,5 @@ own scroll anchoring absorbs most of it today
 
 ## Deferred code health
 Reviewed 2026-07 and deliberately not fixed; each has a trigger for revisiting.
-- [ ] Split `DailyNotesStreamView` (view vs. stream-update coordinator) — revisit when it outgrows ~400 lines (370 today), likely with inline editing or filtering.
+- [ ] Split `DailyNotesStreamView` (view vs. stream-update coordinator) — the ~400-line trigger has fired (422 today, since jump-to-date). Do it with the next change to the view.
 - [ ] `nextElementSibling as HTMLElement` casts in `CollapsibleManager.applyHeaderCollapse` — Obsidian augments `Element` with class helpers, so the casts can likely narrow to `Element`; fold into the next CollapsibleManager change.

@@ -31,6 +31,7 @@ Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 - `src/main.ts` — plugin lifecycle; registers view, ribbon icon, command, settings tab.
 - `src/DailyNoteService.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
 - `src/DailyNotesStreamView.ts` — `ItemView` subclass; infinite scroll, vault events, collapsible sections, properties panel.
+- `src/JumpToDateModal.ts` — the date prompt behind the header action and the `jump-to-date` command.
 - `src/NoteWindowManager.ts` — renders a block near the viewport, empties it well past; owns each note's `Component`.
 - `src/obsidianInternals.ts` — the single place unsupported internals are read (`getReadableLineLength`, the
   `vault` "raw" event behind `onVaultConfigChange`, the core global-search plugin and the `search` view's
