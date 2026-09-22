@@ -250,7 +250,8 @@ copying and re-signing 1GB to save one 150ms blip per launch.
 markup, with `data-property-type="tags"` on a tag value so its pills take the
 tag colours. A tag pill whose text is no tag name — a scalar `tags: a, b`
 included — is `is-invalid`, struck through, and searches nothing, as in
-Obsidian's own panel.
+Obsidian's own panel. Only `tags` is typed as tags: Obsidian 1.9.10 dropped
+the singular `tag`, and draws it as text.
 
 **Why:** the panel restates no styling of its own ([ADR 0002](adr/0002-real-obsidian-e2e.md)
 measures it against Obsidian's); matching the markup was enough to get pills.

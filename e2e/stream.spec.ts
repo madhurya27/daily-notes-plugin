@@ -795,6 +795,41 @@ test.describe("daily notes stream in real Obsidian", () => {
         });
     });
 
+    test("types a scalar tags value and a legacy tag key as Obsidian's own panel does", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            plugin.settings.propertiesCollapsed = false;
+            await plugin.saveSettings();
+            await window.app.vault.create("Notes/2026-03-20.md", "---\ntags: work\ntag: solo\n---\n\nA day.\n");
+        });
+
+        const rows = (root: Element) =>
+            Array.from(root.querySelectorAll(".metadata-property-value"), (value) => ({
+                type: (value as HTMLElement).dataset.propertyType === "tags" ? "tags" : "not tags",
+                pills: Array.from(value.querySelectorAll(".multi-select-pill"), (pill) => pill.textContent),
+            }));
+
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-20.md");
+            await window.app.workspace.getLeaf(false).openFile(file!);
+        });
+        const note = page.locator(".workspace-leaf.mod-active .view-content").first();
+        await expect(note.locator(".metadata-property")).toHaveCount(2);
+        const native = await note.evaluate(rows);
+
+        const container = await openStream(page);
+        const block = container.locator('.daily-note-block[data-source-path="Notes/2026-03-20.md"]');
+        await expect(block.locator(".metadata-property")).toHaveCount(2);
+        expect(await block.evaluate(rows)).toEqual(native);
+
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-20.md");
+            await window.app.vault.delete(file);
+        });
+    });
+
     test("centres a property's icon on the words in its row", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {

@@ -428,6 +428,13 @@ describe("NoteRenderer renderProperties", () => {
         expect(pill.hasClass("is-invalid")).toBe(true);
     });
 
+    it("draws a 'tag' key as text, as Obsidian no longer reads it as tags", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tag: "work" } } });
+        const el = await renderWithProperties(app);
+        expect(el.querySelector(".multi-select-pill")).toBeNull();
+        expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("work");
+    });
+
     it("never marks a pill invalid outside a tags property", async () => {
         const app = makeApp({ fileCache: { frontmatter: { aliases: ["a b"] } } });
         const el = await renderWithProperties(app);
@@ -597,8 +604,13 @@ describe("NoteRenderer renderProperties", () => {
 
     // The key-name guesses below are the fallback, for a vault whose Obsidian
     // no longer exposes the type manager.
-    it("uses the 'tags' icon for 'tags', 'tag', and 'aliases' keys", async () => {
-        expect(await renderIcons({ tags: ["a"], tag: "b", aliases: ["c"] })).toEqual(["tags", "tags", "tags"]);
+    it("uses the 'tags' icon for 'tags' and 'aliases' keys", async () => {
+        expect(await renderIcons({ tags: ["a"], aliases: ["c"] })).toEqual(["tags", "tags"]);
+    });
+
+    // Obsidian 1.9.10 dropped `tag` for `tags`; it types `tag` as text now.
+    it("gives a 'tag' key no tag icon", async () => {
+        expect(await renderIcons({ tag: "b" })).toEqual(["file-text"]);
     });
 
     it("uses the 'calendar' icon for date/time/created/updated keys", async () => {

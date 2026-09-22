@@ -9,7 +9,6 @@ const PROPERTIES_SECTION_KEY = ":properties";
 /** The fallback, for an Obsidian that resolves no property type. */
 const PROPERTY_ICONS: Record<string, string> = {
     tags: "tags",
-    tag: "tags",
     aliases: "tags",
     created: "calendar",
     updated: "calendar",
@@ -30,16 +29,16 @@ function fallbackIcon(key: string): string {
 /** Marks the values whose pills search, so a click can tell them apart. */
 const TAG_VALUE_CLASS = "daily-note-tags-value";
 
-/** Keys Obsidian types as tags, so their pills take the tag colours. */
-const TAG_KEYS = new Set(["tags", "tag"]);
+/** The key Obsidian types as tags, so its pills take the tag colours; `tag` it dropped in 1.9.10. */
+const TAG_KEY = "tags";
 
 /**
- * The items a list property shows a pill for. A tags key is always a list,
+ * The items a list property shows a pill for. The tags key is always a list,
  * and a scalar is one item: `tags: work, daily` is the one tag "work, daily".
  */
 function pillItems(key: string, value: unknown): string[] | null {
     if (Array.isArray(value)) return value.map(String);
-    if (TAG_KEYS.has(key.toLowerCase()) && typeof value === "string") return [value];
+    if (key.toLowerCase() === TAG_KEY && typeof value === "string") return [value];
     return null;
 }
 
@@ -238,7 +237,7 @@ export class NoteRenderer {
 
     /** Obsidian's multi-select shape, minus the editing affordances it has. */
     private renderPills(valueEl: HTMLElement, key: string, items: string[]): void {
-        const isTags = TAG_KEYS.has(key.toLowerCase());
+        const isTags = key.toLowerCase() === TAG_KEY;
         if (isTags) {
             valueEl.dataset.propertyType = "tags";
             valueEl.addClass(TAG_VALUE_CLASS);
