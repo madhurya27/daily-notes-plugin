@@ -52,4 +52,9 @@ own scroll anchoring absorbs most of it today
 ## Deferred code health
 Reviewed 2026-07 and deliberately not fixed; each has a trigger for revisiting.
 - [ ] Split `DailyNotesStreamView` (view vs. stream-update coordinator) — the ~400-line trigger has fired (422 today, since jump-to-date). Do it with the next change to the view.
+- [ ] Flaky e2e: `stream.spec.ts:248` "leaves the scroll position where it was when a note unloads" failed once
+  in a full desktop sweep (`before` 36716, then 0 — deeper than scrolling to the 4th of 14 notes should reach).
+  Passes alone, paired with `jump.spec.ts`, and on a clean re-run. Suspect state carried through the shared
+  Obsidian instance from `settings.spec.ts`, which reloads the stream and runs just before it only in the full
+  sweep. Chase the ordering first.
 - [ ] `nextElementSibling as HTMLElement` casts in `CollapsibleManager.applyHeaderCollapse` — Obsidian augments `Element` with class helpers, so the casts can likely narrow to `Element`; fold into the next CollapsibleManager change.
