@@ -22,7 +22,9 @@ const OUT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "docs", "imag
 const SHOWCASE = [
     [
         "---",
-        "tags: work, travel",
+        "tags:",
+        "  - work",
+        "  - travel",
         "mood: productive",
         "---",
         "",
@@ -45,7 +47,9 @@ const SHOWCASE = [
     ].join("\n"),
     [
         "---",
-        "tags: running, reading",
+        "tags:",
+        "  - running",
+        "  - reading",
         "---",
         "",
         "## Morning",

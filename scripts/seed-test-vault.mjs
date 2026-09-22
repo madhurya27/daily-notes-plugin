@@ -154,7 +154,10 @@ write(
     join(NOTES, "2026-02-01.md"),
     body(
         "---",
-        "tags: test, image, link",
+        "tags:",
+        "  - test",
+        "  - image",
+        "  - link",
         "aliases: Feb 1st Test",
         "mood: productive",
         "---",
@@ -187,7 +190,9 @@ write(
     join(NOTES, "2026-01-15.md"),
     body(
         "---",
-        "tags: backlink, test",
+        "tags:",
+        "  - backlink",
+        "  - test",
         "type: daily",
         "location: Home Office",
         "---",
