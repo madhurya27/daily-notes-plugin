@@ -1,4 +1,4 @@
-import { App, Component, MarkdownRenderer, MarkdownView, TFile, setIcon } from "obsidian";
+import { App, Component, Keymap, MarkdownRenderer, MarkdownView, TFile, setIcon } from "obsidian";
 import { CollapsibleManager } from "./CollapsibleManager";
 import { openTagSearch } from "./obsidianInternals";
 import type { DailyNotesStreamSettings } from "./settings";
@@ -171,7 +171,7 @@ export class NoteRenderer {
             const tag = this.tagAt(target);
             if (tag) {
                 evt.preventDefault();
-                openTagSearch(this.app, tag);
+                void openTagSearch(this.app, tag, Keymap.isModEvent(evt));
                 return;
             }
 

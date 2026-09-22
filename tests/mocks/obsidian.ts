@@ -228,6 +228,18 @@ export class MarkdownView {
     file: any = null;
 }
 
+/** Obsidian's own modifier reading: Cmd/Ctrl or middle-click opens a tab. */
+export class Keymap {
+    static isModEvent(evt?: any): "tab" | "split" | "window" | boolean {
+        if (!evt) return false;
+        const mod = evt.ctrlKey || evt.metaKey;
+        if (mod && evt.altKey && evt.shiftKey) return "window";
+        if (mod && evt.altKey) return "split";
+        if (mod || evt.button === 1) return "tab";
+        return false;
+    }
+}
+
 export function debounce<T extends unknown[]>(cb: (...args: T) => unknown, timeout = 0, resetTimer = false) {
     let handle: ReturnType<typeof setTimeout> | null = null;
     let lastArgs: T;

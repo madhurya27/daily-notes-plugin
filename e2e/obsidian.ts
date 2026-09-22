@@ -522,4 +522,12 @@ export async function openStream(page: Page) {
     return container;
 }
 
+/**
+ * Detaches every search pane. Tests share one Obsidian instance, so a search
+ * opened by an earlier test would still be on screen for this one to match.
+ */
+export async function closeSearchPanes(page: Page) {
+    await page.evaluate(() => window.app.workspace.detachLeavesOfType("search"));
+}
+
 export { expect };

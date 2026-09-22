@@ -12,7 +12,13 @@ import type { DailyNotesStreamSettings } from "../src/settings";
 function makeApp(opts: { readResult?: string; fileCache?: any; leaves?: any[] } = {}) {
     const { readResult = "", fileCache = null, leaves = [] } = opts;
     const mockOpenFile = vi.fn().mockResolvedValue(undefined);
-    const mockLeaf = { openFile: mockOpenFile };
+    // One leaf serves both uses: opening a note, and hosting a search pane.
+    const searchView = { setQuery: vi.fn() };
+    const mockLeaf = {
+        openFile: mockOpenFile,
+        view: searchView,
+        setViewState: vi.fn().mockResolvedValue(undefined),
+    };
     const openGlobalSearch = vi.fn();
     return {
         vault: { cachedRead: vi.fn().mockResolvedValue(readResult) },
@@ -25,6 +31,7 @@ function makeApp(opts: { readResult?: string; fileCache?: any; leaves?: any[] } 
             revealLeaf: vi.fn().mockResolvedValue(undefined),
         },
         _mockLeaf: mockLeaf,
+        _searchLeaf: mockLeaf,
     };
 }
 
@@ -682,6 +689,31 @@ describe("NoteRenderer tag click", () => {
         (el.querySelector(".multi-select-pill") as HTMLElement).click();
 
         expect(app._openGlobalSearch).not.toHaveBeenCalled();
+    });
+
+    it("opens the search in a new tab when the tag is cmd-clicked", async () => {
+        const app = makeApp();
+        const renderer = new NoteRenderer(app as any, new Component(), makeCollapsible(), makeSettings());
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        addInlineTag(el, "#work").dispatchEvent(new MouseEvent("click", { bubbles: true, metaKey: true }));
+        await Promise.resolve();
+
+        expect(app.workspace.getLeaf).toHaveBeenCalledWith("tab");
+        expect(app._searchLeaf.setViewState).toHaveBeenCalledWith({ type: "search", active: true });
+        expect(app._searchLeaf.view.setQuery).toHaveBeenCalledWith("tag:#work");
+    });
+
+    it("splits the pane when the tag is cmd-alt-clicked", async () => {
+        const app = makeApp();
+        const renderer = new NoteRenderer(app as any, new Component(), makeCollapsible(), makeSettings());
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        addInlineTag(el, "#work").dispatchEvent(
+            new MouseEvent("click", { bubbles: true, metaKey: true, altKey: true })
+        );
+
+        expect(app.workspace.getLeaf).toHaveBeenCalledWith("split");
     });
 
     it("does not open the note when the click was on one of its tags", async () => {

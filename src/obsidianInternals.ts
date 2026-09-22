@@ -1,4 +1,4 @@
-import type { App, EventRef } from "obsidian";
+import type { App, EventRef, PaneType } from "obsidian";
 
 /** Obsidian's unpublished shape, so every unsupported access sits in one place. */
 type VaultInternal = {
@@ -37,15 +37,33 @@ type InternalPlugins = {
     getPluginById(id: "global-search"): { instance?: { openGlobalSearch(query: string): void } } | undefined;
 };
 
+/** The core search view, whose query a pane of our own has to set itself. */
+type SearchView = { setQuery?(query: string): void };
+
+/** A tag as the search pane spells it; one holding a space needs quoting. */
+function tagQuery(tag: string): string {
+    const name = tag.startsWith("#") ? tag : `#${tag}`;
+    return /\s/.test(name) ? `tag:"${name}"` : `tag:${name}`;
+}
+
 /**
- * Opens the search pane on a tag, the way clicking a tag anywhere else in
- * Obsidian does. No public API exposes the search pane, so the core plugin is
- * reached by id; a user who disabled it gets nothing rather than an error.
+ * Opens the search on a tag, the way clicking a tag anywhere else in Obsidian
+ * does: in the sidebar pane, or, given a pane, in a pane of its own. No
+ * public API exposes the search pane, so the core plugin is reached by id; a
+ * user who disabled it gets nothing rather than an error.
  */
-export function openTagSearch(app: App, tag: string): void {
+export async function openTagSearch(app: App, tag: string, pane: PaneType | boolean = false): Promise<void> {
     const plugins = (app as unknown as { internalPlugins?: InternalPlugins }).internalPlugins;
     const search = plugins?.getPluginById("global-search")?.instance;
     if (!search) return;
-    const name = tag.startsWith("#") ? tag : `#${tag}`;
-    search.openGlobalSearch(/\s/.test(name) ? `tag:"${name}"` : `tag:${name}`);
+    const query = tagQuery(tag);
+    if (!pane) {
+        search.openGlobalSearch(query);
+        return;
+    }
+    const { workspace } = app;
+    // `true` is Keymap's word for the default new pane, a tab.
+    const leaf = workspace.getLeaf(pane === true ? "tab" : pane);
+    await leaf.setViewState({ type: "search", active: true });
+    (leaf.view as SearchView).setQuery?.(query);
 }
