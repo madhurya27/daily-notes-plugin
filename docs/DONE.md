@@ -20,3 +20,4 @@
 - [x] E2E tests against the real Obsidian app (Playwright over CDP, throwaway vault)
 - [x] Reload the stream when Obsidian's daily-note format or folder changes
 - [x] Unload off-screen notes: only blocks near the viewport hold content, and a placeholder holds their space
+- [x] Tag click opens Obsidian's search on that tag; mod-click opens it in a new pane
