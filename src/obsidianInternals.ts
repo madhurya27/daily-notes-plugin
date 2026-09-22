@@ -68,18 +68,15 @@ export async function openTagSearch(app: App, tag: string, pane: PaneType | bool
     (leaf.view as SearchView).setQuery?.(query);
 }
 
-/** A property type as Obsidian registers it; the panel's icon comes from here. */
-type PropertyWidget = { icon: string };
-
-/** No public API: the type manager resolves a key to the widget that draws it. */
+/** No public API: the type manager resolves a key to the widget that draws its row. */
 type MetadataTypeManager = {
-    getTypeInfo?(key: string, value: unknown): { expected: PropertyWidget | null; inferred: PropertyWidget | null };
+    getTypeInfo?(key: string, value: unknown): { expected: { icon: string } | null; inferred: { icon: string } | null };
 };
 
 /**
  * The icon Obsidian's own properties panel shows for a key: the one on the type
- * assigned to it, or on the type its value infers. Null where the internal is
- * gone, so a caller can fall back rather than draw nothing.
+ * assigned to it, else on the type its value infers. Null once the internal is
+ * gone, so a caller can fall back.
  */
 export function getPropertyIcon(app: App, key: string, value: unknown): string | null {
     const manager = (app as unknown as { metadataTypeManager?: MetadataTypeManager }).metadataTypeManager;

@@ -5,17 +5,15 @@ rewriting across layers belongs in [`adr/`](adr/) instead.
 
 ## 2026-09-22 — Property icons come from Obsidian's type manager
 
-**Decision:** `getPropertyIcon` asks `metadataTypeManager.getTypeInfo(key,
-value)` for the widget Obsidian would draw the row with, and takes its icon.
-The key-name map stays as the fallback when the internal is gone.
+**Decision:** `getPropertyIcon` takes the icon off the widget
+`metadataTypeManager.getTypeInfo(key, value)` resolves; the key-name map is the
+fallback when the internal goes.
 
-**Why:** Obsidian picks the icon off the property's *type* — assigned in
-`types.json`, else inferred from the value — so a key-name guess disagreed with
-the note's own properties panel for everything but tags: `aliases` is a
-forward arrow, plain text is `lucide-text`, not `file-text`.
+**Why:** Obsidian draws the icon for the property's *type*, assigned or
+inferred, so a name guess disagreed with the note's own panel everywhere but
+tags — `aliases` is an arrow, text is `lucide-text`, not `file-text`.
 
-**Rejected:** hard-coding the type→icon table — it re-states Obsidian's
-registry, which ships new types.
+**Rejected:** a type→icon table of our own — Obsidian's registry ships new types.
 
 ## 2026-09-22 — A jump lands on the nearest older note
 

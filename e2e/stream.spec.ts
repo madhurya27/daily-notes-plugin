@@ -591,11 +591,9 @@ test.describe("daily notes stream in real Obsidian", () => {
             await plugin.saveSettings();
         });
 
-        // Obsidian picks the icon off the property's type, not its name: the
-        // note's tag list and its free text must come out two different
-        // glyphs. setIcon names the svg after the icon it drew, and the two
-        // panels label a row differently — Obsidian with an attribute, the
-        // stream with the key it printed.
+        // setIcon names the svg after the icon it drew. The two panels label a
+        // row differently: Obsidian with an attribute, the stream with the key
+        // it printed.
         const iconsByKey = (root: Locator, keyFrom: "attribute" | "text") =>
             root.evaluate(
                 (el, mode) =>

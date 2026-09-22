@@ -6,7 +6,7 @@ import type { DailyNotesStreamSettings } from "./settings";
 /** Reserved key for the properties panel; a heading slug can never contain ":". */
 const PROPERTIES_SECTION_KEY = ":properties";
 
-/** Key-name guesses, for an Obsidian that no longer resolves property types. */
+/** The fallback, for an Obsidian that resolves no property type. */
 const PROPERTY_ICONS: Record<string, string> = {
     tags: "tags",
     tag: "tags",
@@ -218,8 +218,8 @@ export class NoteRenderer {
         const propertyRow = container.createDiv({ cls: "metadata-property" });
 
         const keyContainer = propertyRow.createDiv({ cls: "metadata-property-key" });
-        const icon = getPropertyIcon(this.app, key, value) ?? fallbackIcon(key);
-        setIcon(keyContainer.createDiv({ cls: "metadata-property-icon" }), icon);
+        const iconEl = keyContainer.createDiv({ cls: "metadata-property-icon" });
+        setIcon(iconEl, getPropertyIcon(this.app, key, value) ?? fallbackIcon(key));
         keyContainer.createSpan({ cls: "metadata-property-key-input", text: key });
 
         const valueEl = propertyRow.createDiv({ cls: "metadata-property-value" });

@@ -98,8 +98,7 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - "Properties" starts where the note's own headings do, chevron and all. **[e2e]**
 - Collapsed leaves the heading alone, with no empty box beneath it and no jump in its position. **[e2e]**
 - The panel matches the one Obsidian draws for the same note: text size, row height, icons. **[e2e]**
-- Each icon is the one Obsidian's own panel shows for that key's type — `aliases` an arrow, free
-  text lines, a tag list a tag. **[e2e]**
+- Each icon follows the key's type, as Obsidian's panel does: `aliases` an arrow, text lines, tags a tag. **[e2e]**
 - List properties are pills: tags in the tag colours, one per tag, `tags: a, b` included. **[e2e]**
 - Clicking a tag — inline in a note or as a pill — opens search on `tag:#name`. **[e2e]**
 - Cmd/Ctrl-clicking a tag opens that search in a new tab instead of the sidebar. **[e2e]**
