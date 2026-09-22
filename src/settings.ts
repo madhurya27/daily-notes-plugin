@@ -7,7 +7,7 @@ export interface DailyNotesStreamSettings {
 }
 
 export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
-    showProperties: false,
+    showProperties: true,
     propertiesCollapsed: false,
 };
 

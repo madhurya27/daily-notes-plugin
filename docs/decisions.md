@@ -220,3 +220,13 @@ A mod-click opens it in a pane of its own instead, through `Keymap.isModEvent`
 — tab, split or window, as everywhere else. The core plugin only drives the
 sidebar pane, so a new leaf is given the `search` view and its query set
 directly.
+
+## 2026-09-21 — Properties are shown by default
+
+**Decision:** `showProperties` defaults to on; the setting stays.
+
+**Why:** the panel matches Obsidian's own reading view, and a stream of notes
+whose frontmatter is invisible reads as though the notes have none.
+
+**Rejected:** dropping the setting — a vault whose dailies carry bookkeeping
+frontmatter wants it off.

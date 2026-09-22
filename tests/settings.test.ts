@@ -16,8 +16,8 @@ function makeTab(plugin: ReturnType<typeof makePlugin>) {
 describe("DailyNotesStreamSettingTab", () => {
     beforeEach(() => Setting.reset());
 
-    it("defaults to hidden, expanded properties", () => {
-        expect(DEFAULT_SETTINGS).toEqual({ showProperties: false, propertiesCollapsed: false });
+    it("defaults to shown, expanded properties", () => {
+        expect(DEFAULT_SETTINGS).toEqual({ showProperties: true, propertiesCollapsed: false });
     });
 
     it("renders one toggle per setting, seeded from current values", () => {
@@ -34,6 +34,8 @@ describe("DailyNotesStreamSettingTab", () => {
 
     it("writes and saves showProperties when its toggle changes", async () => {
         const plugin = makePlugin();
+        // Started from off, so the toggle proves a write rather than the default.
+        plugin.settings.showProperties = false;
         makeTab(plugin).display();
 
         await Setting.created[0]!.toggles[0]!.change(true);
@@ -50,7 +52,7 @@ describe("DailyNotesStreamSettingTab", () => {
         await Setting.created[1]!.toggles[0]!.change(true);
 
         expect(plugin.settings.propertiesCollapsed).toBe(true);
-        expect(plugin.settings.showProperties).toBe(false);
+        expect(plugin.settings.showProperties).toBe(true);
         expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
     });
 

@@ -33,7 +33,8 @@ Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 - `src/DailyNotesStreamView.ts` — `ItemView` subclass; infinite scroll, vault events, collapsible sections, properties panel.
 - `src/NoteWindowManager.ts` — renders a block near the viewport, empties it well past; owns each note's `Component`.
 - `src/obsidianInternals.ts` — the single place unsupported internals are read (`getReadableLineLength`, the
-  `vault` "raw" event behind `onVaultConfigChange`).
+  `vault` "raw" event behind `onVaultConfigChange`, the core global-search plugin and the `search` view's
+  `setQuery` behind `openTagSearch`).
 - `src/settings.ts` — settings interface, defaults, `PluginSettingTab`.
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and

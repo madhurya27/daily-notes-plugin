@@ -9,7 +9,6 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] Create today's note from the view — spec'd as F2 in `docs/IMPROVEMENTS.md`. Covers the empty state too:
   a vault with no daily notes currently renders blank.
 - [ ] Filtering: filter by tag/header — unblocked by note unloading.
-- [ ] Tag click opens Obsidian search
 - [ ] Per-note edit action — open in a split, or append to today's note. Read-only stream stays; see
   `docs/decisions.md` (2026-09-15).
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
@@ -19,7 +18,6 @@ Ordered by priority, from the 2026-09 comparison against
   - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`
   - [x] GitHub repo description (mirrors the manifest's) and topics (`obsidian`, `obsidian-plugin`, `obsidian-md`, `daily-notes`, `typescript`)
 - [ ] Position the README against Daily Notes Editor — a live-updating reading feed, not an inline editor.
-- [ ] Default to showing metadata properties
 
 ## Features
 New capability, as opposed to the fixes above. Embedded editors are ruled out by `docs/decisions.md`.

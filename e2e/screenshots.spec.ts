@@ -11,6 +11,9 @@ import { fileURLToPath } from "url";
 const OUT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "docs", "images");
 
 /**
+ * Two carry frontmatter, so the images show the properties panel a new install
+ * gets by default.
+ *
  * The fixture's notes are shaped to exercise edge cases — a seven-column table,
  * a deliberately wide code line — which photographs as test scaffolding. These
  * are short enough that several dates share one screen, which is the feature
@@ -18,6 +21,11 @@ const OUT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "docs", "imag
  */
 const SHOWCASE = [
     [
+        "---",
+        "tags: work, travel",
+        "mood: productive",
+        "---",
+        "",
         "## Standup",
         "",
         "- Shipped the export fix; the release checklist is finally green.",
@@ -36,6 +44,10 @@ const SHOWCASE = [
         "> Simplicity is the consequence of refined emotions.",
     ].join("\n"),
     [
+        "---",
+        "tags: running, reading",
+        "---",
+        "",
         "## Morning",
         "",
         "Long walk before the rain — 6 km, easy pace.",

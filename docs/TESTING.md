@@ -85,7 +85,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 
 ### Properties
 
-- **Show note properties ON**: a "Properties" header appears for notes with frontmatter, icons beside names.
+- **Show note properties ON** (the default): a "Properties" header appears for notes with frontmatter, icons
+  beside names.
 - Clicking the header toggles collapse; the chevron rotates, and no focus ring stays behind. **[e2e]**
 - "Properties" starts where the note's own headings do, chevron and all. **[e2e]**
 - Collapsed leaves the heading alone, with no empty box beneath it and no jump in its position. **[e2e]**
