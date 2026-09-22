@@ -229,10 +229,9 @@ export class NoteWindowManager {
     }
 
     private unloadNow(block: HTMLElement, window: NoteWindow): void {
-        // A block in a pane that was never laid out measures zero and says
-        // nothing: reserving it would collapse a note the reader has scrolled
-        // past and drop the scroll position with it, so the block keeps what it
-        // already reserved.
+        // A block that was never laid out measures zero: reserving that would
+        // collapse a note the reader has scrolled past, and take the scroll
+        // position with it. It keeps what it already reserved.
         const measured = this.measure(block);
         if (measured > 0) {
             window.height = measured;
