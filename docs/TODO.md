@@ -41,15 +41,6 @@ Out of scope: random note (core ships it), task rollup (Tasks owns it, and read-
 folder/tag modes (dilutes what the plugin is), a tag/header filter (search does it),
 sticky date header (`docs/decisions.md`, 2026-09-21).
 
-## Performance
-Measured 2026-09-23 in real Obsidian, CPU throttled 6×: opening the stream takes up to 130 ms in a 10-year
-vault with 5,000 other notes, 70 ms of it `DailyNoteService.initialize()`.
-
-- [ ] Cache parsed dates on the plugin between opens: path → date or "not a daily note", tagged with the format
-  it was parsed under. An open parses only paths it has not seen, then sorts its own list; a format change
-  reparses everything. No vault listeners, and each view still owns its service (CLAUDE.md, Invariants).
-  Unmeasured — time it at 6× against the 70 ms build. Reuses the dates `_sorted` now holds.
-
 ## Deferred, contingent on how unloading behaves in real use
 Only worth doing if the placeholder estimate proves visibly wrong; Chromium's
 own scroll anchoring absorbs most of it today

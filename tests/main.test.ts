@@ -73,6 +73,27 @@ describe("DailyNotesStreamPlugin — onload", () => {
         expect(view).toBeInstanceOf(DailyNotesStreamView);
     });
 
+    // Each view still owns its service (CLAUDE.md, Invariants); only the
+    // parsed dates carry over, so a second open parses nothing it has seen.
+    it("hands every view one date cache, so a later open parses no name again", async () => {
+        __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]);
+        const { plugin, app } = await loadPlugin();
+        const open = () => {
+            const view = plugin.views[VIEW_TYPE_DAILY_NOTES_STREAM]!(new WorkspaceLeaf(asApp(app)));
+            (view as DailyNotesStreamView)["service"].initialize();
+        };
+        open();
+        let reads = 0;
+        for (const file of __mockMarkdownFiles()) {
+            const { basename } = file;
+            Object.defineProperty(file, "basename", { get: () => (reads++, basename) });
+        }
+
+        open();
+
+        expect(reads).toBe(0);
+    });
+
     it("lists the stream in Page preview's settings, previewing on Mod+hover like Obsidian's views", async () => {
         const { plugin } = await loadPlugin();
 

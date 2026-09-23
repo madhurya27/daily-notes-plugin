@@ -38,6 +38,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   `getSearchHotkeys`).
 - `notes/daily-note-service.ts` — the vault's daily notes, nested folders (`YYYY/MM/YYYY-MM-DD`) included,
   newest-first in batches.
+- `notes/parsed-dates.ts` — each path's parsed date, shared by every view's service, so a later open parses only
+  what is new.
 - `ui/stream-view.ts` — `ItemView` subclass; wires vault events and header actions to the stream. It is the
   hover parent Page preview hangs popovers on.
 - `ui/jump-to-date-modal.ts` — the `SuggestModal` behind the header action and the `jump-to-date` command;

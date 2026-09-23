@@ -1,5 +1,6 @@
 import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 import { TFile, moment, normalizePath } from "obsidian";
+import { ParsedDates } from "./parsed-dates";
 
 /** The daily-note naming rules, read once per public operation. */
 interface DateFormat {
@@ -25,10 +26,16 @@ export class DailyNoteService {
     /** The daily-notes config the cache was built from; null before the first build. */
     private builtFrom: string | null = null;
 
-    /** The vault's markdown files, daily notes among them. */
-    constructor(private readonly markdownFiles: () => TFile[]) {}
+    /**
+     * `markdownFiles`: the vault's, daily notes among them. `parsedDates`: shared
+     * across views, so a later open parses only what is new.
+     */
+    constructor(
+        private readonly markdownFiles: () => TFile[],
+        private readonly parsedDates = new ParsedDates()
+    ) {}
 
-    /** Call once on plugin load. */
+    /** Call once per view, on open. */
     initialize(): void {
         const format = this.readFormat();
         this._sorted = this.buildSorted(format);
@@ -131,8 +138,10 @@ export class DailyNoteService {
 
     private buildSorted(format: DateFormat): DatedNote[] {
         // parseDate, as a live create (docs/decisions.md, 2026-09-23).
-        const notes = this.markdownFiles()
-            .map((file) => ({ file, date: this.parseDate(file, format) }))
+        const files = this.markdownFiles();
+        const dates = this.parsedDates.datesOf(files, this.signature(format), (file) => this.parseDate(file, format));
+        const notes = files
+            .map((file, i) => ({ file, date: dates[i] ?? null }))
             .filter((note): note is DatedNote => note.date !== null);
 
         return notes.sort((a, b) => b.date.valueOf() - a.date.valueOf());

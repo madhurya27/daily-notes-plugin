@@ -477,3 +477,19 @@ the app lacks.
 - Opening beside the stream — the departure above, and its reliance on
   Obsidian's internals.
 - Reusing a tab already showing the note — not what Obsidian's links do.
+
+## 2026-09-23 — Views share parsed dates, not the note list
+
+**Decision:** the plugin holds one `ParsedDates`, path → date, tagged with the
+daily-notes format. Each view's service builds its own list from it, parsing
+only paths it has not seen.
+
+**Why:** a date depends only on the path and the format, so an entry cannot go
+stale and nothing needs to watch the vault. A later open at 6× CPU builds in
+4 ms instead of 52 (10-year vault, 5,000 other notes).
+
+**Rejected:**
+- One plugin-wide list — each view's queue must own its list's changes, or
+  pagination breaks (CLAUDE.md, Invariants).
+- A plugin-wide list kept current by vault listeners, copied per view — work
+  while no stream is open, and state nothing displays.
