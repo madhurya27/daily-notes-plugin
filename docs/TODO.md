@@ -50,6 +50,10 @@ vault with 5,000 other notes, 70 ms of it `DailyNoteService.initialize()`.
 - [ ] Keep each note's parsed date beside it in `_sorted` — parsing 3,650 notes costs ~37 ms per open at 6×,
   and `dates()` re-parses them each time the jump picker opens (~25 ms). Create, delete and rename must keep
   it in step.
+- [ ] Cache parsed dates on the plugin between opens: path → date or "not a daily note", tagged with the format
+  it was parsed under. An open parses only paths it has not seen, then sorts its own list; a format change
+  reparses everything. No vault listeners, and each view still owns its service (CLAUDE.md, Invariants).
+  Unmeasured — time it at 6× against the 70 ms build. Shares its dates with the item above.
 
 ## Deferred, contingent on how unloading behaves in real use
 Only worth doing if the placeholder estimate proves visibly wrong; Chromium's
