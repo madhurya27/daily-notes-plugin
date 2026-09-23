@@ -16,14 +16,6 @@ Ordered by priority, from the 2026-09 comparison against
   - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`
   - [x] GitHub repo description (mirrors the manifest's) and topics (`obsidian`, `obsidian-plugin`, `obsidian-md`, `daily-notes`, `typescript`)
 - [ ] Position the README against Daily Notes Editor — a live-updating reading feed, not an inline editor.
-- [ ] Prune the unit suite (2026-09-23 review):
-  - [ ] Drop duplicates: `daily-note-service` duplicate-insert, `collapsible` delegated keyboard,
-        `note-renderer` block class, `stream-view.loading` guard/flag and the placement cases `stream-blocks`
-        owns, the second `fundingUrl` rule, release workflow "exists"
-  - [ ] Make vacuous tests assert: frontmatter stripping, the slash-format fallback, rename of a non-TFile,
-        the height `note-window` pins; drop the null-`textContent` case
-  - [ ] Assert rename outcomes, not spies on `NoteStream` privates
-  - [ ] Name tests by behaviour, not by line or branch
 - [ ] Give `NoteStream` its own test file; the `stream-view.*` tests reach it through `(view as any).stream`.
 
 ## Features
