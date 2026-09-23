@@ -227,7 +227,7 @@ export class NoteStream {
     /** The first note reaching into the pane; null when none does. */
     firstVisibleNote(): TFile | null {
         const find = (f: TFile) => this.blocks.get(f.path);
-        return captureAnchor(this.state.notes, this.blocks.el, this.scrollRoot, find)?.file ?? null;
+        return captureAnchor(this.state.notes, this.scrollRoot, find)?.file ?? null;
     }
 
     /** The window manager's renders, drained through the queue they run on. */
@@ -286,7 +286,7 @@ export class NoteStream {
      */
     private async rerenderAll(): Promise<void> {
         const find = (f: TFile) => this.blocks.get(f.path);
-        const snapshot = captureAnchor(this.state.notes, this.blocks.el, this.scrollRoot, find);
+        const snapshot = captureAnchor(this.state.notes, this.scrollRoot, find);
 
         const notes = [...this.state.notes];
         const heights = new Map([...this.blocks.entries()].map(([path, block]) => [path, this.window.heightOf(block)]));
