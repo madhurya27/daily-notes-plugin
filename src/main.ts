@@ -4,6 +4,11 @@ import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab 
 import { CollapsibleStateStore } from "./render/collapse-store";
 import { DailyNoteService } from "./notes/daily-note-service";
 
+/** A ribbon click or command has no caller to reject to, so a failure is logged. */
+function logActivationFailure(activation: Promise<unknown>): void {
+    activation.catch((error) => console.error("DailyNotesStream: Failed to activate view", error));
+}
+
 export default class DailyNotesStreamPlugin extends Plugin {
     settings!: DailyNotesStreamSettings;
     collapseStore!: CollapsibleStateStore;
@@ -19,30 +24,18 @@ export default class DailyNotesStreamPlugin extends Plugin {
                 new DailyNotesStreamView(leaf, this, new DailyNoteService(() => this.app.vault.getMarkdownFiles()))
         );
 
-        this.addRibbonIcon("calendar-days", "Open daily notes stream", () => {
-            this.activateView().catch((error) => {
-                console.error("DailyNotesStream: Failed to activate view", error);
-            });
-        });
+        this.addRibbonIcon("calendar-days", "Open daily notes stream", () => logActivationFailure(this.activateView()));
 
         this.addCommand({
             id: "open-stream",
             name: "Open stream",
-            callback: () => {
-                this.activateView().catch((error) => {
-                    console.error("DailyNotesStream: Failed to activate view", error);
-                });
-            },
+            callback: () => logActivationFailure(this.activateView()),
         });
 
         this.addCommand({
             id: "jump-to-date",
             name: "Jump to date",
-            callback: () => {
-                this.promptJumpToDate().catch((error) => {
-                    console.error("DailyNotesStream: Failed to activate view", error);
-                });
-            },
+            callback: () => logActivationFailure(this.promptJumpToDate()),
         });
 
         this.addSettingTab(new DailyNotesStreamSettingTab(this.app, this));
