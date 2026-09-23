@@ -431,24 +431,15 @@ A day spans retyping a heading; `mtime` needs no timer.
 
 ## 2026-09-23 — Titles and links take Obsidian's link gestures
 
-**Decision:** amends 2026-09-15; a note's title is its edit action. Titles
-and internal links alike: mod-click or middle-click opens a new tab,
-mod-alt-click a split; right-click shows "Open in new tab" and "Open to the
-right", then Obsidian's file menu once the note exists. Links preview on
-hover through Page preview, Mod required by default. A plain click focuses a
-tab already showing the note, at the linked heading, else opens a new one.
+**Decision:** amends 2026-09-15. Titles and links open as Obsidian's links do:
+modifier clicks, file menu, Page preview on hover. One departure: a plain
+click focuses a tab already showing the note.
 
-**Why:** the stream should behave as Obsidian's reading view does, and the
-file menu adds move, bookmark and reveal at no new UI. The one departure is
-the plain click: the reading view replaces its own tab, which the stream
-cannot do, so Obsidian's API opens a new tab on every click. Focusing the
-open one keeps a note to one tab.
+**Why:** Obsidian's reading view replaces its own tab; the stream can't, so
+the API alone opens a new tab per click.
 
 **Rejected:**
-- A new tab on every plain click — what the API does unaided; tabs of the
-  same note pile up.
-- A pencil button per note — clutter on a read-only feed; the title does it.
-- Append to today's note — needs an input, the inline editor 2026-09-15
-  rejects; capture plugins already append to a file.
-- Rename and delete in the menu — Obsidian adds them only in its explorer,
-  and its rename prompt is not public API.
+- A new tab per click — tabs of one note pile up.
+- A pencil button per note — the title does it.
+- Append to today's note — needs the inline editor 2026-09-15 rejects.
+- Rename and delete in the menu — not public API.
