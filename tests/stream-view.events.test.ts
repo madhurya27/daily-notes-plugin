@@ -156,7 +156,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             await flushPromises();
 
             expect(plugin.service.removeSorted).toHaveBeenCalledWith(note.path);
-            expect(el.isConnected).toBe(false);
+            expect(el.parentElement).toBeNull();
             expect(state.length).toBe(0);
         });
 
@@ -168,7 +168,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             (view as any).stream.onFileDelete(note);
             await flushPromises();
 
-            expect(el.isConnected).toBe(false);
+            expect(el.parentElement).toBeNull();
             expect(state.length).toBe(0);
         });
 
@@ -237,7 +237,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             (view as any).stream.onFileRename(file, "Notes/2025-01-01.md");
             await flushPromises();
 
-            expect(el.isConnected).toBe(false);
+            expect(el.parentElement).toBeNull();
             expect(plugin.service.removeSorted).toHaveBeenCalledWith(file.path);
             expect(plugin.service.insertSorted).toHaveBeenCalledWith(file);
         });
@@ -264,16 +264,20 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             expect(migrateSpy).toHaveBeenCalledWith("Notes/2025-01-01.md", file.path);
         });
 
-        it("always removes the old entry (by oldPath) and re-creates under the new path — regardless of whether either name is a valid daily note", async () => {
+        it("drops a note renamed out of the daily-note format", async () => {
+            // Obsidian renames the TFile in place, so state holds it under the new path.
             const file = new TFile("Notes/Template.md");
-            const removeSpy = vi.spyOn((view as any).stream, "removeNote");
-            const createSpy = vi.spyOn((view as any).stream, "onFileCreate");
+            state.reset([file]);
+            const el = trackBlock("Notes/2025-01-01.md");
+            plugin.service.removeSorted = vi.fn().mockReturnValue(0);
+            plugin.service.insertSorted = vi.fn().mockReturnValue(-1);
 
             (view as any).stream.onFileRename(file, "Notes/2025-01-01.md");
             await flushPromises();
 
-            expect(removeSpy).toHaveBeenCalledWith(file, "Notes/2025-01-01.md");
-            expect(createSpy).toHaveBeenCalledWith(file);
+            expect(el.parentElement).toBeNull();
+            expect(state.length).toBe(0);
+            expect((view as any).stream.window.add).not.toHaveBeenCalled();
         });
     });
 
