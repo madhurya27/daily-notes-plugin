@@ -50,6 +50,19 @@ describe("DailyNoteService", () => {
             expect(sorted[2]?.basename).toBe("2025-01-01");
         });
 
+        it("never parses the name of a file outside the daily-notes folder", () => {
+            __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
+            const outside = new TFile("Pages/2025-01-02.md");
+            let reads = 0;
+            Object.defineProperty(outside, "basename", { get: () => (reads++, "2025-01-02") });
+            const svc = new DailyNoteService(() => [...__mockMarkdownFiles(), outside]);
+
+            svc.initialize();
+            svc.insertSorted(outside);
+
+            expect(reads).toBe(0);
+        });
+
         it("ignores files that do not match the format", () => {
             __setMockSettings({ format: "YYYY/MM/YYYY-MM-DD", folder: "Notes" });
             __setMockNotes(["Notes/2025/01/2025-01-01.md", "Notes/2025/01/Template.md", "Notes/SomeOtherFile.md"]);
