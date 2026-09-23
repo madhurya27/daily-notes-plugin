@@ -28,15 +28,32 @@ Screenshots need both variables: without `E2E_SHOW_WINDOW` the window is hidden,
 
 Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 
-- `src/main.ts` — plugin lifecycle; registers view, ribbon icon, command, settings tab.
-- `src/DailyNoteService.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
-- `src/DailyNotesStreamView.ts` — `ItemView` subclass; infinite scroll, vault events, collapsible sections, properties panel.
-- `src/JumpToDateModal.ts` — the `SuggestModal` behind the header action and the `jump-to-date` command; offers the dates the vault has notes for, in the vault's own format.
-- `src/NoteWindowManager.ts` — renders a block near the viewport, empties it well past; owns each note's `Component`.
-- `src/obsidianInternals.ts` — the single place unsupported internals are read (`getReadableLineLength`, the
+Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
+
+- `main.ts` — plugin lifecycle; registers view, ribbon icon, command, settings tab.
+- `settings.ts` — settings interface, defaults, `PluginSettingTab`.
+- `obsidian-internals.ts` — the single place unsupported internals are read (`getReadableLineLength`, the
   `vault` "raw" event behind `onVaultConfigChange`, the core global-search plugin and the `search` view's
-  `setQuery` behind `openTagSearch`, `metadataTypeManager` behind `getPropertyIcon`).
-- `src/settings.ts` — settings interface, defaults, `PluginSettingTab`.
+  `setQuery` behind `openTagSearch`, `metadataTypeManager` behind `getPropertyIcon`, `hotkeyManager` behind
+  `getSearchHotkeys`).
+- `notes/daily-note-service.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including
+  nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
+- `ui/stream-view.ts` — `ItemView` subclass; wires vault events, links and header actions to the stream.
+- `ui/jump-to-date-modal.ts` — the `SuggestModal` behind the header action and the `jump-to-date` command;
+  offers the dates the vault has notes for, in the vault's own format.
+- Search: `notes/note-search.ts` matches sources, `stream/stream-search.ts` steps note to note,
+  `render/search-highlights.ts` paints CSS highlight ranges, `ui/search-bar.ts` is the bar, `ui/hotkey.ts`
+  matches the vault's binding.
+- `stream/note-stream.ts` — the stream's contents: batches, vault-event updates, jumps, rebuilds, all through
+  one queue.
+- `stream/stream-blocks.ts` — where blocks sit: the path→block index, placement ahead of the sentinel, the
+  empty state.
+- `stream/note-window.ts` — renders a block near the viewport, empties it well past; owns each note's
+  `Component`.
+- `stream/` also holds the loaded range (`stream-state.ts`), the sentinel (`infinite-scroll.ts`) and scroll
+  anchoring (`scroll-position.ts`).
+- `render/` — a note's markdown and properties (`note-renderer.ts`), collapsible sections (`collapsible.ts`)
+  and their persisted state (`collapse-store.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
 `obsidian-daily-notes-interface` from `tests/mocks/`.
@@ -63,7 +80,7 @@ Traps that span files, so no single file's comments can hold them.
   and the renderer reads the cache.
 - **A block may hold no content.** Only notes near the viewport are rendered ([ADR 0006](docs/adr/0006-unload-off-screen-notes.md));
   everything else is an empty `.daily-note-block` reserving its height. Never assume a block's children exist,
-  and never key anything off them — `data-source-path` is on the block, and the view's path→block index is the
+  and never key anything off them — `data-source-path` is on the block, and `StreamBlocks`' path→block index is the
   only lookup.
 - **Delegated listeners**: chevrons and note titles are rebuilt on every re-render, so nothing binds a
   listener per element — `CollapsibleManager.delegate()` and `NoteRenderer.delegate()` register one listener
@@ -76,7 +93,7 @@ Traps that span files, so no single file's comments can hold them.
 
 Tag must equal the manifest version exactly, no leading `v`; `pnpm version` writes every file through
 `version-bump.mjs`. The workflow gates on format, lint and coverage before drafting the release.
-`tests/releaseWorkflow.test.ts` guards its shape.
+`tests/release-workflow.test.ts` guards its shape.
 
 ## Documentation
 
@@ -87,5 +104,6 @@ Update docs in the same branch as the change that makes them stale:
 - `README.md` — user-facing features, install, usage.
 - `docs/TESTING.md` — manual verification checklist.
 - `docs/DONE.md` / `docs/TODO.md` — move items as work completes.
-- `AGENTS.md` — plugin-dev conventions; don't edit its wording, fix the code to match it.
+- `AGENTS.md` — the sample plugin's copy, verbatim; don't edit its wording, fix the code to match it. Its npm
+  commands are the exception: this repo uses pnpm.
 - This file — commands, architecture, invariants.

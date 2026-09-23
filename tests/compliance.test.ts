@@ -15,9 +15,11 @@ const manifest = JSON.parse(readFileSync(resolve(repoRoot, "manifest.json"), "ut
     isDesktopOnly: boolean;
     fundingUrl?: string;
 };
-const sources = readdirSync(srcDir)
-    .filter((name) => name.endsWith(".ts"))
-    .map((name) => ({ name, text: readFileSync(resolve(srcDir, name), "utf8") }));
+/** Every `.ts` file under `dir`, folders included, relative to it. */
+const tsFilesUnder = (dir: string) =>
+    readdirSync(dir, { recursive: true, encoding: "utf8" }).filter((name) => name.endsWith(".ts"));
+
+const sources = tsFilesUnder(srcDir).map((name) => ({ name, text: readFileSync(resolve(srcDir, name), "utf8") }));
 
 describe("plugin submission compliance", () => {
     it("reads every source file", () => {
@@ -138,9 +140,23 @@ describe("plugin submission compliance", () => {
     it("debounces the file-system event it re-renders from", () => {
         // AGENTS.md: debounce file-system handlers. Obsidian autosaves while
         // typing, and each save would otherwise re-render the whole note.
-        const view = sources.find(({ name }) => name === "DailyNotesStreamView.ts")!;
-        expect(view.text).toMatch(/debounce\(/);
-        expect(view.text).toMatch(/flushModified/);
+        const stream = sources.find(({ name }) => name === "stream/note-stream.ts")!;
+        expect(stream.text).toMatch(/debounce\(/);
+        expect(stream.text).toMatch(/flushModified/);
+    });
+
+    // Obsidian's sample plugin names files in kebab-case; docs/decisions.md, 2026-09-23.
+    it("names every source and test file in kebab-case", () => {
+        const kebab = /^[a-z0-9]+(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*\.ts$/;
+        for (const dir of ["src", "tests", "e2e"]) {
+            for (const path of tsFilesUnder(resolve(repoRoot, dir))) {
+                for (const segment of path.split(/[\\/]/)) {
+                    expect(segment, `${dir}/${path}`).toMatch(
+                        segment.endsWith(".ts") ? kebab : /^[a-z0-9]+(-[a-z0-9]+)*$/
+                    );
+                }
+            }
+        }
     });
 
     it("ships the licence the directory requires", () => {

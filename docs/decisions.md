@@ -81,7 +81,9 @@ pagination invariant.
 ## 2026-09-22 — The jump re-applies its scroll until the stream stops rendering
 
 **Decision:** up to eight passes, ending when the target is at the top of the
-pane *and* `NoteWindowManager.layoutChanges` held still across the pass.
+pane *and* `NoteWindowManager.layoutChanges` held still across the pass — or
+when a scroll moves nothing and nothing changed since the last pass. Search
+centres a match the same way (`scrollIntoPlace`).
 
 **Why:** a note above it outgrows its placeholder estimate and pushes it down.
 One `scrollIntoView` left the target 1600–1850px short in e2e, desktop and
@@ -90,12 +92,14 @@ mobile. The jump-sized answer to the `scrollTop`-correction item in
 
 **Rejected:** stopping once the target stops moving — it is at the top the
 instant it is scrolled to, and the renders that displace it land after.
+Waiting a frame on a stuck scroll — the hidden e2e phone window draws none
+when nothing changed, and the search hung on it.
 
 ## 2026-09-15 — The stream reloads on the vault's "raw" config event
 
 **Decision:** watch the undeclared `vault.on("raw")` event, filtered to
 `vault.configDir`, and rebuild the cache when Obsidian's daily-note format or
-folder actually changed. Isolated in `src/obsidianInternals.ts`.
+folder actually changed. Isolated in `src/obsidian-internals.ts`.
 
 **Why:** the format decides what counts as a daily note; nothing re-read it
 after `onOpen()`. No public event announces a core-plugin settings change, and
@@ -298,7 +302,7 @@ offset read off Obsidian's own chrome.
 
 **Decision:** clicking a tag in the stream — inline in the note or as a pill in
 the properties panel — opens Obsidian's search on `tag:#name`, through the
-core global-search plugin reached by id in `src/obsidianInternals.ts`.
+core global-search plugin reached by id in `src/obsidian-internals.ts`.
 
 **Why:** a tag is a link everywhere else in Obsidian; in the stream it was
 inert. No public API exposes the search pane, so the core plugin is reached by
@@ -333,3 +337,53 @@ only state left by earlier tests in the same instance broke under reordering.
 **Rejected:** whole-file parallelism — `stream.spec.ts` holds most tests, so
 it only reached 2.3 min. More workers — the instances starve for CPU and
 timing tests slip.
+
+## 2026-09-23 — Search the stream, counted per note
+
+**Decision:** the vault's "Search current file" hotkey, read from
+`hotkeyManager` on each keydown, opens Obsidian's own find bar above the pane;
+a header action does too, for phones. It matches each note's title and source,
+frontmatter included, counts notes ("3 / 12"), and steps through the visible
+highlights (CSS highlight API) note to note. Typing marks the topmost match on
+screen and never scrolls.
+
+**Why:** off-screen notes hold no DOM (ADR 0006), so find-in-page sees a few
+days. Source and rendered text differ, so only a per-note count holds. Obsidian
+searches hidden frontmatter too (checked 2026-09-23).
+
+**Rejected:**
+- Per-match count — drifts from what is highlighted.
+- `<mark>` wrappers — change the DOM collapsing walks.
+- Hardcoded Mod+F, or a command of our own — ignores a rebind; a second hotkey.
+- Jumping to the first match as you type — a half-typed word lands years away.
+- A longer typing pause — 1095 notes search in 1–3 ms.
+- Skipping frontmatter when properties are off — disagrees with Obsidian.
+- A tag/header filter — core search does it.
+
+## 2026-09-23 — Search opens folds, unsaved; labels what it cannot show
+
+**Decision:** stepping onto a match inside a collapsed heading, list item or
+properties panel expands it without saving; a re-render folds it again. Typing
+never unfolds. A note that matches with nothing drawn (hidden frontmatter, raw
+syntax) counts as `3 / 12 · hidden`.
+
+**Why:** Obsidian's reading view does the same; landing on a note and marking
+nothing reads as a bug.
+
+**Rejected:**
+- Skipping folded matches — the note is counted but shows nothing.
+- Saving the expansion — a search would rewrite the reader's layout.
+
+## 2026-09-23 — Kebab-case files, grouped into folders
+
+**Decision:** every `.ts` file in `src/`, `tests/` and `e2e/` is kebab-case;
+`src/` groups them into `ui/`, `stream/`, `render/` and `notes/`. Class names
+are unchanged. `tests/compliance.test.ts` enforces the case.
+
+**Why:** Obsidian's plugin guidelines ask for folders once there is more than
+one `.ts` file, and the official sample plugin and Minimal Settings name files
+in kebab-case. A single case needs no judgement to follow, so a test can hold it.
+
+**Rejected:** PascalCase for files exporting a class — nothing can check it,
+and it had already drifted. A lint plugin for the rule — the compliance test
+already reads every file.

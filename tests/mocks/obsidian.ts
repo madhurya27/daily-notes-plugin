@@ -48,75 +48,6 @@ export class WorkspaceLeaf {
     }
 }
 
-// Mock DOM elements for Node environment
-class MockHTMLElement {
-    classList = {
-        add: () => {},
-        toggle: () => {},
-        remove: () => {},
-    };
-    style = {};
-    dataset = {};
-    children: MockHTMLElement[] = [];
-    parentNode: MockHTMLElement | null = null;
-
-    createDiv(params?: any) {
-        const div = new MockHTMLElement();
-        this.appendChild(div);
-        return div;
-    }
-    createEl(tag: string, params?: any) {
-        const el = new MockHTMLElement();
-        this.appendChild(el);
-        return el;
-    }
-    createSpan(params?: any) {
-        const span = new MockHTMLElement();
-        this.appendChild(span);
-        return span;
-    }
-    appendChild(child: any) {
-        this.children.push(child);
-        child.parentNode = this;
-        return child;
-    }
-    insertBefore(newNode: any, referenceNode: any) {
-        const index = this.children.indexOf(referenceNode);
-        if (index >= 0) {
-            this.children.splice(index, 0, newNode);
-        } else {
-            this.children.push(newNode);
-        }
-        newNode.parentNode = this;
-        return newNode;
-    }
-    removeChild(child: any) {
-        const index = this.children.indexOf(child);
-        if (index >= 0) {
-            this.children.splice(index, 1);
-            child.parentNode = null;
-        }
-    }
-    remove() {
-        if (this.parentNode) {
-            this.parentNode.removeChild(this);
-        }
-    }
-    addEventListener() {}
-    querySelector() {
-        return null;
-    } // Simple mock
-    closest() {
-        return null;
-    }
-    setText() {}
-    toggleClass() {}
-    onClickEvent() {}
-    get firstChild() {
-        return this.children[0] || null;
-    }
-}
-
 /**
  * Obsidian's parent/child lifecycle, which is what frees a note's rendered
  * subtree: `children` and `loaded` are the mock's window onto it.
@@ -135,6 +66,7 @@ export class Component {
         if (!this.loaded) return;
         this.loaded = false;
         while (this.children.length) this.removeChild(this.children[0]!);
+        for (const cb of this.cleanups.splice(0)) cb();
     }
 
     addChild<T extends Component>(child: T): T {
@@ -150,6 +82,13 @@ export class Component {
         return child;
     }
 
+    private cleanups: (() => unknown)[] = [];
+
+    /** Runs `cb` when this component unloads. */
+    register(cb: () => unknown) {
+        this.cleanups.push(cb);
+    }
+
     registerDomEvent(el: HTMLElement, type: string, cb: EventListener) {
         el.addEventListener(type, cb);
     }
@@ -158,13 +97,17 @@ export class Component {
 /** A view is a Component: it owns what its notes register. */
 export class ItemView extends Component {
     contentEl: any;
+    /** Obsidian hands a view's scope the keys pressed while its leaf is active. */
+    scope: Scope | null = null;
+    containerEl: HTMLElement;
     app: any;
     /** View actions, recorded so tests can invoke what onOpen() wired up. */
     actions: { icon: string; title: string; callback: (_evt: any) => any }[] = [];
     constructor(leaf: WorkspaceLeaf) {
         super();
         this.app = leaf.app;
-        this.contentEl = new MockHTMLElement();
+        this.containerEl = document.createElement("div");
+        this.contentEl = this.containerEl.createDiv({ cls: "view-content" });
         this.load();
     }
     registerEvent() {}
@@ -188,8 +131,9 @@ export class Notice {
 
 /** Obsidian's keymap scope: the modal owns it, so it needs no teardown. */
 export class Scope {
-    registered: { modifiers: string[]; key: string; callback: () => unknown }[] = [];
-    register(modifiers: string[], key: string, callback: () => unknown) {
+    registered: { modifiers: string[] | null; key: string | null; callback: (..._args: any[]) => unknown }[] = [];
+    constructor(readonly parent?: Scope) {}
+    register(modifiers: string[] | null, key: string | null, callback: (..._args: any[]) => unknown) {
         this.registered.push({ modifiers, key, callback });
         return callback;
     }
@@ -479,3 +423,6 @@ export class Plugin {
     }
     registerEvent(_e: any) {}
 }
+
+/** Mutable, so a test can stand in for either platform. */
+export const Platform = { isMacOS: true, isMobile: false };

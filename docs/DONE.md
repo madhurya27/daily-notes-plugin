@@ -25,5 +25,10 @@
 - [x] Properties panel shown by default
 - [x] Jump to date, from the view header or the command palette
 - [x] Flaky e2e scroll-position-on-unload: a block measuring nothing reserved nothing and collapsed
+- [x] Split `DailyNotesStreamView`: the view wires events, `NoteStream` owns the stream's contents
 - [x] Jump to date as a suggester over the dates the vault has, in the vault's own format, with the platform's date wheel
 - [x] Jump prompt: the hidden date picker no longer pushes the clear button out of the query box
+- [x] Search the stream on the vault's own find hotkey, counted per note, stepping through highlights
+- [x] Search opens collapsed sections, unsaved, and labels a match it cannot show `· hidden`
+- [x] Narrow `CollapsibleManager`'s sibling casts to `Element`
+- [x] `test:memory` bounds unloaded blocks by emptiness, not a node count a heavier note could trip

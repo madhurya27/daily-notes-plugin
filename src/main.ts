@@ -1,8 +1,8 @@
 import { Plugin, WorkspaceLeaf } from "obsidian";
-import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "./DailyNotesStreamView";
+import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "./ui/stream-view";
 import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab } from "./settings";
-import { DailyNoteService } from "./DailyNoteService";
-import { CollapsibleStateStore } from "./CollapsibleStateStore";
+import { DailyNoteService } from "./notes/daily-note-service";
+import { CollapsibleStateStore } from "./render/collapse-store";
 
 export default class DailyNotesStreamPlugin extends Plugin {
     settings!: DailyNotesStreamSettings;

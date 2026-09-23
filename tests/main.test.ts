@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import DailyNotesStreamPlugin from "../src/main";
-import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/DailyNotesStreamView";
+import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/ui/stream-view";
 import { DEFAULT_SETTINGS } from "../src/settings";
-import { DailyNoteService } from "../src/DailyNoteService";
-import { CollapsibleStateStore } from "../src/CollapsibleStateStore";
+import { DailyNoteService } from "../src/notes/daily-note-service";
+import { CollapsibleStateStore } from "../src/render/collapse-store";
 import { WorkspaceLeaf } from "./mocks/obsidian";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 

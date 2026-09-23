@@ -373,3 +373,32 @@
     color: var(--text-muted);
     font-size: var(--font-ui-smaller);
 }
+
+/* Search. The bar is Obsidian's own find bar, drawn by its stylesheet; only
+   closing it is ours. Matches paint through the CSS highlight API, in the
+   colours Obsidian's editor search uses; the current one is a selection. */
+.daily-notes-search.is-closed {
+    display: none;
+}
+
+::highlight(daily-notes-search-match) {
+    background-color: var(--text-highlight-bg);
+}
+
+::highlight(daily-notes-search-current) {
+    background-color: var(--text-selection);
+}
+
+/* On a phone, Obsidian pads its find bar to clear the floating header, and the
+   view content clears it again. Above the content, the bar clears it alone. */
+.is-mobile .daily-notes-search {
+    padding-top: var(--size-4-2);
+}
+
+.is-phone .mod-root .daily-notes-search {
+    margin-top: var(--view-top-spacing);
+}
+
+.is-phone .mod-root .daily-notes-search:not(.is-closed) + .view-content {
+    margin-top: 0;
+}

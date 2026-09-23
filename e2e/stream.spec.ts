@@ -18,6 +18,15 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(firstNote.locator(".daily-note-content")).not.toContainText("mood:");
     });
 
+    // An icon name Obsidian's Lucide set lacks renders a blank button, silently.
+    test("draws an icon on every header action", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+        const actions = page.locator(".workspace-leaf.mod-active .view-action");
+        await expect(actions).not.toHaveCount(0);
+        for (const action of await actions.all()) await expect(action.locator("svg")).toHaveCount(1);
+    });
+
     test("collapses a heading in the real rendered DOM", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
