@@ -6,9 +6,6 @@ Ordered by priority, from the 2026-09 comparison against
 
 - [ ] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
   frame rate; loading is not the cost, so preloading would not help.
-- [ ] Search into a collapsed section lands on the note and marks nothing. Expand it on Enter, unsaved, as
-  Obsidian's reading view does; `CollapsibleManager` saves every toggle. Label what cannot be shown (embeds,
-  hidden frontmatter) `· hidden`.
 - [ ] Per-note edit action — open in a split, or append to today's note. Read-only stream stays; see
   `docs/decisions.md` (2026-09-15).
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
@@ -51,7 +48,3 @@ own scroll anchoring absorbs most of it today
 ([ADR 0006](adr/0006-unload-off-screen-notes.md)).
 - [ ] Correct `scrollTop` by the delta when a block **above** the viewport renders and changes height — removes the jump whatever the estimate. Needs `overflow-anchor: none` on the container, which means owning behaviour Chromium currently handles.
 - [ ] Estimate per note from `TFile.stat.size` — only if the median proves too coarse for a vault of uneven notes.
-
-## Deferred code health
-Reviewed 2026-07 and deliberately not fixed; each has a trigger for revisiting.
-- [ ] `nextElementSibling as HTMLElement` casts in `CollapsibleManager.applyHeaderCollapse` — Obsidian augments `Element` with class helpers, so the casts can likely narrow to `Element`; fold into the next CollapsibleManager change.

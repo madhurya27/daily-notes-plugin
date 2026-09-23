@@ -63,7 +63,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - The count is of matching notes, not matches. **[e2e]**
 - Typing marks the first match on screen and scrolls nowhere. **[e2e]**
 - Enter steps through a note's highlights, then to the next note, loading past the batch if needed. **[e2e]**
-- A match under a collapsed heading is skipped. **[e2e]**
+- Enter onto a match under a collapsed heading expands it; reload the view and it is collapsed again. **[e2e]**
+- A match only in hidden syntax (`mood:`) reads `1 / N · hidden`. **[e2e]**
 - Escape clears every highlight. **[e2e]**
 - Edit a note while a search is open: the count follows.
 - On a phone, the bar sits under the floating header with no gap above the notes.

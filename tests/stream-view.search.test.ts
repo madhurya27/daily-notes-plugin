@@ -143,7 +143,8 @@ describe("DailyNotesStreamView — search", () => {
         await settle();
 
         expect(reveal).toHaveBeenCalledWith(NOTES[0]);
-        expect(count()).toBe("1 / 2");
+        // The mocked reveal draws no block, so the match is hidden.
+        expect(count()).toBe("1 / 2 · hidden");
     });
 
     it("steps back on the Previous button", async () => {

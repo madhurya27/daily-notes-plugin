@@ -160,6 +160,7 @@ export class NoteRenderer {
             sectionKey: PROPERTIES_SECTION_KEY,
             defaultCollapsed: this.getSettings().propertiesCollapsed,
             apply: (collapsed) => metadataContainer.toggleClass("is-collapsed", collapsed),
+            hides: (node) => metadataContent.contains(node),
         });
         this.collapsible.attachCollapseHost(heading, toggle);
     }

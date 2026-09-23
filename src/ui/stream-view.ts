@@ -45,6 +45,7 @@ export class DailyNotesStreamView extends ItemView {
             },
             this.stream,
             highlighter,
+            this.collapsible,
             (status) => this.searchBar.setStatus(status)
         );
         this.searchBar = new SearchBar(this, {

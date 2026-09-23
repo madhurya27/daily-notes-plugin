@@ -544,3 +544,65 @@ describe("CollapsibleManager — delegated listeners", () => {
         expect(store.setCollapsed).toHaveBeenCalledTimes(2);
     });
 });
+
+describe("CollapsibleManager — unfolding for search", () => {
+    let store: ReturnType<typeof makeStore>;
+    let manager: CollapsibleManager;
+    let content: HTMLElement;
+
+    beforeEach(() => {
+        store = makeStore(true);
+        manager = new CollapsibleManager(store as any);
+        content = document.createElement("div");
+        content.innerHTML =
+            "<h2>Top</h2><p id='a'>A</p>" +
+            "<h3>Inner</h3><ul><li id='item'>Item<ul><li id='deep'>Deep</li></ul></li></ul>" +
+            "<h2>Other</h2><p id='b'>B</p>";
+        makeCollapsible(manager, content, "file.md");
+    });
+
+    const text = (id: string) => content.querySelector(`#${id}`)!.firstChild!;
+    const hidden = (el: Element) => el.classList.contains("is-hidden") || el.closest(".is-hidden") !== null;
+
+    it("knows which text a collapsed section hides", () => {
+        expect(manager.folds(text("a"))).toBe(true);
+        expect(manager.folds(text("deep"))).toBe(true);
+        expect(manager.folds(content.querySelector("h2")!.lastChild!)).toBe(false);
+    });
+
+    it("hides nothing once every section is expanded", () => {
+        store = makeStore(false);
+        manager = new CollapsibleManager(store as any);
+        makeCollapsible(manager, content, "fresh.md");
+        expect(manager.folds(text("deep"))).toBe(false);
+    });
+
+    it("unfolds every section around the text, and only those", () => {
+        manager.unfold(text("deep"));
+
+        const [top, other] = Array.from(content.querySelectorAll("h2"));
+        expect(top!.classList.contains("is-collapsed")).toBe(false);
+        expect(content.querySelector("h3")!.classList.contains("is-collapsed")).toBe(false);
+        expect(content.querySelector("#item")!.classList.contains("is-collapsed")).toBe(false);
+        expect(hidden(content.querySelector("#deep")!)).toBe(false);
+        expect(other!.classList.contains("is-collapsed")).toBe(true);
+        expect(hidden(content.querySelector("#b")!)).toBe(true);
+        expect(manager.folds(text("deep"))).toBe(false);
+    });
+
+    it("saves nothing, so a re-render folds it again", () => {
+        manager.unfold(text("deep"));
+        expect(store.setCollapsed).not.toHaveBeenCalled();
+    });
+
+    it("collapses an unfolded section on the next click, and says so", () => {
+        const top = content.querySelector("h2") as HTMLElement;
+        manager.unfold(text("a"));
+        expect(top.querySelector(".collapse-indicator")!.getAttribute("aria-expanded")).toBe("true");
+
+        clickChevron(top);
+
+        expect(top.classList.contains("is-collapsed")).toBe(true);
+        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "top", true);
+    });
+});

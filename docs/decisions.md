@@ -360,6 +360,20 @@ searches hidden frontmatter too (checked 2026-09-23).
 - Skipping frontmatter when properties are off — disagrees with Obsidian.
 - A tag/header filter — core search does it.
 
+## 2026-09-23 — Search opens folds, unsaved; labels what it cannot show
+
+**Decision:** stepping onto a match inside a collapsed heading, list item or
+properties panel expands it without saving; a re-render folds it again. Typing
+never unfolds. A note that matches with nothing drawn (hidden frontmatter, raw
+syntax) counts as `3 / 12 · hidden`.
+
+**Why:** Obsidian's reading view does the same; landing on a note and marking
+nothing reads as a bug.
+
+**Rejected:**
+- Skipping folded matches — the note is counted but shows nothing.
+- Saving the expansion — a search would rewrite the reader's layout.
+
 ## 2026-09-23 — Kebab-case files, grouped into folders
 
 **Decision:** every `.ts` file in `src/`, `tests/` and `e2e/` is kebab-case;

@@ -102,26 +102,38 @@ test.describe("search the stream", () => {
         await expect(count).toHaveText(`1 / ${SEEDED_DAYS}`);
     });
 
-    test("skips a match under a collapsed heading", async ({ obsidian }) => {
+    test("unfolds a match under a collapsed heading, unsaved", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
-        await container
-            .locator(".daily-note-block")
-            .first()
-            .locator(".daily-note-content h2")
-            .first()
-            .locator(".collapse-indicator")
-            .click();
+        const heading = container.locator(".daily-note-block").first().locator(".daily-note-content h2").first();
+        await heading.locator(".collapse-indicator").click();
+        await expect(heading).toHaveClass(/is-collapsed/);
         const bar = await openSearch(page);
         await bar.locator("input").fill("Stretching");
 
         await page.keyboard.press("Enter");
-        // The newest note's only match is hidden: it is visited, nothing marked.
+
         await expect(bar.locator(".document-search-count")).toHaveText(`1 / ${SEEDED_DAYS}`);
-        expect(await currentMatch(page)).toBeNull();
+        await expect.poll(() => currentMatch(page)).toEqual({ text: "Stretching", onScreen: true });
+        await expect(heading).not.toHaveClass(/is-collapsed/);
+        // Unsaved: the fold still stands in the vault's own storage.
+        const saved = await page.evaluate(() =>
+            Object.keys(localStorage).some((key) => key.includes("collapse:") && localStorage[key] === "true")
+        );
+        expect(saved).toBe(true);
+    });
+
+    test("labels a match nothing on screen can show", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+        const bar = await openSearch(page);
+        // Frontmatter source: the properties panel draws "mood", never "mood:".
+        await bar.locator("input").fill("mood:");
 
         await page.keyboard.press("Enter");
-        await expect.poll(() => currentMatch(page)).toEqual({ text: "Stretching", onScreen: true });
+
+        await expect(bar.locator(".document-search-count")).toHaveText(`1 / ${SEEDED_DAYS} · hidden`);
+        expect(await currentMatch(page)).toBeNull();
     });
 
     test("clears every highlight on close", async ({ obsidian }) => {

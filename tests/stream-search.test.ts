@@ -22,6 +22,8 @@ describe("StreamSearch", () => {
     let top: TFile | null;
     let shown: (range: Range) => boolean;
     let onScreen: (range: Range) => boolean;
+    let folded: (node: Node) => boolean;
+    let unfolded: Node[];
     let search: StreamSearch;
 
     beforeEach(() => {
@@ -45,6 +47,8 @@ describe("StreamSearch", () => {
         top = notes[0]!;
         shown = () => true;
         onScreen = () => false;
+        folded = () => false;
+        unfolded = [];
         search = new StreamSearch(
             {
                 notes: () => notes,
@@ -64,6 +68,7 @@ describe("StreamSearch", () => {
                 isOnScreen: (range) => onScreen(range),
             },
             highlighter,
+            { folds: (node) => folded(node), unfold: (node) => void unfolded.push(node) },
             (text) => (status = text),
             (range) => shown(range)
         );
@@ -121,6 +126,17 @@ describe("StreamSearch", () => {
 
         expect(current()).toEqual([]);
         expect(status).toBe("3 notes");
+    });
+
+    it("marks no folded match as you type, unfolding nothing", async () => {
+        onScreen = () => true;
+        shown = () => false;
+        folded = () => true;
+
+        await search.search("milk");
+
+        expect(current()).toEqual([]);
+        expect(unfolded).toEqual([]);
     });
 
     it("counts one note in the singular", async () => {
@@ -224,6 +240,23 @@ describe("StreamSearch", () => {
         expect(current()[0]!.startOffset).toBe(14);
     });
 
+    it("unfolds a folded highlight on the step that reaches it", async () => {
+        shown = (range) => range.startOffset !== 0;
+        folded = () => true;
+        await search.search("milk");
+
+        await search.next();
+
+        expect(current()[0]!.startOffset).toBe(0);
+        expect(unfolded).toEqual([current()[0]!.startContainer]);
+        expect(status).toBe("1 / 3");
+
+        await search.next();
+
+        expect(current()[0]!.startOffset).toBe(14);
+        expect(unfolded).toHaveLength(1);
+    });
+
     it("reads what the reader can see off the layout", async () => {
         // jsdom has no Range layout; Chromium gives a hidden range no boxes.
         const boxes = vi.fn(function (this: Range) {
@@ -241,6 +274,7 @@ describe("StreamSearch", () => {
                     isOnScreen: () => false,
                 },
                 highlighter,
+                { folds: () => false, unfold: () => {} },
                 () => {}
             );
             await search.search("milk");
@@ -262,7 +296,7 @@ describe("StreamSearch", () => {
 
         expect(revealed).toEqual([notes[0], notes[2]]);
         expect(current()).toEqual([]);
-        expect(status).toBe("2 / 3");
+        expect(status).toBe("2 / 3 · hidden");
     });
 
     it("moves nowhere when nothing matches", async () => {

@@ -16,7 +16,19 @@ export interface CollapsibleSection {
     defaultCollapsed: boolean;
     /** Applies the state to the DOM. */
     apply(collapsed: boolean): void;
+    /** Whether collapsing the section hides `node`. */
+    hides(node: Node): boolean;
 }
+
+/** A collapsed section, as search sees it. */
+interface Fold {
+    hides(node: Node): boolean;
+    /** Expands the section without saving it. */
+    open(): void;
+}
+
+/** Chevrons of collapsed sections carry this, so a query finds them. */
+const COLLAPSED_CHEVRON = '.collapse-indicator[aria-expanded="false"]';
 
 /** Adds collapse chevrons to headers and list items, persisting state per note. */
 export class CollapsibleManager {
@@ -24,6 +36,8 @@ export class CollapsibleManager {
 
     /** Element → its toggle. Weak, so elements dropped by a re-render are collectable. */
     private readonly toggles = new WeakMap<HTMLElement, () => void>();
+    /** Chevron → its section. */
+    private readonly sections = new WeakMap<Element, Fold>();
 
     /**
      * One listener pair for the whole stream. Chevrons are rebuilt on every
@@ -90,15 +104,39 @@ export class CollapsibleManager {
         if (collapsed) section.apply(true);
         indicator.setAttribute("aria-expanded", String(!collapsed));
 
-        const toggle = () => {
-            collapsed = !collapsed;
+        const set = (next: boolean) => {
+            collapsed = next;
             section.apply(collapsed);
             indicator.setAttribute("aria-expanded", String(!collapsed));
+        };
+        const toggle = () => {
+            set(!collapsed);
             this.store.setCollapsed(section.filePath, section.sectionKey, collapsed);
         };
 
         this.toggles.set(indicator, toggle);
+        this.sections.set(indicator, { hides: (node) => section.hides(node), open: () => set(false) });
         return toggle;
+    }
+
+    /** Whether a collapsed section hides `node`. */
+    folds(node: Node): boolean {
+        return this.foldsAround(node).length > 0;
+    }
+
+    /**
+     * Expands every collapsed section hiding `node`, unsaved, as Obsidian's
+     * reading view does for a search match (docs/decisions.md, 2026-09-23).
+     */
+    unfold(node: Node): void {
+        for (const fold of this.foldsAround(node)) fold.open();
+    }
+
+    private foldsAround(node: Node): Fold[] {
+        const root = node.getRootNode() as ParentNode;
+        return Array.from(root.querySelectorAll(COLLAPSED_CHEVRON))
+            .map((chevron) => this.sections.get(chevron))
+            .filter((fold): fold is Fold => fold !== undefined && fold.hides(node));
     }
 
     makeCollapsible(contentEl: HTMLElement, filePath: string): void {
@@ -132,6 +170,7 @@ export class CollapsibleManager {
                     header.toggleClass("is-collapsed", collapsed);
                     this.applyHeaderCollapse(header, collapsed);
                 },
+                hides: (node) => this.sectionBody(header).some((el) => el.contains(node)),
             });
         });
     }
@@ -149,33 +188,41 @@ export class CollapsibleManager {
                 sectionKey: this.uniqueKey(`li-${depth}-${slugify(this.ownText(li))}`, seenKeys),
                 defaultCollapsed: false,
                 apply: (collapsed) => li.toggleClass("is-collapsed", collapsed),
+                hides: (node) =>
+                    Array.from(li.children).some((el) => /^(UL|OL)$/.test(el.tagName) && el.contains(node)),
             });
         });
     }
 
     private applyHeaderCollapse(header: HTMLElement, isCollapsed: boolean): void {
-        const level = parseInt(header.tagName.substring(1));
         // A nested collapsed heading keeps its content hidden: skip siblings
         // until a heading at that level or higher.
         let collapsedNestedLevel: number | null = null;
-        let nextEl = header.nextElementSibling as HTMLElement | null;
-        while (nextEl) {
-            const nextLevel = this.headingLevel(nextEl);
-            if (nextLevel !== null) {
-                if (nextLevel <= level) break;
-                if (collapsedNestedLevel !== null && nextLevel <= collapsedNestedLevel) collapsedNestedLevel = null;
+        for (const el of this.sectionBody(header)) {
+            const level = this.headingLevel(el);
+            if (level !== null && collapsedNestedLevel !== null && level <= collapsedNestedLevel) {
+                collapsedNestedLevel = null;
             }
             if (collapsedNestedLevel === null) {
-                nextEl.toggleClass("is-hidden", isCollapsed);
-                if (!isCollapsed && nextLevel !== null && nextEl.hasClass("is-collapsed")) {
-                    collapsedNestedLevel = nextLevel;
-                }
+                el.toggleClass("is-hidden", isCollapsed);
+                if (!isCollapsed && level !== null && el.hasClass("is-collapsed")) collapsedNestedLevel = level;
             }
-            nextEl = nextEl.nextElementSibling as HTMLElement | null;
         }
     }
 
-    private headingLevel(el: HTMLElement): number | null {
+    /** The siblings a heading's section holds: up to a heading at its level or higher. */
+    private sectionBody(header: HTMLElement): Element[] {
+        const level = parseInt(header.tagName.substring(1));
+        const body: Element[] = [];
+        for (let el = header.nextElementSibling; el; el = el.nextElementSibling) {
+            const nextLevel = this.headingLevel(el);
+            if (nextLevel !== null && nextLevel <= level) break;
+            body.push(el);
+        }
+        return body;
+    }
+
+    private headingLevel(el: Element): number | null {
         return /^H[1-6]$/.test(el.tagName) ? parseInt(el.tagName.substring(1)) : null;
     }
 

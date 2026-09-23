@@ -37,7 +37,8 @@ Open via the ribbon icon (calendar-days) or command palette (`Daily Notes Stream
   narrows as you type — in that format or in `YYYY-MM-DD`. The calendar button opens your platform's own date
   wheel. A date with no note is still offered, as one entry saying it will land on the nearest older one.
 - Search with Obsidian's "Search current file" hotkey or the header's search action. It counts matching notes
-  across the whole vault; Enter and Shift+Enter step through them, Escape closes.
+  across the whole vault; Enter and Shift+Enter step through them, opening collapsed sections on the way,
+  Escape closes. `· hidden` marks a note whose match isn't drawn, such as in frontmatter.
 - Click a date header to open the original file.
 - Click a tag, inline or in the properties panel, to search for it; mod-click opens the search in a new pane.
 - **Settings**: toggle note properties display and default collapse state.

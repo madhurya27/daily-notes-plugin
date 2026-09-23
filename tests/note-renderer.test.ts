@@ -598,6 +598,26 @@ describe("NoteRenderer renderProperties", () => {
         expect(el.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(true);
     });
 
+    it("unfolds a collapsed panel for a search match inside it, but not for its title", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { mood: "calm" } } });
+        const collapsible = makeCollapsible();
+        const renderer = new NoteRenderer(
+            app as any,
+            new Component(),
+            collapsible,
+            makeSettings({ showProperties: true, propertiesCollapsed: true }),
+            new SearchHighlighter()
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+        const value = el.querySelector(".metadata-property-value-text")!.firstChild!;
+        const title = el.querySelector(".metadata-properties-title")!.firstChild!;
+
+        expect(collapsible.folds(title)).toBe(false);
+        collapsible.unfold(value);
+
+        expect(el.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(false);
+    });
+
     it("remembers an expanded panel across re-renders, overriding the setting", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const collapsible = makeCollapsible();

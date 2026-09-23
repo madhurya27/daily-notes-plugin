@@ -23,6 +23,14 @@ export interface SearchTarget {
     isOnScreen(range: Range): boolean;
 }
 
+/** Collapsed sections, which a step opens to show the match inside. */
+export interface Folds {
+    /** Whether a collapsed section hides `node`. */
+    folds(node: Node): boolean;
+    /** Expands every section hiding `node`, unsaved. */
+    unfold(node: Node): void;
+}
+
 type Direction = 1 | -1;
 
 /**
@@ -35,7 +43,7 @@ export class StreamSearch {
     private matches: TFile[] = [];
     /** Index into `matches`; -1 before the first step. */
     private current = -1;
-    /** Index into the current note's shown ranges; -1 when it has none. */
+    /** Index into the current note's reachable ranges; -1 when it has none. */
     private range = -1;
     private queue: Promise<void> = Promise.resolve();
 
@@ -43,6 +51,7 @@ export class StreamSearch {
         private readonly source: NoteSource,
         private readonly target: SearchTarget,
         private readonly highlighter: SearchHighlighter,
+        private readonly folds: Folds,
         private readonly onStatus: (status: string) => void,
         /** jsdom lays nothing out, so visibility is the one seam tests replace. */
         private readonly isShown: (range: Range) => boolean = (range) => range.getClientRects().length > 0
@@ -94,8 +103,8 @@ export class StreamSearch {
     private markFirstOnScreen(): void {
         for (const [index, file] of this.matches.entries()) {
             const block = this.target.blockOf(file);
-            const ranges = block ? this.shownRanges(block) : [];
-            const within = ranges.findIndex((range) => this.target.isOnScreen(range));
+            const ranges = block ? this.reachableRanges(block) : [];
+            const within = ranges.findIndex((range) => this.isShown(range) && this.target.isOnScreen(range));
             if (within === -1) continue;
             this.current = index;
             this.range = within;
@@ -108,7 +117,7 @@ export class StreamSearch {
         if (this.matches.length === 0) return;
         const file = this.matches[this.current];
         const block = file ? this.target.blockOf(file) : null;
-        const ranges = block ? this.shownRanges(block) : [];
+        const ranges = block ? this.reachableRanges(block) : [];
         const within = this.range + direction;
         if (file && within >= 0 && within < ranges.length) {
             await this.show(ranges, within);
@@ -121,7 +130,7 @@ export class StreamSearch {
     private async enter(index: number, direction: Direction): Promise<void> {
         this.current = index;
         const block = await this.target.reveal(this.matches[index]!);
-        const ranges = block ? this.shownRanges(block) : [];
+        const ranges = block ? this.reachableRanges(block) : [];
         await this.show(ranges, direction === 1 ? 0 : ranges.length - 1);
     }
 
@@ -144,13 +153,17 @@ export class StreamSearch {
     private async show(ranges: readonly Range[], index: number): Promise<void> {
         const range = ranges[index] ?? null;
         this.range = range ? index : -1;
+        if (range && !this.isShown(range)) this.folds.unfold(range.startContainer);
         this.highlighter.setCurrent(range);
         const el = range?.startContainer.parentElement;
         if (el) await this.target.centre(el);
     }
 
-    private shownRanges(block: HTMLElement): Range[] {
-        return this.highlighter.rangesIn(block).filter(this.isShown);
+    /** Highlights on screen, or behind a fold a step can open. */
+    private reachableRanges(block: HTMLElement): Range[] {
+        return this.highlighter
+            .rangesIn(block)
+            .filter((range) => this.isShown(range) || this.folds.folds(range.startContainer));
     }
 
     private status(): string {
@@ -158,7 +171,9 @@ export class StreamSearch {
         const count = this.matches.length;
         if (count === 0) return "No results";
         if (this.current === -1) return count === 1 ? "1 note" : `${count} notes`;
-        return `${this.current + 1} / ${count}`;
+        // The note matched, but in nothing drawn: hidden frontmatter, an embed.
+        const hidden = this.range === -1 ? " · hidden" : "";
+        return `${this.current + 1} / ${count}${hidden}`;
     }
 
     private run(task: () => Promise<void>): Promise<void> {
