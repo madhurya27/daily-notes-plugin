@@ -6,6 +6,10 @@ Ordered by priority, from the 2026-09 comparison against
 
 - [ ] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
   frame rate; loading is not the cost, so preloading would not help.
+- [ ] Links to missing notes look like the rest; Obsidian fades them (`is-unresolved`). Find what the
+  rendered links lack.
+- [ ] The status bar keeps the last note's word count etc. after focus returns to the stream, so it reads
+  as the stream's. Clear it, or show nothing, while the stream is active.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
   - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**; includes the jump suggester's date
         wheel, which the e2e mobile project cannot reach (desktop Chromium)
@@ -21,6 +25,7 @@ New capability, as opposed to the fixes above. Embedded editors are ruled out by
 Surveyed 2026-09 against core and the community directory. **The filter: what operates on a *file* is already
 solved elsewhere; only what operates on *the stream* is ours.** ★ marks the recommended first two.
 
+- [ ] Back to top — a button, and a command. Check whether `g` in keyboard navigation covers it.
 - [ ] ★ Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing external reaches inside a view.
 - [ ] ★ Skip empty notes — unwritten template dailies are noise; frontmatter-only is visible in the cache.
 - [ ] On this day — one calendar date across years, a filter over `_sorted`.
