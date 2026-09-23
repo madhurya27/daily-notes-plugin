@@ -146,7 +146,7 @@ export class DailyNotesStreamView extends ItemView {
             })
         );
 
-        this.addAction("calendar-search", "Jump to date", () => this.promptJumpToDate());
+        this.addAction("calendar-1", "Jump to date", () => this.promptJumpToDate());
         this.addAction("search", "Search", () => this.searchBar.open());
 
         this.stream.open(this.contentEl, streamContainerEl);
