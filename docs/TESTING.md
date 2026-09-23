@@ -53,7 +53,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
   **[e2e]**
 - Right-click on an unresolved link offers only the open items; opening one creates the note.
 - Open a note, then click into the stream: the word count and backlinks leave the status bar. **[e2e]**
-- Quick switcher (Mod-O) from the stream replaces it in its tab, as from the graph; Back returns to it.
+- Quick switcher (Mod-O) from the stream replaces it in its tab, as from the graph; Back returns to the
+  note it was scrolled to. **[e2e]**
 - Scrolling to the bottom loads the next batch without duplicates. **[e2e]**
 - Tall window, short notes → loading continues past the first batch.
 

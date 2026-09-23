@@ -6,8 +6,6 @@ Ordered by priority, from the 2026-09 comparison against
 
 - [ ] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
   frame rate; loading is not the cost, so preloading would not help.
-- [ ] Back to the stream reopens it at the top. Keep the scroll position in the view's state
-  (`getState`/`setState`) so Back returns to the note that was on screen.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
   - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**; includes the jump suggester's date
         wheel, which the e2e mobile project cannot reach (desktop Chromium)

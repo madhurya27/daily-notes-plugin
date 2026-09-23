@@ -167,6 +167,10 @@ export class ItemView extends Component {
         this.contentEl = this.containerEl.createDiv({ cls: "view-content" });
         this.load();
     }
+    getEphemeralState(): Record<string, unknown> {
+        return {};
+    }
+    setEphemeralState(_state: unknown): void {}
     register() {}
     addAction(icon: string, title: string, callback: (evt: MouseEvent) => unknown) {
         this.actions.push({ icon, title, callback });
