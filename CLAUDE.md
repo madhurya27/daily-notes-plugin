@@ -18,7 +18,7 @@ pnpm run open                     # launch Obsidian on it; --help lists the flag
 pnpm run dev:vault                # link the build into PluginTest/, watch it, reload the plugin on save
 pnpm run reload                   # reload the plugin in the open window, once
 
-CAPTURE_SCREENSHOTS=1 E2E_SHOW_WINDOW=1 pnpm exec playwright test screenshots.spec.ts  # rewrite docs/images/
+CAPTURE_SCREENSHOTS=1 E2E_SHOW_WINDOW=1 pnpm run test:e2e screenshots.spec.ts  # rewrite docs/images/
 ```
 
 Screenshots need both variables: without `E2E_SHOW_WINDOW` the window is hidden, produces no frames, and

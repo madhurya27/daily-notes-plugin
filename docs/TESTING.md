@@ -5,7 +5,7 @@
 ```bash
 pnpm test                          # unit
 pnpm run test:e2e                  # every spec twice, desktop and mobile
-pnpm exec playwright test --project=mobile   # just one project
+pnpm run test:e2e --project=mobile      # just one project
 pnpm run build && pnpm run seed    # write PluginTest/ and install the build into it
 pnpm run open --help               # every option, with its default
 ```
