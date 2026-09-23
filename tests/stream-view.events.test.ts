@@ -220,8 +220,12 @@ describe("DailyNotesStreamView — vault event handlers", () => {
     // event's second argument) is therefore needed to find/remove that element.
     // -----------------------------------------------------------------------
     describe("onFileRename", () => {
-        it("does nothing for a non-TFile argument", () => {
-            expect(() => (view as any).stream.onFileRename({ path: "x" } as any, "old.md")).not.toThrow();
+        it("does nothing for a non-TFile argument", async () => {
+            const migrate = vi.spyOn(plugin.collapseStore, "migrate");
+            (view as any).stream.onFileRename({ path: "x" } as any, "old.md");
+            await flushPromises();
+            expect(migrate).not.toHaveBeenCalled();
+            expect(plugin.service.removeSorted).not.toHaveBeenCalled();
         });
 
         it("looks up the old DOM element by oldPath, removes it from the cache by the new path, and re-creates", async () => {
