@@ -505,7 +505,7 @@ async function applyMobileLayout(page: Page): Promise<void> {
     await page.evaluate(() => window.app.emulateMobile(true));
     // emulateMobile tears the workspace down and rebuilds it; every leaf goes
     // with it, so tests must open their own view afterwards (they all do).
-    await page.waitForFunction(() => window.app.workspace.layoutReady === true, null, { timeout: 60_000 });
+    await page.waitForFunction(() => window.app?.workspace?.layoutReady === true, null, { timeout: 60_000 });
     // The reload shows the window again, and took the guard with it.
     if (!SHOW_WINDOW) await guardFocus(page);
 }
