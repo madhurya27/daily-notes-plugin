@@ -406,30 +406,25 @@ fails before it runs; the real types keep the mock from drifting off the API.
 
 ## 2026-09-23 — The note cache is built from the vault, not `getAllDailyNotes()`
 
-**Decision:** `DailyNoteService` takes the vault's markdown files and keeps those
-whose path round-trips through the format — the check a live create already made.
+**Decision:** the cache keeps the vault's markdown files whose path round-trips
+through the format, as a live create does.
 
-**Why:** `getAllDailyNotes()` recurses and keys by date whatever the extension:
-`2024-01-01.png` could evict that day's note, and `archive/2024-01-01.md` loaded
-at startup but not on create. It was also the only thing `initialize()` could
-throw from, so the view's error path went with it.
+**Why:** `getAllDailyNotes()` keys by date whatever the extension, so
+`2024-01-01.png` could evict that day's note, and it admits subfolders a create
+rejects. It was also all `initialize()` could throw from.
 
-**Rejected:** filtering `getAllDailyNotes()`'s result — an evicted note is gone
-before the filter sees it.
+**Rejected:** filtering its result — an evicted note is already gone.
 
 ## 2026-09-23 — Stale collapse state is pruned a day after the note's last write
 
-**Decision:** after a successful render, a note's saved sections missing from
-that render are forgotten — once the note has gone 24 hours unwritten. The
-properties panel's key is always kept.
+**Decision:** a successful render forgets saved sections the note no longer
+has, once its `mtime` is 24 hours old. The properties key is kept.
 
-**Why:** daily notes are rarely renamed or deleted, so the existing cleanup
-almost never runs, and a renamed heading's state stayed forever. A day covers
-retyping a heading and cutting and pasting a section, and needs no timer: the
-note's `mtime` says it.
+**Why:** daily notes are rarely renamed or deleted, so that cleanup never ran.
+A day spans retyping a heading; `mtime` needs no timer.
 
 **Rejected:**
-- Pruning on every render — typing `## Mee` on the way to `## Meeting` drops its state.
-- Expiring keys unseen for N days — a note untouched for years still has valid state.
-- A cap evicting the least recently toggled notes — bounds size, not staleness.
-- State in frontmatter — every toggle rewrites the file, against the read-only stream.
+- Every render — `## Mee` on the way to `## Meeting` drops its state.
+- Expiry by last view — old notes keep valid state for years.
+- A size cap — bounds size, not staleness.
+- Frontmatter — every toggle rewrites the file.

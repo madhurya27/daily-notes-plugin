@@ -28,10 +28,10 @@
 - [x] Split `DailyNotesStreamView`: the view wires events, `NoteStream` owns the stream's contents
 - [x] Jump to date as a suggester over the dates the vault has, in the vault's own format, with the platform's date wheel
 - [x] Jump prompt: the hidden date picker no longer pushes the clear button out of the query box
-- [x] Startup and live events agree on which files are daily notes; an attachment no longer evicts its day's note
-- [x] Broken daily-note settings show the empty state and recover on correction, not a dead error
-- [x] Two open stream views stay in step on create and delete
-- [x] Collapse state of removed headings and lists is pruned once the note has gone a day unwritten
+- [x] Startup and live events agree on what is a daily note
+- [x] Broken daily-note settings recover once corrected
+- [x] Two open streams stay in step
+- [x] Stale collapse state is pruned a day after the note's last write
 - [x] Typecheck and lint `tests/`, against mocks typed by the real API
 - [x] Pruned the unit suite: duplicates dropped, vacuous tests made to assert, names say behaviour
 - [x] `NoteStream` has its own tests; the view's tests cover only its wiring

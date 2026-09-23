@@ -24,11 +24,7 @@ export class DailyNotesStreamView extends ItemView {
     private search: StreamSearch;
     private searchBar: SearchBar;
 
-    /**
-     * `service` must be this view's own: a stream applies every vault event to
-     * it, so a shared cache would take the first view's insert and leave the
-     * next nothing to do.
-     */
+    /** `service` is this view's own (CLAUDE.md, Invariants). */
     constructor(
         leaf: WorkspaceLeaf,
         plugin: DailyNotesStreamPlugin,

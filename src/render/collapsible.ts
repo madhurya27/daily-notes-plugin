@@ -11,10 +11,7 @@ function slugify(text: string): string {
 /** Reserved key for the properties panel; a heading slug can never contain ":". */
 export const PROPERTIES_SECTION_KEY = ":properties";
 
-/**
- * How long a note must go unwritten before a section missing from it counts as
- * removed: sooner, a heading being retyped would lose its state.
- */
+/** Unwritten this long, a note's missing sections are gone, not mid-edit (docs/decisions.md, 2026-09-23). */
 const SETTLED_AFTER_MS = 24 * 60 * 60 * 1000;
 
 /** A section whose collapsed state is persisted per note. */
@@ -158,11 +155,7 @@ export class CollapsibleManager {
         ];
     }
 
-    /**
-     * Drops the saved state of sections `file` no longer has, once it has gone
-     * a day unwritten. The properties panel's state stays: with the panel
-     * hidden, its key is missing from every render.
-     */
+    /** Drops saved sections `file` no longer has. Properties stay: a hidden panel renders no key. */
     forgetRemovedSections(file: TFile, sectionKeys: readonly string[]): void {
         if (Date.now() - file.stat.mtime < SETTLED_AFTER_MS) return;
         this.store.retainOnly(file.path, new Set([...sectionKeys, PROPERTIES_SECTION_KEY]));

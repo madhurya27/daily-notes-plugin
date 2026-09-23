@@ -19,7 +19,7 @@ export class DailyNoteService {
     /** The daily-notes config the cache was built from; null before the first build. */
     private builtFrom: string | null = null;
 
-    /** Every markdown file in the vault; the service picks out the daily notes. */
+    /** The vault's markdown files, daily notes among them. */
     constructor(private readonly markdownFiles: () => TFile[]) {}
 
     /** Call once on plugin load. */
@@ -127,8 +127,7 @@ export class DailyNoteService {
     }
 
     private buildSorted(format: DateFormat): TFile[] {
-        // The round-trip vault events use, so startup admits what a create would:
-        // getAllDailyNotes() recurses and keys by date, whatever the extension.
+        // parseDate, as a live create (docs/decisions.md, 2026-09-23).
         const notesWithDates = this.markdownFiles()
             .map((file) => ({ file, date: this.parseDate(file, format) }))
             .filter((n): n is { file: TFile; date: NonNullable<typeof n.date> } => n.date !== null);
