@@ -36,8 +36,9 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   `vault` "raw" event behind `onVaultConfigChange`, the core global-search plugin and the `search` view's
   `setQuery` behind `openTagSearch`, `metadataTypeManager` behind `getPropertyIcon`, `hotkeyManager` behind
   `getSearchHotkeys`).
-- `notes/daily-note-service.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including
-  nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
+- `notes/daily-note-service.ts` — picks the daily notes out of the vault's markdown files, by the format
+  `obsidian-daily-notes-interface` reads, nested folders (`YYYY/MM/YYYY-MM-DD`) included; returns batches
+  sorted newest-first.
 - `ui/stream-view.ts` — `ItemView` subclass; wires vault events, links and header actions to the stream.
 - `ui/jump-to-date-modal.ts` — the `SuggestModal` behind the header action and the `jump-to-date` command;
   offers the dates the vault has notes for, in the vault's own format.

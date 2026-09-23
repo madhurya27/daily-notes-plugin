@@ -403,3 +403,16 @@ fails before it runs; the real types keep the mock from drifting off the API.
 - Tests against the real types — the mock-only API (`new TFile(path)`, `Setting.created`)
   would need a cast at every use.
 - Turning off `no-explicit-any` for tests — it hid ~600 unchecked accesses.
+
+## 2026-09-23 — The note cache is built from the vault, not `getAllDailyNotes()`
+
+**Decision:** `DailyNoteService` takes the vault's markdown files and keeps those
+whose path round-trips through the format — the check a live create already made.
+
+**Why:** `getAllDailyNotes()` recurses and keys by date whatever the extension:
+`2024-01-01.png` could evict that day's note, and `archive/2024-01-01.md` loaded
+at startup but not on create. It was also the only thing `initialize()` could
+throw from, so the view's error path went with it.
+
+**Rejected:** filtering `getAllDailyNotes()`'s result — an evicted note is gone
+before the filter sees it.

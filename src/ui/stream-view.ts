@@ -85,22 +85,11 @@ export class DailyNotesStreamView extends ItemView {
         this.registerEvent(this.app.workspace.on("css-change", syncReadableWidth));
 
         // Obsidian's daily-notes format and folder decide what the stream even
-        // contains, and nothing re-reads them: registered before initialize() so
-        // that correcting broken settings recovers the view.
+        // contains, and nothing re-reads them.
         this.registerEvent(onVaultConfigChange(this.app, () => this.stream.onDailyNoteSettingsChange()));
 
-        // Not in onload(): getAllDailyNotes() throws if the vault or the configured
-        // daily-notes folder is not ready.
-        try {
-            this.plugin.service.initialize();
-        } catch (e) {
-            console.error("DailyNotesStream: Failed to initialize note service", e);
-            streamContainerEl.createDiv({
-                cls: "daily-notes-empty-state",
-                text: "Could not load daily notes. Please check your daily notes settings (folder and date format).",
-            });
-            return;
-        }
+        // Not in onload(): the vault may not have indexed its files yet.
+        this.plugin.service.initialize();
 
         this.collapsible.delegate(this, streamContainerEl);
         this.renderer.delegate(this, streamContainerEl);

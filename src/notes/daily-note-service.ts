@@ -1,4 +1,4 @@
-import { getAllDailyNotes, getDailyNoteSettings } from "obsidian-daily-notes-interface";
+import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 import { TFile, moment, normalizePath } from "obsidian";
 
 /** The daily-note naming rules, read once per public operation. */
@@ -18,6 +18,9 @@ export class DailyNoteService {
     private _sorted: TFile[] = [];
     /** The daily-notes config the cache was built from; null before the first build. */
     private builtFrom: string | null = null;
+
+    /** Every markdown file in the vault; the service picks out the daily notes. */
+    constructor(private readonly markdownFiles: () => TFile[]) {}
 
     /** Call once on plugin load. */
     initialize(): void {
@@ -124,9 +127,10 @@ export class DailyNoteService {
     }
 
     private buildSorted(format: DateFormat): TFile[] {
-        // getAllDailyNotes() is already folder-scoped: no path round-trip needed.
-        const notesWithDates = Object.values(getAllDailyNotes())
-            .map((file) => ({ file, date: this.parseBasename(file, format) }))
+        // The round-trip vault events use, so startup admits what a create would:
+        // getAllDailyNotes() recurses and keys by date, whatever the extension.
+        const notesWithDates = this.markdownFiles()
+            .map((file) => ({ file, date: this.parseDate(file, format) }))
             .filter((n): n is { file: TFile; date: NonNullable<typeof n.date> } => n.date !== null);
 
         notesWithDates.sort((a, b) => b.date.valueOf() - a.date.valueOf());

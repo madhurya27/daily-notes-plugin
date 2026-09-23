@@ -6,11 +6,15 @@ import { DailyNoteService } from "../src/notes/daily-note-service";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import { WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
 import { asApp } from "./stream-view-fixture";
-import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
+import { __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 
 function makeApp() {
     return {
-        vault: { on: vi.fn().mockReturnValue({}), cachedRead: vi.fn().mockResolvedValue("") },
+        vault: {
+            on: vi.fn().mockReturnValue({}),
+            cachedRead: vi.fn().mockResolvedValue(""),
+            getMarkdownFiles: __mockMarkdownFiles,
+        },
         workspace: {
             on: vi.fn().mockReturnValue({}),
             getLeavesOfType: vi.fn().mockReturnValue([]),
@@ -87,6 +91,15 @@ describe("DailyNotesStreamPlugin — onload", () => {
 
         expect(plugin.service).toBeInstanceOf(DailyNoteService);
         expect(plugin.service.length).toBe(0);
+    });
+
+    it("builds the service over the vault's markdown files", async () => {
+        __setMockNotes(["Notes/2026-08-28.md", "Notes/2026-08-27.md"]);
+
+        const { plugin } = await loadPlugin();
+        plugin.service.initialize();
+
+        expect(plugin.service.length).toBe(2);
     });
 
     it("builds a collapse store bound to the app", async () => {

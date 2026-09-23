@@ -12,9 +12,9 @@ export default class DailyNotesStreamPlugin extends Plugin {
     async onload() {
         await this.loadSettings();
 
-        this.service = new DailyNoteService();
-        // initialize() is called lazily in onOpen() — not here, because
-        // getAllDailyNotes() throws if invoked before the vault is ready.
+        this.service = new DailyNoteService(() => this.app.vault.getMarkdownFiles());
+        // initialize() is called lazily in onOpen(): at load the vault may not
+        // have indexed its files yet.
 
         this.collapseStore = new CollapsibleStateStore(this.app);
 

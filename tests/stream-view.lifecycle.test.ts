@@ -60,27 +60,6 @@ describe("DailyNotesStreamView — refresh", () => {
     });
 });
 
-describe("DailyNotesStreamView — onOpen error path", () => {
-    let view: DailyNotesStreamView;
-
-    beforeEach(() => {
-        let plugin;
-        ({ view, plugin } = makeStubbedView());
-        plugin.service.initialize = vi.fn().mockImplementation(() => {
-            throw new Error("vault not ready");
-        });
-    });
-
-    it("resolves without throwing when service.initialize() throws", async () => {
-        await expect(view.onOpen()).resolves.toBeUndefined();
-    });
-
-    it("does not attach scroll observer when service.initialize() throws", async () => {
-        await view.onOpen();
-        expect(view["stream"]["scroll"].attach).not.toHaveBeenCalled();
-    });
-});
-
 describe("DailyNotesStreamView — internal-link click handler", () => {
     let view: DailyNotesStreamView;
     let app: ReturnType<typeof makeApp>;
