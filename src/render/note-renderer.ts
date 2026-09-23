@@ -145,6 +145,7 @@ export class NoteRenderer {
             }
 
             await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, noteComponent);
+            this.markUnresolvedLinks(contentEl);
 
             const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);
             this.collapsible.forgetRemovedSections(file, sectionKeys);
@@ -237,6 +238,10 @@ export class NoteRenderer {
             this.showNoteMenu(note, evt);
         });
 
+        // A note created, deleted or renamed can resolve or break a link in
+        // any rendered note; the cache says so once, after it re-resolves.
+        view.registerEvent(this.app.metadataCache.on("resolved", () => this.markUnresolvedLinks(root)));
+
         // Page preview decides from here whether to show, per its own settings.
         view.registerDomEvent(root, "mouseover", (evt) => {
             const link = this.linkAt(evt.target as HTMLElement);
@@ -250,6 +255,19 @@ export class NoteRenderer {
                 sourcePath: link.sourcePath,
             });
         });
+    }
+
+    /**
+     * Fades the links whose note does not exist yet. The reading view does
+     * this after rendering; MarkdownRenderer leaves it to its caller.
+     */
+    private markUnresolvedLinks(root: HTMLElement): void {
+        for (const el of Array.from(root.querySelectorAll<HTMLElement>(".internal-link"))) {
+            const link = this.linkAt(el);
+            if (!link) continue;
+            const { path } = parseLinktext(link.linktext);
+            el.toggleClass("is-unresolved", !this.app.metadataCache.getFirstLinkpathDest(path, link.sourcePath));
+        }
     }
 
     /** The note a title or an internal link under the pointer points at. */

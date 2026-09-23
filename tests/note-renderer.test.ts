@@ -28,6 +28,7 @@ function makeApp(opts: { readResult?: string; fileCache?: unknown; leaves?: unkn
         metadataCache: {
             getFileCache: vi.fn().mockReturnValue(fileCache),
             getFirstLinkpathDest: vi.fn().mockReturnValue(null),
+            on: vi.fn((_name: string, _callback: () => unknown) => ({})),
         },
         internalPlugins: { getPluginById: vi.fn().mockReturnValue({ instance: { openGlobalSearch } }) },
         _openGlobalSearch: openGlobalSearch,
@@ -815,6 +816,69 @@ describe("NoteRenderer internal links", () => {
 // ---------------------------------------------------------------------------
 // renderProperties
 // ---------------------------------------------------------------------------
+
+describe("NoteRenderer unresolved links", () => {
+    /** MarkdownRenderer's output for `[[Reading list]] [[Someday]]`, as the real one renders it. */
+    async function renderLinks(app: ReturnType<typeof makeApp>) {
+        vi.spyOn(MarkdownRenderer, "render").mockImplementationOnce((_app, _md, el) => {
+            for (const href of ["Reading list", "Someday#Later"]) {
+                el.createEl("a", { cls: "internal-link", text: href }).setAttribute("data-href", href);
+            }
+            el.createEl("a", { cls: "internal-link" });
+            return Promise.resolve();
+        });
+        const renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+        const [existing, missing, hrefless] = [...el.querySelectorAll(".internal-link")];
+        return { existing: existing!, missing: missing!, hrefless: hrefless! };
+    }
+
+    /** The cache knows these notes, and no others. */
+    function resolveOnly(app: ReturnType<typeof makeApp>, ...paths: string[]) {
+        app.metadataCache.getFirstLinkpathDest.mockImplementation((path: string) =>
+            paths.includes(path) ? new TFile(`${path}.md`) : null
+        );
+    }
+
+    it("fades a link to a note not yet created, and only that one", async () => {
+        const app = makeApp();
+        resolveOnly(app, "Reading list");
+
+        const { existing, missing } = await renderLinks(app);
+
+        expect(missing.hasClass("is-unresolved")).toBe(true);
+        expect(existing.hasClass("is-unresolved")).toBe(false);
+        expect(app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith("Someday", "Notes/2025-01-01.md");
+    });
+
+    it("leaves alone a link that names no note", async () => {
+        const app = makeApp();
+
+        const { hrefless } = await renderLinks(app);
+
+        expect(hrefless.hasClass("is-unresolved")).toBe(false);
+        expect(app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledTimes(2);
+    });
+
+    it("unfades a link once the cache resolves the note it names", async () => {
+        const app = makeApp();
+        resolveOnly(app, "Reading list");
+        const { missing } = await renderLinks(app);
+
+        resolveOnly(app, "Reading list", "Someday");
+        const [event, onResolved] = app.metadataCache.on.mock.calls[0]!;
+        onResolved();
+
+        expect(event).toBe("resolved");
+        expect(missing.hasClass("is-unresolved")).toBe(false);
+    });
+});
 
 describe("NoteRenderer renderProperties", () => {
     it("renders nothing when showProperties is false", async () => {
