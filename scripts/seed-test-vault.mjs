@@ -170,6 +170,8 @@ write(
         "",
         "Backlink to [[2026-01-15]].",
         "",
+        "Read a chapter of [[Reading list]], then [[Someday]], then [[Reading list#Later|what's next]].",
+        "",
         "## Notes",
         "",
         "- Parent bullet",
@@ -218,6 +220,22 @@ write(
         "</svg>"
     )
 );
+
+// What 2026-02-01 links to. Long, so its #Later link has somewhere to scroll;
+// Someday.md is removed so that link stays unresolved even after a click made it.
+write(
+    "Reading list.md",
+    body(
+        "# Reading list",
+        "",
+        ...Array.from({ length: 80 }, (_, i) => `- Book ${i + 1}`),
+        "",
+        "## Later",
+        "",
+        "- Middlemarch"
+    )
+);
+rmSync(join(vault, "Someday.md"), { force: true });
 
 // Neither of these is a daily note; neither may appear in the stream.
 write(join(NOTES, "2026-01-20.png"), "not really a png");

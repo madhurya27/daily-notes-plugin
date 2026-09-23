@@ -46,7 +46,7 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - `test-image.svg` renders in **2026-02-01**; `[[2026-01-15]]` navigates there and back.
 - Clicking a header or link whose note is already open focuses that tab, not a new one; `[[note#heading]]`
   scrolls it to the heading. **[e2e]**
-- A link inside a note takes the header's gestures: mod-click, mod-alt-click, middle-click, right-click. **[e2e]**
+- A link inside a note (**2026-02-01**, Evening) takes the header's gestures: mod-click, mod-alt-click, middle-click, right-click. **[e2e]**
 - Mod-hovering a link previews it **[e2e]**; Settings → Page preview lists "Daily notes stream", and turning
   its Mod requirement off previews on plain hover.
 - Right-click on an unresolved link offers only the open items; opening one creates the note.
