@@ -39,3 +39,4 @@
 - [x] Search opens collapsed sections, unsaved, and labels a match it cannot show `· hidden`
 - [x] Narrow `CollapsibleManager`'s sibling casts to `Element`
 - [x] `test:memory` bounds unloaded blocks by emptiness, not a node count a heavier note could trip
+- [x] A note's title opens it in a tab or split on Obsidian's link gestures, and right-click shows the file menu

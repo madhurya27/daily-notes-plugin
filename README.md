@@ -39,7 +39,8 @@ Open via the ribbon icon (calendar-days) or command palette (`Daily Notes Stream
 - Search with Obsidian's "Search current file" hotkey or the header's search action. It counts matching notes
   across the whole vault; Enter and Shift+Enter step through them, opening collapsed sections on the way,
   Escape closes. `· hidden` marks a note whose match isn't drawn, such as in frontmatter.
-- Click a date header to open the original file.
+- Click a date header to open the original file; mod-click or middle-click opens it in a new tab, mod-alt-click
+  in a split. Right-click it (long-press on mobile) for Obsidian's file menu.
 - Click a tag, inline or in the properties panel, to search for it; mod-click opens the search in a new pane.
 - **Settings**: toggle note properties display and default collapse state.
 

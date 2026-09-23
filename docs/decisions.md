@@ -428,3 +428,20 @@ A day spans retyping a heading; `mtime` needs no timer.
 - Expiry by last view — old notes keep valid state for years.
 - A size cap — bounds size, not staleness.
 - Frontmatter — every toggle rewrites the file.
+
+## 2026-09-23 — A note's title is its edit action
+
+**Decision:** amends 2026-09-15. Mod-click or middle-click opens the note in
+a new tab, mod-alt-click in a split; right-click shows Obsidian's file menu,
+led by "Open in new tab" and "Open to the right". A plain click still reuses
+a tab showing the note, and never replaces the stream.
+
+**Why:** Obsidian's link gestures, plus the file menu's move, bookmark and
+reveal items, at no new UI.
+
+**Rejected:**
+- A pencil button per note — clutter on a read-only feed; the title does it.
+- Append to today's note — needs an input, the inline editor 2026-09-15
+  rejects; capture plugins already append to a file.
+- Rename and delete in the menu — Obsidian adds them only in its explorer,
+  and its rename prompt is not public API.
