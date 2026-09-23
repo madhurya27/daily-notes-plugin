@@ -31,10 +31,6 @@ describe("manifest.json — marketplace submission requirements", () => {
         expect(repoSlug()).toBe("madhurya27/daily-notes-plugin");
     });
 
-    it("omits fundingUrl, which is rejected unless it is a real funding page", () => {
-        expect(manifest).not.toHaveProperty("fundingUrl");
-    });
-
     it("names the plugin without the word 'plugin'", () => {
         expect(manifest.name).toBe("Daily Notes Stream");
     });

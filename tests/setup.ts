@@ -28,6 +28,10 @@ proto.hasClass = function (cls: string): boolean {
     return this.classList.contains(cls);
 };
 
+proto.getText = function () {
+    return this.textContent ?? "";
+};
+
 proto.setText = function (text: string) {
     this.textContent = text;
     return this;

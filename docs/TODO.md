@@ -16,6 +16,7 @@ Ordered by priority, from the 2026-09 comparison against
   - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`
   - [x] GitHub repo description (mirrors the manifest's) and topics (`obsidian`, `obsidian-plugin`, `obsidian-md`, `daily-notes`, `typescript`)
 - [ ] Position the README against Daily Notes Editor — a live-updating reading feed, not an inline editor.
+- [ ] Typecheck and lint `tests/`: `tsconfig.json` includes only `src/`, and ESLint ignores `tests/`.
 
 ## Features
 New capability, as opposed to the fixes above. Embedded editors are ruled out by `docs/decisions.md`.

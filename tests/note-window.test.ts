@@ -468,7 +468,7 @@ describe("NoteWindowManager under a fast scroll", () => {
 
         expect(block.classList.contains("is-unloaded")).toBe(true);
         expect(block.querySelector(".daily-note-content")).toBeNull();
-        expect(manager.heightOf(block)).toBeDefined();
+        expect(manager.heightOf(block)).toBe(ESTIMATED_NOTE_HEIGHT_PX);
     });
 
     // The queue is shared with every vault event (ADR 0004), so a flick must

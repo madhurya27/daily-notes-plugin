@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SearchHighlighter } from "../src/render/search-highlights";
 import { NoteRenderer } from "../src/render/note-renderer";
-import { Component, MarkdownView, TFile } from "obsidian";
+import { Component, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
 import { CollapsibleManager } from "../src/render/collapsible";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import type { DailyNotesStreamSettings } from "../src/settings";
@@ -122,11 +122,6 @@ describe("NoteRenderer.renderInto", () => {
         );
     });
 
-    it("returns element with .daily-note-block class", async () => {
-        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
-        expect(el.classList.contains("daily-note-block")).toBe(true);
-    });
-
     it("includes .daily-note-title with the file basename as text", async () => {
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".daily-note-title")?.textContent).toBe("2025-01-01");
@@ -137,13 +132,20 @@ describe("NoteRenderer.renderInto", () => {
         expect(block.dataset.sourcePath).toBe("Notes/2025-01-01.md");
     });
 
-    it("strips frontmatter using frontmatterPosition offset", async () => {
+    it("renders the body without its frontmatter", async () => {
+        const render = vi.spyOn(MarkdownRenderer, "render");
         app.vault.cachedRead = vi.fn().mockResolvedValue("---\ntitle: Test\n---\nBody text");
         app.metadataCache.getFileCache = vi.fn().mockReturnValue({
-            frontmatterPosition: { end: { offset: 23 } },
+            frontmatterPosition: { end: { offset: 19 } },
         });
-        // MarkdownRenderer.render is a no-op mock; just ensure no throw
-        await expect(renderNote(renderer, new TFile("Notes/2025-01-01.md"))).resolves.toBeDefined();
+        await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
+        expect(render).toHaveBeenCalledWith(
+            app,
+            "Body text",
+            expect.anything(),
+            "Notes/2025-01-01.md",
+            expect.anything()
+        );
     });
 
     it("reads through the cache — the view only displays notes", async () => {
@@ -773,8 +775,7 @@ describe("NoteRenderer renderProperties", () => {
         expect(await renderIcons({ Tags: ["a"] })).toEqual(["tags"]);
     });
 
-    it("renders empty string when frontmatter value is null (covers false branch of string|number|boolean check)", async () => {
-        // null is not array, not non-null object, not string/number/boolean → displayValue stays ""
+    it("renders a null value as empty text", async () => {
         const app = makeApp({ fileCache: { frontmatter: { nullField: null } } });
         const renderer = new NoteRenderer(
             app as any,

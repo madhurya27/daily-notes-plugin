@@ -28,6 +28,8 @@
 - [x] Split `DailyNotesStreamView`: the view wires events, `NoteStream` owns the stream's contents
 - [x] Jump to date as a suggester over the dates the vault has, in the vault's own format, with the platform's date wheel
 - [x] Jump prompt: the hidden date picker no longer pushes the clear button out of the query box
+- [x] Pruned the unit suite: duplicates dropped, vacuous tests made to assert, names say behaviour
+- [x] `NoteStream` has its own tests; the view's tests cover only its wiring
 - [x] Search the stream on the vault's own find hotkey, counted per note, stepping through highlights
 - [x] Search opens collapsed sections, unsaved, and labels a match it cannot show `· hidden`
 - [x] Narrow `CollapsibleManager`'s sibling casts to `Element`

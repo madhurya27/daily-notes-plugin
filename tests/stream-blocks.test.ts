@@ -99,7 +99,6 @@ describe("StreamBlocks", () => {
             blocks.append("a", el);
 
             expect(blocks.remove("a")).toBe(el);
-            expect(el.isConnected).toBe(false);
             expect(container.contains(el)).toBe(false);
             expect(blocks.get("a")).toBeNull();
         });

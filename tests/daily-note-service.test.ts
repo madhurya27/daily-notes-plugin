@@ -139,26 +139,13 @@ describe("DailyNoteService", () => {
             expect(__getSettingsCallCount()).toBe(1);
         });
 
-        it("returns -1 when file already present", () => {
-            __setMockSettings({ format: "YYYY-MM-DD" });
-            __setMockNotes(["Notes/2025-01-01.md"]);
-
-            const svc = new DailyNoteService();
-            svc.initialize();
-
-            const existing = svc.getBatch(0, 1)[0]!;
-            expect(svc.insertSorted(existing)).toBe(-1);
-        });
-
-        it("inserts a note in the middle position (triggers lo = mid+1 branch)", () => {
+        it("inserts a note between a newer and an older one", () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
             __setMockNotes(["Notes/2025-01-05.md", "Notes/2025-01-01.md"]);
 
             const svc = new DailyNoteService();
             svc.initialize();
 
-            // sorted = [Jan5, Jan1]; inserting Jan3:
-            // mid=1 → Jan1 < Jan3 → hi=1; mid=0 → Jan5 > Jan3 → lo=1 (hits line 36)
             const mid = new TFile("Notes/2025-01-03.md");
             const idx = svc.insertSorted(mid);
 
@@ -262,44 +249,40 @@ describe("DailyNoteService", () => {
         });
     });
 
-    describe("format fallback branches", () => {
-        it("buildSorted: uses YYYY-MM-DD when settings.format is empty string (covers || fallback)", () => {
-            __setMockSettings({ format: "" }); // empty string is falsy → right side of || taken
-            __setMockNotes(["Notes/2025-01-01.md"]);
+    describe("a missing or folder-only format", () => {
+        // An empty moment format reads any ISO 8601 date, week and ordinal forms included.
+        it("lists only notes named YYYY-MM-DD when no format is set", () => {
+            __setMockSettings({ format: "" });
+            __setMockNotes(["Notes/2025-01-01.md", "Notes/20250102.md", "Notes/2025-W01.md"]);
             const svc = new DailyNoteService();
             svc.initialize();
-            expect(svc.length).toBe(1);
-            expect(svc.getBatch(0, 1)[0]?.basename).toBe("2025-01-01");
+            expect(svc.getBatch(0, 3).map((f) => f.basename)).toEqual(["2025-01-01"]);
         });
 
-        it("buildSorted: uses YYYY-MM-DD basename when format ends with slash (covers pop() || fallback)", () => {
-            // "YYYY/MM/".split("/").pop() === "" (falsy) → right side of || taken
+        it("lists only notes named YYYY-MM-DD when the format ends in a folder", () => {
             __setMockSettings({ format: "YYYY/MM/" });
-            __setMockNotes(["Notes/2025-01-01.md"]);
+            __setMockNotes(["Notes/2025-01-01.md", "Notes/20250102.md", "Notes/2025-W01.md"]);
             const svc = new DailyNoteService();
             svc.initialize();
-            expect(svc.length).toBeGreaterThanOrEqual(0);
+            expect(svc.getBatch(0, 3).map((f) => f.basename)).toEqual(["2025-01-01"]);
         });
 
-        it("parseDate: uses YYYY-MM-DD fallback when format is empty string", () => {
+        it("accepts a new YYYY-MM-DD note when no format is set", () => {
             __setMockSettings({ format: "YYYY-MM-DD" });
             __setMockNotes(["Notes/2025-01-01.md"]);
             const svc = new DailyNoteService();
             svc.initialize();
-            // Change format to empty before insertSorted so parseDate uses the fallback
             __setMockSettings({ format: "", folder: "Notes" });
             const newFile = new TFile("Notes/2025-01-05.md");
             const idx = svc.insertSorted(newFile);
-            expect(idx).toBe(0); // YYYY-MM-DD fallback parses "2025-01-05" correctly
+            expect(idx).toBe(0);
         });
 
-        it("parseDate: uses YYYY-MM-DD basename fallback when format ends with slash", () => {
+        it("rejects a new note when the format ends in a folder, as no path can match it", () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
             __setMockNotes(["Notes/2025-01-01.md"]);
             const svc = new DailyNoteService();
             svc.initialize();
-            // "YYYY/MM/".split("/").pop() === "" → || fallback taken. No file can
-            // match a format ending in a slash, so the note is still rejected.
             __setMockSettings({ format: "YYYY/MM/", folder: "Notes" });
             const newFile = new TFile("Notes/2025-01-05.md");
             expect(svc.insertSorted(newFile)).toBe(-1);

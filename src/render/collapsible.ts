@@ -164,7 +164,7 @@ export class CollapsibleManager {
 
             this.attachCollapseToggle(header, {
                 filePath,
-                sectionKey: this.uniqueKey(slugify(header.textContent ?? ""), seenKeys),
+                sectionKey: this.uniqueKey(slugify(header.getText()), seenKeys),
                 defaultCollapsed: false,
                 apply: (collapsed) => {
                     header.toggleClass("is-collapsed", collapsed);
