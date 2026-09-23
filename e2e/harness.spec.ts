@@ -1,13 +1,14 @@
 import { test, expect, LAYOUT_VIEWPORT } from "./obsidian";
 
 test("the test window follows the system colour scheme", async ({ obsidian }) => {
-    const { bodyClass, prefersDark } = await obsidian.page.evaluate(() => ({
-        bodyClass: document.body.className.match(/theme-\w+/)?.[0] ?? "none",
-        prefersDark: window.matchMedia("(prefers-color-scheme: dark)").matches,
-    }));
+    const { page } = obsidian;
+    const prefersDark = await page.evaluate(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
 
     // Playwright emulates a light scheme on attach unless the fixture clears it.
-    expect(bodyClass).toBe(prefersDark ? "theme-dark" : "theme-light");
+    // Polled: the mobile layout's rebuild sets the class late under load.
+    await expect
+        .poll(() => page.evaluate(() => document.body.className.match(/theme-\w+/)?.[0] ?? "none"))
+        .toBe(prefersDark ? "theme-dark" : "theme-light");
 });
 
 test("the test window stays off the screen", async ({ obsidian }) => {
