@@ -340,28 +340,25 @@ timing tests slip.
 
 ## 2026-09-23 — Search the stream, counted per note
 
-**Decision:** the vault's "Search current file" hotkey (`editor:open-search`),
-pressed in the view, opens a search bar; so does a header action, for phones.
-Matching notes are found in their title and source over all of `_sorted`;
-next/previous jumps note to note ("3 / 12") and steps through highlights inside
-the rendered note, painted with the CSS highlight API, skipping any the reader
-cannot see.
+**Decision:** the vault's "Search current file" hotkey, read from
+`hotkeyManager` on each keydown, opens Obsidian's own find bar above the pane;
+a header action does too, for phones. It matches each note's title and source,
+frontmatter included, counts notes ("3 / 12"), and steps through the visible
+highlights (CSS highlight API) note to note. Typing marks the topmost match on
+screen and never scrolls.
 
-**Why:** off-screen notes hold no DOM (ADR 0006), so find-in-page sees only a
-few days. Source and rendered text differ (aliases, markup, frontmatter), so
-only a per-note count is always right.
+**Why:** off-screen notes hold no DOM (ADR 0006), so find-in-page sees a few
+days. Source and rendered text differ, so only a per-note count holds. Obsidian
+searches hidden frontmatter too (checked 2026-09-23).
 
-**Rejected:** a per-match count — it drifts from what is highlighted.
-`<mark>` wrappers — they change the DOM that collapsing walks.
-A tag/header filter — core search already filters by tag and section.
-A hardcoded Cmd/Ctrl+F — ignores a user who rebound search. A command of our
-own — a second hotkey to set for the same intent.
-
-The binding is read through `hotkeyManager` in `src/obsidian-internals.ts` on
-each keydown, so a rebind applies at once; without it, Mod+F. The view's
-`scope` sees keys first and passes on all but that one.
-
-The bar is Obsidian's own find-bar markup, above the scrolling pane.
+**Rejected:**
+- Per-match count — drifts from what is highlighted.
+- `<mark>` wrappers — change the DOM collapsing walks.
+- Hardcoded Mod+F, or a command of our own — ignores a rebind; a second hotkey.
+- Jumping to the first match as you type — a half-typed word lands years away.
+- A longer typing pause — 1095 notes search in 1–3 ms.
+- Skipping frontmatter when properties are off — disagrees with Obsidian.
+- A tag/header filter — core search does it.
 
 ## 2026-09-23 — Kebab-case files, grouped into folders
 

@@ -212,6 +212,13 @@ export class NoteStream {
         return scrollIntoPlace(el, "center", this.scrollRoot, this.layout);
     }
 
+    /** Whether `range` lies wholly inside the pane's visible area. */
+    isOnScreen(range: Range): boolean {
+        const rect = range.getBoundingClientRect();
+        const pane = this.scrollRoot.getBoundingClientRect();
+        return rect.top >= pane.top && rect.bottom <= pane.bottom;
+    }
+
     /** The block `file` is shown in; null when it is not loaded. */
     blockOf(file: TFile): HTMLElement | null {
         return this.blocks.get(file.path);

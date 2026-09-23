@@ -165,6 +165,16 @@ describe("NoteStream — what a search moves through", () => {
         expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
     });
 
+    it("tells a match inside the pane from one past its edge", () => {
+        const rect = (top: number, bottom: number) => ({ top, bottom }) as DOMRect;
+        stream().scrollRoot.getBoundingClientRect = () => rect(100, 800);
+        const range = (top: number, bottom: number) => ({ getBoundingClientRect: () => rect(top, bottom) }) as Range;
+
+        expect(stream().isOnScreen(range(400, 420))).toBe(true);
+        expect(stream().isOnScreen(range(90, 110))).toBe(false);
+        expect(stream().isOnScreen(range(790, 810))).toBe(false);
+    });
+
     it("reveals nothing for a note no longer in the vault", async () => {
         expect(await stream().reveal(new TFile("Notes/2024-06-01.md"))).toBeNull();
         expect(plugin.service.getBatch).not.toHaveBeenCalled();

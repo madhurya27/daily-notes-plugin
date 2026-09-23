@@ -47,7 +47,8 @@ test.describe("search the stream", () => {
         // Every seeded note says "km" twice; one run a day.
         await bar.locator("input").fill("km");
 
-        await expect(bar.locator(".document-search-count")).toHaveText(`${SEEDED_DAYS} notes`);
+        // One is marked at once, being on screen; the total is what counts.
+        await expect(bar.locator(".document-search-count")).toHaveText(new RegExp(`/ ${SEEDED_DAYS}$`));
     });
 
     test("reaches a note past the loaded batch and shows its match", async ({ obsidian }) => {
@@ -65,23 +66,40 @@ test.describe("search the stream", () => {
         await expect.poll(() => currentMatch(page)).toEqual({ text: "Ran 2 km", onScreen: true });
     });
 
+    // Typing marks what the reader already sees, as Obsidian's own bar does,
+    // and scrolls nowhere: the first match on screen is the newest note's run.
+    test("marks the first match on screen as you type, moving nothing", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const scrollTop = () => container.locator("xpath=..").evaluate((el) => el.scrollTop);
+        const before = await scrollTop();
+        const bar = await openSearch(page);
+
+        await bar.locator("input").fill("km");
+
+        await expect(bar.locator(".document-search-count")).toHaveText(`1 / ${SEEDED_DAYS}`);
+        await expect.poll(() => currentMatch(page)).toEqual({ text: "km", onScreen: true });
+        expect(await scrollTop()).toBe(before);
+    });
+
     test("steps through a note's matches before the next note", async ({ obsidian }) => {
         const { page } = obsidian;
         await openStream(page);
         const bar = await openSearch(page);
+        const count = bar.locator(".document-search-count");
         await bar.locator("input").fill("km");
+        await expect(count).toHaveText(`1 / ${SEEDED_DAYS}`);
 
+        // The newest note says "km" twice: its run, marked as typed, then its table.
         await page.keyboard.press("Enter");
-        await expect(bar.locator(".document-search-count")).toHaveText(`1 / ${SEEDED_DAYS}`);
-        await page.keyboard.press("Enter");
-        await expect(bar.locator(".document-search-count")).toHaveText(`1 / ${SEEDED_DAYS}`);
+        await expect(count).toHaveText(`1 / ${SEEDED_DAYS}`);
         await page.keyboard.press("Enter");
 
-        await expect(bar.locator(".document-search-count")).toHaveText(`2 / ${SEEDED_DAYS}`);
+        await expect(count).toHaveText(`2 / ${SEEDED_DAYS}`);
         await expect.poll(() => currentMatch(page)).toEqual({ text: "km", onScreen: true });
 
         await page.keyboard.press("Shift+Enter");
-        await expect(bar.locator(".document-search-count")).toHaveText(`1 / ${SEEDED_DAYS}`);
+        await expect(count).toHaveText(`1 / ${SEEDED_DAYS}`);
     });
 
     test("skips a match under a collapsed heading", async ({ obsidian }) => {

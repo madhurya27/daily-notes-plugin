@@ -61,6 +61,7 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - The vault's search hotkey opens the bar in the stream; other hotkeys still work there. **[e2e]**
 - Rebind "Search current file" in Settings → Hotkeys: the new binding opens the bar at once, the old does not.
 - The count is of matching notes, not matches. **[e2e]**
+- Typing marks the first match on screen and scrolls nowhere. **[e2e]**
 - Enter steps through a note's highlights, then to the next note, loading past the batch if needed. **[e2e]**
 - A match under a collapsed heading is skipped. **[e2e]**
 - Escape clears every highlight. **[e2e]**

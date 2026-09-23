@@ -21,6 +21,7 @@ describe("StreamSearch", () => {
     let centred: HTMLElement[];
     let top: TFile | null;
     let shown: (range: Range) => boolean;
+    let onScreen: (range: Range) => boolean;
     let search: StreamSearch;
 
     beforeEach(() => {
@@ -43,6 +44,7 @@ describe("StreamSearch", () => {
         centred = [];
         top = notes[0]!;
         shown = () => true;
+        onScreen = () => false;
         search = new StreamSearch(
             {
                 notes: () => notes,
@@ -59,6 +61,7 @@ describe("StreamSearch", () => {
                     centred.push(el);
                     return Promise.resolve();
                 },
+                isOnScreen: (range) => onScreen(range),
             },
             highlighter,
             (text) => (status = text),
@@ -83,6 +86,41 @@ describe("StreamSearch", () => {
 
         await search.search("");
         expect(status).toBe("");
+    });
+
+    // Obsidian's own bar selects a match as you type; the stream does so only
+    // where the reader already is, so a half-typed word never scrolls away.
+    it("marks the topmost match already on screen, moving nothing", async () => {
+        const inNote = (i: number) => (range: Range) => blocks.get(notes[i]!)!.contains(range.startContainer);
+        onScreen = (range) => inNote(2)(range) || (inNote(0)(range) && range.startOffset === 14);
+
+        await search.search("milk");
+
+        expect(current()[0]!.startOffset).toBe(14);
+        expect(currentNote()).toBe(notes[0]);
+        expect(status).toBe("1 / 3");
+        expect(revealed).toEqual([]);
+        expect(centred).toEqual([]);
+    });
+
+    it("steps on from the match it marked", async () => {
+        onScreen = (range) => blocks.get(notes[2]!)!.contains(range.startContainer);
+        await search.search("milk");
+
+        await search.next();
+
+        expect(revealed).toEqual([notes[4]]);
+        expect(status).toBe("3 / 3");
+    });
+
+    it("marks no match the reader cannot see, even inside the pane", async () => {
+        onScreen = () => true;
+        shown = () => false;
+
+        await search.search("milk");
+
+        expect(current()).toEqual([]);
+        expect(status).toBe("3 notes");
     });
 
     it("counts one note in the singular", async () => {
@@ -200,6 +238,7 @@ describe("StreamSearch", () => {
                     blockOf: () => null,
                     firstVisibleNote: () => null,
                     centre: () => Promise.resolve(),
+                    isOnScreen: () => false,
                 },
                 highlighter,
                 () => {}

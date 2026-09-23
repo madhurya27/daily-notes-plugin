@@ -19,6 +19,8 @@ export interface SearchTarget {
     firstVisibleNote(): TFile | null;
     /** Centres `el` in the pane, and keeps it there while the stream renders. */
     centre(el: HTMLElement): Promise<void>;
+    /** Whether `range` lies wholly inside the pane's visible area. */
+    isOnScreen(range: Range): boolean;
 }
 
 type Direction = 1 | -1;
@@ -54,6 +56,7 @@ export class StreamSearch {
             this.highlighter.setCurrent(null);
             this.highlighter.setQuery(query);
             this.matches = await this.find();
+            this.markFirstOnScreen();
         });
     }
 
@@ -81,6 +84,24 @@ export class StreamSearch {
 
     private find(): Promise<TFile[]> {
         return findNotes(this.source.notes(), (file) => this.source.read(file), this.query);
+    }
+
+    /**
+     * Marks the topmost match the reader can already see, as Obsidian's own
+     * bar marks one as you type — without scrolling, so a half-typed word
+     * never carries the reader years away (docs/decisions.md, 2026-09-23).
+     */
+    private markFirstOnScreen(): void {
+        for (const [index, file] of this.matches.entries()) {
+            const block = this.target.blockOf(file);
+            const ranges = block ? this.shownRanges(block) : [];
+            const within = ranges.findIndex((range) => this.target.isOnScreen(range));
+            if (within === -1) continue;
+            this.current = index;
+            this.range = within;
+            this.highlighter.setCurrent(ranges[within]!);
+            return;
+        }
     }
 
     private async step(direction: Direction): Promise<void> {
