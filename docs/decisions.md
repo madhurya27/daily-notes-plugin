@@ -81,7 +81,9 @@ pagination invariant.
 ## 2026-09-22 — The jump re-applies its scroll until the stream stops rendering
 
 **Decision:** up to eight passes, ending when the target is at the top of the
-pane *and* `NoteWindowManager.layoutChanges` held still across the pass.
+pane *and* `NoteWindowManager.layoutChanges` held still across the pass — or
+when a scroll moves nothing and nothing changed since the last pass. Search
+centres a match the same way (`scrollIntoPlace`).
 
 **Why:** a note above it outgrows its placeholder estimate and pushes it down.
 One `scrollIntoView` left the target 1600–1850px short in e2e, desktop and
@@ -90,6 +92,8 @@ mobile. The jump-sized answer to the `scrollTop`-correction item in
 
 **Rejected:** stopping once the target stops moving — it is at the top the
 instant it is scrolled to, and the renders that displace it land after.
+Waiting a frame on a stuck scroll — the hidden e2e phone window draws none
+when nothing changed, and the search hung on it.
 
 ## 2026-09-15 — The stream reloads on the vault's "raw" config event
 
@@ -337,21 +341,27 @@ timing tests slip.
 ## 2026-09-23 — Search the stream, counted per note
 
 **Decision:** the vault's "Search current file" hotkey (`editor:open-search`),
-pressed in the view, opens a search bar. Matching notes are
-found in their source over all of `_sorted`; next/previous jumps note to note
-("3 of 12") and steps through highlights inside the rendered note.
+pressed in the view, opens a search bar; so does a header action, for phones.
+Matching notes are found in their title and source over all of `_sorted`;
+next/previous jumps note to note ("3 / 12") and steps through highlights inside
+the rendered note, painted with the CSS highlight API, skipping any the reader
+cannot see.
 
 **Why:** off-screen notes hold no DOM (ADR 0006), so find-in-page sees only a
 few days. Source and rendered text differ (aliases, markup, frontmatter), so
 only a per-note count is always right.
 
 **Rejected:** a per-match count — it drifts from what is highlighted.
+`<mark>` wrappers — they change the DOM that collapsing walks.
 A tag/header filter — core search already filters by tag and section.
 A hardcoded Cmd/Ctrl+F — ignores a user who rebound search. A command of our
 own — a second hotkey to set for the same intent.
 
 The binding is read through `hotkeyManager` in `src/obsidian-internals.ts` on
-each keydown, so a rebind applies at once; without it, Mod+F.
+each keydown, so a rebind applies at once; without it, Mod+F. The view's
+`scope` sees keys first and passes on all but that one.
+
+The bar is Obsidian's own find-bar markup, above the scrolling pane.
 
 ## 2026-09-23 — Kebab-case files, grouped into folders
 

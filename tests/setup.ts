@@ -85,3 +85,10 @@ proto.prepend =
 (globalThis as any).CSS ??= {
     escape: (value: string): string => value.replace(/[^\w-]/g, (c) => `\\${c}`),
 };
+
+/**
+ * jsdom ships no CSS Custom Highlight API; Chromium does. A highlight is a
+ * set of ranges, and the registry a map of them by name.
+ */
+(globalThis as any).Highlight ??= class Highlight extends Set<AbstractRange> {};
+(globalThis as any).CSS.highlights ??= new Map();

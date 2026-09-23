@@ -56,7 +56,7 @@ export function restoreAnchor(
 /** Passes over a scroll before it is left where it landed. */
 const MAX_SCROLL_PASSES = 8;
 
-/** How near the top of the pane counts as arrived. */
+/** How near its place in the pane counts as arrived. */
 const SCROLL_TOLERANCE_PX = 2;
 
 /**
@@ -77,26 +77,48 @@ export interface StreamLayout {
     drain(): Promise<void>;
 }
 
+/** Where in the pane an element is brought: its top to the pane's top, or centre to centre. */
+export type Placement = "start" | "center";
+
+/** How far `el` sits from its place in `scrollEl`. */
+function offsetFromPlace(el: HTMLElement, placement: Placement, scrollEl: HTMLElement): number {
+    const rect = el.getBoundingClientRect();
+    const pane = scrollEl.getBoundingClientRect();
+    if (placement === "start") return rect.top - pane.top;
+    return (rect.top + rect.bottom - pane.top - pane.bottom) / 2;
+}
+
 /**
- * Puts `block` at the top of `scrollEl` and keeps it there. Scrolling to it
+ * Brings `el` to its place in `scrollEl` and keeps it there. Scrolling to it
  * brings the window manager to it, and a note rendering *above* it grows past
  * its placeholder estimate and pushes it down (ADR 0006), so the scroll is
- * re-applied until the block is at the top of a stream that has stopped
- * rendering.
+ * re-applied until `el` is in place in a stream that has stopped rendering.
  */
-export async function scrollToTop(block: HTMLElement, scrollEl: HTMLElement, layout: StreamLayout): Promise<void> {
+export async function scrollIntoPlace(
+    el: HTMLElement,
+    placement: Placement,
+    scrollEl: HTMLElement,
+    layout: StreamLayout
+): Promise<void> {
+    /** The change count the last pass ended on; nothing yet before the first. */
+    let settled: number | null = null;
     for (let pass = 0; pass < MAX_SCROLL_PASSES; pass++) {
         const changes = layout.layoutChanges();
-        block.scrollIntoView({ block: "start" });
+        const scrollTop = scrollEl.scrollTop;
+        el.scrollIntoView({ block: placement });
+        // A scroll that moved nothing, on a stream that has not changed since
+        // the last pass, is as far as it goes: no observer has news, and
+        // waiting a frame for one can wait forever where none is drawn.
+        if (scrollEl.scrollTop === scrollTop && changes === settled) return;
         await observersDelivered();
         await layout.drain();
 
-        // The block sits at the top the instant it is scrolled to; the
-        // renders that will push it down land after. Arrived means at the
-        // top *and* nothing rendered or unloaded on this pass.
-        const offset = block.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top;
-        if (Math.abs(offset) <= SCROLL_TOLERANCE_PX && layout.layoutChanges() === changes) return;
+        // It is in place the instant it is scrolled to; the renders that
+        // will push it down land after. Arrived means in place *and*
+        // nothing rendered or unloaded on this pass.
+        const offset = offsetFromPlace(el, placement, scrollEl);
+        settled = layout.layoutChanges();
+        if (Math.abs(offset) <= SCROLL_TOLERANCE_PX && settled === changes) return;
     }
-    // Out of passes: a note too short to reach the top of a tall pane
-    // cannot, and the stream is scrolled as far as it goes.
+    // Out of passes: something kept pushing it away.
 }

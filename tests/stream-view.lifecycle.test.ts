@@ -77,7 +77,6 @@ describe("DailyNotesStreamView — onOpen error path", () => {
 describe("DailyNotesStreamView — scroll.attach callbacks", () => {
     it("scroll.attach callback in onOpen delegates to loadMoreNotes", async () => {
         const { view, plugin } = await makeViewSetup();
-        (view as any).stream.blocks.attach(document.createElement("div"));
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
         // Retrieve the callback registered with scroll.attach during onOpen
         const attachCalls: any[][] = (view as any).stream.scroll.attach.mock.calls;
@@ -89,8 +88,6 @@ describe("DailyNotesStreamView — scroll.attach callbacks", () => {
 
     it("scroll.attach callback in refresh delegates to loadMoreNotes", async () => {
         const { view, plugin, state } = await makeViewSetup();
-        (view as any).stream.scrollRoot = document.createElement("div");
-        (view as any).stream.blocks.attach(document.createElement("div"));
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
         state.reset([]);
         await (view as any).refresh();
@@ -108,10 +105,9 @@ describe("DailyNotesStreamView — internal-link click handler", () => {
     let app: ReturnType<typeof makeApp>;
     let registerDomEventSpy: ReturnType<typeof vi.spyOn>;
 
-    /** Opens a view on `app` with a real DOM contentEl, so click listeners register. */
+    /** Opens a view on `app`, so click listeners register. */
     async function openClickableView() {
         ({ view } = makeStubbedView(app));
-        (view as any).contentEl = document.createElement("div");
         registerDomEventSpy = vi.spyOn(view as any, "registerDomEvent");
         await view.onOpen();
         return (view as any).stream.blocks.el as HTMLElement;

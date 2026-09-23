@@ -6,7 +6,7 @@ import { StreamState } from "./stream-state";
 import { StreamBlocks } from "./stream-blocks";
 import { InfiniteScrollController } from "./infinite-scroll";
 import { NoteWindowManager } from "./note-window";
-import { captureAnchor, restoreAnchor, scrollToTop, type StreamLayout } from "./scroll-position";
+import { captureAnchor, restoreAnchor, scrollIntoPlace, type StreamLayout } from "./scroll-position";
 
 /** Obsidian autosaves as you type; one render per save is wasted work. */
 const MODIFY_DEBOUNCE_MS = 300;
@@ -175,24 +175,52 @@ export class NoteStream {
 
     /**
      * Scrolls to the newest note dated on or before `target`, loading batches
-     * until it is in the stream. Loading is one enqueued task: interleaving
-     * with a scroll-triggered load would desync state from the service cache.
+     * until it is in the stream.
      */
     async jumpToDate(target: Moment): Promise<void> {
         const index = this.service.indexForDate(target);
-        let file: TFile | undefined;
-        if (index !== -1) {
-            await this.enqueue(async () => {
-                file = await this.loadThrough(index);
-            });
-        }
+        const block = index === -1 ? null : await this.revealIndex(index);
+        if (!block) new Notice(NO_NOTE_FOR_DATE);
+    }
 
-        if (!file) {
-            new Notice(NO_NOTE_FOR_DATE);
-            return;
-        }
-        const block = this.blocks.get(file.path);
-        if (block) await scrollToTop(block, this.scrollRoot, this.layout);
+    /** Loads `file` into the stream and scrolls it to the top; its block, or null when gone. */
+    reveal(file: TFile): Promise<HTMLElement | null> {
+        const index = this.service.indexOf(file.path);
+        return index === -1 ? Promise.resolve(null) : this.revealIndex(index);
+    }
+
+    /**
+     * Loading is one enqueued task: interleaving with a scroll-triggered load
+     * would desync state from the service cache.
+     */
+    private async revealIndex(index: number): Promise<HTMLElement | null> {
+        let file: TFile | undefined;
+        await this.enqueue(async () => {
+            file = await this.loadThrough(index);
+        });
+        const block = file ? this.blocks.get(file.path) : null;
+        if (!block) return null;
+        await scrollIntoPlace(block, "start", this.scrollRoot, this.layout);
+        // The observer's render can land a frame after the scroll settles.
+        this.window.render(block);
+        await this.layout.drain();
+        return block;
+    }
+
+    /** Centres `el`, inside a note, on the pane, and keeps it there while the stream renders. */
+    centre(el: HTMLElement): Promise<void> {
+        return scrollIntoPlace(el, "center", this.scrollRoot, this.layout);
+    }
+
+    /** The block `file` is shown in; null when it is not loaded. */
+    blockOf(file: TFile): HTMLElement | null {
+        return this.blocks.get(file.path);
+    }
+
+    /** The first note reaching into the pane; null when none does. */
+    firstVisibleNote(): TFile | null {
+        const find = (f: TFile) => this.blocks.get(f.path);
+        return captureAnchor(this.state.notes, this.blocks.el, this.scrollRoot, find)?.file ?? null;
     }
 
     /** The window manager's renders, drained through the queue they run on. */

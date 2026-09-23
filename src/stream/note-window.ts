@@ -173,11 +173,12 @@ export class NoteWindowManager {
         this.windows.clear();
     }
 
-    // -------------------------------------------------------------------------
-    // Internals
-    // -------------------------------------------------------------------------
-
-    private render(block: HTMLElement): void {
+    /**
+     * Queues a render of `block` unless it holds content or is rendering. The
+     * observer calls it on entry; a caller that needs the content now calls it
+     * and drains the queue.
+     */
+    render(block: HTMLElement): void {
         const window = this.windows.get(block);
         if (!window || window.component) return;
         if (window.rendering) {
@@ -215,6 +216,10 @@ export class NoteWindowManager {
             }
         });
     }
+
+    // -------------------------------------------------------------------------
+    // Internals
+    // -------------------------------------------------------------------------
 
     private unload(block: HTMLElement): void {
         const window = this.windows.get(block);

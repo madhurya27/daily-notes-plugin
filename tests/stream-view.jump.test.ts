@@ -17,9 +17,7 @@ describe("DailyNotesStreamView — jumpToDate", () => {
     beforeEach(async () => {
         Notice.reset();
         ({ view, plugin } = await makeViewSetup());
-        (view as any).stream.blocks.attach(document.createElement("div"));
         // jsdom lays nothing out: every block lands at the pane's top at once.
-        (view as any).stream.scrollRoot = document.createElement("div");
         HTMLElement.prototype.scrollIntoView = vi.fn();
         notes = makeNotes();
         plugin.service.getBatch = vi.fn((offset: number, limit: number) => notes.slice(offset, offset + limit));
@@ -117,5 +115,79 @@ describe("DailyNotesStreamView — the jump action", () => {
 
         expect(jump).toHaveBeenCalledOnce();
         expect(jump.mock.calls[0]![0].format("YYYY-MM-DD")).toBe("2025-01-05");
+    });
+});
+
+describe("NoteStream — what a search moves through", () => {
+    let view: DailyNotesStreamView;
+    let plugin: ReturnType<typeof makePlugin>;
+    let notes: TFile[];
+
+    beforeEach(async () => {
+        ({ view, plugin } = await makeViewSetup());
+        notes = makeNotes();
+        plugin.service.getBatch = vi.fn((offset: number, limit: number) => notes.slice(offset, offset + limit));
+        plugin.service.indexOf = vi.fn((path: string) => notes.findIndex((n) => n.path === path));
+    });
+
+    const stream = () => (view as any).stream;
+
+    it("loads a note past the loaded range and scrolls it to the top", async () => {
+        const block = document.createElement("div");
+        block.scrollIntoView = vi.fn();
+        stream().blocks.get = vi.fn((path: string) => (path === notes[24]!.path ? block : null));
+
+        expect(await stream().reveal(notes[24])).toBe(block);
+        expect(stream().state.length).toBe(30);
+        expect(block.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    });
+
+    // A search reads the note's highlights the moment it arrives; the window
+    // manager's own render can land a frame after the scroll settles.
+    it("renders the note before handing it back", async () => {
+        const block = document.createElement("div");
+        stream().blocks.get = vi.fn(() => block);
+        let rendered = false;
+        stream().window.render = vi.fn(() => void stream().enqueue(async () => void (rendered = true)));
+
+        await stream().reveal(notes[3]);
+
+        expect(stream().window.render).toHaveBeenCalledWith(block);
+        expect(rendered).toBe(true);
+    });
+
+    it("centres an element and keeps it there while the stream renders", async () => {
+        const el = document.createElement("span");
+        el.scrollIntoView = vi.fn();
+
+        await stream().centre(el);
+
+        expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+    });
+
+    it("reveals nothing for a note no longer in the vault", async () => {
+        expect(await stream().reveal(new TFile("Notes/2024-06-01.md"))).toBeNull();
+        expect(plugin.service.getBatch).not.toHaveBeenCalled();
+    });
+
+    it("hands back a loaded note's block, and none for one not loaded", async () => {
+        await stream().loadMoreNotes();
+
+        expect(stream().blockOf(notes[0])).toBe(stream().blocks.get(notes[0]!.path));
+        expect(stream().blockOf(notes[20])).toBeNull();
+    });
+
+    it("names the first note whose block reaches into the pane", async () => {
+        await stream().loadMoreNotes();
+        const rect = (top: number, bottom: number) => ({ top, bottom }) as DOMRect;
+        stream().scrollRoot.getBoundingClientRect = () => rect(0, 800);
+        stream().blocks.get(notes[0]!.path).getBoundingClientRect = () => rect(-900, -10);
+        stream().blocks.get(notes[1]!.path).getBoundingClientRect = () => rect(-10, 390);
+
+        expect(stream().firstVisibleNote()).toBe(notes[1]);
+    });
+
+    it("names no note in an empty stream", () => {
+        expect(stream().firstVisibleNote()).toBeNull();
     });
 });

@@ -20,8 +20,6 @@ describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () 
         vi.useFakeTimers();
         app = makeApp();
         ({ view, plugin } = await makeViewSetup(app));
-        // The ItemView mock's contentEl is not a jsdom node; the stream container is.
-        (view as any).stream.blocks.attach(document.createElement("div"));
     });
 
     afterEach(() => {

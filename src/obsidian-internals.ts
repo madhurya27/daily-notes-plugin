@@ -1,4 +1,4 @@
-import type { App, EventRef, PaneType } from "obsidian";
+import type { App, EventRef, Hotkey, PaneType } from "obsidian";
 
 /** Obsidian's unpublished shape, so every unsupported access sits in one place. */
 type VaultInternal = {
@@ -82,4 +82,27 @@ export function getPropertyIcon(app: App, key: string, value: unknown): string |
     const manager = (app as unknown as { metadataTypeManager?: MetadataTypeManager }).metadataTypeManager;
     const info = manager?.getTypeInfo?.(key, value);
     return (info?.expected ?? info?.inferred)?.icon ?? null;
+}
+
+/** The command the vault binds "Search current file" to, whose hotkey the stream answers. */
+const SEARCH_COMMAND = "editor:open-search";
+
+/** Obsidian's own default for it, should the hotkey manager go. */
+const DEFAULT_SEARCH_HOTKEYS: Hotkey[] = [{ modifiers: ["Mod"], key: "F" }];
+
+/** No public API: the hotkey manager holds the user's bindings, and Obsidian's. */
+type HotkeyManager = {
+    getHotkeys(id: string): Hotkey[] | undefined;
+    getDefaultHotkeys(id: string): Hotkey[] | undefined;
+};
+
+/**
+ * What "Search current file" is bound to right now: the user's binding, even
+ * an empty one, else Obsidian's default. Read per keydown, so a rebind applies
+ * at once (docs/decisions.md, 2026-09-23).
+ */
+export function getSearchHotkeys(app: App): Hotkey[] {
+    const manager = (app as unknown as { hotkeyManager?: HotkeyManager }).hotkeyManager;
+    if (!manager) return DEFAULT_SEARCH_HOTKEYS;
+    return manager.getHotkeys(SEARCH_COMMAND) ?? manager.getDefaultHotkeys(SEARCH_COMMAND) ?? DEFAULT_SEARCH_HOTKEYS;
 }

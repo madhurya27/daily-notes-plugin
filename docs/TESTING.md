@@ -56,6 +56,17 @@ Re-seeding copies over the links; `dev:vault` puts them back.
   Drive the wheel itself by hand on iOS and Android: the e2e mobile project is desktop Chromium.
 - Set the daily-notes format to `DD-MM-YYYY`, then to `MMMM D, YYYY`: the list follows it.
 
+### Search
+
+- The vault's search hotkey opens the bar in the stream; other hotkeys still work there. **[e2e]**
+- Rebind "Search current file" in Settings → Hotkeys: the new binding opens the bar at once, the old does not.
+- The count is of matching notes, not matches. **[e2e]**
+- Enter steps through a note's highlights, then to the next note, loading past the batch if needed. **[e2e]**
+- A match under a collapsed heading is skipped. **[e2e]**
+- Escape clears every highlight. **[e2e]**
+- Edit a note while a search is open: the count follows.
+- On a phone, the bar sits under the floating header with no gap above the notes.
+
 ### Collapsible content
 
 - A header chevron collapses its content; the chevron rotates. **[e2e]**

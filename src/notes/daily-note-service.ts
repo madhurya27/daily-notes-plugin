@@ -59,7 +59,7 @@ export class DailyNoteService {
 
     /** Returns the removed index, or -1 when absent. */
     removeSorted(filePath: string): number {
-        const index = this._sorted.findIndex((f) => f.path === filePath);
+        const index = this.indexOf(filePath);
         if (index !== -1) this._sorted.splice(index, 1);
         return index;
     }
@@ -71,6 +71,11 @@ export class DailyNoteService {
     indexForDate(target: Moment): number {
         const index = this.firstIndexOnOrBefore(target.clone().startOf("day").valueOf(), this.readFormat());
         return index < this._sorted.length ? index : -1;
+    }
+
+    /** The index of the note at `path`; -1 when absent. */
+    indexOf(path: string): number {
+        return this._sorted.findIndex((f) => f.path === path);
     }
 
     get length(): number {

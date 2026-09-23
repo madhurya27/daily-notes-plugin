@@ -397,6 +397,17 @@ describe("DailyNoteService", () => {
         });
     });
 
+    describe("instance: indexOf", () => {
+        it("finds a note by path", () => {
+            __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]);
+            const svc = new DailyNoteService();
+            svc.initialize();
+
+            expect(svc.indexOf("Notes/2025-01-01.md")).toBe(1);
+            expect(svc.indexOf("Notes/2025-01-09.md")).toBe(-1);
+        });
+    });
+
     describe("dates + formatDate: what the jump suggester offers", () => {
         it("lists every note's date, newest first", () => {
             __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-03.md", "Notes/2025-01-02.md"]);

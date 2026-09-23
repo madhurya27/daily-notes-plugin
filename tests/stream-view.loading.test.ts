@@ -10,8 +10,6 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
 
     beforeEach(async () => {
         ({ view, plugin } = await makeViewSetup());
-        // Use real DOM container so appendChild/insertBefore work correctly
-        (view as any).stream.blocks.attach(document.createElement("div"));
     });
 
     it("returns early without calling getBatch when already loading", async () => {
@@ -163,9 +161,6 @@ describe("DailyNotesStreamView — refresh", () => {
 
     beforeEach(async () => {
         ({ view, state } = await makeViewSetup());
-        // Real DOM so getBoundingClientRect() and empty() are available
-        (view as any).stream.scrollRoot = document.createElement("div");
-        (view as any).stream.blocks.attach(document.createElement("div"));
     });
 
     it("detaches scroll, re-renders all notes, re-attaches scroll, and restores state", async () => {

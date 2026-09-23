@@ -1,6 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import type { App } from "obsidian";
-import { getPropertyIcon, getReadableLineLength, onVaultConfigChange, openTagSearch } from "../src/obsidian-internals";
+import {
+    getPropertyIcon,
+    getReadableLineLength,
+    getSearchHotkeys,
+    onVaultConfigChange,
+    openTagSearch,
+} from "../src/obsidian-internals";
 
 /** Builds an App-shaped object; `config` is the internal vault config under test. */
 const makeApp = (config?: unknown): App => ({ vault: { config } }) as unknown as App;
@@ -191,5 +197,38 @@ describe("getPropertyIcon", () => {
 
     it("returns null when the type manager exposes no lookup", () => {
         expect(getPropertyIcon(makeTypeApp(), "tags", ["a"])).toBeNull();
+    });
+});
+
+describe("getSearchHotkeys", () => {
+    /** An app whose hotkey manager holds `custom` and `defaults` for every command. */
+    const withHotkeys = (custom: unknown, defaults: unknown) =>
+        ({
+            hotkeyManager: {
+                getHotkeys: (id: string) => (id === "editor:open-search" ? custom : undefined),
+                getDefaultHotkeys: (id: string) => (id === "editor:open-search" ? defaults : undefined),
+            },
+        }) as unknown as App;
+
+    it("reads the binding the user set for Search current file", () => {
+        const custom = [{ modifiers: ["Mod", "Shift"], key: "S" }];
+        expect(getSearchHotkeys(withHotkeys(custom, [{ modifiers: ["Mod"], key: "F" }]))).toEqual(custom);
+    });
+
+    it("keeps an emptied binding: the user unbound search", () => {
+        expect(getSearchHotkeys(withHotkeys([], [{ modifiers: ["Mod"], key: "F" }]))).toEqual([]);
+    });
+
+    it("falls back to Obsidian's default binding", () => {
+        const defaults = [{ modifiers: ["Mod"], key: "F" }];
+        expect(getSearchHotkeys(withHotkeys(undefined, defaults))).toEqual(defaults);
+    });
+
+    it("falls back to Mod+F when Obsidian knows no binding for it", () => {
+        expect(getSearchHotkeys(withHotkeys(undefined, undefined))).toEqual([{ modifiers: ["Mod"], key: "F" }]);
+    });
+
+    it("falls back to Mod+F once the internal is gone", () => {
+        expect(getSearchHotkeys({} as App)).toEqual([{ modifiers: ["Mod"], key: "F" }]);
     });
 });

@@ -4,8 +4,12 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
-- [ ] Search the stream — the vault's "Search current file" hotkey, next/previous through matching notes, counted
-  per note; see `docs/decisions.md` (2026-09-23).
+- [ ] `pnpm run test:memory` fails: 1608 live nodes in the stream against a ceiling of `SEEDED_DAYS + 500`
+  (1595). 1095 empty blocks plus 4 rendered notes of ~128 nodes each; failed before search landed. Decide
+  whether the ceiling or the per-note node count is wrong.
+- [ ] Time a search step on a real phone. e2e mobile takes 4–6 s per step against 85 ms on desktop, even to a
+  loaded note — likely the hidden window's frame rate, which `scrollIntoPlace` waits on. Loading is not the
+  cost (measured 2026-09-23), so preloading matches would not help.
 - [ ] Per-note edit action — open in a split, or append to today's note. Read-only stream stays; see
   `docs/decisions.md` (2026-09-15).
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:

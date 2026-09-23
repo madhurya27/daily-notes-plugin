@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { captureAnchor, restoreAnchor, scrollToTop } from "../src/stream/scroll-position";
+import { captureAnchor, restoreAnchor, scrollIntoPlace } from "../src/stream/scroll-position";
 import { TFile } from "obsidian";
 
 function makeFile(path: string): TFile {
@@ -106,18 +106,24 @@ describe("restoreAnchor", () => {
     });
 });
 
-describe("scrollToTop", () => {
+describe("scrollIntoPlace", () => {
+    /** The pane the block is scrolled onto, its top at 0. */
+    const pane = Object.assign(makeEl({ top: 0, bottom: 800 }), { scrollTop: 0 });
+
+    /** Scrolls the pane, unless it is `stuck` as far as it goes. */
+    const scrolling = (stuck: boolean) =>
+        vi.fn(() => {
+            if (!stuck) pane.scrollTop += 100;
+        });
+
     /** A block whose top follows `tops`, holding the last value afterwards. */
-    function blockMoving(tops: number[]) {
+    function blockMoving(tops: number[], { stuck = false } = {}) {
         const block = document.createElement("div");
-        block.scrollIntoView = vi.fn();
+        block.scrollIntoView = scrolling(stuck);
         let pass = 0;
         block.getBoundingClientRect = vi.fn(() => ({ top: tops[Math.min(pass++, tops.length - 1)] }) as DOMRect);
         return block;
     }
-
-    /** The pane the block is scrolled onto, its top at 0. */
-    const pane = makeEl({ top: 0, bottom: 800 });
 
     /** A layout whose change count follows `counts`, read twice per pass. */
     function layoutCounting(counts: number[] = [0]) {
@@ -132,7 +138,7 @@ describe("scrollToTop", () => {
         const block = blockMoving([0]);
         const layout = layoutCounting();
 
-        await scrollToTop(block, pane, layout);
+        await scrollIntoPlace(block, "start", pane, layout);
 
         expect(block.scrollIntoView).toHaveBeenCalledOnce();
         expect(block.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
@@ -143,7 +149,7 @@ describe("scrollToTop", () => {
         // Each render above it moves the block; the third pass lands it.
         const block = blockMoving([300, 80, 1]);
 
-        await scrollToTop(block, pane, layoutCounting());
+        await scrollIntoPlace(block, "start", pane, layoutCounting());
 
         expect(block.scrollIntoView).toHaveBeenCalledTimes(3);
     });
@@ -154,17 +160,65 @@ describe("scrollToTop", () => {
         // the count move, the fourth sees it hold.
         const block = blockMoving([0]);
 
-        await scrollToTop(block, pane, layoutCounting([0, 1, 1, 2, 2, 3, 3, 3]));
+        await scrollIntoPlace(block, "start", pane, layoutCounting([0, 1, 1, 2, 2, 3, 3, 3]));
 
         expect(block.scrollIntoView).toHaveBeenCalledTimes(4);
     });
 
     it("gives up rather than chase a block that never arrives", async () => {
-        // A note too short to reach the top of a tall pane never gets there.
+        // Scrolled every pass, and pushed away again every pass.
         const block = blockMoving([500]);
 
-        await scrollToTop(block, pane, layoutCounting());
+        await scrollIntoPlace(block, "start", pane, layoutCounting());
 
         expect(block.scrollIntoView).toHaveBeenCalledTimes(8); // MAX_SCROLL_PASSES
+    });
+
+    /** An element 20px tall whose centre follows `centres`. */
+    function elementCentredAt(centres: number[]) {
+        const el = document.createElement("span");
+        el.scrollIntoView = scrolling(false);
+        let pass = 0;
+        el.getBoundingClientRect = vi.fn(() => {
+            const centre = centres[Math.min(pass++, centres.length - 1)]!;
+            return { top: centre - 10, bottom: centre + 10 } as DOMRect;
+        });
+        return el;
+    }
+
+    it("centres an element on the pane", async () => {
+        const el = elementCentredAt([400]);
+
+        await scrollIntoPlace(el, "center", pane, layoutCounting());
+
+        expect(el.scrollIntoView).toHaveBeenCalledOnce();
+        expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+    });
+
+    it("centres it again once the stream around it shifts it", async () => {
+        const el = elementCentredAt([1400, 400]);
+
+        await scrollIntoPlace(el, "center", pane, layoutCounting());
+
+        expect(el.scrollIntoView).toHaveBeenCalledTimes(2);
+    });
+
+    // A note too short to reach the top of a tall pane: the scroll moves
+    // nothing, so no observer has anything new to report.
+    it("stops once a scroll moves nothing on a quiet stream", async () => {
+        const block = blockMoving([500], { stuck: true });
+
+        await scrollIntoPlace(block, "start", pane, layoutCounting());
+
+        expect(block.scrollIntoView).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps waiting on a stuck scroll while renders are still landing", async () => {
+        // A render lands between the first two passes; the third sees none.
+        const block = blockMoving([500], { stuck: true });
+
+        await scrollIntoPlace(block, "start", pane, layoutCounting([0, 1, 2, 2, 2, 2]));
+
+        expect(block.scrollIntoView).toHaveBeenCalledTimes(3);
     });
 });

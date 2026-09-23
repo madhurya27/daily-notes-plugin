@@ -1,31 +1,63 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, Scope, WorkspaceLeaf, debounce } from "obsidian";
 import type DailyNotesStreamPlugin from "../main";
 import { JumpToDateModal } from "./jump-to-date-modal";
 import { NoteRenderer } from "../render/note-renderer";
 import { CollapsibleManager } from "../render/collapsible";
 import { NoteStream } from "../stream/note-stream";
-import { getReadableLineLength, onVaultConfigChange } from "../obsidian-internals";
+import { StreamSearch } from "../stream/stream-search";
+import { SearchHighlighter } from "../render/search-highlights";
+import { SearchBar } from "./search-bar";
+import { matchesHotkey } from "./hotkey";
+import { getReadableLineLength, getSearchHotkeys, onVaultConfigChange } from "../obsidian-internals";
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
+
+/** A vault change re-reads every note for an open search; a burst of saves needs one. */
+const SEARCH_REFRESH_DEBOUNCE_MS = 500;
 
 export class DailyNotesStreamView extends ItemView {
     private plugin: DailyNotesStreamPlugin;
     private renderer: NoteRenderer;
     private collapsible: CollapsibleManager;
     private stream: NoteStream;
+    private search: StreamSearch;
+    private searchBar: SearchBar;
 
     constructor(leaf: WorkspaceLeaf, plugin: DailyNotesStreamPlugin) {
         super(leaf);
         this.plugin = plugin;
         this.collapsible = new CollapsibleManager(plugin.collapseStore);
+        const highlighter = new SearchHighlighter();
         this.renderer = new NoteRenderer(
             this.app,
             this,
             this.collapsible,
             // A closure, not the object: loadSettings() reassigns plugin.settings.
-            () => plugin.settings
+            () => plugin.settings,
+            highlighter
         );
         this.stream = new NoteStream(plugin.service, plugin.collapseStore, this.renderer);
+
+        this.search = new StreamSearch(
+            {
+                notes: () => plugin.service.getBatch(0, plugin.service.length),
+                read: (file) => this.app.vault.cachedRead(file),
+            },
+            this.stream,
+            highlighter,
+            (status) => this.searchBar.setStatus(status)
+        );
+        this.searchBar = new SearchBar(this, {
+            search: (query) => void this.search.search(query),
+            next: () => void this.search.next(),
+            previous: () => void this.search.previous(),
+            close: () => void this.search.close(),
+        });
+
+        // The active leaf's scope sees every key first; what it leaves
+        // undefined goes on to Obsidian's own hotkeys.
+        this.scope = new Scope(this.app.scope);
+        this.scope.register(null, null, (evt) => this.onKeydown(evt));
     }
 
     getViewType(): string {
@@ -39,6 +71,9 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     async onOpen() {
+        // Outside the scrolling pane, so it stays put while the notes move.
+        this.containerEl.insertBefore(this.searchBar.el, this.contentEl);
+
         const streamContainerEl = this.contentEl.createDiv({ cls: "daily-notes-stream-container" });
 
         // Mirrors Obsidian's "Readable line length" setting.
@@ -85,12 +120,33 @@ export class DailyNotesStreamView extends ItemView {
 
         // metadataCache "changed", not vault "modify": the cache lags the write,
         // and the renderer reads it for frontmatter offsets and properties.
-        this.registerEvent(this.app.metadataCache.on("changed", (f) => this.stream.onFileModify(f)));
-        this.registerEvent(this.app.vault.on("create", (f) => this.stream.onFileCreate(f)));
-        this.registerEvent(this.app.vault.on("delete", (f) => this.stream.onFileDelete(f)));
-        this.registerEvent(this.app.vault.on("rename", (f, oldPath) => this.stream.onFileRename(f, oldPath)));
+        this.registerEvent(
+            this.app.metadataCache.on("changed", (f) => {
+                this.stream.onFileModify(f);
+                this.refreshSearch();
+            })
+        );
+        this.registerEvent(
+            this.app.vault.on("create", (f) => {
+                this.stream.onFileCreate(f);
+                this.refreshSearch();
+            })
+        );
+        this.registerEvent(
+            this.app.vault.on("delete", (f) => {
+                this.stream.onFileDelete(f);
+                this.refreshSearch();
+            })
+        );
+        this.registerEvent(
+            this.app.vault.on("rename", (f, oldPath) => {
+                this.stream.onFileRename(f, oldPath);
+                this.refreshSearch();
+            })
+        );
 
         this.addAction("calendar-search", "Jump to date", () => this.promptJumpToDate());
+        this.addAction("search", "Search", () => this.searchBar.open());
 
         this.stream.open(this.contentEl, streamContainerEl);
     }
@@ -101,8 +157,21 @@ export class DailyNotesStreamView extends ItemView {
     }
 
     async onClose() {
+        this.refreshSearch.cancel();
         this.stream.close();
     }
+
+    /**
+     * Obsidian's "Search current file" hotkey, read on every press so a rebind
+     * applies at once (docs/decisions.md, 2026-09-23). False takes the key.
+     */
+    private onKeydown(evt: KeyboardEvent): false | undefined {
+        if (!getSearchHotkeys(this.app).some((hotkey) => matchesHotkey(evt, hotkey))) return undefined;
+        this.searchBar.open();
+        return false;
+    }
+
+    private readonly refreshSearch = debounce(() => void this.search.refresh(), SEARCH_REFRESH_DEBOUNCE_MS, true);
 
     /** Asks for a date, then jumps to it. */
     promptJumpToDate(): void {

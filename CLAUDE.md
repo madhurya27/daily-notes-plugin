@@ -34,12 +34,16 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
 - `settings.ts` — settings interface, defaults, `PluginSettingTab`.
 - `obsidian-internals.ts` — the single place unsupported internals are read (`getReadableLineLength`, the
   `vault` "raw" event behind `onVaultConfigChange`, the core global-search plugin and the `search` view's
-  `setQuery` behind `openTagSearch`, `metadataTypeManager` behind `getPropertyIcon`).
+  `setQuery` behind `openTagSearch`, `metadataTypeManager` behind `getPropertyIcon`, `hotkeyManager` behind
+  `getSearchHotkeys`).
 - `notes/daily-note-service.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including
   nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
 - `ui/stream-view.ts` — `ItemView` subclass; wires vault events, links and header actions to the stream.
 - `ui/jump-to-date-modal.ts` — the `SuggestModal` behind the header action and the `jump-to-date` command;
   offers the dates the vault has notes for, in the vault's own format.
+- Search: `notes/note-search.ts` matches sources, `stream/stream-search.ts` steps note to note,
+  `render/search-highlights.ts` paints CSS highlight ranges, `ui/search-bar.ts` is the bar, `ui/hotkey.ts`
+  matches the vault's binding.
 - `stream/note-stream.ts` — the stream's contents: batches, vault-event updates, jumps, rebuilds, all through
   one queue.
 - `stream/stream-blocks.ts` — where blocks sit: the path→block index, placement ahead of the sentinel, the

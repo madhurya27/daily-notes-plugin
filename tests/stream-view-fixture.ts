@@ -76,6 +76,7 @@ export function makeStubbedView(app: object = makeApp()) {
         remove: vi.fn(),
         refresh: vi.fn().mockResolvedValue(undefined),
         heightOf: vi.fn().mockReturnValue(undefined),
+        render: vi.fn(),
         refreshMargins: vi.fn(),
         layoutChanges: 0,
     };
@@ -93,8 +94,6 @@ export function makeStubbedView(app: object = makeApp()) {
 export async function makeViewSetup(app: object = makeApp()) {
     const { view, plugin } = makeStubbedView(app);
     await view.onOpen();
-    // The mock contentEl makes a container that cannot hold real blocks.
-    (view as any).stream.blocks.attach(document.createElement("div"));
     const state = (view as any).stream.state as StreamState;
     return { view, plugin, state };
 }

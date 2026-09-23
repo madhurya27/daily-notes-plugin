@@ -1,5 +1,6 @@
 import { App, Component, Keymap, MarkdownRenderer, MarkdownView, TFile, setIcon } from "obsidian";
 import { CollapsibleManager } from "./collapsible";
+import type { SearchHighlighter } from "./search-highlights";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
 import type { DailyNotesStreamSettings } from "../settings";
 
@@ -61,7 +62,8 @@ export class NoteRenderer {
         private readonly app: App,
         private readonly component: Component,
         private readonly collapsible: CollapsibleManager,
-        private readonly getSettings: () => DailyNotesStreamSettings
+        private readonly getSettings: () => DailyNotesStreamSettings,
+        private readonly highlighter: SearchHighlighter
     ) {}
 
     /**
@@ -119,6 +121,7 @@ export class NoteRenderer {
             contentEl.setText("Error rendering note");
         }
 
+        this.highlighter.track(block, noteComponent);
         return noteComponent;
     }
 

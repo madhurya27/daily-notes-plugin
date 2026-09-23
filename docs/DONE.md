@@ -28,3 +28,4 @@
 - [x] Split `DailyNotesStreamView`: the view wires events, `NoteStream` owns the stream's contents
 - [x] Jump to date as a suggester over the dates the vault has, in the vault's own format, with the platform's date wheel
 - [x] Jump prompt: the hidden date picker no longer pushes the clear button out of the query box
+- [x] Search the stream on the vault's own find hotkey, counted per note, stepping through highlights
