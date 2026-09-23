@@ -8,7 +8,7 @@
 - [x] Mobile: responsive layout, touch-friendly
 - [x] Note properties: collapsible frontmatter panel, native styling, icon decorations
 - [x] Live updates: new/modified/renamed/deleted notes reflect instantly
-- [x] Smart internal links: reuse existing open tab instead of opening a new one
+- [x] Titles and links open in the stream's tab, as Obsidian's links do; mod-click opens a new tab
 - [x] Links to missing notes fade as in reading view, and unfade once the note exists
 - [x] The status bar clears while the stream has focus, instead of describing the last note
 - [x] Back to the stream returns to the note it was scrolled to

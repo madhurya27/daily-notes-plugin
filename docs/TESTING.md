@@ -39,13 +39,13 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 ### Core
 
 - Notes newest-first, date headers correct. **[e2e]**
-- Clicking a header opens the original file in a new tab, the stream still open. **[e2e]**
-- Mod-click opens a second tab even when the note is open; mod-alt-click splits. **[e2e]**
+- Clicking a header opens the original file in the stream's tab; Back returns to the stream. **[e2e]**
+- Mod-click opens a new tab, keeping the stream; mod-alt-click splits. **[e2e]**
 - Middle-click on a header opens a new tab.
 - Right-click on a header shows the file menu, "Open in new window" once. **[e2e]**
 - `test-image.svg` renders in **2026-02-01**; `[[2026-01-15]]` navigates there and back.
-- Clicking a header or link whose note is already open focuses that tab, not a new one; `[[note#heading]]`
-  scrolls it to the heading. **[e2e]**
+- A link opens in the stream's tab even when another tab shows its note; `[[note#heading]]` opens at the
+  heading. **[e2e]**
 - A link inside a note (**2026-02-01**, Evening) takes the header's gestures: mod-click, mod-alt-click, middle-click, right-click. **[e2e]**
 - Mod-hovering a link previews it **[e2e]**; Settings → Page preview lists "Daily notes stream", and turning
   its Mod requirement off previews on plain hover.
@@ -53,8 +53,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
   **[e2e]**
 - Right-click on an unresolved link offers only the open items; opening one creates the note.
 - Open a note, then click into the stream: the word count and backlinks leave the status bar. **[e2e]**
-- Quick switcher (Mod-O) from the stream replaces it in its tab, as from the graph; Back returns to the
-  note it was scrolled to. **[e2e]**
+- Back from a note opened in the stream's tab returns to the note the stream was scrolled to, as it does
+  from the quick switcher (Mod-O). **[e2e]**
 - Scrolling to the bottom loads the next batch without duplicates. **[e2e]**
 - Tall window, short notes → loading continues past the first batch.
 

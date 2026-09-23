@@ -24,33 +24,18 @@ test.describe("note title", () => {
         await obsidian.page.evaluate(() => window.app.workspace.detachLeavesOfType("markdown"));
     });
 
-    test("opens the note without closing the stream", async ({ obsidian }) => {
+    test("opens the note in the stream's tab, which Back returns to", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
 
         await container.locator(".daily-note-title").first().click();
 
-        await expect.poll(() => openNotes(page)).toEqual([{ path: "Notes/2026-03-14.md", besideStream: true }]);
-        expect(await streamIsOpen(page)).toBe(true);
-    });
-
-    test("returns to the tab already showing the note", async ({ obsidian }) => {
-        const { page } = obsidian;
-        const container = await openStream(page);
-        const title = container.locator(".daily-note-title").first();
-        await title.click();
-        await expect.poll(async () => (await openNotes(page)).length).toBe(1);
-        await page.evaluate(() => {
-            const stream = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!;
-            window.app.workspace.setActiveLeaf(stream, { focus: true });
-        });
-
-        await title.click();
-
         await expect
-            .poll(() => page.evaluate(() => window.app.workspace.activeLeaf?.view?.file?.path))
-            .toBe("Notes/2026-03-14.md");
-        expect(await openNotes(page)).toHaveLength(1);
+            .poll(async () => (await openNotes(page)).map((n: { path?: string }) => n.path))
+            .toEqual(["Notes/2026-03-14.md"]);
+        expect(await streamIsOpen(page)).toBe(false);
+        await page.evaluate(() => window.app.commands.executeCommandById("app:go-back"));
+        await expect.poll(() => streamIsOpen(page)).toBe(true);
     });
 
     test("opens the note in a split when mod-alt-clicked", async ({ obsidian, mobileLayout }) => {
@@ -66,20 +51,16 @@ test.describe("note title", () => {
         await expect.poll(() => openNotes(page)).toEqual([{ path: "Notes/2026-03-14.md", besideStream: false }]);
     });
 
-    test("opens a second copy in a new tab when mod-clicked, even if the note is open", async ({ obsidian }) => {
+    test("opens the note in a new tab when mod-clicked, keeping the stream", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
-        const title = container.locator(".daily-note-title").first();
 
-        await title.click();
-        await expect.poll(async () => (await openNotes(page)).length).toBe(1);
-        await page.evaluate(() => {
-            const stream = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!;
-            window.app.workspace.setActiveLeaf(stream, { focus: true });
-        });
-        await title.click({ modifiers: ["ControlOrMeta"] });
+        await container
+            .locator(".daily-note-title")
+            .first()
+            .click({ modifiers: ["ControlOrMeta"] });
 
-        await expect.poll(async () => (await openNotes(page)).length).toBe(2);
+        await expect.poll(() => openNotes(page)).toEqual([{ path: "Notes/2026-03-14.md", besideStream: true }]);
     });
 
     test("offers the file menu on right-click", async ({ obsidian, mobileLayout }) => {
