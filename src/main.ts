@@ -3,6 +3,7 @@ import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "./ui/stream-
 import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab } from "./settings";
 import { CollapsibleStateStore } from "./render/collapse-store";
 import { DailyNoteService } from "./notes/daily-note-service";
+import { ParsedDates } from "./notes/parsed-dates";
 
 /** A ribbon click or command has no caller to reject to, so a failure is logged. */
 function logActivationFailure(activation: Promise<unknown>): void {
@@ -18,10 +19,12 @@ export default class DailyNotesStreamPlugin extends Plugin {
 
         this.collapseStore = new CollapsibleStateStore(this.app);
 
+        // Each view owns its service (CLAUDE.md, Invariants); they share only the parsed dates.
+        const parsedDates = new ParsedDates();
+        const markdownFiles = () => this.app.vault.getMarkdownFiles();
         this.registerView(
             VIEW_TYPE_DAILY_NOTES_STREAM,
-            (leaf) =>
-                new DailyNotesStreamView(leaf, this, new DailyNoteService(() => this.app.vault.getMarkdownFiles()))
+            (leaf) => new DailyNotesStreamView(leaf, this, new DailyNoteService(markdownFiles, parsedDates))
         );
 
         this.registerHoverLinkSource(VIEW_TYPE_DAILY_NOTES_STREAM, {

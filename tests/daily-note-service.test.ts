@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { DailyNoteService } from "../src/notes/daily-note-service";
+import { ParsedDates } from "../src/notes/parsed-dates";
 import {
     __mockMarkdownFiles,
     __setMockNotes,
@@ -460,6 +461,53 @@ describe("DailyNoteService", () => {
             svc.insertSorted(created);
 
             expect(reads()).toBe(1);
+        });
+    });
+
+    describe("dates remembered between builds", () => {
+        const NOTES = ["Notes/2025-01-01.md", "Notes/2025-01-02.md", "Notes/2025-01-03.md"];
+        const buildWith = (dates: ParsedDates) => {
+            const svc = new DailyNoteService(__mockMarkdownFiles, dates);
+            svc.initialize();
+            return svc;
+        };
+
+        it("parses no name a service sharing the cache already parsed", () => {
+            __setMockNotes(NOTES);
+            const dates = new ParsedDates();
+            buildWith(dates);
+            const reads = countNameReads(__mockMarkdownFiles());
+
+            const svc = buildWith(dates);
+
+            expect(reads()).toBe(0);
+            expect(svc.dates().map((d) => d.format("YYYY-MM-DD"))).toEqual(["2025-01-03", "2025-01-02", "2025-01-01"]);
+        });
+
+        it("parses only a note the cache has not seen", () => {
+            __setMockNotes(NOTES);
+            const dates = new ParsedDates();
+            buildWith(dates);
+            __setMockNotes([...NOTES, "Notes/2025-01-04.md"]);
+            const reads = countNameReads(__mockMarkdownFiles());
+
+            const svc = buildWith(dates);
+
+            expect(reads()).toBe(1);
+            expect(svc.length).toBe(4);
+        });
+
+        it("parses every name again once the format changes", () => {
+            __setMockNotes(NOTES);
+            const dates = new ParsedDates();
+            buildWith(dates);
+            __setMockSettings({ format: "DD-MM-YYYY", folder: "Notes" });
+            const reads = countNameReads(__mockMarkdownFiles());
+
+            const svc = buildWith(dates);
+
+            expect(reads()).toBe(3);
+            expect(svc.length).toBe(0);
         });
     });
 
