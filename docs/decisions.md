@@ -341,7 +341,8 @@ timing tests slip.
 ## 2026-09-23 — Search the stream, counted per note
 
 **Decision:** the vault's "Search current file" hotkey, read from
-`hotkeyManager` on each keydown, opens Obsidian's own find bar above the pane;
+`hotkeyManager` on open and on each config write (a rebind saves
+`hotkeys.json`), opens Obsidian's own find bar above the pane;
 a header action does too, for phones. It matches each note's title and source,
 frontmatter included, counts notes ("3 / 12"), and steps through the visible
 highlights (CSS highlight API) note to note. Typing marks the topmost match on
