@@ -436,13 +436,17 @@ and internal links alike: mod-click or middle-click opens a new tab,
 mod-alt-click a split; right-click shows "Open in new tab" and "Open to the
 right", then Obsidian's file menu once the note exists. Links preview on
 hover through Page preview, Mod required by default. A plain click focuses a
-tab already showing the note, at the linked heading; nothing replaces the
-stream.
+tab already showing the note, at the linked heading, else opens a new one.
 
 **Why:** the stream should behave as Obsidian's reading view does, and the
-file menu adds move, bookmark and reveal at no new UI.
+file menu adds move, bookmark and reveal at no new UI. The one departure is
+the plain click: the reading view replaces its own tab, which the stream
+cannot do, so Obsidian's API opens a new tab on every click. Focusing the
+open one keeps a note to one tab.
 
 **Rejected:**
+- A new tab on every plain click — what the API does unaided; tabs of the
+  same note pile up.
 - A pencil button per note — clutter on a read-only feed; the title does it.
 - Append to today's note — needs an input, the inline editor 2026-09-15
   rejects; capture plugins already append to a file.
