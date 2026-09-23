@@ -11,7 +11,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
     beforeEach(async () => {
         ({ view, plugin } = await makeViewSetup());
         // Use real DOM container so appendChild/insertBefore work correctly
-        (view as any).stream.streamContainerEl = document.createElement("div");
+        (view as any).stream.blocks.attach(document.createElement("div"));
     });
 
     it("returns early without calling getBatch when already loading", async () => {
@@ -30,7 +30,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
         (view as any).stream.scroll.getSentinel = vi.fn().mockReturnValue(null);
         const container = document.createElement("div");
-        (view as any).stream.streamContainerEl = container;
+        (view as any).stream.blocks.attach(container);
         await (view as any).stream.loadMoreNotes();
         expect(container.querySelector(".daily-notes-empty-state")).not.toBeNull();
     });
@@ -40,7 +40,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         const container = document.createElement("div");
         const sentinel = document.createElement("div");
         container.appendChild(sentinel);
-        (view as any).stream.streamContainerEl = container;
+        (view as any).stream.blocks.attach(container);
         (view as any).stream.scroll.getSentinel = vi.fn().mockReturnValue(sentinel);
         await (view as any).stream.loadMoreNotes();
         const emptyState = container.querySelector(".daily-notes-empty-state");
@@ -53,7 +53,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
         (view as any).stream.state.reset([new TFile("Notes/2025-01-01.md")]);
         const container = document.createElement("div");
-        (view as any).stream.streamContainerEl = container;
+        (view as any).stream.blocks.attach(container);
         await (view as any).stream.loadMoreNotes();
         expect(container.querySelector(".daily-notes-empty-state")).toBeNull();
     });
@@ -63,7 +63,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         plugin.service.getBatch = vi.fn().mockReturnValue(files);
         (view as any).stream.scroll.getSentinel = vi.fn().mockReturnValue(null);
         const container = document.createElement("div");
-        (view as any).stream.streamContainerEl = container;
+        (view as any).stream.blocks.attach(container);
         await (view as any).stream.loadMoreNotes();
         expect((view as any).stream.window.add).toHaveBeenCalledTimes(2);
         expect((view as any).stream.state.length).toBe(2);
@@ -87,10 +87,9 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         (view as any).stream.window.add = vi.fn((f: TFile) =>
             f === doomed ? doomedEl : document.createElement("div")
         );
-        (view as any).stream.findNoteElementByPath = vi.fn((path: string) => (path === doomed.path ? doomedEl : null));
         plugin.service.removeSorted = vi.fn().mockReturnValue(1);
         const container = document.createElement("div");
-        (view as any).stream.streamContainerEl = container;
+        (view as any).stream.blocks.attach(container);
 
         const loading = (view as any).stream.loadMoreNotes();
         (view as any).stream.onFileDelete(doomed);
@@ -107,7 +106,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         const container = document.createElement("div");
         const sentinel = document.createElement("div");
         container.appendChild(sentinel);
-        (view as any).stream.streamContainerEl = container;
+        (view as any).stream.blocks.attach(container);
         (view as any).stream.scroll.getSentinel = vi.fn().mockReturnValue(sentinel);
         await (view as any).stream.loadMoreNotes();
         const children = Array.from(container.children);
@@ -118,7 +117,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
     it("removes a stale empty-state div once notes exist", async () => {
         const container = document.createElement("div");
         container.createDiv({ cls: "daily-notes-empty-state", text: "No daily notes found." });
-        (view as any).stream.streamContainerEl = container;
+        (view as any).stream.blocks.attach(container);
         plugin.service.getBatch = vi.fn().mockReturnValue([new TFile("Notes/2025-01-01.md")]);
 
         await (view as any).stream.loadMoreNotes();
@@ -128,7 +127,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
 
     it("never appends a second empty-state div on repeated empty loads", async () => {
         const container = document.createElement("div");
-        (view as any).stream.streamContainerEl = container;
+        (view as any).stream.blocks.attach(container);
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
 
         await (view as any).stream.loadMoreNotes();
@@ -139,7 +138,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
 
     it("rechecks the sentinel after a non-empty batch so a short batch keeps loading", async () => {
         const container = document.createElement("div");
-        (view as any).stream.streamContainerEl = container;
+        (view as any).stream.blocks.attach(container);
         plugin.service.getBatch = vi.fn().mockReturnValue([new TFile("Notes/2025-01-01.md")]);
 
         await (view as any).stream.loadMoreNotes();
@@ -149,7 +148,7 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
 
     it("does not recheck after an empty batch (would loop forever)", async () => {
         const container = document.createElement("div");
-        (view as any).stream.streamContainerEl = container;
+        (view as any).stream.blocks.attach(container);
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
 
         await (view as any).stream.loadMoreNotes();
@@ -166,7 +165,7 @@ describe("DailyNotesStreamView — refresh", () => {
         ({ view, state } = await makeViewSetup());
         // Real DOM so getBoundingClientRect() and empty() are available
         (view as any).stream.scrollRoot = document.createElement("div");
-        (view as any).stream.streamContainerEl = document.createElement("div");
+        (view as any).stream.blocks.attach(document.createElement("div"));
     });
 
     it("detaches scroll, re-renders all notes, re-attaches scroll, and restores state", async () => {
@@ -191,7 +190,7 @@ describe("DailyNotesStreamView — refresh", () => {
         const file = new TFile("Notes/2025-01-03.md");
         state.reset([file]);
         const old = document.createElement("div");
-        (view as any).stream.blocks.set(file.path, old);
+        (view as any).stream.blocks.append(file.path, old);
         (view as any).stream.window.heightOf = vi.fn().mockReturnValue(512);
 
         await (view as any).refresh();
@@ -208,7 +207,7 @@ describe("DailyNotesStreamView — refresh", () => {
         const anchorEl = document.createElement("div");
         anchorEl.getBoundingClientRect = () =>
             ({ top: 100, bottom: 200, left: 0, right: 0, width: 0, height: 0 }) as DOMRect;
-        (view as any).stream.findNoteElement = vi.fn().mockReturnValue(anchorEl);
+        (view as any).stream.blocks.get = vi.fn().mockReturnValue(anchorEl);
 
         // Should not throw — restoreAnchor will run with the captured snapshot
         await expect((view as any).refresh()).resolves.toBeUndefined();

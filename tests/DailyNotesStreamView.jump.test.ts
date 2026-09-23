@@ -17,7 +17,10 @@ describe("DailyNotesStreamView — jumpToDate", () => {
     beforeEach(async () => {
         Notice.reset();
         ({ view, plugin } = await makeViewSetup());
-        (view as any).stream.streamContainerEl = document.createElement("div");
+        (view as any).stream.blocks.attach(document.createElement("div"));
+        // jsdom lays nothing out: every block lands at the pane's top at once.
+        (view as any).stream.scrollRoot = document.createElement("div");
+        HTMLElement.prototype.scrollIntoView = vi.fn();
         notes = makeNotes();
         plugin.service.getBatch = vi.fn((offset: number, limit: number) => notes.slice(offset, offset + limit));
     });
@@ -67,7 +70,7 @@ describe("DailyNotesStreamView — jumpToDate", () => {
     /** Targets index 12, and hands `block` back for it. */
     function targeting(block: HTMLElement) {
         plugin.service.indexForDate = vi.fn().mockReturnValue(12);
-        (view as any).stream.findNoteElement = vi.fn((f: TFile) => (f === notes[12] ? block : null));
+        (view as any).stream.blocks.get = vi.fn((path: string) => (path === notes[12]!.path ? block : null));
     }
 
     it("scrolls the target note to the top of the view", async () => {
@@ -77,6 +80,15 @@ describe("DailyNotesStreamView — jumpToDate", () => {
         await jump("2025-01-18");
 
         expect(block.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    });
+
+    it("scrolls nowhere when the target's block is gone", async () => {
+        plugin.service.indexForDate = vi.fn().mockReturnValue(3);
+        (view as any).stream.blocks.get = vi.fn().mockReturnValue(null);
+
+        await jump("2025-01-27");
+
+        expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
     });
 
     it("stops loading when the stream runs out before the target index", async () => {

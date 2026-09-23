@@ -32,6 +32,7 @@ Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 - `src/DailyNoteService.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
 - `src/DailyNotesStreamView.ts` — `ItemView` subclass; wires vault events, links and header actions to the stream.
 - `src/NoteStream.ts` — the stream's contents: batches, vault-event updates, jumps, rebuilds, all through one queue.
+- `src/StreamBlocks.ts` — where blocks sit: the path→block index, placement ahead of the sentinel, the empty state.
 - `src/JumpToDateModal.ts` — the `SuggestModal` behind the header action and the `jump-to-date` command; offers the dates the vault has notes for, in the vault's own format.
 - `src/NoteWindowManager.ts` — renders a block near the viewport, empties it well past; owns each note's `Component`.
 - `src/obsidianInternals.ts` — the single place unsupported internals are read (`getReadableLineLength`, the
@@ -64,7 +65,7 @@ Traps that span files, so no single file's comments can hold them.
   and the renderer reads the cache.
 - **A block may hold no content.** Only notes near the viewport are rendered ([ADR 0006](docs/adr/0006-unload-off-screen-notes.md));
   everything else is an empty `.daily-note-block` reserving its height. Never assume a block's children exist,
-  and never key anything off them — `data-source-path` is on the block, and the view's path→block index is the
+  and never key anything off them — `data-source-path` is on the block, and `StreamBlocks`' path→block index is the
   only lookup.
 - **Delegated listeners**: chevrons and note titles are rebuilt on every re-render, so nothing binds a
   listener per element — `CollapsibleManager.delegate()` and `NoteRenderer.delegate()` register one listener

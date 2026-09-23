@@ -21,7 +21,7 @@ describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () 
         app = makeApp();
         ({ view, plugin } = await makeViewSetup(app));
         // The ItemView mock's contentEl is not a jsdom node; the stream container is.
-        (view as any).stream.streamContainerEl = document.createElement("div");
+        (view as any).stream.blocks.attach(document.createElement("div"));
     });
 
     afterEach(() => {
@@ -80,7 +80,7 @@ describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () 
         await settle();
 
         expect((view as any).stream.state.notes).toEqual([]);
-        expect((view as any).stream.streamContainerEl.querySelector(".daily-notes-empty-state")).not.toBeNull();
+        expect((view as any).stream.blocks.el.querySelector(".daily-notes-empty-state")).not.toBeNull();
     });
 
     it("re-arms infinite scroll against the reloaded stream", async () => {

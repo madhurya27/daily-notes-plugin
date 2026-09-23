@@ -3,6 +3,7 @@ import type { DailyNoteService, Moment } from "./DailyNoteService";
 import type { CollapsibleStateStore } from "./CollapsibleStateStore";
 import type { NoteRenderer } from "./NoteRenderer";
 import { StreamState } from "./StreamState";
+import { StreamBlocks } from "./StreamBlocks";
 import { InfiniteScrollController } from "./InfiniteScrollController";
 import { NoteWindowManager } from "./NoteWindowManager";
 import { captureAnchor, restoreAnchor, scrollToTop, type StreamLayout } from "./ScrollAnchorManager";
@@ -27,10 +28,7 @@ export class NoteStream {
     private scroll = new InfiniteScrollController();
     private window: NoteWindowManager;
     private scrollRoot!: HTMLElement;
-    private streamContainerEl!: HTMLElement;
-
-    /** Every loaded note's block, by the path it was rendered under. */
-    private readonly blocks = new Map<string, HTMLElement>();
+    private blocks = new StreamBlocks(() => this.scroll.getSentinel());
 
     // Serialized: an event interleaving with an in-flight batch would leave
     // state and the service cache disagreeing.
@@ -51,11 +49,10 @@ export class NoteStream {
     /** Starts watching `container`, inside the pane `scrollRoot`, for the first batch. */
     open(scrollRoot: HTMLElement, container: HTMLElement): void {
         this.scrollRoot = scrollRoot;
-        this.streamContainerEl = container;
+        this.blocks.attach(container);
         this.state.reset();
         this.window.attach(scrollRoot);
-        // A visible sentinel triggers the initial load.
-        this.scroll.attach(scrollRoot, container, () => this.loadMoreNotes());
+        this.attachScroll();
     }
 
     close(): void {
@@ -85,7 +82,7 @@ export class NoteStream {
             this.pendingModified.clear();
             for (const file of files) {
                 void this.enqueue(async () => {
-                    const el = this.findNoteElement(file);
+                    const el = this.blocks.get(file.path);
                     if (!el) return;
                     await this.window.refresh(el);
                 });
@@ -108,7 +105,7 @@ export class NoteStream {
                 return;
             }
 
-            this.insertElementAt(this.trackBlock(file), globalIndex);
+            this.blocks.insertBefore(file.path, this.window.add(file), this.state.notes[globalIndex]?.path);
             this.state.insert(globalIndex, file);
         });
     }
@@ -119,18 +116,14 @@ export class NoteStream {
      * delete drops it, rename carries it over.
      */
     private removeNote(file: TFile, renderedPath: string): void {
-        const el = this.findNoteElementByPath(renderedPath);
-        if (el) {
-            this.window.remove(el);
-            el.remove();
-            this.blocks.delete(renderedPath);
-        }
+        const el = this.blocks.remove(renderedPath);
+        if (el) this.window.remove(el);
 
         const globalIndex = this.service.removeSorted(file.path);
         if (globalIndex !== -1 && globalIndex < this.state.length) {
             this.state.remove(file.path);
         }
-        if (this.service.length === 0) this.showEmptyState();
+        if (this.service.length === 0) this.blocks.showEmptyState();
     }
 
     onFileDelete(file: TAbstractFile) {
@@ -166,14 +159,14 @@ export class NoteStream {
         const batch = this.service.getBatch(this.state.length, BATCH_SIZE);
         if (batch.length === 0) {
             // No recheck: re-triggering on an empty batch spins forever.
-            if (this.state.length === 0) this.showEmptyState();
+            if (this.state.length === 0) this.blocks.showEmptyState();
             return;
         }
 
-        this.findEmptyState()?.remove();
+        this.blocks.hideEmptyState();
 
         for (const file of batch) {
-            this.insertBeforeSentinel(this.trackBlock(file));
+            this.blocks.append(file.path, this.window.add(file));
         }
         this.state.append(batch);
 
@@ -198,7 +191,7 @@ export class NoteStream {
             new Notice(NO_NOTE_FOR_DATE);
             return;
         }
-        const block = this.findNoteElement(file);
+        const block = this.blocks.get(file.path);
         if (block) await scrollToTop(block, this.scrollRoot, this.layout);
     }
 
@@ -242,11 +235,11 @@ export class NoteStream {
 
     /** Discards the stream and loads the first batch of the new note set. */
     private async reload(): Promise<void> {
-        this.streamContainerEl.empty();
+        this.blocks.empty();
         this.scroll.detach();
         this.resetWindow();
         this.state.reset();
-        this.scroll.attach(this.scrollRoot, this.streamContainerEl, () => this.loadMoreNotes());
+        this.attachScroll();
         await this.loadBatch();
     }
 
@@ -257,27 +250,24 @@ export class NoteStream {
      * thousand.
      */
     private async rerenderAll(): Promise<void> {
-        const snapshot = captureAnchor(this.state.notes, this.streamContainerEl, this.scrollRoot, (f) =>
-            this.findNoteElement(f)
-        );
+        const find = (f: TFile) => this.blocks.get(f.path);
+        const snapshot = captureAnchor(this.state.notes, this.blocks.el, this.scrollRoot, find);
 
         const notes = [...this.state.notes];
-        const heights = new Map([...this.blocks].map(([path, block]) => [path, this.window.heightOf(block)]));
+        const heights = new Map([...this.blocks.entries()].map(([path, block]) => [path, this.window.heightOf(block)]));
 
-        this.streamContainerEl.empty();
+        this.blocks.empty();
         this.scroll.detach();
         this.resetWindow();
         this.state.reset();
 
         for (const file of notes) {
-            this.streamContainerEl.appendChild(this.trackBlock(file, heights.get(file.path)));
+            this.blocks.append(file.path, this.window.add(file, heights.get(file.path)));
         }
 
-        this.scroll.attach(this.scrollRoot, this.streamContainerEl, () => this.loadMoreNotes());
+        this.attachScroll();
 
-        if (snapshot) {
-            restoreAnchor(snapshot, this.scrollRoot, (f) => this.findNoteElement(f));
-        }
+        if (snapshot) restoreAnchor(snapshot, this.scrollRoot, find);
 
         this.state.reset(notes);
     }
@@ -292,64 +282,14 @@ export class NoteStream {
         return this.queue;
     }
 
-    // -------------------------------------------------------------------------
-    // DOM helpers
-    // -------------------------------------------------------------------------
-
-    private showEmptyState(): void {
-        if (this.findEmptyState()) return;
-        this.insertBeforeSentinel(
-            this.streamContainerEl.createDiv({
-                cls: "daily-notes-empty-state",
-                text: "No daily notes found. Please check your daily notes settings.",
-            })
-        );
+    /** A visible sentinel loads the next batch. */
+    private attachScroll(): void {
+        this.scroll.attach(this.scrollRoot, this.blocks.el, () => this.loadMoreNotes());
     }
 
-    private findEmptyState(): HTMLElement | null {
-        return this.streamContainerEl.querySelector(".daily-notes-empty-state");
-    }
-
-    private findNoteElement(file: TFile): HTMLElement | null {
-        return this.findNoteElementByPath(file.path);
-    }
-
-    private findNoteElementByPath(path: string): HTMLElement | null {
-        return this.blocks.get(path) ?? null;
-    }
-
-    /** An unloaded block for `file`, indexed by path and watched for scroll. */
-    private trackBlock(file: TFile, height?: number): HTMLElement {
-        const block = this.window.add(file, height);
-        this.blocks.set(file.path, block);
-        return block;
-    }
-
-    /** Frees every note and starts the observers over on the new container. */
+    /** Frees every note and starts the observers over. */
     private resetWindow(): void {
         this.window.detach();
-        this.blocks.clear();
         this.window.attach(this.scrollRoot);
-    }
-
-    /** The sentinel must stay the last child, so everything lands before it. */
-    private insertBeforeSentinel(el: HTMLElement): void {
-        const sentinel = this.scroll.getSentinel();
-        if (sentinel) {
-            this.streamContainerEl.insertBefore(el, sentinel);
-        } else {
-            this.streamContainerEl.appendChild(el);
-        }
-    }
-
-    /** Inserts a note block ahead of the note that now follows it. */
-    private insertElementAt(el: HTMLElement, index: number): void {
-        const nextFile = this.state.notes[index];
-        const nextEl = nextFile ? this.findNoteElement(nextFile) : null;
-        if (nextEl) {
-            this.streamContainerEl.insertBefore(el, nextEl);
-        } else {
-            this.insertBeforeSentinel(el);
-        }
     }
 }

@@ -13,6 +13,13 @@ describe("DailyNotesStreamView — vault event handlers", () => {
         ({ view, plugin, state } = await makeViewSetup());
     });
 
+    /** A block in the stream for `path`, as a loaded batch leaves it. */
+    function trackBlock(path: string): HTMLElement {
+        const el = document.createElement("div");
+        (view as any).stream.blocks.append(path, el);
+        return el;
+    }
+
     // -----------------------------------------------------------------------
     // onFileCreate
     //
@@ -47,7 +54,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             await flushPromises();
 
             expect(plugin.service.insertSorted).toHaveBeenCalledWith(file);
-            expect((view as any).stream.window.add).toHaveBeenCalledWith(file, undefined);
+            expect((view as any).stream.window.add).toHaveBeenCalledWith(file);
             expect(state.notes[0]).toBe(file);
             expect(state.length).toBe(3);
         });
@@ -143,27 +150,25 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             const note = new TFile("Notes/2025-01-01.md");
             state.reset([note]);
             plugin.service.removeSorted = vi.fn().mockReturnValue(0);
-            const mockEl = { remove: vi.fn() };
-            (view as any).stream.findNoteElementByPath = vi.fn().mockReturnValue(mockEl);
+            const el = trackBlock(note.path);
 
             (view as any).stream.onFileDelete(note);
             await flushPromises();
 
             expect(plugin.service.removeSorted).toHaveBeenCalledWith(note.path);
-            expect(mockEl.remove).toHaveBeenCalled();
+            expect(el.isConnected).toBe(false);
             expect(state.length).toBe(0);
         });
 
         it("removes the DOM element without touching state when beyond the loaded range", async () => {
             plugin.service.removeSorted = vi.fn().mockReturnValue(3);
             const note = new TFile("Notes/2025-01-10.md");
-            const mockEl = { remove: vi.fn() };
-            (view as any).stream.findNoteElementByPath = vi.fn().mockReturnValue(mockEl);
+            const el = trackBlock(note.path);
 
             (view as any).stream.onFileDelete(note);
             await flushPromises();
 
-            expect(mockEl.remove).toHaveBeenCalled();
+            expect(el.isConnected).toBe(false);
             expect(state.length).toBe(0);
         });
 
@@ -172,7 +177,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             state.reset([note]);
             plugin.service.removeSorted = vi.fn().mockReturnValue(0);
             const container = document.createElement("div");
-            (view as any).stream.streamContainerEl = container;
+            (view as any).stream.blocks.attach(container);
 
             (view as any).stream.onFileDelete(note);
             await flushPromises();
@@ -186,7 +191,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             plugin.service.removeSorted = vi.fn().mockReturnValue(0);
             plugin.service.length = 1;
             const container = document.createElement("div");
-            (view as any).stream.streamContainerEl = container;
+            (view as any).stream.blocks.attach(container);
 
             (view as any).stream.onFileDelete(note);
             await flushPromises();
@@ -223,15 +228,12 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             const file = new TFile("Notes/2025-01-05.md");
             plugin.service.removeSorted = vi.fn().mockReturnValue(-1);
             plugin.service.insertSorted = vi.fn().mockReturnValue(-1);
-            const mockEl = { remove: vi.fn() };
-            const findSpy = vi.fn().mockReturnValue(mockEl);
-            (view as any).stream.findNoteElementByPath = findSpy;
+            const el = trackBlock("Notes/2025-01-01.md");
 
             (view as any).stream.onFileRename(file, "Notes/2025-01-01.md");
             await flushPromises();
 
-            expect(findSpy).toHaveBeenCalledWith("Notes/2025-01-01.md");
-            expect(mockEl.remove).toHaveBeenCalled();
+            expect(el.isConnected).toBe(false);
             expect(plugin.service.removeSorted).toHaveBeenCalledWith(file.path);
             expect(plugin.service.insertSorted).toHaveBeenCalledWith(file);
         });
@@ -240,8 +242,6 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             state.reset([new TFile("Notes/2025-01-02.md")]);
             plugin.service.removeSorted = vi.fn().mockReturnValue(-1);
             plugin.service.insertSorted = vi.fn().mockReturnValue(0);
-            (view as any).stream.findNoteElementByPath = vi.fn().mockReturnValue(null);
-
             const file = new TFile("Notes/2025-01-05.md");
             (view as any).stream.onFileRename(file, "Notes/2025-01-01.md");
             await flushPromises();
@@ -278,12 +278,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
         afterEach(() => vi.useRealTimers());
 
         function wireContainer(paths: string[]) {
-            const container = document.createElement("div");
-            const els = new Map(paths.map((p) => [p, document.createElement("div")]));
-            for (const el of els.values()) container.appendChild(el);
-            (view as any).stream.streamContainerEl = container;
-            (view as any).stream.findNoteElement = vi.fn((f: TFile) => els.get(f.path) ?? null);
-            return container;
+            for (const path of paths) trackBlock(path);
         }
 
         it("renders nothing until the window elapses", () => {
@@ -341,27 +336,19 @@ describe("DailyNotesStreamView — vault event handlers", () => {
         // resolvable and an unloaded note is left for its re-entry to render.
         it("refreshes the note's own block rather than replacing it", async () => {
             const file = new TFile("Notes/2025-01-01.md");
-            const existingEl = document.createElement("div");
-            const container = document.createElement("div");
-            container.appendChild(existingEl);
-            (view as any).stream.streamContainerEl = container;
-            (view as any).stream.findNoteElement = vi.fn().mockReturnValue(existingEl);
+            const existingEl = trackBlock(file.path);
 
             (view as any).stream.onFileModify(file);
             (view as any).stream.flushModified.run();
             await flushPromises();
 
             expect((view as any).stream.window.refresh).toHaveBeenCalledWith(existingEl);
-            expect(container.contains(existingEl)).toBe(true);
+            expect((view as any).stream.blocks.el.contains(existingEl)).toBe(true);
         });
 
         it("onFileModify logs error when the re-render rejects", async () => {
             const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-            const container = document.createElement("div");
-            const existingEl = document.createElement("div");
-            container.appendChild(existingEl);
-            (view as any).stream.streamContainerEl = container;
-            (view as any).stream.findNoteElement = vi.fn().mockReturnValue(existingEl);
+            trackBlock("Notes/2025-01-01.md");
             (view as any).stream.window.refresh = vi.fn().mockRejectedValue(new Error("render failed"));
 
             (view as any).stream.onFileModify(new TFile("Notes/2025-01-01.md"));

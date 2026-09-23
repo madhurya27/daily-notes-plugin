@@ -86,9 +86,6 @@ export function makeStubbedView(app: object = makeApp()) {
         recheck: vi.fn(),
         getSentinel: vi.fn().mockReturnValue(null),
     };
-    (view as any).stream.insertElementAt = vi.fn();
-    (view as any).stream.findNoteElement = vi.fn().mockReturnValue(null);
-    (view as any).stream.findNoteElementByPath = vi.fn().mockReturnValue(null);
     return { view, plugin };
 }
 
@@ -96,6 +93,8 @@ export function makeStubbedView(app: object = makeApp()) {
 export async function makeViewSetup(app: object = makeApp()) {
     const { view, plugin } = makeStubbedView(app);
     await view.onOpen();
+    // The mock contentEl makes a container that cannot hold real blocks.
+    (view as any).stream.blocks.attach(document.createElement("div"));
     const state = (view as any).stream.state as StreamState;
     return { view, plugin, state };
 }
