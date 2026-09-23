@@ -333,3 +333,22 @@ only state left by earlier tests in the same instance broke under reordering.
 **Rejected:** whole-file parallelism — `stream.spec.ts` holds most tests, so
 it only reached 2.3 min. More workers — the instances starve for CPU and
 timing tests slip.
+
+## 2026-09-23 — Search the stream, counted per note
+
+**Decision:** the vault's "Search current file" hotkey (`editor:open-search`),
+pressed in the view, opens a search bar. Matching notes are
+found in their source over all of `_sorted`; next/previous jumps note to note
+("3 of 12") and steps through highlights inside the rendered note.
+
+**Why:** off-screen notes hold no DOM (ADR 0006), so find-in-page sees only a
+few days. Source and rendered text differ (aliases, markup, frontmatter), so
+only a per-note count is always right.
+
+**Rejected:** a per-match count — it drifts from what is highlighted.
+A tag/header filter — core search already filters by tag and section.
+A hardcoded Cmd/Ctrl+F — ignores a user who rebound search. A command of our
+own — a second hotkey to set for the same intent.
+
+The binding is read through `hotkeyManager` in `src/obsidianInternals.ts` on
+each keydown, so a rebind applies at once; without it, Mod+F.

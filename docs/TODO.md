@@ -4,7 +4,8 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
-- [ ] Filtering: filter by tag/header — unblocked by note unloading.
+- [ ] Search the stream — the vault's "Search current file" hotkey, next/previous through matching notes, counted
+  per note; see `docs/decisions.md` (2026-09-23).
 - [ ] Per-note edit action — open in a split, or append to today's note. Read-only stream stays; see
   `docs/decisions.md` (2026-09-15).
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
@@ -20,11 +21,10 @@ Ordered by priority, from the 2026-09 comparison against
 New capability, as opposed to the fixes above. Embedded editors are ruled out by `docs/decisions.md`.
 
 Surveyed 2026-09 against core and the community directory. **The filter: what operates on a *file* is already
-solved elsewhere; only what operates on *the stream* is ours.** ★ marks the recommended first three.
+solved elsewhere; only what operates on *the stream* is ours.** ★ marks the recommended first two.
 
 - [ ] ★ Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing external reaches inside a view.
 - [ ] ★ Skip empty notes — unwritten template dailies are noise; frontmatter-only is visible in the cache.
-- [ ] ★ Sticky date header — a continuous feed loses track of which day it is in.
 - [ ] On this day — one calendar date across years, a filter over `_sorted`.
   [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review) shows ~200-char excerpts; ours
   is the full note. Better, not new.
@@ -39,7 +39,8 @@ solved elsewhere; only what operates on *the stream* is ours.** ★ marks the re
 - [ ] Stats header — only scoped to the loaded stream; core Word count and the heatmap plugins own the rest.
 
 Out of scope: random note (core ships it), task rollup (Tasks owns it, and read-only cannot check a box),
-folder/tag modes (dilutes what the plugin is).
+folder/tag modes (dilutes what the plugin is), a tag/header filter (search does it),
+sticky date header (`docs/decisions.md`, 2026-09-21).
 
 ## Deferred, contingent on how unloading behaves in real use
 Only worth doing if the placeholder estimate proves visibly wrong; Chromium's
