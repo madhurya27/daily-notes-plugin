@@ -67,6 +67,7 @@ function makeStore() {
 /** The component role the view plays: it owns the delegated listeners. */
 const delegateComponent = Object.assign(new Component(), {
     hoverPopover: null,
+    navigation: true,
     getViewType: () => "daily-notes-stream-view",
 });
 
@@ -816,6 +817,57 @@ describe("NoteRenderer internal links", () => {
 // ---------------------------------------------------------------------------
 // renderProperties
 // ---------------------------------------------------------------------------
+
+describe("NoteRenderer opens beside the stream", () => {
+    /** Whether the stream still offered itself as "the current tab" each time Obsidian picked one. */
+    const seen: boolean[] = [];
+
+    function recordNavigation(pick: ReturnType<typeof vi.fn>, result: unknown) {
+        pick.mockImplementation(() => {
+            seen.push(delegateComponent.navigation);
+            return result;
+        });
+    }
+
+    beforeEach(() => {
+        seen.length = 0;
+    });
+
+    async function renderTitle(app: ReturnType<typeof makeApp>) {
+        const renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+        return mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+    }
+
+    it("stands the stream aside while a title click picks its tab", async () => {
+        const app = makeApp();
+        recordNavigation(app.workspace.getLeaf, app._mockLeaf);
+        const el = await renderTitle(app);
+
+        (el.querySelector(".daily-note-title") as HTMLElement).click();
+
+        expect(seen).toEqual([false]);
+        expect(delegateComponent.navigation).toBe(true);
+    });
+
+    it("stands the stream aside while a link click picks its tab", async () => {
+        const app = makeApp();
+        recordNavigation(app.workspace.openLinkText, Promise.resolve());
+        const el = await renderTitle(app);
+        const link = el.querySelector(".daily-note-content")!.createEl("a", { cls: "internal-link" });
+        link.setAttribute("data-href", "Reading list");
+
+        link.click();
+
+        expect(seen).toEqual([false]);
+        expect(delegateComponent.navigation).toBe(true);
+    });
+});
 
 describe("NoteRenderer unresolved links", () => {
     /** MarkdownRenderer's output for `[[Reading list]] [[Someday]]`, as the real one renders it. */

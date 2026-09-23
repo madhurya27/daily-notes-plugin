@@ -151,6 +151,8 @@ export class Component {
 
 /** A view is a Component: it owns what its notes register. */
 export class ItemView extends Component {
+    /** Obsidian's default: a view the workspace never navigates. */
+    navigation = false;
     contentEl: HTMLElement;
     /** Obsidian hands a view's scope the keys pressed while its leaf is active. */
     scope: Scope | null = null;

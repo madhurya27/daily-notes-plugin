@@ -86,6 +86,9 @@ Traps that span files, so no single file's comments can hold them.
   everything else is an empty `.daily-note-block` reserving its height. Never assume a block's children exist,
   and never key anything off them — `data-source-path` is on the block, and `StreamBlocks`' path→block index is the
   only lookup.
+- **The stream is navigable** ([decisions.md](docs/decisions.md), 2026-09-23), so Obsidian takes it for "the
+  current tab". Anything the stream opens goes through `besideStream()` in `note-renderer.ts`, or it replaces
+  the stream.
 - **Delegated listeners**: chevrons, note titles and links are rebuilt on every re-render, so nothing binds a
   listener per element — `CollapsibleManager.delegate()` and `NoteRenderer.delegate()` register one listener
   per gesture on the stream container, resolving the target through a `WeakMap` or the DOM. Binding per element would pile
