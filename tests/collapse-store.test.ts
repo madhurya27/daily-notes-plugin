@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
+import { asApp } from "./stream-view-fixture";
 
 function makeApp() {
     const storage = new Map<string, unknown>();
@@ -18,7 +19,7 @@ describe("CollapsibleStateStore", () => {
 
     beforeEach(() => {
         app = makeApp();
-        store = new CollapsibleStateStore(app as any);
+        store = new CollapsibleStateStore(asApp(app));
     });
 
     it("isCollapsed returns false when key not set", () => {

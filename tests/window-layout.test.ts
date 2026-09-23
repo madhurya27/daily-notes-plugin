@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
-// @ts-expect-error -- plain ESM scripts, outside the TypeScript program
 import { layoutFrom } from "../scripts/window-layout.mjs";
-// @ts-expect-error -- plain ESM scripts, outside the TypeScript program
 import { boundsFor, emulateDevice } from "../scripts/window-layout.mjs";
 
 describe("layoutFrom", () => {

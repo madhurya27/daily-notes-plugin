@@ -22,7 +22,7 @@ describe("DailyNotesStreamView — search", () => {
         const setup = await makeViewSetup(app);
         view = setup.view;
         setup.plugin.service.getBatch = vi.fn((offset: number, limit: number) => NOTES.slice(offset, offset + limit));
-        setup.plugin.service.length = NOTES.length;
+        Object.assign(setup.plugin.service, { length: NOTES.length });
         document.body.appendChild(view.containerEl);
     });
 
@@ -36,8 +36,8 @@ describe("DailyNotesStreamView — search", () => {
     const count = () => bar().querySelector(".document-search-count")!.textContent;
     /** What the view's scope does with a keydown, as Obsidian's keymap would ask it. */
     const press = (init: KeyboardEventInit) => {
-        const handler = (view.scope as any).registered.find((h: any) => h.key === null && h.modifiers === null);
-        return handler.callback(new KeyboardEvent("keydown", init), {});
+        const handler = view.scope!.registered.find((h) => h.key === null && h.modifiers === null)!;
+        return handler.callback(new KeyboardEvent("keydown", init), { key: null, modifiers: null, vkey: "" });
     };
     /** Past every debounce, with the reads and the queue behind them drained. */
     const settle = () => vi.advanceTimersByTimeAsync(1000);
@@ -70,7 +70,7 @@ describe("DailyNotesStreamView — search", () => {
     });
 
     it("opens from the header, where a phone has no hotkey", () => {
-        (view as any).actions.find((a: { title: string }) => a.title === "Search").callback();
+        view.actions.find((a) => a.title === "Search")!.callback(new MouseEvent("click"));
 
         expect(bar().hasClass("is-closed")).toBe(false);
     });
@@ -108,7 +108,7 @@ describe("DailyNotesStreamView — search", () => {
         SOURCES["Notes/2024-12-31.md"] = "dentist";
 
         try {
-            (view as any).plugin.service.length = NOTES.length;
+            Object.assign(view["plugin"].service, { length: NOTES.length });
             const handler = app.vault.on.mock.calls.find(([name]) => name === event)![1];
             handler(NOTES[3], "old.md");
             await settle();
@@ -134,7 +134,7 @@ describe("DailyNotesStreamView — search", () => {
     });
 
     it("steps to the next matching note on Enter", async () => {
-        const reveal = vi.spyOn((view as any).stream, "reveal").mockResolvedValue(null);
+        const reveal = vi.spyOn(view["stream"], "reveal").mockResolvedValue(null);
         input().value = "dentist";
         input().dispatchEvent(new Event("input"));
 
@@ -148,7 +148,7 @@ describe("DailyNotesStreamView — search", () => {
     });
 
     it("steps back on the Previous button", async () => {
-        const reveal = vi.spyOn((view as any).stream, "reveal").mockResolvedValue(null);
+        const reveal = vi.spyOn(view["stream"], "reveal").mockResolvedValue(null);
         input().value = "dentist";
         input().dispatchEvent(new Event("input"));
         await settle();

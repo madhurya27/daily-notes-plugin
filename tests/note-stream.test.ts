@@ -1,10 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { Notice, TFile, moment } from "./mocks/obsidian";
+import { describe, it, expect, beforeEach, afterEach, vi, type Mocked } from "vitest";
+import { Notice, TAbstractFile, TFile, moment } from "./mocks/obsidian";
 import { NoteStream } from "../src/stream/note-stream";
 import type { NoteRenderer } from "../src/render/note-renderer";
+import type { NoteWindowManager } from "../src/stream/note-window";
+import type { InfiniteScrollController } from "../src/stream/infinite-scroll";
+import type { DailyNoteService } from "../src/notes/daily-note-service";
+import type { CollapsibleStateStore } from "../src/render/collapse-store";
 import { flushPromises, makePlugin } from "./stream-view-fixture";
 
-const fakes = vi.hoisted(() => ({ windows: [] as any[], scrolls: [] as any[] }));
+type FakeWindow = Mocked<NoteWindowManager>;
+type FakeScroll = Mocked<InfiniteScrollController>;
+
+const fakes = vi.hoisted(() => ({ windows: [] as FakeWindow[], scrolls: [] as FakeScroll[] }));
 
 // Both need a layout jsdom lacks, and have their own tests. The window
 // manager hands back placeholders keyed as the renderer keys them.
@@ -23,7 +30,7 @@ vi.mock("../src/stream/note-window", () => ({
             _renderer: unknown,
             readonly enqueue: (task: () => Promise<void>) => Promise<void>
         ) {
-            fakes.windows.push(this);
+            fakes.windows.push(this as unknown as FakeWindow);
         }
     },
 }));
@@ -35,7 +42,7 @@ vi.mock("../src/stream/infinite-scroll", () => ({
         recheck = vi.fn();
         getSentinel = vi.fn().mockReturnValue(null);
         constructor() {
-            fakes.scrolls.push(this);
+            fakes.scrolls.push(this as unknown as FakeScroll);
         }
     },
 }));
@@ -54,20 +61,22 @@ function renameInPlace(file: TFile, path: string): TFile {
     return file;
 }
 
-let service: any;
-let collapseStore: any;
+let service: Mocked<DailyNoteService>;
+let collapseStore: CollapsibleStateStore;
 let stream: NoteStream;
 let pane: HTMLElement;
 let container: HTMLElement;
-let noteWindow: any;
-let infiniteScroll: any;
+let noteWindow: FakeWindow;
+let infiniteScroll: FakeScroll;
 
 beforeEach(() => {
     Notice.reset();
-    ({ service, collapseStore } = makePlugin());
+    const plugin = makePlugin();
+    service = vi.mocked(plugin.service);
+    collapseStore = plugin.collapseStore;
     stream = new NoteStream(service, collapseStore, {} as NoteRenderer);
-    noteWindow = fakes.windows.at(-1);
-    infiniteScroll = fakes.scrolls.at(-1);
+    noteWindow = fakes.windows.at(-1)!;
+    infiniteScroll = fakes.scrolls.at(-1)!;
     pane = document.createElement("div");
     container = pane.createDiv();
     stream.open(pane, container);
@@ -87,7 +96,7 @@ const shown = () => [...container.querySelectorAll<HTMLElement>("[data-source-pa
 async function loadedCount(): Promise<number> {
     service.getBatch.mockClear().mockReturnValueOnce([]);
     await stream.loadMoreNotes();
-    return service.getBatch.mock.calls[0][0];
+    return service.getBatch.mock.calls[0]![0];
 }
 
 const emptyState = () => container.querySelector(".daily-notes-empty-state");
@@ -152,7 +161,7 @@ describe("loading a batch", () => {
     });
 
     it("arms the sentinel to load the next batch", async () => {
-        const [, , onTrigger] = infiniteScroll.attach.mock.calls.at(-1);
+        const [, , onTrigger] = infiniteScroll.attach.mock.calls.at(-1)!;
         await onTrigger();
         expect(service.getBatch).toHaveBeenCalledWith(0, 10);
     });
@@ -160,7 +169,7 @@ describe("loading a batch", () => {
 
 describe("a note created", () => {
     it("does nothing for a non-TFile argument", async () => {
-        stream.onFileCreate({ path: "not-a-tfile" } as any);
+        stream.onFileCreate(new TAbstractFile("not-a-tfile"));
         await flushPromises();
         expect(service.insertSorted).not.toHaveBeenCalled();
     });
@@ -236,7 +245,7 @@ describe("a note created", () => {
 
 describe("a note deleted", () => {
     it("does nothing for a non-TFile argument", async () => {
-        stream.onFileDelete({ path: "not-a-tfile" } as any);
+        stream.onFileDelete(new TAbstractFile("not-a-tfile"));
         await flushPromises();
         expect(service.removeSorted).not.toHaveBeenCalled();
     });
@@ -257,7 +266,7 @@ describe("a note deleted", () => {
     it("leaves the loaded notes alone when it was beyond them", async () => {
         await load(note("2025-01-03"), note("2025-01-02"));
         service.removeSorted.mockReturnValue(5);
-        service.length = 5;
+        Object.assign(service, { length: 5 });
 
         stream.onFileDelete(note("2024-12-01"));
         await flushPromises();
@@ -281,7 +290,7 @@ describe("a note deleted", () => {
         const doomed = note("2025-01-01");
         await load(doomed, note("2024-12-31"));
         service.removeSorted.mockReturnValue(0);
-        service.length = 1;
+        Object.assign(service, { length: 1 });
 
         stream.onFileDelete(doomed);
         await flushPromises();
@@ -302,7 +311,7 @@ describe("a note deleted", () => {
 describe("a note renamed", () => {
     it("does nothing for a non-TFile argument", async () => {
         const migrate = vi.spyOn(collapseStore, "migrate");
-        stream.onFileRename({ path: "x" } as any, "old.md");
+        stream.onFileRename(new TAbstractFile("x"), "old.md");
         await flushPromises();
         expect(migrate).not.toHaveBeenCalled();
         expect(service.removeSorted).not.toHaveBeenCalled();
@@ -351,7 +360,7 @@ describe("a note modified", () => {
     afterEach(() => vi.useRealTimers());
 
     it("does nothing for a non-TFile argument", async () => {
-        stream.onFileModify({ path: "not-a-tfile" } as any);
+        stream.onFileModify(new TAbstractFile("not-a-tfile"));
         await vi.runAllTimersAsync();
         expect(noteWindow.refresh).not.toHaveBeenCalled();
     });
@@ -470,7 +479,7 @@ describe("refresh", () => {
     it("re-arms the sentinel against the rebuilt stream", async () => {
         await stream.refresh();
 
-        const [, , onTrigger] = infiniteScroll.attach.mock.calls.at(-1);
+        const [, , onTrigger] = infiniteScroll.attach.mock.calls.at(-1)!;
         await onTrigger();
 
         expect(service.getBatch).toHaveBeenCalled();
@@ -537,7 +546,7 @@ describe("Obsidian's daily-notes settings changed", () => {
         service.refreshIfSettingsChanged.mockReturnValue(true);
         await settingsChanged();
 
-        const [, , onTrigger] = infiniteScroll.attach.mock.calls.at(-1);
+        const [, , onTrigger] = infiniteScroll.attach.mock.calls.at(-1)!;
         service.getBatch.mockReturnValueOnce([new TFile("Journal/2025-02-01.md")]);
         await onTrigger();
 
@@ -672,7 +681,7 @@ describe("what a search moves through", () => {
     it("renders the note before handing it back", async () => {
         HTMLElement.prototype.scrollIntoView = vi.fn();
         let rendered = false;
-        noteWindow.render.mockImplementation(() => void noteWindow.enqueue(async () => void (rendered = true)));
+        noteWindow.render.mockImplementation(() => void noteWindow["enqueue"](async () => void (rendered = true)));
 
         const block = await stream.reveal(notes[3]!);
 

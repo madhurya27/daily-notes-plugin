@@ -4,7 +4,7 @@ import { JumpToDateModal, JUMP_SUGGESTION_LIMIT } from "../src/ui/jump-to-date-m
 import { DailyNoteService } from "../src/notes/daily-note-service";
 import { __setMockNotes, __setMockSettings } from "obsidian-daily-notes-interface";
 import { moment } from "obsidian";
-import { makeApp } from "./stream-view-fixture";
+import { asApp, makeApp } from "./stream-view-fixture";
 
 describe("JumpToDateModal", () => {
     let onSubmit: Mock<(target: Moment) => void>;
@@ -16,14 +16,14 @@ describe("JumpToDateModal", () => {
         __setMockNotes(basenames.map((name) => `Notes/${name}.md`));
         const service = new DailyNoteService();
         service.initialize();
-        modal = new JumpToDateModal(makeApp() as any, service, onSubmit);
+        modal = new JumpToDateModal(asApp(makeApp()), service, onSubmit);
         modal.close = vi.fn();
         modal.open();
     }
 
     const listed = () => [...modal.resultContainerEl.children].map((el) => el.textContent);
-    const picker = () => modal.contentEl.querySelector('input[type="date"]') as HTMLInputElement | null;
-    const calendarButton = () => modal.contentEl.querySelector("button") as HTMLButtonElement | null;
+    const picker = () => modal.contentEl.querySelector<HTMLInputElement>('input[type="date"]');
+    const calendarButton = () => modal.contentEl.querySelector("button");
 
     beforeEach(() => {
         onSubmit = vi.fn();

@@ -5,12 +5,13 @@ import { Component, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
 import { CollapsibleManager } from "../src/render/collapsible";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import type { DailyNotesStreamSettings } from "../src/settings";
+import { asApp } from "./stream-view-fixture";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeApp(opts: { readResult?: string; fileCache?: any; leaves?: any[] } = {}) {
+function makeApp(opts: { readResult?: string; fileCache?: unknown; leaves?: unknown[] } = {}) {
     const { readResult = "", fileCache = null, leaves = [] } = opts;
     const mockOpenFile = vi.fn().mockResolvedValue(undefined);
     // One leaf serves both uses: opening a note, and hosting a search pane.
@@ -37,9 +38,9 @@ function makeApp(opts: { readResult?: string; fileCache?: any; leaves?: any[] } 
 }
 
 /** A markdown leaf view; `instanceof` rules out deferred (unloaded) views. */
-function makeMarkdownView(file: { path: string } | null): MarkdownView {
+function makeMarkdownView(file: TFile | null): MarkdownView {
     const view = new MarkdownView();
-    view.file = file as any;
+    view.file = file;
     return view;
 }
 
@@ -56,9 +57,7 @@ function makeStore() {
 
 /** A real manager (the properties panel uses its toggle) with rendering stubbed. */
 /** The component role the view plays: it owns the delegated listeners. */
-const delegateComponent = {
-    registerDomEvent: (el: HTMLElement, type: string, cb: EventListener) => el.addEventListener(type, cb),
-} as any;
+const delegateComponent = new Component();
 
 /** The two-step API the window manager drives: build the block, then fill it. */
 async function renderNote(renderer: NoteRenderer, file: TFile): Promise<HTMLElement> {
@@ -81,7 +80,7 @@ function mount(renderer: NoteRenderer, el: HTMLElement): HTMLElement {
 }
 
 function makeCollapsible(store = makeStore()): CollapsibleManager {
-    const manager = new CollapsibleManager(new CollapsibleStateStore(store as any));
+    const manager = new CollapsibleManager(new CollapsibleStateStore(asApp(store)));
     vi.spyOn(manager, "makeCollapsible").mockImplementation(() => {});
     lastCollapsible = manager;
     return manager;
@@ -98,7 +97,7 @@ function makeSettings(overrides: Partial<DailyNotesStreamSettings> = {}): () => 
 
 async function renderWithProperties(app: ReturnType<typeof makeApp>) {
     const renderer = new NoteRenderer(
-        app as any,
+        asApp(app),
         new Component(),
         makeCollapsible(),
         makeSettings({ showProperties: true }),
@@ -114,7 +113,7 @@ describe("NoteRenderer.renderInto", () => {
     beforeEach(() => {
         app = makeApp();
         renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -157,7 +156,7 @@ describe("NoteRenderer.renderInto", () => {
         let settings: DailyNotesStreamSettings = { showProperties: false, propertiesCollapsed: false };
         app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { title: "Test" } });
         renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             () => settings,
@@ -172,7 +171,7 @@ describe("NoteRenderer.renderInto", () => {
 
     it("calls makeCollapsible after rendering content", async () => {
         const collapsible = makeCollapsible();
-        renderer = new NoteRenderer(app as any, new Component(), collapsible, makeSettings(), new SearchHighlighter());
+        renderer = new NoteRenderer(asApp(app), new Component(), collapsible, makeSettings(), new SearchHighlighter());
         await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
         expect(collapsible.makeCollapsible).toHaveBeenCalledOnce();
     });
@@ -192,7 +191,7 @@ describe("NoteRenderer.renderInto", () => {
 describe("NoteRenderer component lifetime", () => {
     it("createBlock returns an empty .daily-note-block", () => {
         const renderer = new NoteRenderer(
-            makeApp() as any,
+            asApp(makeApp()),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -206,7 +205,7 @@ describe("NoteRenderer component lifetime", () => {
     it("renders into a child component of the view, not the view itself", async () => {
         const owner = new Component();
         const renderer = new NoteRenderer(
-            makeApp() as any,
+            asApp(makeApp()),
             owner,
             makeCollapsible(),
             makeSettings(),
@@ -225,7 +224,7 @@ describe("NoteRenderer component lifetime", () => {
     it("discard unloads the note's component and drops it from the view", async () => {
         const owner = new Component();
         const renderer = new NoteRenderer(
-            makeApp() as any,
+            asApp(makeApp()),
             owner,
             makeCollapsible(),
             makeSettings(),
@@ -247,7 +246,7 @@ describe("NoteRenderer component lifetime", () => {
         app.vault.cachedRead = vi.fn().mockResolvedValue("body");
         const highlighter = new SearchHighlighter();
         highlighter.setQuery("2025");
-        const renderer = new NoteRenderer(app as any, new Component(), makeCollapsible(), makeSettings(), highlighter);
+        const renderer = new NoteRenderer(asApp(app), new Component(), makeCollapsible(), makeSettings(), highlighter);
         const file = new TFile("Notes/2025-01-01.md");
         const block = renderer.createBlock(file);
 
@@ -264,7 +263,7 @@ describe("NoteRenderer component lifetime", () => {
         app.vault.cachedRead = vi.fn().mockRejectedValue(new Error("read failed"));
         const owner = new Component();
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             owner,
             makeCollapsible(),
             makeSettings(),
@@ -287,7 +286,7 @@ describe("NoteRenderer title link", () => {
     it("is keyboard focusable and does not navigate", async () => {
         const app = makeApp({ leaves: [] });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -307,10 +306,10 @@ describe("NoteRenderer title link", () => {
 describe("NoteRenderer title click", () => {
     it("calls revealLeaf when file is already open in a markdown leaf", async () => {
         const file = new TFile("Notes/2025-01-01.md");
-        const existingLeaf = { view: makeMarkdownView({ path: file.path }) };
+        const existingLeaf = { view: makeMarkdownView(file) };
         const app = makeApp({ leaves: [existingLeaf] });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -326,7 +325,7 @@ describe("NoteRenderer title click", () => {
         const file = new TFile("Notes/2025-01-01.md");
         const app = makeApp({ leaves: [] });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -339,10 +338,10 @@ describe("NoteRenderer title click", () => {
 
     it("opens in new leaf when leaves exist but none match the file path", async () => {
         const file = new TFile("Notes/2025-01-01.md");
-        const otherLeaf = { view: makeMarkdownView({ path: "Notes/2025-01-02.md" }) };
+        const otherLeaf = { view: makeMarkdownView(new TFile("Notes/2025-01-02.md")) };
         const app = makeApp({ leaves: [otherLeaf] });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -359,7 +358,7 @@ describe("NoteRenderer title click", () => {
         const deferredLeaf = { view: { file: { path: file.path } } };
         const app = makeApp({ leaves: [deferredLeaf] });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -376,7 +375,7 @@ describe("NoteRenderer title click", () => {
         const nullFileLeaf = { view: makeMarkdownView(null) };
         const app = makeApp({ leaves: [nullFileLeaf] });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -394,7 +393,7 @@ describe("NoteRenderer title click", () => {
         const app = makeApp({ leaves: [] });
         app.workspace.getLeaf = vi.fn().mockReturnValue(failLeaf);
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -416,7 +415,7 @@ describe("NoteRenderer renderProperties", () => {
     it("renders nothing when showProperties is false", async () => {
         const app = makeApp({ fileCache: { frontmatter: { tags: ["daily"] } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: false }),
@@ -429,7 +428,7 @@ describe("NoteRenderer renderProperties", () => {
     it("renders nothing when fileCache is null", async () => {
         const app = makeApp({ fileCache: null });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -442,7 +441,7 @@ describe("NoteRenderer renderProperties", () => {
     it("renders nothing when frontmatter is null", async () => {
         const app = makeApp({ fileCache: { frontmatter: null } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -455,7 +454,7 @@ describe("NoteRenderer renderProperties", () => {
     it("renders nothing when frontmatter has only the 'position' key", async () => {
         const app = makeApp({ fileCache: { frontmatter: { position: {} } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -468,7 +467,7 @@ describe("NoteRenderer renderProperties", () => {
     it("renders .metadata-container when showProperties is true and frontmatter has keys", async () => {
         const app = makeApp({ fileCache: { frontmatter: { mood: "happy" } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -481,7 +480,7 @@ describe("NoteRenderer renderProperties", () => {
     it("renders list values as Obsidian's pills, one per item", async () => {
         const app = makeApp({ fileCache: { frontmatter: { aliases: ["work", "daily"] } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -497,7 +496,7 @@ describe("NoteRenderer renderProperties", () => {
     it("types a tags property so its pills take the tag colours", async () => {
         const app = makeApp({ fileCache: { frontmatter: { tags: ["work"], aliases: ["w"] } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -551,7 +550,7 @@ describe("NoteRenderer renderProperties", () => {
     it("renders object values as JSON string", async () => {
         const app = makeApp({ fileCache: { frontmatter: { meta: { key: "val" } } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -564,7 +563,7 @@ describe("NoteRenderer renderProperties", () => {
     it("renders boolean values as strings", async () => {
         const app = makeApp({ fileCache: { frontmatter: { published: true } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -577,7 +576,7 @@ describe("NoteRenderer renderProperties", () => {
     it("renders number values as strings", async () => {
         const app = makeApp({ fileCache: { frontmatter: { priority: 3 } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -590,7 +589,7 @@ describe("NoteRenderer renderProperties", () => {
     it("starts collapsed when propertiesCollapsed is true", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true, propertiesCollapsed: true }),
@@ -604,7 +603,7 @@ describe("NoteRenderer renderProperties", () => {
         const app = makeApp({ fileCache: { frontmatter: { mood: "calm" } } });
         const collapsible = makeCollapsible();
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             collapsible,
             makeSettings({ showProperties: true, propertiesCollapsed: true }),
@@ -624,7 +623,7 @@ describe("NoteRenderer renderProperties", () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const collapsible = makeCollapsible();
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             collapsible,
             makeSettings({ showProperties: true, propertiesCollapsed: true }),
@@ -642,7 +641,7 @@ describe("NoteRenderer renderProperties", () => {
     it("toggles from the chevron", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -658,7 +657,7 @@ describe("NoteRenderer renderProperties", () => {
     it("toggles from the heading row, as Obsidian's own panel does", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -677,7 +676,7 @@ describe("NoteRenderer renderProperties", () => {
     it("puts the heading outside the box, as Obsidian's own panel does", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -694,7 +693,7 @@ describe("NoteRenderer renderProperties", () => {
     it("leaves the heading unfocusable, so clicking it draws no focus ring", async () => {
         const app = makeApp({ fileCache: { frontmatter: { x: 1 } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -717,7 +716,7 @@ describe("NoteRenderer renderProperties", () => {
     ): Promise<(string | undefined)[]> {
         const app = { ...makeApp({ fileCache: { frontmatter } }), metadataTypeManager };
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -778,7 +777,7 @@ describe("NoteRenderer renderProperties", () => {
     it("renders a null value as empty text", async () => {
         const app = makeApp({ fileCache: { frontmatter: { nullField: null } } });
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
@@ -790,13 +789,11 @@ describe("NoteRenderer renderProperties", () => {
 });
 
 describe("NoteRenderer — delegated listeners", () => {
-    const delegateComponent = {
-        registerDomEvent: (el: HTMLElement, type: string, cb: EventListener) => el.addEventListener(type, cb),
-    } as any;
+    const delegateComponent = new Component();
 
     async function render(app: ReturnType<typeof makeApp>, delegate: boolean) {
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -846,7 +843,7 @@ describe("NoteRenderer tag click", () => {
     it("searches for an inline tag the click landed on", async () => {
         const app = makeApp();
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -862,7 +859,7 @@ describe("NoteRenderer tag click", () => {
     it("keeps the href from navigating the view away", async () => {
         const app = makeApp();
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -906,7 +903,7 @@ describe("NoteRenderer tag click", () => {
     it("opens the search in a new tab when the tag is cmd-clicked", async () => {
         const app = makeApp();
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -925,7 +922,7 @@ describe("NoteRenderer tag click", () => {
     it("splits the pane when the tag is cmd-alt-clicked", async () => {
         const app = makeApp();
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),
@@ -943,7 +940,7 @@ describe("NoteRenderer tag click", () => {
     it("does not open the note when the click was on one of its tags", async () => {
         const app = makeApp();
         const renderer = new NoteRenderer(
-            app as any,
+            asApp(app),
             new Component(),
             makeCollapsible(),
             makeSettings(),

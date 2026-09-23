@@ -115,7 +115,7 @@ describe("plugin submission compliance", () => {
         expect(manifest.description).toMatch(/\.$/);
         expect(manifest.description).not.toMatch(/^This is a plugin/i);
         // Emoji and other symbols beyond plain punctuation.
-        expect(manifest.description).not.toMatch(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{2BFF}\u{FE0F}]/u);
+        expect(manifest.description).not.toMatch(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{2BFF}]|\u{FE0F}/u);
     });
 
     // The field is optional; an empty or placeholder one is rejected.

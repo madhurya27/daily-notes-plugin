@@ -2,9 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join, resolve } from "path";
-// @ts-expect-error -- plain ESM scripts, outside the TypeScript program
 import { debugPort } from "../scripts/reload-plugin.mjs";
-// @ts-expect-error -- plain ESM scripts, outside the TypeScript program
 import { ASSETS, createChangeFilter, createReloader, linkAssets } from "../scripts/dev-vault.mjs";
 
 const repoRoot = resolve(__dirname, "..");

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import type DailyNotesStreamPlugin from "../src/main";
 import { makeApp, makeViewSetup } from "./stream-view-fixture";
 
 const CONFIG_FILE = ".obsidian/daily-notes.json";
@@ -12,7 +13,7 @@ function writeConfig(app: ReturnType<typeof makeApp>, path = CONFIG_FILE) {
 
 describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () => {
     let app: ReturnType<typeof makeApp>;
-    let plugin: any;
+    let plugin: DailyNotesStreamPlugin;
 
     beforeEach(async () => {
         vi.useFakeTimers();

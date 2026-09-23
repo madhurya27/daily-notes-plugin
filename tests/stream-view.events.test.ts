@@ -6,25 +6,15 @@ import { makeApp, makeViewSetup } from "./stream-view-fixture";
 describe("DailyNotesStreamView — vault events", () => {
     /** Opens a view whose vault and metadataCache capture the callbacks registered with them. */
     async function makeWiredView() {
-        const callbacks: Record<string, (file: any, oldPath?: any) => void> = {};
-        const capturing = () =>
-            vi.fn((event: string, cb: (file: any, oldPath?: any) => void) => {
-                callbacks[event] = cb;
-                return {};
-            });
         const app = makeApp();
-        const vault = { ...app.vault, on: capturing() };
-        const { view } = await makeViewSetup({
-            ...app,
-            vault,
-            metadataCache: { ...app.metadataCache, on: capturing() },
-        });
-        return { view, callbacks, vault };
+        const { view } = await makeViewSetup(app);
+        const callbacks = Object.fromEntries([...app.vault.on.mock.calls, ...app.metadataCache.on.mock.calls]);
+        return { view, callbacks, vault: app.vault };
     }
 
     it("metadataCache 'changed' callback delegates to onFileModify", async () => {
         const { view, callbacks } = await makeWiredView();
-        const spy = vi.spyOn((view as any).stream, "onFileModify");
+        const spy = vi.spyOn(view["stream"], "onFileModify");
         const file = new TFile("Notes/2025-01-01.md");
         callbacks["changed"]?.(file);
         expect(spy).toHaveBeenCalledWith(file);
@@ -40,7 +30,7 @@ describe("DailyNotesStreamView — vault events", () => {
 
     it("vault 'create' callback delegates to onFileCreate", async () => {
         const { view, callbacks } = await makeWiredView();
-        const spy = vi.spyOn((view as any).stream, "onFileCreate");
+        const spy = vi.spyOn(view["stream"], "onFileCreate");
         const file = new TFile("Notes/2025-01-01.md");
         callbacks["create"]?.(file);
         expect(spy).toHaveBeenCalledWith(file);
@@ -48,7 +38,7 @@ describe("DailyNotesStreamView — vault events", () => {
 
     it("vault 'delete' callback delegates to onFileDelete", async () => {
         const { view, callbacks } = await makeWiredView();
-        const spy = vi.spyOn((view as any).stream, "onFileDelete");
+        const spy = vi.spyOn(view["stream"], "onFileDelete");
         const file = new TFile("Notes/2025-01-01.md");
         callbacks["delete"]?.(file);
         expect(spy).toHaveBeenCalledWith(file);
@@ -56,7 +46,7 @@ describe("DailyNotesStreamView — vault events", () => {
 
     it("vault 'rename' callback delegates to onFileRename with the old path", async () => {
         const { view, callbacks } = await makeWiredView();
-        const spy = vi.spyOn((view as any).stream, "onFileRename");
+        const spy = vi.spyOn(view["stream"], "onFileRename");
         const file = new TFile("Notes/2025-01-01.md");
         callbacks["rename"]?.(file, "Notes/old-name.md");
         expect(spy).toHaveBeenCalledWith(file, "Notes/old-name.md");
