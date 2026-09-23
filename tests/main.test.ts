@@ -73,6 +73,15 @@ describe("DailyNotesStreamPlugin — onload", () => {
         expect(view).toBeInstanceOf(DailyNotesStreamView);
     });
 
+    it("lists the stream in Page preview's settings, previewing on Mod+hover like Obsidian's views", async () => {
+        const { plugin } = await loadPlugin();
+
+        expect(plugin.hoverLinkSources[VIEW_TYPE_DAILY_NOTES_STREAM]).toEqual({
+            display: "Daily notes stream",
+            defaultMod: true,
+        });
+    });
+
     it("registers the ribbon icon, command and settings tab", async () => {
         const { plugin } = await loadPlugin();
 

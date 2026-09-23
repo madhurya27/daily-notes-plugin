@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SearchHighlighter } from "../src/render/search-highlights";
 import { NoteRenderer } from "../src/render/note-renderer";
 import { Component, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
-import type { Menu } from "./mocks/obsidian";
+import { Menu } from "./mocks/obsidian";
 import { CollapsibleManager } from "../src/render/collapsible";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import type { DailyNotesStreamSettings } from "../src/settings";
@@ -25,7 +25,10 @@ function makeApp(opts: { readResult?: string; fileCache?: unknown; leaves?: unkn
     const openGlobalSearch = vi.fn();
     return {
         vault: { cachedRead: vi.fn().mockResolvedValue(readResult) },
-        metadataCache: { getFileCache: vi.fn().mockReturnValue(fileCache) },
+        metadataCache: {
+            getFileCache: vi.fn().mockReturnValue(fileCache),
+            getFirstLinkpathDest: vi.fn().mockReturnValue(null),
+        },
         internalPlugins: { getPluginById: vi.fn().mockReturnValue({ instance: { openGlobalSearch } }) },
         _openGlobalSearch: openGlobalSearch,
         workspace: {
@@ -33,6 +36,7 @@ function makeApp(opts: { readResult?: string; fileCache?: unknown; leaves?: unkn
             getLeaf: vi.fn().mockReturnValue(mockLeaf),
             revealLeaf: vi.fn().mockResolvedValue(undefined),
             trigger: vi.fn(),
+            openLinkText: vi.fn().mockResolvedValue(undefined),
         },
         _mockLeaf: mockLeaf,
         _searchLeaf: mockLeaf,
@@ -59,7 +63,10 @@ function makeStore() {
 
 /** A real manager (the properties panel uses its toggle) with rendering stubbed. */
 /** The component role the view plays: it owns the delegated listeners. */
-const delegateComponent = new Component();
+const delegateComponent = Object.assign(new Component(), {
+    hoverPopover: null,
+    getViewType: () => "daily-notes-stream-view",
+});
 
 /** The two-step API the window manager drives: build the block, then fill it. */
 async function renderNote(renderer: NoteRenderer, file: TFile): Promise<HTMLElement> {
@@ -566,6 +573,168 @@ describe("NoteRenderer title menu", () => {
     });
 });
 
+describe("NoteRenderer internal links", () => {
+    /** Internal links come from MarkdownRenderer, mocked here; this is its output. */
+    async function renderLink(app: ReturnType<typeof makeApp>, href: string | null = "Reading list") {
+        const renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+        const link = el.querySelector(".daily-note-content")!.createEl("a", { cls: "internal-link" });
+        if (href !== null) link.setAttribute("data-href", href);
+        return { el, link, label: link.createEl("em", { text: href ?? "" }) };
+    }
+
+    function dispatch(el: HTMLElement, type: string, init: MouseEventInit = {}) {
+        const event = new MouseEvent(type, { bubbles: true, cancelable: true, ...init });
+        el.dispatchEvent(event);
+        return event;
+    }
+
+    it("opens the linked note from the note it was written in", async () => {
+        const app = makeApp();
+        const { link } = await renderLink(app);
+
+        const event = dispatch(link, "click");
+
+        expect(app.workspace.openLinkText).toHaveBeenCalledWith("Reading list", "Notes/2025-01-01.md", false);
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("opens the link from a click on its formatted text", async () => {
+        const app = makeApp();
+        const { label } = await renderLink(app);
+
+        label.click();
+
+        expect(app.workspace.openLinkText).toHaveBeenCalled();
+    });
+
+    it.each([
+        [{ metaKey: true }, "tab"],
+        [{ metaKey: true, altKey: true }, "split"],
+    ])("opens the link where %o asks: %s", async (modifiers, pane) => {
+        const app = makeApp();
+        const { link } = await renderLink(app);
+
+        dispatch(link, "click", modifiers);
+
+        expect(app.workspace.openLinkText).toHaveBeenCalledWith("Reading list", "Notes/2025-01-01.md", pane);
+    });
+
+    it("opens a new tab on middle-click", async () => {
+        const app = makeApp();
+        const { link } = await renderLink(app);
+
+        dispatch(link, "auxclick", { button: 1 });
+
+        expect(app.workspace.openLinkText).toHaveBeenCalledWith("Reading list", "Notes/2025-01-01.md", "tab");
+    });
+
+    it("ignores a link that names no note", async () => {
+        const app = makeApp();
+        const { link } = await renderLink(app, null);
+
+        const event = dispatch(link, "click");
+
+        expect(app.workspace.openLinkText).not.toHaveBeenCalled();
+        expect(event.defaultPrevented).toBe(false);
+    });
+
+    it("ignores a link outside any note, which no note could resolve", async () => {
+        const app = makeApp();
+        const { el } = await renderLink(app);
+        const stray = el.parentElement!.createEl("a", { cls: "internal-link" });
+        stray.setAttribute("data-href", "Reading list");
+
+        stray.click();
+
+        expect(app.workspace.openLinkText).not.toHaveBeenCalled();
+    });
+
+    it("logs a link that fails to open", async () => {
+        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const app = makeApp();
+        app.workspace.openLinkText.mockRejectedValue(new Error("open failed"));
+        const { link } = await renderLink(app);
+
+        link.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(consoleSpy).toHaveBeenCalled();
+        consoleSpy.mockRestore();
+    });
+
+    it("hands the linked note, heading stripped, to Obsidian's file menu", async () => {
+        const app = makeApp();
+        const target = new TFile("Reading list.md");
+        app.metadataCache.getFirstLinkpathDest.mockReturnValue(target);
+        const { link } = await renderLink(app, "Reading list#Fiction");
+
+        const event = dispatch(link, "contextmenu");
+
+        const menu = app.workspace.trigger.mock.calls[0]?.[1] as Menu;
+        expect(app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith("Reading list", "Notes/2025-01-01.md");
+        expect(app.workspace.trigger).toHaveBeenCalledWith("file-menu", menu, target, "link-context-menu");
+        expect(menu.shownAt).toBe(event);
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("opens the link, heading kept, from its menu", async () => {
+        const app = makeApp();
+        app.metadataCache.getFirstLinkpathDest.mockReturnValue(new TFile("Reading list.md"));
+        const { link } = await renderLink(app, "Reading list#Fiction");
+        dispatch(link, "contextmenu");
+        const menu = app.workspace.trigger.mock.calls[0]?.[1] as Menu;
+
+        menu.items[1]?.click();
+
+        expect(app.workspace.openLinkText).toHaveBeenCalledWith("Reading list#Fiction", "Notes/2025-01-01.md", "split");
+    });
+
+    it("offers only the open items for a note not yet created", async () => {
+        const app = makeApp();
+        const shown = vi.spyOn(Menu.prototype, "showAtMouseEvent");
+        const { link } = await renderLink(app, "Someday");
+
+        dispatch(link, "contextmenu");
+
+        expect(app.workspace.trigger).not.toHaveBeenCalled();
+        const menu = shown.mock.contexts[0] as Menu;
+        expect(menu.items.map((item) => item.title)).toEqual(["Open in new tab", "Open to the right"]);
+        shown.mockRestore();
+    });
+
+    it("asks Page preview to show the linked note on hover", async () => {
+        const app = makeApp();
+        const { link, label } = await renderLink(app);
+
+        const event = dispatch(label, "mouseover");
+
+        expect(app.workspace.trigger).toHaveBeenCalledWith("hover-link", {
+            event,
+            source: "daily-notes-stream-view",
+            hoverParent: delegateComponent,
+            targetEl: link,
+            linktext: "Reading list",
+            sourcePath: "Notes/2025-01-01.md",
+        });
+    });
+
+    it("previews nothing when the pointer is not over a link", async () => {
+        const app = makeApp();
+        const { el } = await renderLink(app);
+
+        dispatch(el, "mouseover");
+
+        expect(app.workspace.trigger).not.toHaveBeenCalled();
+    });
+});
+
 // ---------------------------------------------------------------------------
 // renderProperties
 // ---------------------------------------------------------------------------
@@ -948,8 +1117,6 @@ describe("NoteRenderer renderProperties", () => {
 });
 
 describe("NoteRenderer — delegated listeners", () => {
-    const delegateComponent = new Component();
-
     async function render(app: ReturnType<typeof makeApp>, delegate: boolean) {
         const renderer = new NoteRenderer(
             asApp(app),

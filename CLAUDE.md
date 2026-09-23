@@ -38,7 +38,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   `getSearchHotkeys`).
 - `notes/daily-note-service.ts` — the vault's daily notes, nested folders (`YYYY/MM/YYYY-MM-DD`) included,
   newest-first in batches.
-- `ui/stream-view.ts` — `ItemView` subclass; wires vault events, links and header actions to the stream.
+- `ui/stream-view.ts` — `ItemView` subclass; wires vault events and header actions to the stream. It is the
+  hover parent Page preview hangs popovers on.
 - `ui/jump-to-date-modal.ts` — the `SuggestModal` behind the header action and the `jump-to-date` command;
   offers the dates the vault has notes for, in the vault's own format.
 - Search: `notes/note-search.ts` matches sources, `stream/stream-search.ts` steps note to note,
@@ -52,8 +53,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   `Component`.
 - `stream/` also holds the loaded range (`stream-state.ts`), the sentinel (`infinite-scroll.ts`) and scroll
   anchoring (`scroll-position.ts`).
-- `render/` — a note's markdown and properties (`note-renderer.ts`), collapsible sections (`collapsible.ts`)
-  and their persisted state (`collapse-store.ts`).
+- `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`),
+  collapsible sections (`collapsible.ts`) and their persisted state (`collapse-store.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
 `obsidian-daily-notes-interface` from `tests/mocks/`. Tests typecheck against the mocks, which take their
@@ -85,9 +86,9 @@ Traps that span files, so no single file's comments can hold them.
   everything else is an empty `.daily-note-block` reserving its height. Never assume a block's children exist,
   and never key anything off them — `data-source-path` is on the block, and `StreamBlocks`' path→block index is the
   only lookup.
-- **Delegated listeners**: chevrons and note titles are rebuilt on every re-render, so nothing binds a
+- **Delegated listeners**: chevrons, note titles and links are rebuilt on every re-render, so nothing binds a
   listener per element — `CollapsibleManager.delegate()` and `NoteRenderer.delegate()` register one listener
-  each on the stream container, resolving the target through a `WeakMap`. Binding per element would pile
+  per gesture on the stream container, resolving the target through a `WeakMap` or the DOM. Binding per element would pile
   registrations on the view until it closes.
 - **TS strictness**: `noUncheckedIndexedAccess` (indexing returns `T | undefined`) and `noImplicitReturns`.
   Lifecycle properties assigned in `onload()` need `!` assertions.

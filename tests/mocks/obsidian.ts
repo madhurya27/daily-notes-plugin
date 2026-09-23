@@ -12,6 +12,7 @@ import type {
     App,
     EventRef,
     FileStats,
+    HoverLinkSource,
     KeymapContext,
     PluginManifest,
     Scope as AppScope,
@@ -22,7 +23,25 @@ import type {
     ViewState,
     WorkspaceLeaf as AppLeaf,
 } from "obsidian/obsidian";
-export type { App, Debouncer, EventRef, Hotkey, Modifier, PaneType, PluginManifest, View } from "obsidian/obsidian";
+export type {
+    App,
+    Debouncer,
+    EventRef,
+    Hotkey,
+    HoverLinkSource,
+    HoverParent,
+    HoverPopover,
+    Modifier,
+    PaneType,
+    PluginManifest,
+    View,
+} from "obsidian/obsidian";
+
+/** The note a link names, without its #heading or #^block. */
+export function getLinkpath(linktext: string): string {
+    const hash = linktext.indexOf("#");
+    return hash === -1 ? linktext : linktext.slice(0, hash);
+}
 
 export function normalizePath(path: string): string {
     return path
@@ -475,6 +494,7 @@ export class Plugin {
     ribbonIcons: { icon: string; title: string; callback: (evt: MouseEvent) => unknown }[] = [];
     commands: Command[] = [];
     settingTabs: PluginSettingTab[] = [];
+    hoverLinkSources: Record<string, HoverLinkSource> = {};
     data: unknown = null;
 
     constructor(app: App, manifest: PluginManifest) {
@@ -487,6 +507,9 @@ export class Plugin {
     saveData(data: unknown) {
         this.data = data;
         return Promise.resolve();
+    }
+    registerHoverLinkSource(id: string, info: HoverLinkSource) {
+        this.hoverLinkSources[id] = info;
     }
     registerView(type: string, cb: (leaf: AppLeaf) => ItemView) {
         this.views[type] = cb;

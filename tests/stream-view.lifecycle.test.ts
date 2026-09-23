@@ -1,15 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../src/ui/stream-view";
 import { TFile, WorkspaceLeaf } from "./mocks/obsidian";
-import {
-    asApp,
-    flushPromises,
-    makeApp,
-    makePlugin,
-    makeService,
-    makeStubbedView,
-    makeViewSetup,
-} from "./stream-view-fixture";
+import { asApp, makeApp, makePlugin, makeService, makeStubbedView, makeViewSetup } from "./stream-view-fixture";
 
 describe("DailyNotesStreamView — view API", () => {
     let view: DailyNotesStreamView;
@@ -68,72 +60,10 @@ describe("DailyNotesStreamView — refresh", () => {
     });
 });
 
-describe("DailyNotesStreamView — internal-link click handler", () => {
-    let view: DailyNotesStreamView;
-    let app: ReturnType<typeof makeApp>;
-    let registerDomEventSpy: ReturnType<typeof vi.spyOn>;
-
-    /** Opens a view on `app`, so click listeners register. */
-    async function openClickableView() {
-        ({ view } = makeStubbedView(app));
-        registerDomEventSpy = vi.spyOn(view, "registerDomEvent");
-        await view.onOpen();
-        return view["stream"]["blocks"].el;
-    }
-
-    function appendInternalLink(parent: HTMLElement, href?: string) {
-        const link = document.createElement("a");
-        link.classList.add("internal-link");
-        if (href !== undefined) link.setAttribute("data-href", href);
-        parent.appendChild(link);
-        return link;
-    }
-
-    beforeEach(() => {
-        app = makeApp();
-    });
-
-    it("registers the click listener through registerDomEvent so Obsidian cleans it up", async () => {
-        const container = await openClickableView();
-        expect(registerDomEventSpy).toHaveBeenCalledWith(container, "click", expect.any(Function));
-    });
-
-    it("calls openLinkText when an .internal-link element is clicked", async () => {
-        const container = await openClickableView();
-        appendInternalLink(container, "TargetNote").click();
-        expect(app.workspace.openLinkText).toHaveBeenCalledWith("TargetNote", "", false);
-    });
-
-    it("does not call openLinkText for regular (non-internal-link) clicks", async () => {
-        const container = await openClickableView();
-        container.appendChild(document.createElement("div")).click();
-        expect(app.workspace.openLinkText).not.toHaveBeenCalled();
-    });
-
-    it("does not call openLinkText when data-href attribute is absent", async () => {
-        const container = await openClickableView();
-        appendInternalLink(container).click();
-        expect(app.workspace.openLinkText).not.toHaveBeenCalled();
-    });
-
-    it("uses sourcePath from the nearest .daily-note-block ancestor", async () => {
-        const container = await openClickableView();
-        const block = container.appendChild(document.createElement("div"));
-        block.classList.add("daily-note-block");
-        block.dataset.sourcePath = "Notes/2025-01-01.md";
-        appendInternalLink(block, "SomeNote").click();
-        expect(app.workspace.openLinkText).toHaveBeenCalledWith("SomeNote", "Notes/2025-01-01.md", false);
-    });
-
-    it("openLinkText .catch handler logs error when link open fails", async () => {
-        app.workspace.openLinkText = vi.fn().mockRejectedValue(new Error("link open failed"));
-        const container = await openClickableView();
-        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-        appendInternalLink(container, "SomeNote").click();
-        await flushPromises();
-
-        expect(consoleSpy).toHaveBeenCalled();
-        consoleSpy.mockRestore();
+describe("DailyNotesStreamView — hover parent", () => {
+    // Page preview hangs its popover on the view, and unloads it with the view.
+    it("starts with no popover", () => {
+        const { view } = makeStubbedView(makeApp());
+        expect(view.hoverPopover).toBeNull();
     });
 });

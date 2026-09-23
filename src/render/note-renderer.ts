@@ -1,4 +1,17 @@
-import { App, Component, Keymap, MarkdownRenderer, MarkdownView, Menu, TFile, setIcon, type PaneType } from "obsidian";
+import {
+    App,
+    Component,
+    Keymap,
+    MarkdownRenderer,
+    MarkdownView,
+    Menu,
+    TFile,
+    getLinkpath,
+    setIcon,
+    type HoverParent,
+    type PaneType,
+    type View,
+} from "obsidian";
 import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
@@ -32,6 +45,18 @@ const OPEN_ITEMS: { title: string; icon: string; pane: PaneType }[] = [
     { title: "Open in new tab", icon: "file-plus", pane: "tab" },
     { title: "Open to the right", icon: "separator-vertical", pane: "split" },
 ];
+
+/** A title or an internal link: something in the stream that points at a note. */
+interface NoteTarget {
+    /** Null for a link to a note not yet created. */
+    file: TFile | null;
+    /** Obsidian's name for where the file menu opened, which other plugins read. */
+    menuSource: string;
+    open(pane: PaneType | boolean): void;
+}
+
+/** The view the stream's gestures belong to; Page preview hangs popovers on it. */
+type HoverView = Component & HoverParent & Pick<View, "getViewType">;
 
 /** Marks the values whose pills search, so a click can tell them apart. */
 const TAG_VALUE_CLASS = "daily-note-tags-value";
@@ -176,11 +201,11 @@ export class NoteRenderer {
     private readonly titles = new WeakMap<HTMLElement, TFile>();
 
     /**
-     * One listener for the whole stream: a title per note would pile
-     * registrations on the component until it unloads.
+     * One listener per gesture for the whole stream: a title or link per
+     * note would pile registrations on the view until it closes.
      */
-    delegate(component: Component, root: HTMLElement): void {
-        component.registerDomEvent(root, "click", (evt) => {
+    delegate(view: HoverView, root: HTMLElement): void {
+        view.registerDomEvent(root, "click", (evt) => {
             // A click's target is the element under the pointer, never a text node.
             const target = evt.target as HTMLElement;
 
@@ -191,31 +216,65 @@ export class NoteRenderer {
                 return;
             }
 
-            const file = this.titleAt(target);
-            if (!file) return;
+            const note = this.noteAt(target);
+            if (!note) return;
             evt.preventDefault();
-            this.openNote(file, Keymap.isModEvent(evt));
+            note.open(Keymap.isModEvent(evt));
         });
 
         // A middle button fires auxclick, never click.
-        component.registerDomEvent(root, "auxclick", (evt) => {
-            const file = evt.button === 1 ? this.titleAt(evt.target as HTMLElement) : undefined;
-            if (!file) return;
+        view.registerDomEvent(root, "auxclick", (evt) => {
+            const note = evt.button === 1 ? this.noteAt(evt.target as HTMLElement) : null;
+            if (!note) return;
             evt.preventDefault();
-            this.openNote(file, "tab");
+            note.open("tab");
         });
 
-        component.registerDomEvent(root, "contextmenu", (evt) => {
-            const file = this.titleAt(evt.target as HTMLElement);
-            if (!file) return;
+        view.registerDomEvent(root, "contextmenu", (evt) => {
+            const note = this.noteAt(evt.target as HTMLElement);
+            if (!note) return;
             evt.preventDefault();
-            this.showFileMenu(file, evt);
+            this.showNoteMenu(note, evt);
+        });
+
+        // Page preview decides from here whether to show, per its own settings.
+        view.registerDomEvent(root, "mouseover", (evt) => {
+            const link = this.linkAt(evt.target as HTMLElement);
+            if (!link) return;
+            this.app.workspace.trigger("hover-link", {
+                event: evt,
+                source: view.getViewType(),
+                hoverParent: view,
+                targetEl: link.el,
+                linktext: link.linktext,
+                sourcePath: link.sourcePath,
+            });
         });
     }
 
-    private titleAt(target: HTMLElement): TFile | undefined {
+    /** The note a title or an internal link under the pointer points at. */
+    private noteAt(target: HTMLElement): NoteTarget | null {
         const title = target.closest<HTMLElement>(".daily-note-title");
-        return title ? this.titles.get(title) : undefined;
+        const file = title ? this.titles.get(title) : undefined;
+        if (file) return { file, menuSource: "daily-notes-stream", open: (pane) => this.openNote(file, pane) };
+
+        const link = this.linkAt(target);
+        if (!link) return null;
+        const { linktext, sourcePath } = link;
+        return {
+            file: this.app.metadataCache.getFirstLinkpathDest(getLinkpath(linktext), sourcePath),
+            menuSource: "link-context-menu",
+            open: (pane) => this.openLink(linktext, sourcePath, pane),
+        };
+    }
+
+    /** An internal link, and the note it was written in, which resolves it. */
+    private linkAt(target: HTMLElement): { el: HTMLElement; linktext: string; sourcePath: string } | null {
+        const el = target.closest<HTMLElement>(".internal-link");
+        const linktext = el?.getAttribute("data-href");
+        const sourcePath = el?.closest<HTMLElement>(".daily-note-block")?.dataset.sourcePath;
+        if (!el || !linktext || !sourcePath) return null;
+        return { el, linktext, sourcePath };
     }
 
     /**
@@ -231,8 +290,8 @@ export class NoteRenderer {
         return pill?.textContent ?? null;
     }
 
-    /** Obsidian's file menu for the note, led by where it can open. */
-    private showFileMenu(file: TFile, evt: MouseEvent): void {
+    /** Where the note can open, then Obsidian's file menu for it once it exists. */
+    private showNoteMenu(note: NoteTarget, evt: MouseEvent): void {
         const menu = new Menu();
         for (const { title, icon, pane } of OPEN_ITEMS) {
             menu.addItem((item) =>
@@ -240,11 +299,18 @@ export class NoteRenderer {
                     .setTitle(title)
                     .setIcon(icon)
                     .setSection("open")
-                    .onClick(() => this.openNote(file, pane))
+                    .onClick(() => note.open(pane))
             );
         }
-        this.app.workspace.trigger("file-menu", menu, file, "daily-notes-stream");
+        if (note.file) this.app.workspace.trigger("file-menu", menu, note.file, note.menuSource);
         menu.showAtMouseEvent(evt);
+    }
+
+    /** A link to a note not yet created creates it, as Obsidian's links do. */
+    private openLink(linktext: string, sourcePath: string, pane: PaneType | boolean): void {
+        this.app.workspace.openLinkText(linktext, sourcePath, pane).catch((error) => {
+            console.error("DailyNotesStream: Failed to open link", error);
+        });
     }
 
     /**

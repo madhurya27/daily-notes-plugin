@@ -24,6 +24,11 @@ export default class DailyNotesStreamPlugin extends Plugin {
                 new DailyNotesStreamView(leaf, this, new DailyNoteService(() => this.app.vault.getMarkdownFiles()))
         );
 
+        this.registerHoverLinkSource(VIEW_TYPE_DAILY_NOTES_STREAM, {
+            display: "Daily notes stream",
+            defaultMod: true,
+        });
+
         this.addRibbonIcon("calendar-days", "Open daily notes stream", () => logActivationFailure(this.activateView()));
 
         this.addCommand({

@@ -44,6 +44,10 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - Middle-click on a header opens a new tab.
 - Right-click on a header shows the file menu, "Open in new window" once. **[e2e]**
 - `test-image.svg` renders in **2026-02-01**; `[[2026-01-15]]` navigates there and back.
+- A link inside a note takes the header's gestures: mod-click, mod-alt-click, middle-click, right-click. **[e2e]**
+- Mod-hovering a link previews it **[e2e]**; Settings → Page preview lists "Daily notes stream", and turning
+  its Mod requirement off previews on plain hover.
+- Right-click on an unresolved link offers only the open items; opening one creates the note.
 - Scrolling to the bottom loads the next batch without duplicates. **[e2e]**
 - Tall window, short notes → loading continues past the first batch.
 

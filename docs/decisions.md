@@ -429,15 +429,17 @@ A day spans retyping a heading; `mtime` needs no timer.
 - A size cap — bounds size, not staleness.
 - Frontmatter — every toggle rewrites the file.
 
-## 2026-09-23 — A note's title is its edit action
+## 2026-09-23 — Titles and links take Obsidian's link gestures
 
-**Decision:** amends 2026-09-15. Mod-click or middle-click opens the note in
-a new tab, mod-alt-click in a split; right-click shows Obsidian's file menu,
-led by "Open in new tab" and "Open to the right". A plain click still reuses
-a tab showing the note, and never replaces the stream.
+**Decision:** amends 2026-09-15; a note's title is its edit action. Titles
+and internal links alike: mod-click or middle-click opens a new tab,
+mod-alt-click a split; right-click shows "Open in new tab" and "Open to the
+right", then Obsidian's file menu once the note exists. Links preview on
+hover through Page preview, Mod required by default. A plain click on a title
+reuses a tab showing the note; nothing replaces the stream.
 
-**Why:** Obsidian's link gestures, plus the file menu's move, bookmark and
-reveal items, at no new UI.
+**Why:** the stream should behave as Obsidian's reading view does, and the
+file menu adds move, bookmark and reveal at no new UI.
 
 **Rejected:**
 - A pencil button per note — clutter on a read-only feed; the title does it.

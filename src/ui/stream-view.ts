@@ -1,4 +1,4 @@
-import { ItemView, Scope, WorkspaceLeaf, debounce } from "obsidian";
+import { ItemView, Scope, WorkspaceLeaf, debounce, type HoverParent, type HoverPopover } from "obsidian";
 import type DailyNotesStreamPlugin from "../main";
 import { JumpToDateModal } from "./jump-to-date-modal";
 import { NoteRenderer } from "../render/note-renderer";
@@ -16,7 +16,8 @@ export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
 /** A vault change re-reads every note for an open search; a burst of saves needs one. */
 const SEARCH_REFRESH_DEBOUNCE_MS = 500;
 
-export class DailyNotesStreamView extends ItemView {
+export class DailyNotesStreamView extends ItemView implements HoverParent {
+    hoverPopover: HoverPopover | null = null;
     private plugin: DailyNotesStreamPlugin;
     private renderer: NoteRenderer;
     private collapsible: CollapsibleManager;
@@ -99,20 +100,6 @@ export class DailyNotesStreamView extends ItemView {
 
         this.collapsible.delegate(this, streamContainerEl);
         this.renderer.delegate(this, streamContainerEl);
-
-        this.registerDomEvent(streamContainerEl, "click", (event) => {
-            const target = event.target as HTMLElement;
-            if (!target.matches(".internal-link")) return;
-            event.preventDefault();
-            const linkText = target.getAttribute("data-href");
-            const sourceContainer = target.closest<HTMLElement>(".daily-note-block");
-            const sourcePath = sourceContainer?.dataset.sourcePath ?? "";
-            if (linkText) {
-                this.app.workspace.openLinkText(linkText, sourcePath, false).catch((e) => {
-                    console.error("DailyNotesStream: Failed to open link", e);
-                });
-            }
-        });
 
         // metadataCache "changed", not vault "modify": the cache lags the write,
         // and the renderer reads it for frontmatter offsets and properties.
