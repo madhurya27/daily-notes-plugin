@@ -4,8 +4,6 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
-- [ ] `pnpm run test:memory` fails, predating search: 1608 live nodes against a 1595 ceiling (1095 empty
-  blocks, 4 rendered notes of ~128 nodes). Is the ceiling or the note wrong?
 - [ ] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
   frame rate; loading is not the cost, so preloading would not help.
 - [ ] Search into a collapsed section lands on the note and marks nothing. Expand it on Enter, unsaved, as
