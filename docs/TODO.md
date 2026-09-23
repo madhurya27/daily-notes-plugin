@@ -4,12 +4,13 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
-- [ ] `pnpm run test:memory` fails: 1608 live nodes in the stream against a ceiling of `SEEDED_DAYS + 500`
-  (1595). 1095 empty blocks plus 4 rendered notes of ~128 nodes each; failed before search landed. Decide
-  whether the ceiling or the per-note node count is wrong.
-- [ ] Time a search step on a real phone. e2e mobile takes 4–6 s per step against 85 ms on desktop, even to a
-  loaded note — likely the hidden window's frame rate, which `scrollIntoPlace` waits on. Loading is not the
-  cost (measured 2026-09-23), so preloading matches would not help.
+- [ ] `pnpm run test:memory` fails, predating search: 1608 live nodes against a 1595 ceiling (1095 empty
+  blocks, 4 rendered notes of ~128 nodes). Is the ceiling or the note wrong?
+- [ ] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
+  frame rate; loading is not the cost, so preloading would not help.
+- [ ] Search into a collapsed section lands on the note and marks nothing. Expand it on Enter, unsaved, as
+  Obsidian's reading view does; `CollapsibleManager` saves every toggle. Label what cannot be shown (embeds,
+  hidden frontmatter) `· hidden`.
 - [ ] Per-note edit action — open in a split, or append to today's note. Read-only stream stays; see
   `docs/decisions.md` (2026-09-15).
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
