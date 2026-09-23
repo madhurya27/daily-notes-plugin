@@ -72,7 +72,7 @@ inspect the image: measurements prove a rule was matched, not that the result lo
 
 Traps that span files, so no single file's comments can hold them.
 
-- **`state.notes` always equals `service._sorted.slice(0, state.length)`.** Breaking it desyncs `getBatch()`
+- **`state.notes` always equals `service.getBatch(0, state.length)`.** Breaking it desyncs `getBatch()`
   pagination — notes skipped or duplicated on further scroll. `create`/`delete`/`rename` must route through
   `service.insertSorted`/`removeSorted`, and a note is rendered only when its global index falls in
   `[0, offset)`.

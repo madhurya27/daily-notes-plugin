@@ -44,3 +44,4 @@
 - [x] `test:memory` bounds unloaded blocks by emptiness, not a node count a heavier note could trip
 - [x] Titles and internal links take Obsidian's link gestures: tab, split, file menu, and hover preview for links
 - [x] Opening the stream skips files outside the daily-notes folder before parsing dates: 70 → 50 ms at 6× CPU, 10-year vault plus 5,000 other notes
+- [x] Each note keeps the date parsed when the list was built: the jump picker opens in 0.0 ms, from 22 ms at 6× CPU in a 10-year vault

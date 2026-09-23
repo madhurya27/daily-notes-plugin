@@ -9,6 +9,16 @@ import {
 } from "obsidian-daily-notes-interface";
 import { TFile, moment } from "obsidian";
 
+/** Counts reads of each file's name: every date parse starts with one. */
+function countNameReads(files: TFile[]): () => number {
+    let reads = 0;
+    for (const file of files) {
+        const { basename } = file;
+        Object.defineProperty(file, "basename", { get: () => (reads++, basename) });
+    }
+    return () => reads;
+}
+
 describe("DailyNoteService", () => {
     beforeEach(() => {
         __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
@@ -53,14 +63,13 @@ describe("DailyNoteService", () => {
         it("never parses the name of a file outside the daily-notes folder", () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
             const outside = new TFile("Pages/2025-01-02.md");
-            let reads = 0;
-            Object.defineProperty(outside, "basename", { get: () => (reads++, "2025-01-02") });
+            const reads = countNameReads([outside]);
             const svc = new DailyNoteService(() => [...__mockMarkdownFiles(), outside]);
 
             svc.initialize();
             svc.insertSorted(outside);
 
-            expect(reads).toBe(0);
+            expect(reads()).toBe(0);
         });
 
         it("ignores files that do not match the format", () => {
@@ -419,6 +428,41 @@ describe("DailyNoteService", () => {
         });
     });
 
+    describe("dates parsed once, when the list is built", () => {
+        const built = () => {
+            __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-02.md", "Notes/2025-01-03.md"]);
+            const svc = new DailyNoteService(__mockMarkdownFiles);
+            svc.initialize();
+            return { svc, reads: countNameReads(__mockMarkdownFiles()) };
+        };
+
+        it("lists the dates without parsing a name again", () => {
+            const { svc, reads } = built();
+
+            svc.dates();
+
+            expect(reads()).toBe(0);
+        });
+
+        it("finds a date's place without parsing a name again", () => {
+            const { svc, reads } = built();
+
+            svc.indexForDate(moment("2025-01-02", "YYYY-MM-DD", true));
+
+            expect(reads()).toBe(0);
+        });
+
+        it("parses only the new note's name on insert", () => {
+            const { svc } = built();
+            const created = new TFile("Notes/2025-01-04.md");
+            const reads = countNameReads([...__mockMarkdownFiles(), created]);
+
+            svc.insertSorted(created);
+
+            expect(reads()).toBe(1);
+        });
+    });
+
     describe("dates + formatDate: what the jump suggester offers", () => {
         it("lists every note's date, newest first", () => {
             __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-03.md", "Notes/2025-01-02.md"]);
@@ -447,16 +491,15 @@ describe("DailyNoteService", () => {
             expect(svc.parseNoteDate("2025-01-03")).toBeNull();
         });
 
-        // dates() reads the format live, so between a settings change and the
-        // rebuild that follows it the cache holds notes the new format cannot
-        // name. Those drop out rather than sit in the suggester unparsed.
-        it("drops notes the format in force can no longer read", () => {
+        // Between a settings change and the rebuild that follows it, the
+        // suggester offers what the stream still shows, as a jump lands there.
+        it("offers the notes the stream shows until a format change rebuilds it", () => {
             __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-31.md"]);
             const svc = new DailyNoteService(__mockMarkdownFiles);
             svc.initialize();
             __setMockSettings({ format: "MMMM D, YYYY", folder: "Notes" });
 
-            expect(svc.dates()).toEqual([]);
+            expect(svc.dates().map((d) => d.format("YYYY-MM-DD"))).toEqual(["2025-01-31", "2025-01-01"]);
         });
 
         // A nested format names the file after its last segment only.

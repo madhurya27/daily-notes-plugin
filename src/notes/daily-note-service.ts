@@ -14,8 +14,14 @@ interface DateFormat {
 /** `obsidian` exports moment as a value, so the type comes from its return. */
 export type Moment = ReturnType<typeof moment>;
 
+/** A daily note and the date its name was parsed to, once. */
+interface DatedNote {
+    file: TFile;
+    date: Moment;
+}
+
 export class DailyNoteService {
-    private _sorted: TFile[] = [];
+    private _sorted: DatedNote[] = [];
     /** The daily-notes config the cache was built from; null before the first build. */
     private builtFrom: string | null = null;
 
@@ -43,7 +49,7 @@ export class DailyNoteService {
 
     /** Newest first. */
     getBatch(offset: number, limit: number): TFile[] {
-        return this._sorted.slice(offset, offset + limit);
+        return this._sorted.slice(offset, offset + limit).map((note) => note.file);
     }
 
     /** Returns the insertion index, or -1 when not a daily note or already present. */
@@ -52,11 +58,11 @@ export class DailyNoteService {
         const date = this.parseDate(file, format);
         if (!date) return -1;
 
-        const lo = this.firstIndexOnOrBefore(date.valueOf(), format);
+        const lo = this.firstIndexOnOrBefore(date.valueOf());
         // A date maps to exactly one path, so the search lands on the duplicate.
-        if (this._sorted[lo]?.path === file.path) return -1;
+        if (this._sorted[lo]?.file.path === file.path) return -1;
 
-        this._sorted.splice(lo, 0, file);
+        this._sorted.splice(lo, 0, { file, date });
         return lo;
     }
 
@@ -72,23 +78,22 @@ export class DailyNoteService {
      * granularity; -1 when every note is newer, or the stream is empty.
      */
     indexForDate(target: Moment): number {
-        const index = this.firstIndexOnOrBefore(target.clone().startOf("day").valueOf(), this.readFormat());
+        const index = this.firstIndexOnOrBefore(target.clone().startOf("day").valueOf());
         return index < this._sorted.length ? index : -1;
     }
 
     /** The index of the note at `path`; -1 when absent. */
     indexOf(path: string): number {
-        return this._sorted.findIndex((f) => f.path === path);
+        return this._sorted.findIndex((note) => note.file.path === path);
     }
 
     get length(): number {
         return this._sorted.length;
     }
 
-    /** Every note's date, newest first — the set a jump can land on. */
+    /** Every note's date, newest first — the set a jump can land on. Not to be mutated. */
     dates(): Moment[] {
-        const format = this.readFormat();
-        return this._sorted.flatMap((file) => this.parseBasename(file, format) ?? []);
+        return this._sorted.map((note) => note.date);
     }
 
     /** `date` as this vault's filenames spell it, nested formats included. */
@@ -104,16 +109,14 @@ export class DailyNoteService {
 
     /**
      * Binary search of the newest-first cache: the first index whose date is
-     * at or before `time`, or `length` when none is. Unparseable entries sort
-     * as oldest, which cannot happen — buildSorted drops them.
+     * at or before `time`, or `length` when none is.
      */
-    private firstIndexOnOrBefore(time: number, format: DateFormat): number {
+    private firstIndexOnOrBefore(time: number): number {
         let lo = 0;
         let hi = this._sorted.length;
         while (lo < hi) {
             const mid = (lo + hi) >> 1;
-            const midDate = this.parseBasename(this._sorted[mid]!, format);
-            if (midDate && midDate.valueOf() > time) {
+            if (this._sorted[mid]!.date.valueOf() > time) {
                 lo = mid + 1;
             } else {
                 hi = mid;
@@ -126,15 +129,13 @@ export class DailyNoteService {
         return `${format.folder}\u0000${format.path}`;
     }
 
-    private buildSorted(format: DateFormat): TFile[] {
+    private buildSorted(format: DateFormat): DatedNote[] {
         // parseDate, as a live create (docs/decisions.md, 2026-09-23).
-        const notesWithDates = this.markdownFiles()
+        const notes = this.markdownFiles()
             .map((file) => ({ file, date: this.parseDate(file, format) }))
-            .filter((n): n is { file: TFile; date: NonNullable<typeof n.date> } => n.date !== null);
+            .filter((note): note is DatedNote => note.date !== null);
 
-        notesWithDates.sort((a, b) => b.date.valueOf() - a.date.valueOf());
-
-        return notesWithDates.map((n) => n.file);
+        return notes.sort((a, b) => b.date.valueOf() - a.date.valueOf());
     }
 
     private readFormat(): DateFormat {
