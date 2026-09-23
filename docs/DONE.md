@@ -26,3 +26,4 @@
 - [x] Jump to date, from the view header or the command palette
 - [x] Flaky e2e scroll-position-on-unload: a block measuring nothing reserved nothing and collapsed
 - [x] Jump to date as a suggester over the dates the vault has, in the vault's own format, with the platform's date wheel
+- [x] Jump prompt: the hidden date picker no longer pushes the clear button out of the query box

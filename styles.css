@@ -356,7 +356,9 @@
     transform: translateY(-50%);
 }
 
-.daily-notes-jump-picker {
+/* Scoped to outrank Obsidian's input[type="date"], whose position: relative
+   would keep the picker in the row and push the clear button out of the box. */
+.prompt-input-container .daily-notes-jump-picker {
     position: absolute;
     width: 0;
     height: 0;

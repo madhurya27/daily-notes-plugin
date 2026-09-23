@@ -88,6 +88,20 @@ test.describe("jump to date", () => {
         await expect(prompt.locator(".daily-notes-jump-fallback")).toHaveText("Jump to the nearest older note");
     });
 
+    test("keeps the query box the prompt's full width, clear button inside", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+        const prompt = await openSuggester(page);
+        const box = async (selector: string) => (await prompt.locator(selector).boundingBox())!;
+
+        const container = await box(".prompt-input-container");
+        const input = await box("input.prompt-input");
+        const clear = await box(".search-input-clear-button");
+
+        expect(input.x + input.width).toBeCloseTo(container.x + container.width, 0);
+        expect(clear.x + clear.width).toBeLessThanOrEqual(input.x + input.width);
+    });
+
     test("fills the query from the platform's own date picker", async ({ obsidian }) => {
         const { page } = obsidian;
         await openStream(page);
