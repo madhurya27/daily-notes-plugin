@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SearchHighlighter } from "../src/render/search-highlights";
 import { NoteRenderer } from "../src/render/note-renderer";
 import { Component, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
+import type { Menu } from "./mocks/obsidian";
 import { CollapsibleManager } from "../src/render/collapsible";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import type { DailyNotesStreamSettings } from "../src/settings";
@@ -31,6 +32,7 @@ function makeApp(opts: { readResult?: string; fileCache?: unknown; leaves?: unkn
             getLeavesOfType: vi.fn().mockReturnValue(leaves),
             getLeaf: vi.fn().mockReturnValue(mockLeaf),
             revealLeaf: vi.fn().mockResolvedValue(undefined),
+            trigger: vi.fn(),
         },
         _mockLeaf: mockLeaf,
         _searchLeaf: mockLeaf,
@@ -428,6 +430,139 @@ describe("NoteRenderer title click", () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
         expect(consoleSpy).toHaveBeenCalled();
         consoleSpy.mockRestore();
+    });
+});
+
+describe("NoteRenderer title open targets", () => {
+    async function renderTitle(app: ReturnType<typeof makeApp>) {
+        const renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+        const file = new TFile("Notes/2025-01-01.md");
+        const el = mount(renderer, await renderNote(renderer, file));
+        return { file, title: el.querySelector(".daily-note-title") as HTMLElement };
+    }
+
+    it("opens a new tab on mod-click, even when the note is already open", async () => {
+        const file = new TFile("Notes/2025-01-01.md");
+        const app = makeApp({ leaves: [{ view: makeMarkdownView(file) }] });
+        const { title } = await renderTitle(app);
+
+        title.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, metaKey: true }));
+
+        expect(app.workspace.revealLeaf).not.toHaveBeenCalled();
+        expect(app.workspace.getLeaf).toHaveBeenCalledWith("tab");
+        expect(app._mockLeaf.openFile).toHaveBeenCalledWith(file);
+    });
+
+    it("opens a split on mod-alt-click", async () => {
+        const app = makeApp();
+        const { title } = await renderTitle(app);
+
+        title.dispatchEvent(new MouseEvent("click", { bubbles: true, metaKey: true, altKey: true }));
+
+        expect(app.workspace.getLeaf).toHaveBeenCalledWith("split");
+    });
+
+    it("opens a new tab on middle-click", async () => {
+        // A middle button fires auxclick, never click.
+        const app = makeApp();
+        const { title } = await renderTitle(app);
+
+        const event = new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 });
+        title.dispatchEvent(event);
+
+        expect(app.workspace.getLeaf).toHaveBeenCalledWith("tab");
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("leaves other auxiliary buttons alone", async () => {
+        const app = makeApp();
+        const { title } = await renderTitle(app);
+
+        title.dispatchEvent(new MouseEvent("auxclick", { bubbles: true, button: 2 }));
+
+        expect(app.workspace.getLeaf).not.toHaveBeenCalled();
+    });
+
+    it("ignores a middle-click that missed a title", async () => {
+        const app = makeApp();
+        const { title } = await renderTitle(app);
+
+        title.parentElement!.dispatchEvent(new MouseEvent("auxclick", { bubbles: true, button: 1 }));
+
+        expect(app.workspace.getLeaf).not.toHaveBeenCalled();
+    });
+});
+
+describe("NoteRenderer title menu", () => {
+    async function rightClickTitle(app: ReturnType<typeof makeApp>) {
+        const renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+        const file = new TFile("Notes/2025-01-01.md");
+        const el = mount(renderer, await renderNote(renderer, file));
+        const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+        el.querySelector(".daily-note-title")!.dispatchEvent(event);
+        const menu = app.workspace.trigger.mock.calls[0]?.[1] as Menu | undefined;
+        return { file, event, menu };
+    }
+
+    it("hands the note to Obsidian's file menu, shown where the click was", async () => {
+        const app = makeApp();
+        const { file, event, menu } = await rightClickTitle(app);
+
+        expect(app.workspace.trigger).toHaveBeenCalledWith("file-menu", menu, file, "daily-notes-stream");
+        expect(menu?.shownAt).toBe(event);
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("leads with the places the note can open", async () => {
+        const { menu } = await rightClickTitle(makeApp());
+
+        expect(menu?.items.map((item) => [item.title, item.icon, item.section])).toEqual([
+            ["Open in new tab", "file-plus", "open"],
+            ["Open to the right", "separator-vertical", "open"],
+        ]);
+    });
+
+    it.each([
+        [0, "tab"],
+        [1, "split"],
+    ])("opens the note from item %i in a %s", async (index, target) => {
+        const app = makeApp();
+        const { file, menu } = await rightClickTitle(app);
+
+        menu?.items[index]?.click();
+
+        expect(app.workspace.getLeaf).toHaveBeenCalledWith(target);
+        expect(app._mockLeaf.openFile).toHaveBeenCalledWith(file);
+    });
+
+    it("leaves a right-click off the title to the page", async () => {
+        const app = makeApp();
+        const renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+        const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+
+        el.dispatchEvent(event);
+
+        expect(app.workspace.trigger).not.toHaveBeenCalled();
+        expect(event.defaultPrevented).toBe(false);
     });
 });
 

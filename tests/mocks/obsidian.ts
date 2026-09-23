@@ -262,6 +262,49 @@ export class MarkdownView {
     file: TFile | null = null;
 }
 
+/** A menu item as the page would show it; `click` runs its handler. */
+export class MenuItem {
+    title = "";
+    icon = "";
+    section = "";
+    private handler: ((evt: MouseEvent | KeyboardEvent) => unknown) | null = null;
+    setTitle(title: string) {
+        this.title = title;
+        return this;
+    }
+    setIcon(icon: string) {
+        this.icon = icon;
+        return this;
+    }
+    setSection(section: string) {
+        this.section = section;
+        return this;
+    }
+    onClick(handler: (evt: MouseEvent | KeyboardEvent) => unknown) {
+        this.handler = handler;
+        return this;
+    }
+    click() {
+        this.handler?.(new MouseEvent("click"));
+    }
+}
+
+/** Records its items and where it was shown, instead of drawing anything. */
+export class Menu {
+    readonly items: MenuItem[] = [];
+    shownAt: MouseEvent | null = null;
+    addItem(cb: (item: MenuItem) => unknown) {
+        const item = new MenuItem();
+        cb(item);
+        this.items.push(item);
+        return this;
+    }
+    showAtMouseEvent(evt: MouseEvent) {
+        this.shownAt = evt;
+        return this;
+    }
+}
+
 /** Obsidian's own modifier reading: Cmd/Ctrl or middle-click opens a tab. */
 export class Keymap {
     static isModEvent(evt?: UserEvent | null): "tab" | "split" | "window" | boolean {

@@ -1,4 +1,4 @@
-import { App, Component, Keymap, MarkdownRenderer, MarkdownView, TFile, setIcon } from "obsidian";
+import { App, Component, Keymap, MarkdownRenderer, MarkdownView, Menu, TFile, setIcon, type PaneType } from "obsidian";
 import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
@@ -23,6 +23,15 @@ function fallbackIcon(key: string): string {
     if (name.includes("date") || name.includes("time")) return "calendar";
     return "file-text";
 }
+
+/**
+ * What a title's right-click offers ahead of Obsidian's file menu, in its own
+ * words. The file menu adds "Open in new window" itself, where windows exist.
+ */
+const OPEN_ITEMS: { title: string; icon: string; pane: PaneType }[] = [
+    { title: "Open in new tab", icon: "file-plus", pane: "tab" },
+    { title: "Open to the right", icon: "separator-vertical", pane: "split" },
+];
 
 /** Marks the values whose pills search, so a click can tell them apart. */
 const TAG_VALUE_CLASS = "daily-note-tags-value";
@@ -182,12 +191,31 @@ export class NoteRenderer {
                 return;
             }
 
-            const title = target.closest<HTMLElement>(".daily-note-title");
-            const file = title ? this.titles.get(title) : undefined;
+            const file = this.titleAt(target);
             if (!file) return;
             evt.preventDefault();
-            this.openNote(file);
+            this.openNote(file, Keymap.isModEvent(evt));
         });
+
+        // A middle button fires auxclick, never click.
+        component.registerDomEvent(root, "auxclick", (evt) => {
+            const file = evt.button === 1 ? this.titleAt(evt.target as HTMLElement) : undefined;
+            if (!file) return;
+            evt.preventDefault();
+            this.openNote(file, "tab");
+        });
+
+        component.registerDomEvent(root, "contextmenu", (evt) => {
+            const file = this.titleAt(evt.target as HTMLElement);
+            if (!file) return;
+            evt.preventDefault();
+            this.showFileMenu(file, evt);
+        });
+    }
+
+    private titleAt(target: HTMLElement): TFile | undefined {
+        const title = target.closest<HTMLElement>(".daily-note-title");
+        return title ? this.titles.get(title) : undefined;
     }
 
     /**
@@ -203,17 +231,39 @@ export class NoteRenderer {
         return pill?.textContent ?? null;
     }
 
-    private openNote(file: TFile): void {
-        const existing = this.app.workspace
-            .getLeavesOfType("markdown")
-            // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
-            .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
+    /** Obsidian's file menu for the note, led by where it can open. */
+    private showFileMenu(file: TFile, evt: MouseEvent): void {
+        const menu = new Menu();
+        for (const { title, icon, pane } of OPEN_ITEMS) {
+            menu.addItem((item) =>
+                item
+                    .setTitle(title)
+                    .setIcon(icon)
+                    .setSection("open")
+                    .onClick(() => this.openNote(file, pane))
+            );
+        }
+        this.app.workspace.trigger("file-menu", menu, file, "daily-notes-stream");
+        menu.showAtMouseEvent(evt);
+    }
+
+    /**
+     * A plain click reuses a tab already showing the note; a chosen pane
+     * always gets its own, as Obsidian's links do.
+     */
+    private openNote(file: TFile, pane: PaneType | boolean): void {
+        const existing = pane
+            ? undefined
+            : this.app.workspace
+                  .getLeavesOfType("markdown")
+                  // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
+                  .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
         if (existing) {
             void this.app.workspace.revealLeaf(existing);
             return;
         }
         this.app.workspace
-            .getLeaf(false)
+            .getLeaf(pane)
             .openFile(file)
             .catch((error) => {
                 console.error("DailyNotesStream: Failed to open file", error);
