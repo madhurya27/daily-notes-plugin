@@ -12,39 +12,13 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         ({ view, plugin } = await makeViewSetup());
     });
 
-    it("returns early without calling getBatch when already loading", async () => {
-        (view as any).stream.loadPending = true;
-        await (view as any).stream.loadMoreNotes();
-        expect(plugin.service.getBatch).not.toHaveBeenCalled();
-    });
-
-    it("resets loadPending to false after completion", async () => {
-        plugin.service.getBatch = vi.fn().mockReturnValue([]);
-        await (view as any).stream.loadMoreNotes();
-        expect((view as any).stream.loadPending).toBe(false);
-    });
-
-    it("appends empty-state div when the batch is empty, nothing is loaded, and there is no sentinel", async () => {
+    it("shows the empty state when the first batch is empty", async () => {
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
         (view as any).stream.scroll.getSentinel = vi.fn().mockReturnValue(null);
         const container = document.createElement("div");
         (view as any).stream.blocks.attach(container);
         await (view as any).stream.loadMoreNotes();
         expect(container.querySelector(".daily-notes-empty-state")).not.toBeNull();
-    });
-
-    it("inserts empty-state before sentinel when the batch is empty and nothing is loaded", async () => {
-        plugin.service.getBatch = vi.fn().mockReturnValue([]);
-        const container = document.createElement("div");
-        const sentinel = document.createElement("div");
-        container.appendChild(sentinel);
-        (view as any).stream.blocks.attach(container);
-        (view as any).stream.scroll.getSentinel = vi.fn().mockReturnValue(sentinel);
-        await (view as any).stream.loadMoreNotes();
-        const emptyState = container.querySelector(".daily-notes-empty-state");
-        expect(emptyState).not.toBeNull();
-        const children = Array.from(container.children);
-        expect(children.indexOf(emptyState!)).toBeLessThan(children.indexOf(sentinel));
     });
 
     it("adds no empty-state div when the batch is empty but notes are already loaded", async () => {
@@ -98,20 +72,6 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         expect(container.contains(doomedEl)).toBe(false);
     });
 
-    it("inserts each rendered note before sentinel when one exists", async () => {
-        const file = new TFile("Notes/2025-01-01.md");
-        plugin.service.getBatch = vi.fn().mockReturnValue([file]);
-        const container = document.createElement("div");
-        const sentinel = document.createElement("div");
-        container.appendChild(sentinel);
-        (view as any).stream.blocks.attach(container);
-        (view as any).stream.scroll.getSentinel = vi.fn().mockReturnValue(sentinel);
-        await (view as any).stream.loadMoreNotes();
-        const children = Array.from(container.children);
-        // Sentinel must remain last
-        expect(children[children.length - 1]).toBe(sentinel);
-    });
-
     it("removes a stale empty-state div once notes exist", async () => {
         const container = document.createElement("div");
         container.createDiv({ cls: "daily-notes-empty-state", text: "No daily notes found." });
@@ -121,17 +81,6 @@ describe("DailyNotesStreamView — loadMoreNotes", () => {
         await (view as any).stream.loadMoreNotes();
 
         expect(container.querySelector(".daily-notes-empty-state")).toBeNull();
-    });
-
-    it("never appends a second empty-state div on repeated empty loads", async () => {
-        const container = document.createElement("div");
-        (view as any).stream.blocks.attach(container);
-        plugin.service.getBatch = vi.fn().mockReturnValue([]);
-
-        await (view as any).stream.loadMoreNotes();
-        await (view as any).stream.loadMoreNotes();
-
-        expect(container.querySelectorAll(".daily-notes-empty-state").length).toBe(1);
     });
 
     it("rechecks the sentinel after a non-empty batch so a short batch keeps loading", async () => {

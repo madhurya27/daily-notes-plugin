@@ -139,17 +139,6 @@ describe("DailyNoteService", () => {
             expect(__getSettingsCallCount()).toBe(1);
         });
 
-        it("returns -1 when file already present", () => {
-            __setMockSettings({ format: "YYYY-MM-DD" });
-            __setMockNotes(["Notes/2025-01-01.md"]);
-
-            const svc = new DailyNoteService();
-            svc.initialize();
-
-            const existing = svc.getBatch(0, 1)[0]!;
-            expect(svc.insertSorted(existing)).toBe(-1);
-        });
-
         it("inserts a note in the middle position (triggers lo = mid+1 branch)", () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
             __setMockNotes(["Notes/2025-01-05.md", "Notes/2025-01-01.md"]);

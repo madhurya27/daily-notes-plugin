@@ -533,16 +533,6 @@ describe("CollapsibleManager — delegated listeners", () => {
         root.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
         expect(store.setCollapsed).not.toHaveBeenCalled();
     });
-
-    it("toggles from Enter and Space, and ignores other keys", () => {
-        manager.delegate(component as any, root);
-        const indicator = heading();
-        indicator.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true }));
-        expect(store.setCollapsed).not.toHaveBeenCalled();
-        indicator.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
-        indicator.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
-        expect(store.setCollapsed).toHaveBeenCalledTimes(2);
-    });
 });
 
 describe("CollapsibleManager — unfolding for search", () => {

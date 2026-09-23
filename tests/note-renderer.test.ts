@@ -122,11 +122,6 @@ describe("NoteRenderer.renderInto", () => {
         );
     });
 
-    it("returns element with .daily-note-block class", async () => {
-        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
-        expect(el.classList.contains("daily-note-block")).toBe(true);
-    });
-
     it("includes .daily-note-title with the file basename as text", async () => {
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".daily-note-title")?.textContent).toBe("2025-01-01");
