@@ -159,6 +159,11 @@ export class DailyNoteService {
      * `Attachments/2026-07-07.png`: the date must round-trip back to this path.
      */
     private parseDate(file: TFile, format: DateFormat) {
+        // Cheaper than the strict parse below, and most vault files fail it.
+        // Obsidian normalizes an unset folder to "/", hence the trim.
+        const folder = normalizePath(format.folder).replace(/^\/+|\/+$/g, "");
+        if (folder && !normalizePath(file.path).startsWith(`${folder}/`)) return null;
+
         const date = this.parseBasename(file, format);
         if (!date) return null;
 
