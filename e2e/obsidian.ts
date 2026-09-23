@@ -342,6 +342,8 @@ function secondaryScreen(): Screen | null {
  * this call. A reload drops them, and the policy with them: callers re-arm.
  */
 async function guardFocus(page: Page): Promise<void> {
+    // The preload sets the bridge; a loaded machine attaches before it runs.
+    await page.waitForFunction(() => window.electron?.remote !== undefined, null, { polling: 10 });
     await page.evaluate(() => {
         const { remote } = window.electron;
         const win = remote.getCurrentWindow();
@@ -445,14 +447,36 @@ async function connectWithRetry(port: number): Promise<Browser> {
     throw new Error(`Could not attach to Obsidian on port ${port}: ${String(lastError)}`);
 }
 
+interface TestFixtures {
+    freshPluginState: void;
+}
+
 interface WorkerFixtures {
     obsidian: ObsidianApp;
     /** Set per project: every spec runs once as a desktop and once as a phone. */
     mobileLayout: boolean;
 }
 
+/** Undoes what an earlier test left in the shared instance; order is not fixed. */
+async function resetPluginState(page: Page): Promise<void> {
+    await page.evaluate(async (pluginId) => {
+        const plugin = window.app.plugins.plugins[pluginId];
+        await plugin.saveData({});
+        await plugin.loadSettings();
+        for (const file of window.app.vault.getMarkdownFiles()) plugin.collapseStore.clearForFile(file.path);
+    }, PLUGIN_ID);
+    await page.mouse.move(0, 0);
+}
+
 /** One Obsidian instance per worker; tests share it and open a fresh view each. */
-export const test = base.extend<object, WorkerFixtures>({
+export const test = base.extend<TestFixtures, WorkerFixtures>({
+    freshPluginState: [
+        async ({ obsidian }, use) => {
+            await resetPluginState(obsidian.page);
+            await use();
+        },
+        { auto: true },
+    ],
     mobileLayout: [false, { scope: "worker", option: true }],
     obsidian: [
         async ({ mobileLayout }, use: (app: ObsidianApp) => Promise<void>) => {

@@ -321,3 +321,15 @@ whose frontmatter is invisible reads as though the notes have none.
 
 **Rejected:** dropping the setting — a vault whose dailies carry bookkeeping
 frontmatter wants it off.
+
+## 2026-09-22 — e2e runs fully parallel on four workers
+
+**Decision:** `fullyParallel` with `workers: 4`; an auto fixture resets plugin
+settings, collapse state and the pointer before every test.
+
+**Why:** 3.7 min → 1.2 min. Each worker already owns its instance and vault;
+only state left by earlier tests in the same instance broke under reordering.
+
+**Rejected:** whole-file parallelism — `stream.spec.ts` holds most tests, so
+it only reached 2.3 min. More workers — the instances starve for CPU and
+timing tests slip.
