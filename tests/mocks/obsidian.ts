@@ -12,6 +12,7 @@ import type {
     App,
     EventRef,
     FileStats,
+    HoverLinkSource,
     KeymapContext,
     PluginManifest,
     Scope as AppScope,
@@ -22,7 +23,27 @@ import type {
     ViewState,
     WorkspaceLeaf as AppLeaf,
 } from "obsidian/obsidian";
-export type { App, Debouncer, EventRef, Hotkey, Modifier, PaneType, PluginManifest, View } from "obsidian/obsidian";
+export type {
+    App,
+    Debouncer,
+    EventRef,
+    Hotkey,
+    HoverLinkSource,
+    HoverParent,
+    HoverPopover,
+    Modifier,
+    PaneType,
+    PluginManifest,
+    View,
+} from "obsidian/obsidian";
+
+/** A link split into the note it names and its #heading or #^block, hash kept. */
+export function parseLinktext(linktext: string): { path: string; subpath: string } {
+    const hash = linktext.indexOf("#");
+    return hash === -1
+        ? { path: linktext, subpath: "" }
+        : { path: linktext.slice(0, hash), subpath: linktext.slice(hash) };
+}
 
 export function normalizePath(path: string): string {
     return path
@@ -262,6 +283,49 @@ export class MarkdownView {
     file: TFile | null = null;
 }
 
+/** A menu item as the page would show it; `click` runs its handler. */
+export class MenuItem {
+    title = "";
+    icon = "";
+    section = "";
+    private handler: ((evt: MouseEvent | KeyboardEvent) => unknown) | null = null;
+    setTitle(title: string) {
+        this.title = title;
+        return this;
+    }
+    setIcon(icon: string) {
+        this.icon = icon;
+        return this;
+    }
+    setSection(section: string) {
+        this.section = section;
+        return this;
+    }
+    onClick(handler: (evt: MouseEvent | KeyboardEvent) => unknown) {
+        this.handler = handler;
+        return this;
+    }
+    click() {
+        this.handler?.(new MouseEvent("click"));
+    }
+}
+
+/** Records its items and where it was shown, instead of drawing anything. */
+export class Menu {
+    readonly items: MenuItem[] = [];
+    shownAt: MouseEvent | null = null;
+    addItem(cb: (item: MenuItem) => unknown) {
+        const item = new MenuItem();
+        cb(item);
+        this.items.push(item);
+        return this;
+    }
+    showAtMouseEvent(evt: MouseEvent) {
+        this.shownAt = evt;
+        return this;
+    }
+}
+
 /** Obsidian's own modifier reading: Cmd/Ctrl or middle-click opens a tab. */
 export class Keymap {
     static isModEvent(evt?: UserEvent | null): "tab" | "split" | "window" | boolean {
@@ -432,6 +496,7 @@ export class Plugin {
     ribbonIcons: { icon: string; title: string; callback: (evt: MouseEvent) => unknown }[] = [];
     commands: Command[] = [];
     settingTabs: PluginSettingTab[] = [];
+    hoverLinkSources: Record<string, HoverLinkSource> = {};
     data: unknown = null;
 
     constructor(app: App, manifest: PluginManifest) {
@@ -444,6 +509,9 @@ export class Plugin {
     saveData(data: unknown) {
         this.data = data;
         return Promise.resolve();
+    }
+    registerHoverLinkSource(id: string, info: HoverLinkSource) {
+        this.hoverLinkSources[id] = info;
     }
     registerView(type: string, cb: (leaf: AppLeaf) => ItemView) {
         this.views[type] = cb;

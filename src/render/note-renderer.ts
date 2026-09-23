@@ -1,4 +1,17 @@
-import { App, Component, Keymap, MarkdownRenderer, MarkdownView, TFile, setIcon } from "obsidian";
+import {
+    App,
+    Component,
+    Keymap,
+    MarkdownRenderer,
+    MarkdownView,
+    Menu,
+    TFile,
+    parseLinktext,
+    setIcon,
+    type HoverParent,
+    type PaneType,
+    type View,
+} from "obsidian";
 import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
@@ -23,6 +36,27 @@ function fallbackIcon(key: string): string {
     if (name.includes("date") || name.includes("time")) return "calendar";
     return "file-text";
 }
+
+/**
+ * What a title's right-click offers ahead of Obsidian's file menu, in its own
+ * words. The file menu adds "Open in new window" itself, where windows exist.
+ */
+const OPEN_ITEMS: { title: string; icon: string; pane: PaneType }[] = [
+    { title: "Open in new tab", icon: "file-plus", pane: "tab" },
+    { title: "Open to the right", icon: "separator-vertical", pane: "split" },
+];
+
+/** A title or an internal link: something in the stream that points at a note. */
+interface NoteTarget {
+    /** Null for a link to a note not yet created. */
+    file: TFile | null;
+    /** Obsidian's name for where the file menu opened, which other plugins read. */
+    menuSource: string;
+    open(pane: PaneType | boolean): void;
+}
+
+/** The view the stream's gestures belong to; Page preview hangs popovers on it. */
+type HoverView = Component & HoverParent & Pick<View, "getViewType">;
 
 /** Marks the values whose pills search, so a click can tell them apart. */
 const TAG_VALUE_CLASS = "daily-note-tags-value";
@@ -167,11 +201,11 @@ export class NoteRenderer {
     private readonly titles = new WeakMap<HTMLElement, TFile>();
 
     /**
-     * One listener for the whole stream: a title per note would pile
-     * registrations on the component until it unloads.
+     * One listener per gesture for the whole stream: a title or link per
+     * note would pile registrations on the view until it closes.
      */
-    delegate(component: Component, root: HTMLElement): void {
-        component.registerDomEvent(root, "click", (evt) => {
+    delegate(view: HoverView, root: HTMLElement): void {
+        view.registerDomEvent(root, "click", (evt) => {
             // A click's target is the element under the pointer, never a text node.
             const target = evt.target as HTMLElement;
 
@@ -182,12 +216,70 @@ export class NoteRenderer {
                 return;
             }
 
-            const title = target.closest<HTMLElement>(".daily-note-title");
-            const file = title ? this.titles.get(title) : undefined;
-            if (!file) return;
+            const note = this.noteAt(target);
+            if (!note) return;
             evt.preventDefault();
-            this.openNote(file);
+            note.open(Keymap.isModEvent(evt));
         });
+
+        // A middle button fires auxclick, never click.
+        view.registerDomEvent(root, "auxclick", (evt) => {
+            const note = evt.button === 1 ? this.noteAt(evt.target as HTMLElement) : null;
+            if (!note) return;
+            evt.preventDefault();
+            note.open("tab");
+        });
+
+        view.registerDomEvent(root, "contextmenu", (evt) => {
+            const note = this.noteAt(evt.target as HTMLElement);
+            if (!note) return;
+            evt.preventDefault();
+            this.showNoteMenu(note, evt);
+        });
+
+        // Page preview decides from here whether to show, per its own settings.
+        view.registerDomEvent(root, "mouseover", (evt) => {
+            const link = this.linkAt(evt.target as HTMLElement);
+            if (!link) return;
+            this.app.workspace.trigger("hover-link", {
+                event: evt,
+                source: view.getViewType(),
+                hoverParent: view,
+                targetEl: link.el,
+                linktext: link.linktext,
+                sourcePath: link.sourcePath,
+            });
+        });
+    }
+
+    /** The note a title or an internal link under the pointer points at. */
+    private noteAt(target: HTMLElement): NoteTarget | null {
+        const title = target.closest<HTMLElement>(".daily-note-title");
+        const file = title ? this.titles.get(title) : undefined;
+        if (file) return { file, menuSource: "daily-notes-stream", open: (pane) => this.openNote(file, pane) };
+
+        const link = this.linkAt(target);
+        if (!link) return null;
+        const { linktext, sourcePath } = link;
+        const { path, subpath } = parseLinktext(linktext);
+        const linked = this.app.metadataCache.getFirstLinkpathDest(path, sourcePath);
+        return {
+            file: linked,
+            menuSource: "link-context-menu",
+            open: (pane) => {
+                if (!pane && linked && this.revealOpenNote(linked, subpath)) return;
+                this.openLink(linktext, sourcePath, pane);
+            },
+        };
+    }
+
+    /** An internal link, and the note it was written in, which resolves it. */
+    private linkAt(target: HTMLElement): { el: HTMLElement; linktext: string; sourcePath: string } | null {
+        const el = target.closest<HTMLElement>(".internal-link");
+        const linktext = el?.getAttribute("data-href");
+        const sourcePath = el?.closest<HTMLElement>(".daily-note-block")?.dataset.sourcePath;
+        if (!el || !linktext || !sourcePath) return null;
+        return { el, linktext, sourcePath };
     }
 
     /**
@@ -203,21 +295,64 @@ export class NoteRenderer {
         return pill?.textContent ?? null;
     }
 
-    private openNote(file: TFile): void {
-        const existing = this.app.workspace
-            .getLeavesOfType("markdown")
-            // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
-            .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
-        if (existing) {
-            void this.app.workspace.revealLeaf(existing);
-            return;
+    /** Where the note can open, then Obsidian's file menu for it once it exists. */
+    private showNoteMenu(note: NoteTarget, evt: MouseEvent): void {
+        const menu = new Menu();
+        for (const { title, icon, pane } of OPEN_ITEMS) {
+            menu.addItem((item) =>
+                item
+                    .setTitle(title)
+                    .setIcon(icon)
+                    .setSection("open")
+                    .onClick(() => note.open(pane))
+            );
         }
+        if (note.file) this.app.workspace.trigger("file-menu", menu, note.file, note.menuSource);
+        menu.showAtMouseEvent(evt);
+    }
+
+    /** A link to a note not yet created creates it, as Obsidian's links do. */
+    private openLink(linktext: string, sourcePath: string, pane: PaneType | boolean): void {
+        this.app.workspace.openLinkText(linktext, sourcePath, pane).catch((error) => {
+            console.error("DailyNotesStream: Failed to open link", error);
+        });
+    }
+
+    /**
+     * A plain click reuses a tab already showing the note; a chosen pane
+     * always gets its own, as Obsidian's links do.
+     */
+    private openNote(file: TFile, pane: PaneType | boolean): void {
+        if (!pane && this.revealOpenNote(file, "")) return;
         this.app.workspace
-            .getLeaf(false)
+            .getLeaf(pane)
             .openFile(file)
             .catch((error) => {
                 console.error("DailyNotesStream: Failed to open file", error);
             });
+    }
+
+    /**
+     * Brings forward a tab already showing the note, at the heading or block
+     * the link named; false when no tab shows it. The stream never navigates
+     * away, so this stands in for the reading view reusing its own tab.
+     */
+    private revealOpenNote(file: TFile, subpath: string): boolean {
+        const existing = this.app.workspace
+            .getLeavesOfType("markdown")
+            // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
+            .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
+        if (!existing) return false;
+        // Revealing brings the tab forward but leaves focus on the stream.
+        void this.app.workspace
+            .revealLeaf(existing)
+            .then(() => this.app.workspace.setActiveLeaf(existing, { focus: true }));
+        if (subpath) {
+            existing.openFile(file, { eState: { subpath } }).catch((error) => {
+                console.error("DailyNotesStream: Failed to open file", error);
+            });
+        }
+        return true;
     }
 
     private renderPropertyRow(container: HTMLElement, key: string, value: unknown): void {

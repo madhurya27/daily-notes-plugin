@@ -39,8 +39,17 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 ### Core
 
 - Notes newest-first, date headers correct. **[e2e]**
-- Clicking a header opens the original file.
+- Clicking a header opens the original file in a new tab, the stream still open. **[e2e]**
+- Mod-click opens a second tab even when the note is open; mod-alt-click splits. **[e2e]**
+- Middle-click on a header opens a new tab.
+- Right-click on a header shows the file menu, "Open in new window" once. **[e2e]**
 - `test-image.svg` renders in **2026-02-01**; `[[2026-01-15]]` navigates there and back.
+- Clicking a header or link whose note is already open focuses that tab, not a new one; `[[note#heading]]`
+  scrolls it to the heading. **[e2e]**
+- A link inside a note (**2026-02-01**, Evening) takes the header's gestures: mod-click, mod-alt-click, middle-click, right-click. **[e2e]**
+- Mod-hovering a link previews it **[e2e]**; Settings → Page preview lists "Daily notes stream", and turning
+  its Mod requirement off previews on plain hover.
+- Right-click on an unresolved link offers only the open items; opening one creates the note.
 - Scrolling to the bottom loads the next batch without duplicates. **[e2e]**
 - Tall window, short notes → loading continues past the first batch.
 
@@ -162,6 +171,7 @@ Checks:
 - Backgrounding and returning keeps position and keeps scrolling.
 - Editing a visible note elsewhere re-renders it in place.
 - Rotation reflows without clipping or losing position.
+- Long-press on a date header opens the file menu; "Open to the right" does something sensible on a phone.
 - No console errors (iOS: Safari → Develop; Android: `chrome://inspect`).
 
 iOS is the one that matters: Android's WebView is Chromium, so desktop plus emulation covers that engine.

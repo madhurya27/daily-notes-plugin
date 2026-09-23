@@ -428,3 +428,18 @@ A day spans retyping a heading; `mtime` needs no timer.
 - Expiry by last view — old notes keep valid state for years.
 - A size cap — bounds size, not staleness.
 - Frontmatter — every toggle rewrites the file.
+
+## 2026-09-23 — Titles and links take Obsidian's link gestures
+
+**Decision:** amends 2026-09-15. Titles and links open as Obsidian's links do:
+modifier clicks, file menu, Page preview on hover. One departure: a plain
+click focuses a tab already showing the note.
+
+**Why:** Obsidian's reading view replaces its own tab; the stream can't, so
+the API alone opens a new tab per click.
+
+**Rejected:**
+- A new tab per click — tabs of one note pile up.
+- A pencil button per note — the title does it.
+- Append to today's note — needs the inline editor 2026-09-15 rejects.
+- Rename and delete in the menu — not public API.
