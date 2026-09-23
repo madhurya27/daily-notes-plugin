@@ -1,5 +1,20 @@
 # TODO
 
+## Bugs
+From the 2026-09-23 code review. Ahead of everything in Open.
+
+- [ ] Startup admits what live events reject: `getAllDailyNotes()` recurses and keys by date, whatever the
+  extension, so `Daily/2024-01-01.png` can evict the `.md`, and `Daily/archive/2024-01-01.md` loads at startup
+  but not on create. `buildSorted` should apply `parseDate`'s round-trip.
+- [ ] Correcting broken settings does not recover the view: after `initialize()` throws, `stream.open()` never
+  ran, so the config-change `reload()` throws on the unset container.
+- [ ] Two stream views desync: they share `plugin.service`, so the second view's `insertSorted`/`removeSorted`
+  get -1 — a new note is missing, a deleted one stays in `state`, breaking pagination.
+- [ ] `jump-to-date` command logs "Failed to activate view"; the three copies of that catch want one function.
+- [ ] Smells: `captureAnchor`'s unused `containerEl`; the four vault-event registrations in `stream-view.ts`
+  share one shape; the sentinel margin is fixed px while the window's are viewports.
+- [ ] Collapse state of a heading or list item that no longer exists stays in localStorage while its note does.
+
 ## Open
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
