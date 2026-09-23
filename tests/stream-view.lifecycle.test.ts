@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../src/ui/stream-view";
 import { TFile, WorkspaceLeaf } from "./mocks/obsidian";
-import { asApp, flushPromises, makeApp, makePlugin, makeStubbedView, makeViewSetup } from "./stream-view-fixture";
+import {
+    asApp,
+    flushPromises,
+    makeApp,
+    makePlugin,
+    makeService,
+    makeStubbedView,
+    makeViewSetup,
+} from "./stream-view-fixture";
 
 describe("DailyNotesStreamView — view API", () => {
     let view: DailyNotesStreamView;
@@ -26,7 +34,7 @@ describe("DailyNotesStreamView — view API", () => {
         const plugin = makePlugin();
         const app = makeApp();
         app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { mood: "happy" } });
-        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin);
+        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, makeService());
 
         plugin.settings = { showProperties: true, propertiesCollapsed: false }; // as loadSettings() would
         const file = new TFile("Notes/2025-01-01.md");
@@ -57,27 +65,6 @@ describe("DailyNotesStreamView — refresh", () => {
         await view.refresh();
 
         expect(rebuild).toHaveBeenCalledOnce();
-    });
-});
-
-describe("DailyNotesStreamView — onOpen error path", () => {
-    let view: DailyNotesStreamView;
-
-    beforeEach(() => {
-        let plugin;
-        ({ view, plugin } = makeStubbedView());
-        plugin.service.initialize = vi.fn().mockImplementation(() => {
-            throw new Error("vault not ready");
-        });
-    });
-
-    it("resolves without throwing when service.initialize() throws", async () => {
-        await expect(view.onOpen()).resolves.toBeUndefined();
-    });
-
-    it("does not attach scroll observer when service.initialize() throws", async () => {
-        await view.onOpen();
-        expect(view["stream"]["scroll"].attach).not.toHaveBeenCalled();
     });
 });
 

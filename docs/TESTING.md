@@ -76,6 +76,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - A link click or text selection inside a header does not collapse it.
 - A parent bullet's chevron collapses its sub-bullets.
 - Two headings with the same text collapse independently.
+- Rename a collapsed heading: it returns expanded. A day later, on the note's next render, its old key is gone
+  from localStorage (DevTools → Application).
 - A task's checkbox sits on its label's line and ignores clicks: the file decides its state. **[e2e]**
 
 ### Keyboard and screen reader
@@ -106,6 +108,9 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - Renaming updates header and sort order, and keeps collapsed sections collapsed.
 - Deleting removes it.
 - A dated `.png` or an out-of-folder dated note: neither appears. **[e2e]**
+- A dated note in a subfolder the format does not name: absent at startup and on create.
+- Split the stream pane: a note created or deleted updates both.
+- Point the daily-note folder at a missing folder: the empty state; point it back and the notes return.
 - Changing the daily-note folder or date format in Obsidian's settings reloads the stream, without
   reopening the view. **[e2e]**
 

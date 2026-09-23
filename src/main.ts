@@ -1,49 +1,41 @@
 import { Plugin, WorkspaceLeaf } from "obsidian";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "./ui/stream-view";
 import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab } from "./settings";
-import { DailyNoteService } from "./notes/daily-note-service";
 import { CollapsibleStateStore } from "./render/collapse-store";
+import { DailyNoteService } from "./notes/daily-note-service";
+
+/** A ribbon click or command has no caller to reject to, so a failure is logged. */
+function logActivationFailure(activation: Promise<unknown>): void {
+    activation.catch((error) => console.error("DailyNotesStream: Failed to activate view", error));
+}
 
 export default class DailyNotesStreamPlugin extends Plugin {
     settings!: DailyNotesStreamSettings;
-    service!: DailyNoteService;
     collapseStore!: CollapsibleStateStore;
 
     async onload() {
         await this.loadSettings();
 
-        this.service = new DailyNoteService();
-        // initialize() is called lazily in onOpen() — not here, because
-        // getAllDailyNotes() throws if invoked before the vault is ready.
-
         this.collapseStore = new CollapsibleStateStore(this.app);
 
-        this.registerView(VIEW_TYPE_DAILY_NOTES_STREAM, (leaf) => new DailyNotesStreamView(leaf, this));
+        this.registerView(
+            VIEW_TYPE_DAILY_NOTES_STREAM,
+            (leaf) =>
+                new DailyNotesStreamView(leaf, this, new DailyNoteService(() => this.app.vault.getMarkdownFiles()))
+        );
 
-        this.addRibbonIcon("calendar-days", "Open daily notes stream", () => {
-            this.activateView().catch((error) => {
-                console.error("DailyNotesStream: Failed to activate view", error);
-            });
-        });
+        this.addRibbonIcon("calendar-days", "Open daily notes stream", () => logActivationFailure(this.activateView()));
 
         this.addCommand({
             id: "open-stream",
             name: "Open stream",
-            callback: () => {
-                this.activateView().catch((error) => {
-                    console.error("DailyNotesStream: Failed to activate view", error);
-                });
-            },
+            callback: () => logActivationFailure(this.activateView()),
         });
 
         this.addCommand({
             id: "jump-to-date",
             name: "Jump to date",
-            callback: () => {
-                this.promptJumpToDate().catch((error) => {
-                    console.error("DailyNotesStream: Failed to activate view", error);
-                });
-            },
+            callback: () => logActivationFailure(this.promptJumpToDate()),
         });
 
         this.addSettingTab(new DailyNotesStreamSettingTab(this.app, this));

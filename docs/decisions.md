@@ -403,3 +403,28 @@ fails before it runs; the real types keep the mock from drifting off the API.
 - Tests against the real types — the mock-only API (`new TFile(path)`, `Setting.created`)
   would need a cast at every use.
 - Turning off `no-explicit-any` for tests — it hid ~600 unchecked accesses.
+
+## 2026-09-23 — The note cache is built from the vault, not `getAllDailyNotes()`
+
+**Decision:** the cache keeps the vault's markdown files whose path round-trips
+through the format, as a live create does.
+
+**Why:** `getAllDailyNotes()` keys by date whatever the extension, so
+`2024-01-01.png` could evict that day's note, and it admits subfolders a create
+rejects. It was also all `initialize()` could throw from.
+
+**Rejected:** filtering its result — an evicted note is already gone.
+
+## 2026-09-23 — Stale collapse state is pruned a day after the note's last write
+
+**Decision:** a successful render forgets saved sections the note no longer
+has, once its `mtime` is 24 hours old. The properties key is kept.
+
+**Why:** daily notes are rarely renamed or deleted, so that cleanup never ran.
+A day spans retyping a heading; `mtime` needs no timer.
+
+**Rejected:**
+- Every render — `## Mee` on the way to `## Meeting` drops its state.
+- Expiry by last view — old notes keep valid state for years.
+- A size cap — bounds size, not staleness.
+- Frontmatter — every toggle rewrites the file.

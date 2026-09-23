@@ -16,14 +16,14 @@ function makeEl(rect: { top: number; bottom: number }): HTMLElement {
 describe("captureAnchor", () => {
     it("returns null when no notes are visible", () => {
         const scrollEl = makeEl({ top: 500, bottom: 900 });
-        const result = captureAnchor([], {} as HTMLElement, scrollEl, () => null);
+        const result = captureAnchor([], scrollEl, () => null);
         expect(result).toBeNull();
     });
 
     it("returns null when findElement returns null for all notes", () => {
         const files = [makeFile("Notes/a.md")];
         const scrollEl = makeEl({ top: 0, bottom: 500 });
-        const result = captureAnchor(files, {} as HTMLElement, scrollEl, () => null);
+        const result = captureAnchor(files, scrollEl, () => null);
         expect(result).toBeNull();
     });
 
@@ -37,7 +37,7 @@ describe("captureAnchor", () => {
         const elB = makeEl({ top: 150, bottom: 300 });
 
         const findElement = (f: TFile) => (f.path === "Notes/a.md" ? elA : elB);
-        const result = captureAnchor(files, {} as HTMLElement, scrollEl, findElement);
+        const result = captureAnchor(files, scrollEl, findElement);
 
         expect(result).not.toBeNull();
         expect(result!.file.path).toBe("Notes/b.md");
@@ -52,7 +52,7 @@ describe("captureAnchor", () => {
         const elA = makeEl({ top: 10, bottom: 200 });
         const elB = makeEl({ top: 210, bottom: 400 });
 
-        const result = captureAnchor(files, {} as HTMLElement, scrollEl, (f) => (f.path === "Notes/a.md" ? elA : elB));
+        const result = captureAnchor(files, scrollEl, (f) => (f.path === "Notes/a.md" ? elA : elB));
 
         expect(result!.file.path).toBe("Notes/a.md");
         expect(result!.relativeTopPx).toBe(10); // 10 - 0

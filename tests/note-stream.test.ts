@@ -6,7 +6,7 @@ import type { NoteWindowManager } from "../src/stream/note-window";
 import type { InfiniteScrollController } from "../src/stream/infinite-scroll";
 import type { DailyNoteService } from "../src/notes/daily-note-service";
 import type { CollapsibleStateStore } from "../src/render/collapse-store";
-import { flushPromises, makePlugin } from "./stream-view-fixture";
+import { flushPromises, makePlugin, makeService } from "./stream-view-fixture";
 
 type FakeWindow = Mocked<NoteWindowManager>;
 type FakeScroll = Mocked<InfiniteScrollController>;
@@ -71,9 +71,8 @@ let infiniteScroll: FakeScroll;
 
 beforeEach(() => {
     Notice.reset();
-    const plugin = makePlugin();
-    service = vi.mocked(plugin.service);
-    collapseStore = plugin.collapseStore;
+    service = vi.mocked(makeService());
+    collapseStore = makePlugin().collapseStore;
     stream = new NoteStream(service, collapseStore, {} as NoteRenderer);
     noteWindow = fakes.windows.at(-1)!;
     infiniteScroll = fakes.scrolls.at(-1)!;

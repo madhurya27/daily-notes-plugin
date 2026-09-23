@@ -4,6 +4,7 @@ import { JumpToDateModal } from "./jump-to-date-modal";
 import { NoteRenderer } from "../render/note-renderer";
 import { CollapsibleManager } from "../render/collapsible";
 import { NoteStream } from "../stream/note-stream";
+import type { DailyNoteService } from "../notes/daily-note-service";
 import { StreamSearch } from "../stream/stream-search";
 import { SearchHighlighter } from "../render/search-highlights";
 import { SearchBar } from "./search-bar";
@@ -23,7 +24,12 @@ export class DailyNotesStreamView extends ItemView {
     private search: StreamSearch;
     private searchBar: SearchBar;
 
-    constructor(leaf: WorkspaceLeaf, plugin: DailyNotesStreamPlugin) {
+    /** `service` is this view's own (CLAUDE.md, Invariants). */
+    constructor(
+        leaf: WorkspaceLeaf,
+        plugin: DailyNotesStreamPlugin,
+        private readonly service: DailyNoteService
+    ) {
         super(leaf);
         this.plugin = plugin;
         this.collapsible = new CollapsibleManager(plugin.collapseStore);
@@ -36,11 +42,11 @@ export class DailyNotesStreamView extends ItemView {
             () => plugin.settings,
             highlighter
         );
-        this.stream = new NoteStream(plugin.service, plugin.collapseStore, this.renderer);
+        this.stream = new NoteStream(this.service, plugin.collapseStore, this.renderer);
 
         this.search = new StreamSearch(
             {
-                notes: () => plugin.service.getBatch(0, plugin.service.length),
+                notes: () => this.service.getBatch(0, this.service.length),
                 read: (file) => this.app.vault.cachedRead(file),
             },
             this.stream,
@@ -85,22 +91,11 @@ export class DailyNotesStreamView extends ItemView {
         this.registerEvent(this.app.workspace.on("css-change", syncReadableWidth));
 
         // Obsidian's daily-notes format and folder decide what the stream even
-        // contains, and nothing re-reads them: registered before initialize() so
-        // that correcting broken settings recovers the view.
+        // contains, and nothing re-reads them.
         this.registerEvent(onVaultConfigChange(this.app, () => this.stream.onDailyNoteSettingsChange()));
 
-        // Not in onload(): getAllDailyNotes() throws if the vault or the configured
-        // daily-notes folder is not ready.
-        try {
-            this.plugin.service.initialize();
-        } catch (e) {
-            console.error("DailyNotesStream: Failed to initialize note service", e);
-            streamContainerEl.createDiv({
-                cls: "daily-notes-empty-state",
-                text: "Could not load daily notes. Please check your daily notes settings (folder and date format).",
-            });
-            return;
-        }
+        // Not in onload(): the vault may not have indexed its files yet.
+        this.service.initialize();
 
         this.collapsible.delegate(this, streamContainerEl);
         this.renderer.delegate(this, streamContainerEl);
@@ -121,30 +116,11 @@ export class DailyNotesStreamView extends ItemView {
 
         // metadataCache "changed", not vault "modify": the cache lags the write,
         // and the renderer reads it for frontmatter offsets and properties.
-        this.registerEvent(
-            this.app.metadataCache.on("changed", (f) => {
-                this.stream.onFileModify(f);
-                this.refreshSearch();
-            })
-        );
-        this.registerEvent(
-            this.app.vault.on("create", (f) => {
-                this.stream.onFileCreate(f);
-                this.refreshSearch();
-            })
-        );
-        this.registerEvent(
-            this.app.vault.on("delete", (f) => {
-                this.stream.onFileDelete(f);
-                this.refreshSearch();
-            })
-        );
-        this.registerEvent(
-            this.app.vault.on("rename", (f, oldPath) => {
-                this.stream.onFileRename(f, oldPath);
-                this.refreshSearch();
-            })
-        );
+        const { metadataCache, vault } = this.app;
+        this.registerEvent(metadataCache.on("changed", (f) => this.applyChange(() => this.stream.onFileModify(f))));
+        this.registerEvent(vault.on("create", (f) => this.applyChange(() => this.stream.onFileCreate(f))));
+        this.registerEvent(vault.on("delete", (f) => this.applyChange(() => this.stream.onFileDelete(f))));
+        this.registerEvent(vault.on("rename", (f, old) => this.applyChange(() => this.stream.onFileRename(f, old))));
 
         this.addAction("calendar-1", "Jump to date", () => this.promptJumpToDate());
         this.addAction("search", "Search", () => this.searchBar.open());
@@ -172,11 +148,17 @@ export class DailyNotesStreamView extends ItemView {
         return false;
     }
 
+    /** Applies a vault change to the stream; an open search re-reads the notes after it. */
+    private applyChange(toStream: () => void): void {
+        toStream();
+        this.refreshSearch();
+    }
+
     private readonly refreshSearch = debounce(() => void this.search.refresh(), SEARCH_REFRESH_DEBOUNCE_MS, true);
 
     /** Asks for a date, then jumps to it. */
     promptJumpToDate(): void {
-        new JumpToDateModal(this.app, this.plugin.service, (target) => void this.stream.jumpToDate(target)).open();
+        new JumpToDateModal(this.app, this.service, (target) => void this.stream.jumpToDate(target)).open();
     }
 
     refresh(): Promise<void> {

@@ -15,7 +15,6 @@ export interface AnchorSnapshot {
  */
 export function captureAnchor(
     notes: readonly TFile[],
-    containerEl: HTMLElement,
     scrollEl: HTMLElement,
     findElement: (file: TFile) => HTMLElement | null
 ): AnchorSnapshot | null {

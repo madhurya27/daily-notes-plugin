@@ -36,8 +36,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   `vault` "raw" event behind `onVaultConfigChange`, the core global-search plugin and the `search` view's
   `setQuery` behind `openTagSearch`, `metadataTypeManager` behind `getPropertyIcon`, `hotkeyManager` behind
   `getSearchHotkeys`).
-- `notes/daily-note-service.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including
-  nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
+- `notes/daily-note-service.ts` — the vault's daily notes, nested folders (`YYYY/MM/YYYY-MM-DD`) included,
+  newest-first in batches.
 - `ui/stream-view.ts` — `ItemView` subclass; wires vault events, links and header actions to the stream.
 - `ui/jump-to-date-modal.ts` — the `SuggestModal` behind the header action and the `jump-to-date` command;
   offers the dates the vault has notes for, in the vault's own format.
@@ -75,6 +75,8 @@ Traps that span files, so no single file's comments can hold them.
   pagination — notes skipped or duplicated on further scroll. `create`/`delete`/`rename` must route through
   `service.insertSorted`/`removeSorted`, and a note is rendered only when its global index falls in
   `[0, offset)`.
+- **Each view owns its `DailyNoteService`.** Every view gets every vault event; a shared cache hands the second
+  view's `insertSorted` a -1.
 - **`rename` gets `(file, oldPath)`.** Obsidian mutates `TFile` in place, so the DOM's `data-source-path` is the
   *old* path: look the element up by `oldPath`, remove from cache and state by `file.path`.
 - **Re-render is driven by `metadataCache.on("changed")`, not `vault.on("modify")`** — the cache lags the write,

@@ -48,6 +48,44 @@ describe("CollapsibleStateStore", () => {
         expect(store.collapsedOr("file.md", "properties", true)).toBe(false);
     });
 
+    describe("retainOnly", () => {
+        it("forgets the sections not kept, and keeps the rest", () => {
+            store.setCollapsed("file.md", "meeting", true);
+            store.setCollapsed("file.md", "old-heading", true);
+
+            store.retainOnly("file.md", new Set(["meeting"]));
+
+            expect(store.isCollapsed("file.md", "meeting")).toBe(true);
+            expect(app.loadLocalStorage("collapse:file.md:old-heading")).toBeNull();
+            expect(app.loadLocalStorage("collapse-idx:file.md")).toEqual(["meeting"]);
+        });
+
+        it("drops the index once no section is left", () => {
+            store.setCollapsed("file.md", "old-heading", true);
+
+            store.retainOnly("file.md", new Set());
+
+            expect(app.loadLocalStorage("collapse-idx:file.md")).toBeNull();
+        });
+
+        it("writes nothing when every stored section is kept", () => {
+            store.setCollapsed("file.md", "meeting", true);
+            app.saveLocalStorage.mockClear();
+
+            store.retainOnly("file.md", new Set(["meeting", "unstored"]));
+
+            expect(app.saveLocalStorage).not.toHaveBeenCalled();
+        });
+
+        it("leaves other files alone", () => {
+            store.setCollapsed("other.md", "old-heading", true);
+
+            store.retainOnly("file.md", new Set());
+
+            expect(store.isCollapsed("other.md", "old-heading")).toBe(true);
+        });
+    });
+
     it("clearForFile removes all entries for that file", () => {
         store.setCollapsed("file.md", "heading-1", true);
         store.setCollapsed("file.md", "heading-2", true);

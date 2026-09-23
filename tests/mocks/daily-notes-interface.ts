@@ -1,17 +1,12 @@
 import { TFile } from "./obsidian";
 import type { IDailyNoteSettings } from "obsidian-daily-notes-interface/dist/index";
 
-import moment from "moment";
-
-let mockNotes: Record<string, TFile> = {};
+/** The vault's files, whatever their extension. */
+let mockFiles: TFile[] = [];
 let mockSettings: IDailyNoteSettings = {
     format: "YYYY-MM-DD",
     folder: "Notes",
 };
-
-export function getAllDailyNotes() {
-    return mockNotes;
-}
 
 let settingsCallCount = 0;
 
@@ -29,18 +24,15 @@ export function __resetSettingsCallCount() {
 }
 
 // Helpers to setup test state
-export function __setMockNotes(notes: string[]) {
-    mockNotes = {};
-    for (const path of notes) {
-        mockNotes[path] = new TFile(path);
-    }
+export function __setMockNotes(paths: string[]) {
+    mockFiles = paths.map((path) => new TFile(path));
+}
+
+/** What `Vault.getMarkdownFiles()` would return for them. */
+export function __mockMarkdownFiles(): TFile[] {
+    return mockFiles.filter((file) => file.extension === "md");
 }
 
 export function __setMockSettings(settings: IDailyNoteSettings) {
     mockSettings = settings;
-}
-
-export function getDateFromFile(file: TFile, granularity: string) {
-    const m = moment(file.basename, mockSettings.format, true);
-    return m.isValid() ? m : null;
 }
