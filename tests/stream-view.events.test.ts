@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { DailyNotesStreamView } from "../src/DailyNotesStreamView";
+import { DailyNotesStreamView } from "../src/ui/stream-view";
 import { TFile } from "./mocks/obsidian";
-import { StreamState } from "../src/StreamState";
-import { flushPromises, makeApp, makeViewSetup } from "./streamViewFixture";
+import { StreamState } from "../src/stream/stream-state";
+import { flushPromises, makeApp, makeViewSetup } from "./stream-view-fixture";
 
 describe("DailyNotesStreamView — vault event handlers", () => {
     let plugin: Awaited<ReturnType<typeof makeViewSetup>>["plugin"];

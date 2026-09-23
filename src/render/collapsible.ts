@@ -1,5 +1,5 @@
 import { Component, setIcon } from "obsidian";
-import { CollapsibleStateStore } from "./CollapsibleStateStore";
+import { CollapsibleStateStore } from "./collapse-store";
 
 function slugify(text: string): string {
     return text

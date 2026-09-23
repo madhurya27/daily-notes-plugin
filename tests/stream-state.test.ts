@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { StreamState } from "../src/StreamState";
+import { StreamState } from "../src/stream/stream-state";
 import { TFile } from "obsidian";
 
 function makeFile(path: string): TFile {

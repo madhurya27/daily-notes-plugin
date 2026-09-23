@@ -12,8 +12,6 @@ review. Three things it cannot check, to confirm by hand before submitting:
 - `normalizePath` guards the constructed path in `DailyNoteService`.
 - A clean clone installs from the frozen lockfile and builds.
 
-Open nit, not blocking: the "organize your code base using folders" guideline — `src/` is eleven flat files.
-
 **Blocking:** run the `docs/TESTING.md` checklist on iOS or Android. `isDesktopOnly: false` is a promise no
 static check can keep.
 

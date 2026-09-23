@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { App } from "obsidian";
-import { getPropertyIcon, getReadableLineLength, onVaultConfigChange, openTagSearch } from "../src/obsidianInternals";
+import { getPropertyIcon, getReadableLineLength, onVaultConfigChange, openTagSearch } from "../src/obsidian-internals";
 
 /** Builds an App-shaped object; `config` is the internal vault config under test. */
 const makeApp = (config?: unknown): App => ({ vault: { config } }) as unknown as App;

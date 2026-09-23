@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { CollapsibleManager } from "../src/CollapsibleManager";
-import type { CollapsibleStateStore } from "../src/CollapsibleStateStore";
+import { CollapsibleManager } from "../src/render/collapsible";
+import type { CollapsibleStateStore } from "../src/render/collapse-store";
 
 function makeStore(collapsedByDefault = false): CollapsibleStateStore {
     return {

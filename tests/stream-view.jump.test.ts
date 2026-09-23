@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { DailyNotesStreamView } from "../src/DailyNotesStreamView";
+import { DailyNotesStreamView } from "../src/ui/stream-view";
 import { Notice, TFile, moment } from "./mocks/obsidian";
-import { JumpToDateModal } from "../src/JumpToDateModal";
-import { makePlugin, makeViewSetup } from "./streamViewFixture";
+import { JumpToDateModal } from "../src/ui/jump-to-date-modal";
+import { makePlugin, makeViewSetup } from "./stream-view-fixture";
 
 /** 30 notes, newest first, one per day back from 2025-01-30. */
 function makeNotes(): TFile[] {

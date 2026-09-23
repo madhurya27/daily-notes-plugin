@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { DailyNoteService } from "../src/DailyNoteService";
+import { DailyNoteService } from "../src/notes/daily-note-service";
 import {
     __setMockNotes,
     __setMockSettings,

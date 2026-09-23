@@ -1,12 +1,12 @@
 import { Debouncer, Notice, TFile, TAbstractFile, debounce } from "obsidian";
-import type { DailyNoteService, Moment } from "./DailyNoteService";
-import type { CollapsibleStateStore } from "./CollapsibleStateStore";
-import type { NoteRenderer } from "./NoteRenderer";
-import { StreamState } from "./StreamState";
-import { StreamBlocks } from "./StreamBlocks";
-import { InfiniteScrollController } from "./InfiniteScrollController";
-import { NoteWindowManager } from "./NoteWindowManager";
-import { captureAnchor, restoreAnchor, scrollToTop, type StreamLayout } from "./ScrollAnchorManager";
+import type { DailyNoteService, Moment } from "../notes/daily-note-service";
+import type { CollapsibleStateStore } from "../render/collapse-store";
+import type { NoteRenderer } from "../render/note-renderer";
+import { StreamState } from "./stream-state";
+import { StreamBlocks } from "./stream-blocks";
+import { InfiniteScrollController } from "./infinite-scroll";
+import { NoteWindowManager } from "./note-window";
+import { captureAnchor, restoreAnchor, scrollToTop, type StreamLayout } from "./scroll-position";
 
 /** Obsidian autosaves as you type; one render per save is wasted work. */
 const MODIFY_DEBOUNCE_MS = 300;

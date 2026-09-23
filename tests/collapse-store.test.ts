@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { CollapsibleStateStore } from "../src/CollapsibleStateStore";
+import { CollapsibleStateStore } from "../src/render/collapse-store";
 
 function makeApp() {
     const storage = new Map<string, unknown>();

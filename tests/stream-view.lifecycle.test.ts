@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { DailyNotesStreamView } from "../src/DailyNotesStreamView";
+import { DailyNotesStreamView } from "../src/ui/stream-view";
 import { TFile, WorkspaceLeaf } from "./mocks/obsidian";
-import { flushPromises, makeApp, makePlugin, makeStubbedView, makeViewSetup } from "./streamViewFixture";
+import { flushPromises, makeApp, makePlugin, makeStubbedView, makeViewSetup } from "./stream-view-fixture";
 
 describe("DailyNotesStreamView — view API", () => {
     let view: DailyNotesStreamView;

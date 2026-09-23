@@ -95,7 +95,7 @@ instant it is scrolled to, and the renders that displace it land after.
 
 **Decision:** watch the undeclared `vault.on("raw")` event, filtered to
 `vault.configDir`, and rebuild the cache when Obsidian's daily-note format or
-folder actually changed. Isolated in `src/obsidianInternals.ts`.
+folder actually changed. Isolated in `src/obsidian-internals.ts`.
 
 **Why:** the format decides what counts as a daily note; nothing re-read it
 after `onOpen()`. No public event announces a core-plugin settings change, and
@@ -298,7 +298,7 @@ offset read off Obsidian's own chrome.
 
 **Decision:** clicking a tag in the stream — inline in the note or as a pill in
 the properties panel — opens Obsidian's search on `tag:#name`, through the
-core global-search plugin reached by id in `src/obsidianInternals.ts`.
+core global-search plugin reached by id in `src/obsidian-internals.ts`.
 
 **Why:** a tag is a link everywhere else in Obsidian; in the stream it was
 inert. No public API exposes the search pane, so the core plugin is reached by
@@ -350,5 +350,19 @@ A tag/header filter — core search already filters by tag and section.
 A hardcoded Cmd/Ctrl+F — ignores a user who rebound search. A command of our
 own — a second hotkey to set for the same intent.
 
-The binding is read through `hotkeyManager` in `src/obsidianInternals.ts` on
+The binding is read through `hotkeyManager` in `src/obsidian-internals.ts` on
 each keydown, so a rebind applies at once; without it, Mod+F.
+
+## 2026-09-23 — Kebab-case files, grouped into folders
+
+**Decision:** every `.ts` file in `src/`, `tests/` and `e2e/` is kebab-case;
+`src/` groups them into `ui/`, `stream/`, `render/` and `notes/`. Class names
+are unchanged. `tests/compliance.test.ts` enforces the case.
+
+**Why:** Obsidian's plugin guidelines ask for folders once there is more than
+one `.ts` file, and the official sample plugin and Minimal Settings name files
+in kebab-case. A single case needs no judgement to follow, so a test can hold it.
+
+**Rejected:** PascalCase for files exporting a class — nothing can check it,
+and it had already drifted. A lint plugin for the rule — the compliance test
+already reads every file.

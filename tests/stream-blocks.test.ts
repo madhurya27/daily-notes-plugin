@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { StreamBlocks } from "../src/StreamBlocks";
+import { StreamBlocks } from "../src/stream/stream-blocks";
 
 describe("StreamBlocks", () => {
     let container: HTMLElement;

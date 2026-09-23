@@ -1,7 +1,7 @@
 import { App, Component, Keymap, MarkdownRenderer, MarkdownView, TFile, setIcon } from "obsidian";
-import { CollapsibleManager } from "./CollapsibleManager";
-import { getPropertyIcon, openTagSearch } from "./obsidianInternals";
-import type { DailyNotesStreamSettings } from "./settings";
+import { CollapsibleManager } from "./collapsible";
+import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
+import type { DailyNotesStreamSettings } from "../settings";
 
 /** Reserved key for the properties panel; a heading slug can never contain ":". */
 const PROPERTIES_SECTION_KEY = ":properties";

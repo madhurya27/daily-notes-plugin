@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { JumpToDateModal, JUMP_SUGGESTION_LIMIT } from "../src/JumpToDateModal";
-import { DailyNoteService } from "../src/DailyNoteService";
+import { JumpToDateModal, JUMP_SUGGESTION_LIMIT } from "../src/ui/jump-to-date-modal";
+import { DailyNoteService } from "../src/notes/daily-note-service";
 import { __setMockNotes, __setMockSettings } from "obsidian-daily-notes-interface";
 import { moment } from "obsidian";
-import { makeApp } from "./streamViewFixture";
+import { makeApp } from "./stream-view-fixture";
 
 describe("JumpToDateModal", () => {
     let onSubmit: ReturnType<typeof vi.fn>;

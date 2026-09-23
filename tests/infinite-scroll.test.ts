@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { InfiniteScrollController } from "../src/InfiniteScrollController";
+import { InfiniteScrollController } from "../src/stream/infinite-scroll";
 
 describe("InfiniteScrollController", () => {
     let mockObserve: ReturnType<typeof vi.fn>;

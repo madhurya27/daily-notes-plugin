@@ -28,17 +28,28 @@ Screenshots need both variables: without `E2E_SHOW_WINDOW` the window is hidden,
 
 Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 
-- `src/main.ts` — plugin lifecycle; registers view, ribbon icon, command, settings tab.
-- `src/DailyNoteService.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
-- `src/DailyNotesStreamView.ts` — `ItemView` subclass; wires vault events, links and header actions to the stream.
-- `src/NoteStream.ts` — the stream's contents: batches, vault-event updates, jumps, rebuilds, all through one queue.
-- `src/StreamBlocks.ts` — where blocks sit: the path→block index, placement ahead of the sentinel, the empty state.
-- `src/JumpToDateModal.ts` — the `SuggestModal` behind the header action and the `jump-to-date` command; offers the dates the vault has notes for, in the vault's own format.
-- `src/NoteWindowManager.ts` — renders a block near the viewport, empties it well past; owns each note's `Component`.
-- `src/obsidianInternals.ts` — the single place unsupported internals are read (`getReadableLineLength`, the
+Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
+
+- `main.ts` — plugin lifecycle; registers view, ribbon icon, command, settings tab.
+- `settings.ts` — settings interface, defaults, `PluginSettingTab`.
+- `obsidian-internals.ts` — the single place unsupported internals are read (`getReadableLineLength`, the
   `vault` "raw" event behind `onVaultConfigChange`, the core global-search plugin and the `search` view's
   `setQuery` behind `openTagSearch`, `metadataTypeManager` behind `getPropertyIcon`).
-- `src/settings.ts` — settings interface, defaults, `PluginSettingTab`.
+- `notes/daily-note-service.ts` — fetches and parses daily notes via `obsidian-daily-notes-interface`, including
+  nested folder formats (`YYYY/MM/YYYY-MM-DD`); returns batches sorted newest-first.
+- `ui/stream-view.ts` — `ItemView` subclass; wires vault events, links and header actions to the stream.
+- `ui/jump-to-date-modal.ts` — the `SuggestModal` behind the header action and the `jump-to-date` command;
+  offers the dates the vault has notes for, in the vault's own format.
+- `stream/note-stream.ts` — the stream's contents: batches, vault-event updates, jumps, rebuilds, all through
+  one queue.
+- `stream/stream-blocks.ts` — where blocks sit: the path→block index, placement ahead of the sentinel, the
+  empty state.
+- `stream/note-window.ts` — renders a block near the viewport, empties it well past; owns each note's
+  `Component`.
+- `stream/` also holds the loaded range (`stream-state.ts`), the sentinel (`infinite-scroll.ts`) and scroll
+  anchoring (`scroll-position.ts`).
+- `render/` — a note's markdown and properties (`note-renderer.ts`), collapsible sections (`collapsible.ts`)
+  and their persisted state (`collapse-store.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
 `obsidian-daily-notes-interface` from `tests/mocks/`.
@@ -78,7 +89,7 @@ Traps that span files, so no single file's comments can hold them.
 
 Tag must equal the manifest version exactly, no leading `v`; `pnpm version` writes every file through
 `version-bump.mjs`. The workflow gates on format, lint and coverage before drafting the release.
-`tests/releaseWorkflow.test.ts` guards its shape.
+`tests/release-workflow.test.ts` guards its shape.
 
 ## Documentation
 

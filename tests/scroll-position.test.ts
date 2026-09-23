@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { captureAnchor, restoreAnchor, scrollToTop } from "../src/ScrollAnchorManager";
+import { captureAnchor, restoreAnchor, scrollToTop } from "../src/stream/scroll-position";
 import { TFile } from "obsidian";
 
 function makeFile(path: string): TFile {

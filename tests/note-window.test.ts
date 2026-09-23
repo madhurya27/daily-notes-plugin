@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Component, TFile } from "obsidian";
-import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX } from "../src/NoteWindowManager";
+import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX } from "../src/stream/note-window";
 
 /**
  * The two observers, by the rootMargin they were constructed with: the render

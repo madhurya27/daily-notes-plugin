@@ -1,5 +1,5 @@
 import { App, ButtonComponent, SuggestModal, moment } from "obsidian";
-import type { DailyNoteService, Moment } from "./DailyNoteService";
+import type { DailyNoteService, Moment } from "../notes/daily-note-service";
 
 /** The one format every reader can fall back on, whatever their vault uses. */
 const ISO_FORMAT = "YYYY-MM-DD";

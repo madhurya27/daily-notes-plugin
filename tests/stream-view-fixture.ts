@@ -1,9 +1,9 @@
 import { vi } from "vitest";
-import { DailyNotesStreamView } from "../src/DailyNotesStreamView";
+import { DailyNotesStreamView } from "../src/ui/stream-view";
 import { Component, WorkspaceLeaf } from "./mocks/obsidian";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
-import { CollapsibleStateStore } from "../src/CollapsibleStateStore";
-import { StreamState } from "../src/StreamState";
+import { CollapsibleStateStore } from "../src/render/collapse-store";
+import { StreamState } from "../src/stream/stream-state";
 
 /** Minimal plugin stub — satisfies DailyNotesStreamView's constructor needs. */
 export function makePlugin() {

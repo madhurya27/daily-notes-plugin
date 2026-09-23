@@ -1,5 +1,5 @@
 import { Component, TFile } from "obsidian";
-import type { NoteRenderer } from "./NoteRenderer";
+import type { NoteRenderer } from "../render/note-renderer";
 
 /**
  * What a block reserves before this vault has measured anything. A guess only

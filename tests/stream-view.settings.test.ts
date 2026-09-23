@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { TFile } from "./mocks/obsidian";
-import { makeApp, makeViewSetup } from "./streamViewFixture";
+import { makeApp, makeViewSetup } from "./stream-view-fixture";
 
 const CONFIG_FILE = ".obsidian/daily-notes.json";
 

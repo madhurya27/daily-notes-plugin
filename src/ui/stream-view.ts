@@ -1,10 +1,10 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
-import type DailyNotesStreamPlugin from "./main";
-import { JumpToDateModal } from "./JumpToDateModal";
-import { NoteRenderer } from "./NoteRenderer";
-import { CollapsibleManager } from "./CollapsibleManager";
-import { NoteStream } from "./NoteStream";
-import { getReadableLineLength, onVaultConfigChange } from "./obsidianInternals";
+import type DailyNotesStreamPlugin from "../main";
+import { JumpToDateModal } from "./jump-to-date-modal";
+import { NoteRenderer } from "../render/note-renderer";
+import { CollapsibleManager } from "../render/collapsible";
+import { NoteStream } from "../stream/note-stream";
+import { getReadableLineLength, onVaultConfigChange } from "../obsidian-internals";
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
 

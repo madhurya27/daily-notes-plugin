@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { NoteRenderer } from "../src/NoteRenderer";
+import { NoteRenderer } from "../src/render/note-renderer";
 import { Component, MarkdownView, TFile } from "obsidian";
-import { CollapsibleManager } from "../src/CollapsibleManager";
-import { CollapsibleStateStore } from "../src/CollapsibleStateStore";
+import { CollapsibleManager } from "../src/render/collapsible";
+import { CollapsibleStateStore } from "../src/render/collapse-store";
 import type { DailyNotesStreamSettings } from "../src/settings";
 
 // ---------------------------------------------------------------------------
