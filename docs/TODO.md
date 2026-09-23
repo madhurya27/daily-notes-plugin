@@ -3,8 +3,6 @@
 ## Bugs
 From the 2026-09-23 code review. Ahead of everything in Open.
 
-- [ ] Smells: `captureAnchor`'s unused `containerEl`; the four vault-event registrations in `stream-view.ts`
-  share one shape; the sentinel margin is fixed px while the window's are viewports.
 - [ ] Collapse state of a heading or list item that no longer exists stays in localStorage while its note does.
 
 ## Open

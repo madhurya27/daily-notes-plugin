@@ -120,30 +120,11 @@ export class DailyNotesStreamView extends ItemView {
 
         // metadataCache "changed", not vault "modify": the cache lags the write,
         // and the renderer reads it for frontmatter offsets and properties.
-        this.registerEvent(
-            this.app.metadataCache.on("changed", (f) => {
-                this.stream.onFileModify(f);
-                this.refreshSearch();
-            })
-        );
-        this.registerEvent(
-            this.app.vault.on("create", (f) => {
-                this.stream.onFileCreate(f);
-                this.refreshSearch();
-            })
-        );
-        this.registerEvent(
-            this.app.vault.on("delete", (f) => {
-                this.stream.onFileDelete(f);
-                this.refreshSearch();
-            })
-        );
-        this.registerEvent(
-            this.app.vault.on("rename", (f, oldPath) => {
-                this.stream.onFileRename(f, oldPath);
-                this.refreshSearch();
-            })
-        );
+        const { metadataCache, vault } = this.app;
+        this.registerEvent(metadataCache.on("changed", (f) => this.applyChange(() => this.stream.onFileModify(f))));
+        this.registerEvent(vault.on("create", (f) => this.applyChange(() => this.stream.onFileCreate(f))));
+        this.registerEvent(vault.on("delete", (f) => this.applyChange(() => this.stream.onFileDelete(f))));
+        this.registerEvent(vault.on("rename", (f, old) => this.applyChange(() => this.stream.onFileRename(f, old))));
 
         this.addAction("calendar-1", "Jump to date", () => this.promptJumpToDate());
         this.addAction("search", "Search", () => this.searchBar.open());
@@ -169,6 +150,12 @@ export class DailyNotesStreamView extends ItemView {
         if (!getSearchHotkeys(this.app).some((hotkey) => matchesHotkey(evt, hotkey))) return undefined;
         this.searchBar.open();
         return false;
+    }
+
+    /** Applies a vault change to the stream; an open search re-reads the notes after it. */
+    private applyChange(toStream: () => void): void {
+        toStream();
+        this.refreshSearch();
     }
 
     private readonly refreshSearch = debounce(() => void this.search.refresh(), SEARCH_REFRESH_DEBOUNCE_MS, true);
