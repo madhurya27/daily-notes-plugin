@@ -39,6 +39,36 @@ test.describe("search the stream", () => {
         await expect(page.locator(".prompt")).toBeVisible();
     });
 
+    // The stream caches the binding and re-reads it on config writes, so this
+    // proves a rebind saves under the config dir and the stream hears it.
+    test("follows a rebind of the search hotkey while open", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+
+        // What the Hotkeys settings tab does when the reader records a chord.
+        await page.evaluate(async () => {
+            const { hotkeyManager } = window.app;
+            hotkeyManager.setHotkeys("editor:open-search", [{ modifiers: ["Mod", "Shift"], key: "J" }]);
+            await hotkeyManager.save();
+        });
+        try {
+            await expect(async () => {
+                await page.keyboard.press("ControlOrMeta+Shift+J");
+                await expect(page.locator(".daily-notes-search input")).toBeFocused({ timeout: 500 });
+            }).toPass();
+
+            await page.keyboard.press("Escape");
+            await page.keyboard.press("ControlOrMeta+f");
+            await expect(page.locator(".daily-notes-search input")).not.toBeFocused();
+        } finally {
+            await page.evaluate(async () => {
+                const { hotkeyManager } = window.app;
+                hotkeyManager.removeHotkeys("editor:open-search");
+                await hotkeyManager.save();
+            });
+        }
+    });
+
     test("counts matching notes, not matches", async ({ obsidian }) => {
         const { page } = obsidian;
         await openStream(page);

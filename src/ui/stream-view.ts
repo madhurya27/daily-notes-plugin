@@ -1,4 +1,4 @@
-import { ItemView, Scope, WorkspaceLeaf, debounce, type HoverParent, type HoverPopover } from "obsidian";
+import { ItemView, Scope, WorkspaceLeaf, debounce, type Hotkey, type HoverParent, type HoverPopover } from "obsidian";
 import type DailyNotesStreamPlugin from "../main";
 import { JumpToDateModal } from "./jump-to-date-modal";
 import { NoteRenderer } from "../render/note-renderer";
@@ -30,6 +30,8 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
     private stream: NoteStream;
     private search: StreamSearch;
     private searchBar: SearchBar;
+    /** Obsidian's "Search current file" binding, re-read on each config write. */
+    private searchHotkeys: Hotkey[] = [];
 
     /** `service` is this view's own (CLAUDE.md, Invariants). */
     constructor(
@@ -98,8 +100,14 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.registerEvent(this.app.workspace.on("css-change", syncReadableWidth));
 
         // Obsidian's daily-notes format and folder decide what the stream even
-        // contains, and nothing re-reads them.
-        this.registerEvent(onVaultConfigChange(this.app, () => this.stream.onDailyNoteSettingsChange()));
+        // contains, and nothing re-reads them. A rebind lands in hotkeys.json.
+        this.searchHotkeys = getSearchHotkeys(this.app);
+        this.registerEvent(
+            onVaultConfigChange(this.app, () => {
+                this.searchHotkeys = getSearchHotkeys(this.app);
+                this.stream.onDailyNoteSettingsChange();
+            })
+        );
 
         // Not in onload(): the vault may not have indexed its files yet.
         this.service.initialize();
@@ -146,12 +154,9 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.stream.close();
     }
 
-    /**
-     * Obsidian's "Search current file" hotkey, read on every press so a rebind
-     * applies at once (docs/decisions.md, 2026-09-23). False takes the key.
-     */
+    /** Obsidian's "Search current file" hotkey opens the bar. False takes the key. */
     private onKeydown(evt: KeyboardEvent): false | undefined {
-        if (!getSearchHotkeys(this.app).some((hotkey) => matchesHotkey(evt, hotkey))) return undefined;
+        if (!this.searchHotkeys.some((hotkey) => matchesHotkey(evt, hotkey))) return undefined;
         this.searchBar.open();
         return false;
     }

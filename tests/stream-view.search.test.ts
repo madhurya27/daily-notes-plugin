@@ -59,11 +59,30 @@ describe("DailyNotesStreamView — search", () => {
         expect(bar().hasClass("is-closed")).toBe(true);
     });
 
-    it("follows a rebind without reopening the view", () => {
+    /** Fires the vault's undeclared "raw" event, as Obsidian saving hotkeys.json would. */
+    const writeHotkeys = () => {
+        for (const [name, callback] of app.vault.on.mock.calls) {
+            if (name === "raw") (callback as (p: string) => void)(".obsidian/hotkeys.json");
+        }
+    };
+
+    it("reads the binding once, not on every key", () => {
+        const getHotkeys = vi.fn(() => [{ modifiers: ["Mod"], key: "F" }]);
+        app.hotkeyManager = { getHotkeys, getDefaultHotkeys: () => undefined };
+        writeHotkeys();
+
+        press({ key: "a" });
+        press({ key: "b" });
+
+        expect(getHotkeys).toHaveBeenCalledOnce();
+    });
+
+    it("follows a rebind once the vault's config is written", () => {
         app.hotkeyManager = {
             getHotkeys: () => [{ modifiers: ["Mod", "Shift"], key: "S" }],
             getDefaultHotkeys: () => [{ modifiers: ["Mod"], key: "F" }],
         };
+        writeHotkeys();
 
         expect(press({ key: "f", metaKey: true })).toBeUndefined();
         expect(press({ key: "S", metaKey: true, shiftKey: true })).toBe(false);
