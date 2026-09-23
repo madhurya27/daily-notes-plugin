@@ -435,8 +435,9 @@ A day spans retyping a heading; `mtime` needs no timer.
 and internal links alike: mod-click or middle-click opens a new tab,
 mod-alt-click a split; right-click shows "Open in new tab" and "Open to the
 right", then Obsidian's file menu once the note exists. Links preview on
-hover through Page preview, Mod required by default. A plain click on a title
-reuses a tab showing the note; nothing replaces the stream.
+hover through Page preview, Mod required by default. A plain click focuses a
+tab already showing the note, at the linked heading; nothing replaces the
+stream.
 
 **Why:** the stream should behave as Obsidian's reading view does, and the
 file menu adds move, bookmark and reveal at no new UI.

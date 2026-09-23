@@ -34,6 +34,25 @@ test.describe("note title", () => {
         expect(await streamIsOpen(page)).toBe(true);
     });
 
+    test("returns to the tab already showing the note", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const title = container.locator(".daily-note-title").first();
+        await title.click();
+        await expect.poll(async () => (await openNotes(page)).length).toBe(1);
+        await page.evaluate(() => {
+            const stream = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!;
+            window.app.workspace.setActiveLeaf(stream, { focus: true });
+        });
+
+        await title.click();
+
+        await expect
+            .poll(() => page.evaluate(() => window.app.workspace.activeLeaf?.view?.file?.path))
+            .toBe("Notes/2026-03-14.md");
+        expect(await openNotes(page)).toHaveLength(1);
+    });
+
     test("opens the note in a split when mod-alt-clicked", async ({ obsidian, mobileLayout }) => {
         test.skip(mobileLayout, "a phone has no splits");
         const { page } = obsidian;

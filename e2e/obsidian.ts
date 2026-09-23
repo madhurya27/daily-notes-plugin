@@ -76,7 +76,7 @@ function noteBody(day: number): string {
         "- Groceries",
         "    - Milk",
         "    - Bread",
-        "- Read a chapter of [[Reading list]], then [[Someday]]",
+        "- Read a chapter of [[Reading list]], then [[Someday]], then [[Reading list#Later|what's next]]",
         "",
         "## Wide content",
         "",
@@ -108,8 +108,13 @@ function seedVault(): string {
         writeFileSync(join(vault, "Notes", `${date}.md`), noteBody(SEEDED_DAYS - daysBack));
     }
 
-    // What the seeded notes link to; [[Someday]] stays unresolved.
-    writeFileSync(join(vault, "Reading list.md"), "# Reading list\n\n- Middlemarch\n");
+    // What the seeded notes link to; [[Someday]] stays unresolved. Long, so a
+    // link to its last heading has somewhere to scroll.
+    const books = Array.from({ length: 80 }, (_, i) => `- Book ${i + 1}`);
+    writeFileSync(
+        join(vault, "Reading list.md"),
+        ["# Reading list", "", ...books, "", "## Later", "", "- Middlemarch", ""].join("\n")
+    );
 
     // Core daily-notes settings the plugin reads through the interface package.
     writeFileSync(join(config, "daily-notes.json"), JSON.stringify({ folder: "Notes", format: "YYYY-MM-DD" }));

@@ -35,6 +35,7 @@ function makeApp(opts: { readResult?: string; fileCache?: unknown; leaves?: unkn
             getLeavesOfType: vi.fn().mockReturnValue(leaves),
             getLeaf: vi.fn().mockReturnValue(mockLeaf),
             revealLeaf: vi.fn().mockResolvedValue(undefined),
+            setActiveLeaf: vi.fn(),
             trigger: vi.fn(),
             openLinkText: vi.fn().mockResolvedValue(undefined),
         },
@@ -354,6 +355,25 @@ describe("NoteRenderer title click", () => {
         expect(app.workspace.getLeaf).not.toHaveBeenCalled();
     });
 
+    it("focuses the tab it brings forward, as switching to it would", async () => {
+        const file = new TFile("Notes/2025-01-01.md");
+        const existingLeaf = { view: makeMarkdownView(file) };
+        const app = makeApp({ leaves: [existingLeaf] });
+        const renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+        const el = mount(renderer, await renderNote(renderer, file));
+
+        (el.querySelector(".daily-note-title") as HTMLElement).click();
+        await Promise.resolve();
+
+        expect(app.workspace.setActiveLeaf).toHaveBeenCalledWith(existingLeaf, { focus: true });
+    });
+
     it("opens file in a new leaf when no matching leaf exists", async () => {
         const file = new TFile("Notes/2025-01-01.md");
         const app = makeApp({ leaves: [] });
@@ -603,6 +623,63 @@ describe("NoteRenderer internal links", () => {
 
         expect(app.workspace.openLinkText).toHaveBeenCalledWith("Reading list", "Notes/2025-01-01.md", false);
         expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("returns to the tab already showing the linked note", async () => {
+        const target = new TFile("Reading list.md");
+        const openLeaf = { view: makeMarkdownView(target), openFile: vi.fn() };
+        const app = makeApp({ leaves: [openLeaf] });
+        app.metadataCache.getFirstLinkpathDest.mockReturnValue(target);
+        const { link } = await renderLink(app);
+
+        link.click();
+        await Promise.resolve();
+
+        expect(app.workspace.revealLeaf).toHaveBeenCalledWith(openLeaf);
+        expect(app.workspace.setActiveLeaf).toHaveBeenCalledWith(openLeaf, { focus: true });
+        expect(openLeaf.openFile).not.toHaveBeenCalled();
+        expect(app.workspace.openLinkText).not.toHaveBeenCalled();
+    });
+
+    it("scrolls the tab already showing the note to the linked heading", async () => {
+        const target = new TFile("Reading list.md");
+        const openLeaf = { view: makeMarkdownView(target), openFile: vi.fn().mockResolvedValue(undefined) };
+        const app = makeApp({ leaves: [openLeaf] });
+        app.metadataCache.getFirstLinkpathDest.mockReturnValue(target);
+        const { link } = await renderLink(app, "Reading list#Later");
+
+        link.click();
+
+        expect(app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith("Reading list", "Notes/2025-01-01.md");
+        expect(app.workspace.revealLeaf).toHaveBeenCalledWith(openLeaf);
+        expect(openLeaf.openFile).toHaveBeenCalledWith(target, { eState: { subpath: "#Later" } });
+    });
+
+    it("logs a heading it fails to scroll to", async () => {
+        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const target = new TFile("Reading list.md");
+        const openLeaf = { view: makeMarkdownView(target), openFile: vi.fn().mockRejectedValue(new Error("gone")) };
+        const app = makeApp({ leaves: [openLeaf] });
+        app.metadataCache.getFirstLinkpathDest.mockReturnValue(target);
+        const { link } = await renderLink(app, "Reading list#Later");
+
+        link.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(consoleSpy).toHaveBeenCalled();
+        consoleSpy.mockRestore();
+    });
+
+    it("opens another tab when mod-clicked, though the note is open", async () => {
+        const target = new TFile("Reading list.md");
+        const app = makeApp({ leaves: [{ view: makeMarkdownView(target) }] });
+        app.metadataCache.getFirstLinkpathDest.mockReturnValue(target);
+        const { link } = await renderLink(app);
+
+        dispatch(link, "click", { metaKey: true });
+
+        expect(app.workspace.revealLeaf).not.toHaveBeenCalled();
+        expect(app.workspace.openLinkText).toHaveBeenCalledWith("Reading list", "Notes/2025-01-01.md", "tab");
     });
 
     it("opens the link from a click on its formatted text", async () => {

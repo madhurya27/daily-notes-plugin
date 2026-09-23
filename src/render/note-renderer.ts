@@ -6,7 +6,7 @@ import {
     MarkdownView,
     Menu,
     TFile,
-    getLinkpath,
+    parseLinktext,
     setIcon,
     type HoverParent,
     type PaneType,
@@ -261,10 +261,15 @@ export class NoteRenderer {
         const link = this.linkAt(target);
         if (!link) return null;
         const { linktext, sourcePath } = link;
+        const { path, subpath } = parseLinktext(linktext);
+        const linked = this.app.metadataCache.getFirstLinkpathDest(path, sourcePath);
         return {
-            file: this.app.metadataCache.getFirstLinkpathDest(getLinkpath(linktext), sourcePath),
+            file: linked,
             menuSource: "link-context-menu",
-            open: (pane) => this.openLink(linktext, sourcePath, pane),
+            open: (pane) => {
+                if (!pane && linked && this.revealOpenNote(linked, subpath)) return;
+                this.openLink(linktext, sourcePath, pane);
+            },
         };
     }
 
@@ -318,22 +323,36 @@ export class NoteRenderer {
      * always gets its own, as Obsidian's links do.
      */
     private openNote(file: TFile, pane: PaneType | boolean): void {
-        const existing = pane
-            ? undefined
-            : this.app.workspace
-                  .getLeavesOfType("markdown")
-                  // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
-                  .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
-        if (existing) {
-            void this.app.workspace.revealLeaf(existing);
-            return;
-        }
+        if (!pane && this.revealOpenNote(file, "")) return;
         this.app.workspace
             .getLeaf(pane)
             .openFile(file)
             .catch((error) => {
                 console.error("DailyNotesStream: Failed to open file", error);
             });
+    }
+
+    /**
+     * Brings forward a tab already showing the note, at the heading or block
+     * the link named; false when no tab shows it. The stream never navigates
+     * away, so this stands in for the reading view reusing its own tab.
+     */
+    private revealOpenNote(file: TFile, subpath: string): boolean {
+        const existing = this.app.workspace
+            .getLeavesOfType("markdown")
+            // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
+            .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
+        if (!existing) return false;
+        // Revealing brings the tab forward but leaves focus on the stream.
+        void this.app.workspace
+            .revealLeaf(existing)
+            .then(() => this.app.workspace.setActiveLeaf(existing, { focus: true }));
+        if (subpath) {
+            existing.openFile(file, { eState: { subpath } }).catch((error) => {
+                console.error("DailyNotesStream: Failed to open file", error);
+            });
+        }
+        return true;
     }
 
     private renderPropertyRow(container: HTMLElement, key: string, value: unknown): void {

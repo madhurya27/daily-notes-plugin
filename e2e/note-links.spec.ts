@@ -14,6 +14,18 @@ function openNotes(page: Page) {
     });
 }
 
+/** The path of the note in the focused leaf; getActiveFile() would report the last note focused. */
+function activeNote(page: Page) {
+    return page.evaluate(() => window.app.workspace.activeLeaf?.view?.file?.path);
+}
+
+async function focusStream(page: Page) {
+    await page.evaluate(() => {
+        const stream = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!;
+        window.app.workspace.setActiveLeaf(stream, { focus: true });
+    });
+}
+
 async function firstLink(page: Page, text: string) {
     const container = await openStream(page);
     return container.locator(".internal-link", { hasText: text }).first();
@@ -32,6 +44,33 @@ test.describe("links in a note", () => {
         await expect.poll(() => openNotes(page)).toEqual([{ path: "Reading list.md", besideStream: true }]);
     });
 
+    test("return to the tab already showing the linked note", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const link = await firstLink(page, "Reading list");
+        await link.click();
+        await expect.poll(async () => (await openNotes(page)).length).toBe(1);
+        await focusStream(page);
+
+        await link.click();
+
+        await expect.poll(() => activeNote(page)).toBe("Reading list.md");
+        expect(await openNotes(page)).toHaveLength(1);
+    });
+
+    test("scroll the tab already showing the note to the linked heading", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await (await firstLink(page, "Reading list")).click();
+        await expect.poll(async () => (await openNotes(page)).length).toBe(1);
+        await focusStream(page);
+
+        await (await firstLink(page, "what's next")).click();
+
+        await expect.poll(() => activeNote(page)).toBe("Reading list.md");
+        const note = page.locator(".workspace-leaf.mod-active .markdown-source-view");
+        await expect(note.getByText("Middlemarch")).toBeInViewport();
+        expect(await openNotes(page)).toHaveLength(1);
+    });
+
     test("open in a split when mod-alt-clicked", async ({ obsidian, mobileLayout }) => {
         test.skip(mobileLayout, "a phone has no splits");
         const { page } = obsidian;
@@ -45,10 +84,7 @@ test.describe("links in a note", () => {
         const link = await firstLink(page, "Reading list");
         await link.click();
         await expect.poll(async () => (await openNotes(page)).length).toBe(1);
-        await page.evaluate(() => {
-            const stream = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!;
-            window.app.workspace.setActiveLeaf(stream, { focus: true });
-        });
+        await focusStream(page);
 
         await link.click({ modifiers: ["ControlOrMeta"] });
 
@@ -87,7 +123,7 @@ test.describe("links in a note", () => {
         await page.keyboard.down("ControlOrMeta");
         await link.hover();
 
-        await expect(page.locator(".hover-popover").getByText("Middlemarch")).toBeVisible();
+        await expect(page.locator(".hover-popover").getByText("Book 1", { exact: true })).toBeVisible();
         await page.keyboard.up("ControlOrMeta");
         await page.mouse.move(0, 0);
         await expect(page.locator(".hover-popover")).toHaveCount(0);

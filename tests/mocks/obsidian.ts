@@ -37,10 +37,12 @@ export type {
     View,
 } from "obsidian/obsidian";
 
-/** The note a link names, without its #heading or #^block. */
-export function getLinkpath(linktext: string): string {
+/** A link split into the note it names and its #heading or #^block, hash kept. */
+export function parseLinktext(linktext: string): { path: string; subpath: string } {
     const hash = linktext.indexOf("#");
-    return hash === -1 ? linktext : linktext.slice(0, hash);
+    return hash === -1
+        ? { path: linktext, subpath: "" }
+        : { path: linktext.slice(0, hash), subpath: linktext.slice(hash) };
 }
 
 export function normalizePath(path: string): string {
