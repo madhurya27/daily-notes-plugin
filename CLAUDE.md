@@ -8,8 +8,8 @@ pnpm run dev       # watch mode → main.js
 pnpm run build     # type-check + production build
 pnpm run lint      # ESLint
 pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is ignored — hand-wrapped.
-pnpm test          # vitest run
-pnpm run test:coverage  # 100% required
+pnpm test          # typecheck tests/ (tests/tsconfig.json), then vitest run
+pnpm run test:coverage  # the same, 100% coverage required
 pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
 pnpm run test:memory    # e2e/memory.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
 
@@ -56,7 +56,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   and their persisted state (`collapse-store.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
-`obsidian-daily-notes-interface` from `tests/mocks/`.
+`obsidian-daily-notes-interface` from `tests/mocks/`. Tests typecheck against the mocks, which take their
+signatures from the real API (docs/decisions.md, 2026-09-23).
 
 **The test split is a contract** ([ADR 0002](docs/adr/0002-real-obsidian-e2e.md)): jsdom loads no stylesheet, so
 a visibility assertion there proves nothing. Anything about real rendering, real events, or what is visible on
