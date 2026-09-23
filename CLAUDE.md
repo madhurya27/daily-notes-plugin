@@ -100,5 +100,6 @@ Update docs in the same branch as the change that makes them stale:
 - `README.md` — user-facing features, install, usage.
 - `docs/TESTING.md` — manual verification checklist.
 - `docs/DONE.md` / `docs/TODO.md` — move items as work completes.
-- `AGENTS.md` — plugin-dev conventions; don't edit its wording, fix the code to match it.
+- `AGENTS.md` — the sample plugin's copy, verbatim; don't edit its wording, fix the code to match it. Its npm
+  commands are the exception: this repo uses pnpm.
 - This file — commands, architecture, invariants.
