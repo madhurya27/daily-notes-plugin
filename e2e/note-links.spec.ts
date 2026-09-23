@@ -115,6 +115,31 @@ test.describe("links in a note", () => {
         await page.evaluate(() => window.app.vault.setConfig("nativeMenus", null));
     });
 
+    test("fade a link to a note that does not exist, as Obsidian does", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const missing = await firstLink(page, "Someday");
+        const existing = await firstLink(page, "Reading list");
+
+        await expect(missing).toHaveClass(/\bis-unresolved\b/);
+        await expect(existing).not.toHaveClass(/\bis-unresolved\b/);
+        const opacity = await missing.evaluate((el) => Number(getComputedStyle(el).opacity));
+        expect(opacity).toBeLessThan(1);
+    });
+
+    test("unfade the link once its note is created", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const missing = await firstLink(page, "Someday");
+        await expect(missing).toHaveClass(/\bis-unresolved\b/);
+
+        await page.evaluate(async () => {
+            await window.app.vault.create("Someday.md", "");
+        });
+
+        await expect(missing).not.toHaveClass(/\bis-unresolved\b/);
+        await page.evaluate(() => window.app.vault.delete(window.app.vault.getFileByPath("Someday.md")!));
+        await expect(missing).toHaveClass(/\bis-unresolved\b/);
+    });
+
     test("preview the linked note on mod-hover", async ({ obsidian, mobileLayout }) => {
         test.skip(mobileLayout, "a phone has no hover");
         const { page } = obsidian;

@@ -145,6 +145,8 @@ export class Component {
     ) {
         el.addEventListener(type, cb);
     }
+
+    registerEvent(_ref: EventRef) {}
 }
 
 /** A view is a Component: it owns what its notes register. */
@@ -163,7 +165,6 @@ export class ItemView extends Component {
         this.contentEl = this.containerEl.createDiv({ cls: "view-content" });
         this.load();
     }
-    registerEvent(_ref: EventRef) {}
     register() {}
     addAction(icon: string, title: string, callback: (evt: MouseEvent) => unknown) {
         this.actions.push({ icon, title, callback });

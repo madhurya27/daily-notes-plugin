@@ -49,6 +49,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - A link inside a note (**2026-02-01**, Evening) takes the header's gestures: mod-click, mod-alt-click, middle-click, right-click. **[e2e]**
 - Mod-hovering a link previews it **[e2e]**; Settings → Page preview lists "Daily notes stream", and turning
   its Mod requirement off previews on plain hover.
+- `[[Someday]]` is faded; opening it creates the note and unfades it, deleting the note fades it again.
+  **[e2e]**
 - Right-click on an unresolved link offers only the open items; opening one creates the note.
 - Scrolling to the bottom loads the next batch without duplicates. **[e2e]**
 - Tall window, short notes → loading continues past the first batch.
