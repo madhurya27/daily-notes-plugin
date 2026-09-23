@@ -66,9 +66,12 @@ test.describe("a multi-year vault scrolled to the end", () => {
 
         // The whole point: what is rendered follows the viewport, not the vault.
         expect(renderedAtEnd).toBeLessThan(40);
-        // One element per unloaded note, plus the handful that are rendered —
-        // not the ~40 each a rendered note costs.
-        expect(liveNodes).toBeLessThan(SEEDED_DAYS + 500);
+        // One element per unloaded note. A rendered note's weight is the
+        // renderer's business, so the bound is on emptiness, not a node count.
+        const unloadedChildren = await container.evaluate(
+            (el) => el.querySelectorAll(".daily-note-block.is-unloaded *").length
+        );
+        expect(unloadedChildren).toBe(0);
         // Reaching the end of a three-year vault must not cost more heap than
         // the first ten notes did.
         expect(end.heapMb).toBeLessThan(first.heapMb * 2);
