@@ -77,7 +77,7 @@ proto.onClickEvent = function (handler: (e: MouseEvent) => void) {
 
 proto.prepend =
     proto.prepend ??
-    function (node: Node) {
+    function (this: HTMLElement, node: Node) {
         this.insertBefore(node, this.firstChild);
     };
 

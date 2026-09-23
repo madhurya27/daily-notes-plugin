@@ -45,7 +45,9 @@ describe("emulateDevice", () => {
             // The real one reloads, dropping the old document's globals.
             emulateMobile: (on: boolean) => {
                 emulated.push(on);
-                if (reloads) for (const key of Object.keys(window)) if (key.startsWith("__")) delete window[key];
+                if (reloads)
+                    for (const key of Object.keys(window))
+                        if (key.startsWith("__")) delete (window as unknown as Record<string, unknown>)[key];
             },
             workspace: { layoutReady: true },
         };

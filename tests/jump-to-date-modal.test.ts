@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vitest";
+import type { Moment } from "moment";
 import { JumpToDateModal, JUMP_SUGGESTION_LIMIT } from "../src/ui/jump-to-date-modal";
 import { DailyNoteService } from "../src/notes/daily-note-service";
 import { __setMockNotes, __setMockSettings } from "obsidian-daily-notes-interface";
@@ -6,7 +7,7 @@ import { moment } from "obsidian";
 import { makeApp } from "./stream-view-fixture";
 
 describe("JumpToDateModal", () => {
-    let onSubmit: ReturnType<typeof vi.fn>;
+    let onSubmit: Mock<(target: Moment) => void>;
     let modal: JumpToDateModal;
 
     /** Opens the suggester over a vault naming its notes `format`. */

@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 import { DailyNotesStreamView } from "../src/ui/stream-view";
-import { Component, WorkspaceLeaf } from "./mocks/obsidian";
+import { Component, WorkspaceLeaf, type App } from "./mocks/obsidian";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 
@@ -60,7 +60,7 @@ export function makeStubbedView(app: object = makeApp()) {
     __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
     __setMockNotes([]);
     const plugin = makePlugin();
-    const view = new DailyNotesStreamView(new WorkspaceLeaf(app), plugin);
+    const view = new DailyNotesStreamView(new WorkspaceLeaf(app as App), plugin);
     (view as any).renderer = {
         createBlock: vi.fn(() => document.createElement("div")),
         renderInto: vi.fn().mockResolvedValue(new Component()),

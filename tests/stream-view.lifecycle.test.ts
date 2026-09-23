@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../src/ui/stream-view";
-import { TFile, WorkspaceLeaf } from "./mocks/obsidian";
+import { TFile, WorkspaceLeaf, type App } from "./mocks/obsidian";
 import { flushPromises, makeApp, makePlugin, makeStubbedView, makeViewSetup } from "./stream-view-fixture";
 
 describe("DailyNotesStreamView — view API", () => {
@@ -26,7 +26,7 @@ describe("DailyNotesStreamView — view API", () => {
         const plugin = makePlugin();
         const app = makeApp();
         app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { mood: "happy" } });
-        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(app) as any, plugin);
+        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(app as unknown as App), plugin);
 
         plugin.settings = { showProperties: true, propertiesCollapsed: false }; // as loadSettings() would
         const file = new TFile("Notes/2025-01-01.md");

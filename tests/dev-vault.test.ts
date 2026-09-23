@@ -123,7 +123,7 @@ describe("createReloader", () => {
 describe("createChangeFilter", () => {
     it("passes a file whose contents were written", () => {
         const mtimes = new Map([["main.js", 100]]);
-        const changed = createChangeFilter((path) => mtimes.get(path)!);
+        const changed = createChangeFilter((path: string) => mtimes.get(path)!);
 
         expect(changed("main.js")).toBe(true); // first sighting
         mtimes.set("main.js", 200);
@@ -145,7 +145,7 @@ describe("createChangeFilter", () => {
             ["main.js", 100],
             ["styles.css", 100],
         ]);
-        const changed = createChangeFilter((path) => mtimes.get(path)!);
+        const changed = createChangeFilter((path: string) => mtimes.get(path)!);
 
         expect(changed("main.js")).toBe(true);
         expect(changed("styles.css")).toBe(true);

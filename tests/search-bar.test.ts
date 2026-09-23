@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vitest";
 import { Component } from "obsidian";
 import { SearchBar, SEARCH_DEBOUNCE_MS } from "../src/ui/search-bar";
 
 describe("SearchBar", () => {
     let actions: {
-        search: ReturnType<typeof vi.fn>;
-        next: ReturnType<typeof vi.fn>;
-        previous: ReturnType<typeof vi.fn>;
-        close: ReturnType<typeof vi.fn>;
+        search: Mock<(query: string) => void>;
+        next: Mock<() => void>;
+        previous: Mock<() => void>;
+        close: Mock<() => void>;
     };
     let bar: SearchBar;
     let input: HTMLInputElement;

@@ -1,0 +1,14 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "types": ["node"],
+        "baseUrl": "..",
+        // Mirrors vitest.config.ts's aliases: tests import the mocks' API.
+        "paths": {
+            "obsidian": ["tests/mocks/obsidian.ts"],
+            "obsidian-daily-notes-interface": ["tests/mocks/daily-notes-interface.ts"]
+        }
+    },
+    "include": ["**/*.ts"]
+}

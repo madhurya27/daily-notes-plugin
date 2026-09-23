@@ -100,7 +100,7 @@ describe.each([
 ])("DailyNotesStreamPlugin — %s", (_label, trigger) => {
     it("activates the view", async () => {
         const { plugin } = await loadPlugin();
-        const activate = vi.spyOn(plugin, "activateView").mockResolvedValue(undefined);
+        const activate = vi.spyOn(plugin, "activateView").mockResolvedValue(null);
 
         trigger(plugin);
 

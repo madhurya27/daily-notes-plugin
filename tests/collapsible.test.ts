@@ -483,6 +483,7 @@ describe("CollapsibleManager — delegated listeners", () => {
             sectionKey: "section",
             defaultCollapsed: false,
             apply: vi.fn(),
+            hides: () => false,
         });
         return h.querySelector(".collapse-indicator") as HTMLElement;
     }

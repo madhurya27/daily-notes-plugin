@@ -5,6 +5,12 @@
  */
 export { default as moment } from "moment";
 
+// The real declarations, reached past the `obsidian` alias: the mock's
+// signatures borrow them, so src typechecks against the mock as it would
+// against the app.
+import type { App, EventRef, Scope as AppScope, ViewState, WorkspaceLeaf as AppLeaf } from "obsidian/obsidian";
+export type { App, Debouncer, EventRef, Hotkey, Modifier, PaneType } from "obsidian/obsidian";
+
 export function normalizePath(path: string): string {
     return path
         .replace(/\\/g, "/")
@@ -36,17 +42,26 @@ export class TFile extends TAbstractFile {
     }
 }
 
-export class WorkspaceLeaf {
+class MockLeaf {
     view: any;
-    app: any;
-    constructor(app: any) {
+    app: App;
+    constructor(app: App) {
         this.app = app;
     }
-    setViewState() {}
-    openFile() {
+    setViewState(_state: ViewState) {
+        return Promise.resolve();
+    }
+    openFile(_file: TFile) {
         return Promise.resolve();
     }
 }
+
+/**
+ * Typed as the app's leaf: src also reaches leaves through `app.workspace`,
+ * which hands back the real type, so a mock type would split the two.
+ */
+export const WorkspaceLeaf = MockLeaf as unknown as new (app: App) => AppLeaf;
+export type WorkspaceLeaf = AppLeaf;
 
 /**
  * Obsidian's parent/child lifecycle, which is what frees a note's rendered
@@ -89,7 +104,11 @@ export class Component {
         this.cleanups.push(cb);
     }
 
-    registerDomEvent(el: HTMLElement, type: string, cb: EventListener) {
+    registerDomEvent<K extends keyof HTMLElementEventMap>(
+        el: HTMLElement,
+        type: K,
+        cb: (this: HTMLElement, ev: HTMLElementEventMap[K]) => unknown
+    ) {
         el.addEventListener(type, cb);
     }
 }
@@ -100,17 +119,17 @@ export class ItemView extends Component {
     /** Obsidian hands a view's scope the keys pressed while its leaf is active. */
     scope: Scope | null = null;
     containerEl: HTMLElement;
-    app: any;
+    app: App;
     /** View actions, recorded so tests can invoke what onOpen() wired up. */
     actions: { icon: string; title: string; callback: (_evt: any) => any }[] = [];
     constructor(leaf: WorkspaceLeaf) {
         super();
-        this.app = leaf.app;
+        this.app = (leaf as unknown as MockLeaf).app;
         this.containerEl = document.createElement("div");
         this.contentEl = this.containerEl.createDiv({ cls: "view-content" });
         this.load();
     }
-    registerEvent() {}
+    registerEvent(_ref: EventRef) {}
     register() {}
     addAction(icon: string, title: string, callback: (_evt: any) => any) {
         this.actions.push({ icon, title, callback });
@@ -132,7 +151,7 @@ export class Notice {
 /** Obsidian's keymap scope: the modal owns it, so it needs no teardown. */
 export class Scope {
     registered: { modifiers: string[] | null; key: string | null; callback: (..._args: any[]) => unknown }[] = [];
-    constructor(readonly parent?: Scope) {}
+    constructor(readonly parent?: AppScope | Scope) {}
     register(modifiers: string[] | null, key: string | null, callback: (..._args: any[]) => unknown) {
         this.registered.push({ modifiers, key, callback });
         return callback;
@@ -144,11 +163,11 @@ export class Scope {
 }
 
 export class Modal {
-    app: any;
+    app: App;
     scope = new Scope();
     contentEl: HTMLElement = document.createElement("div");
     titleEl: HTMLElement = document.createElement("div");
-    constructor(app: any) {
+    constructor(app: App) {
         this.app = app;
     }
     setTitle(title: string) {
@@ -177,7 +196,7 @@ export class SuggestModal<T> extends Modal {
     emptyStateText = "No results";
     private suggestions: T[] = [];
 
-    constructor(app: any) {
+    constructor(app: App) {
         super(app);
         const container = this.contentEl.createDiv({ cls: "prompt-input-container" });
         container.appendChild(this.inputEl);
@@ -214,7 +233,8 @@ export class SuggestModal<T> extends Modal {
 }
 
 export const MarkdownRenderer = {
-    render: () => Promise.resolve(),
+    render: (_app: App, _markdown: string, _el: HTMLElement, _sourcePath: string, _component: Component) =>
+        Promise.resolve(),
 };
 
 export const setIcon = (el: any, iconName: string) => {
@@ -270,9 +290,9 @@ export function debounce<T extends unknown[]>(cb: (...args: T) => unknown, timeo
 }
 
 export class PluginSettingTab {
-    app: any;
+    app: App;
     containerEl: HTMLElement = document.createElement("div");
-    constructor(app: any, _plugin: any) {
+    constructor(app: App, _plugin: Plugin) {
         this.app = app;
     }
 }
@@ -387,7 +407,7 @@ export class Setting {
 }
 
 export class Plugin {
-    app: any;
+    app: App;
     manifest: any;
     /** Registrations recorded so tests can invoke what onload() wired up. */
     views: Record<string, (_leaf: any) => any> = {};
@@ -396,7 +416,7 @@ export class Plugin {
     settingTabs: any[] = [];
     data: unknown = null;
 
-    constructor(app?: any, manifest?: any) {
+    constructor(app: App, manifest?: any) {
         this.app = app;
         this.manifest = manifest;
     }

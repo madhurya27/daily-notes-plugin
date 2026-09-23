@@ -20,8 +20,9 @@
         "lint": "eslint .",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "test": "vitest run",
-        "test:coverage": "vitest run --coverage",
+        "test": "pnpm run typecheck:tests && vitest run",
+        "test:coverage": "pnpm run typecheck:tests && vitest run --coverage",
+        "typecheck:tests": "tsc -noEmit -p tests/tsconfig.json",
         "typecheck:e2e": "tsc -noEmit -p tsconfig.e2e.json",
         "test:e2e": "pnpm run build && pnpm run typecheck:e2e && playwright test",
         "test:memory": "pnpm run build && pnpm run typecheck:e2e && E2E_SEED_DAYS=1095 playwright test memory.spec.ts --project=desktop"
