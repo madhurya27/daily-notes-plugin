@@ -38,6 +38,20 @@ export default tseslint.config(
         },
         extends: [tseslint.configs.disableTypeChecked],
     },
+    // Tests run in Node under vitest, never inside the app: the rules that
+    // guard the shipped plugin's runtime don't apply. unbound-method misreads
+    // `expect(mock.method)`, which never calls the method.
+    {
+        files: ["tests/**/*.ts"],
+        languageOptions: { globals: { ...globals.node } },
+        rules: {
+            "import/no-nodejs-modules": "off",
+            "obsidianmd/hardcoded-config-path": "off",
+            "@microsoft/sdl/no-inner-html": "off",
+            "no-restricted-imports": "off",
+            "@typescript-eslint/unbound-method": "off",
+        },
+    },
     // Last: turns off stylistic rules that would fight Prettier.
     prettier,
     globalIgnores([
@@ -51,8 +65,7 @@ export default tseslint.config(
         "main.js",
         "PluginTest",
         "vitest.config.ts",
-        "tests",
-        // Typechecked by tsconfig.e2e.json; ESLint's project service covers src only.
+        // Typechecked by tsconfig.e2e.json; ESLint's project service covers src and tests.
         "e2e",
         "playwright.config.ts",
     ])

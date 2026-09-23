@@ -1,15 +1,31 @@
 import { vi } from "vitest";
 import { DailyNotesStreamView } from "../src/ui/stream-view";
-import { Component, WorkspaceLeaf } from "./mocks/obsidian";
+import type DailyNotesStreamPlugin from "../src/main";
+import type { DailyNoteService } from "../src/notes/daily-note-service";
+import type { NoteRenderer } from "../src/render/note-renderer";
+import type { CollapsibleManager } from "../src/render/collapsible";
+import type { NoteWindowManager } from "../src/stream/note-window";
+import type { InfiniteScrollController } from "../src/stream/infinite-scroll";
+import { Component, WorkspaceLeaf, type App, type EventRef, type TFile } from "./mocks/obsidian";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 
+/** A stand-in for `T`, holding only the members a test reaches. */
+export function fake<T>(members: Partial<T>): T {
+    return members as T;
+}
+
+/** An app stub, handed to code typed against the real `App`. */
+export function asApp(stub: object): App {
+    return stub as App;
+}
+
 /** Minimal plugin stub — satisfies DailyNotesStreamView's constructor needs. */
-export function makePlugin() {
+export function makePlugin(): DailyNotesStreamPlugin {
     const app = makeApp();
-    return {
+    return fake<DailyNotesStreamPlugin>({
         settings: { showProperties: false, propertiesCollapsed: false },
-        service: {
+        service: fake<DailyNoteService>({
             getBatch: vi.fn().mockReturnValue([]),
             initialize: vi.fn(),
             refreshIfSettingsChanged: vi.fn().mockReturnValue(false),
@@ -20,27 +36,30 @@ export function makePlugin() {
             formatDate: vi.fn().mockReturnValue(""),
             parseNoteDate: vi.fn().mockReturnValue(null),
             length: 0,
-        },
-        collapseStore: new CollapsibleStateStore(app as any),
-    } as any;
+        }),
+        collapseStore: new CollapsibleStateStore(asApp(app)),
+    });
 }
+
+/** An event source's `on`, recording each callback for the test to fire. */
+const events = () => vi.fn((_name: string, _callback: (...args: unknown[]) => unknown): EventRef => ({}));
 
 /** Minimal App stub — satisfies what the view and NoteRenderer access. */
 export function makeApp() {
     return {
         vault: {
             configDir: ".obsidian",
-            on: vi.fn().mockReturnValue({}),
-            cachedRead: vi.fn().mockResolvedValue(""),
+            on: events(),
+            cachedRead: vi.fn((_file: TFile) => Promise.resolve("")),
         },
         workspace: {
-            on: vi.fn().mockReturnValue({}),
+            on: events(),
             openLinkText: vi.fn().mockResolvedValue(undefined),
             getLeaf: vi.fn().mockReturnValue({ openFile: vi.fn().mockResolvedValue(undefined) }),
         },
         metadataCache: {
             getFileCache: vi.fn().mockReturnValue({ frontmatter: null }),
-            on: vi.fn().mockReturnValue({}),
+            on: events(),
         },
         loadLocalStorage: vi.fn().mockReturnValue(null),
         saveLocalStorage: vi.fn(),
@@ -60,15 +79,15 @@ export function makeStubbedView(app: object = makeApp()) {
     __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
     __setMockNotes([]);
     const plugin = makePlugin();
-    const view = new DailyNotesStreamView(new WorkspaceLeaf(app), plugin);
-    (view as any).renderer = {
+    const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin);
+    view["renderer"] = fake<NoteRenderer>({
         createBlock: vi.fn(() => document.createElement("div")),
         renderInto: vi.fn().mockResolvedValue(new Component()),
         discard: vi.fn(),
         delegate: vi.fn(),
-    };
+    });
     // The window manager hands back placeholders; rendering is its business.
-    (view as any).stream.window = {
+    view["stream"]["window"] = fake<NoteWindowManager>({
         attach: vi.fn(),
         detach: vi.fn(),
         add: vi.fn(() => document.createElement("div")),
@@ -78,14 +97,14 @@ export function makeStubbedView(app: object = makeApp()) {
         render: vi.fn(),
         refreshMargins: vi.fn(),
         layoutChanges: 0,
-    };
-    (view as any).collapsible = { delegate: vi.fn() };
-    (view as any).stream.scroll = {
+    });
+    view["collapsible"] = fake<CollapsibleManager>({ delegate: vi.fn() });
+    view["stream"]["scroll"] = fake<InfiniteScrollController>({
         attach: vi.fn(),
         detach: vi.fn(),
         recheck: vi.fn(),
         getSentinel: vi.fn().mockReturnValue(null),
-    };
+    });
     return { view, plugin };
 }
 

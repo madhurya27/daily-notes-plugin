@@ -387,3 +387,19 @@ in kebab-case. A single case needs no judgement to follow, so a test can hold it
 **Rejected:** PascalCase for files exporting a class — nothing can check it,
 and it had already drifted. A lint plugin for the rule — the compliance test
 already reads every file.
+
+## 2026-09-23 — Tests typecheck against the mocks, typed by the real API
+
+**Decision:** `tests/tsconfig.json` maps `obsidian` to the mock, as vitest's alias
+does; the mock borrows its signatures from the real declarations
+(`obsidian/obsidian`), so `src/` typechecks against it too. Tests reach privates
+by `view["stream"]`, and stand-ins go through `fake<T>` or `asApp`, never `any`.
+ESLint runs on `tests/` without the rules that guard the shipped plugin.
+
+**Why:** typed against the mock, a test that calls something the mock lacks
+fails before it runs; the real types keep the mock from drifting off the API.
+
+**Rejected:**
+- Tests against the real types — the mock-only API (`new TFile(path)`, `Setting.created`)
+  would need a cast at every use.
+- Turning off `no-explicit-any` for tests — it hid ~600 unchecked accesses.

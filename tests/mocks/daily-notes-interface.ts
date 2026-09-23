@@ -1,9 +1,10 @@
 import { TFile } from "./obsidian";
+import type { IDailyNoteSettings } from "obsidian-daily-notes-interface/dist/index";
 
 import moment from "moment";
 
 let mockNotes: Record<string, TFile> = {};
-let mockSettings = {
+let mockSettings: IDailyNoteSettings = {
     format: "YYYY-MM-DD",
     folder: "Notes",
 };
@@ -35,7 +36,7 @@ export function __setMockNotes(notes: string[]) {
     }
 }
 
-export function __setMockSettings(settings: any) {
+export function __setMockSettings(settings: IDailyNoteSettings) {
     mockSettings = settings;
 }
 

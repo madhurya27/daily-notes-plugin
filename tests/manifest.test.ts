@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 
 const repoRoot = resolve(__dirname, "..");
-const readJson = (name: string) => JSON.parse(readFileSync(resolve(repoRoot, name), "utf8"));
+const readJson = (name: string): unknown => JSON.parse(readFileSync(resolve(repoRoot, name), "utf8"));
 
 const manifest = readJson("manifest.json") as Record<string, unknown>;
 const versions = readJson("versions.json") as Record<string, string>;

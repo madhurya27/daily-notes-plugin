@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../src/ui/stream-view";
 import { TFile, WorkspaceLeaf } from "./mocks/obsidian";
-import { flushPromises, makeApp, makePlugin, makeStubbedView, makeViewSetup } from "./stream-view-fixture";
+import { asApp, flushPromises, makeApp, makePlugin, makeStubbedView, makeViewSetup } from "./stream-view-fixture";
 
 describe("DailyNotesStreamView — view API", () => {
     let view: DailyNotesStreamView;
@@ -26,11 +26,11 @@ describe("DailyNotesStreamView — view API", () => {
         const plugin = makePlugin();
         const app = makeApp();
         app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { mood: "happy" } });
-        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(app) as any, plugin);
+        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin);
 
         plugin.settings = { showProperties: true, propertiesCollapsed: false }; // as loadSettings() would
         const file = new TFile("Notes/2025-01-01.md");
-        const renderer = (freshView as any).renderer;
+        const renderer = freshView["renderer"];
         const el = renderer.createBlock(file);
         await renderer.renderInto(el, file);
 
@@ -44,7 +44,7 @@ describe("DailyNotesStreamView — onResize", () => {
     it("recomputes the window margins", async () => {
         const { view } = await makeViewSetup();
         view.onResize();
-        expect((view as any).stream.window.refreshMargins).toHaveBeenCalled();
+        expect(view["stream"]["window"].refreshMargins).toHaveBeenCalled();
     });
 });
 
@@ -52,7 +52,7 @@ describe("DailyNotesStreamView — refresh", () => {
     // The plugin calls it when its own settings change; the rebuild is note-stream.test.ts's.
     it("rebuilds the stream", async () => {
         const { view } = await makeViewSetup();
-        const rebuild = vi.spyOn((view as any).stream, "refresh");
+        const rebuild = vi.spyOn(view["stream"], "refresh");
 
         await view.refresh();
 
@@ -77,7 +77,7 @@ describe("DailyNotesStreamView — onOpen error path", () => {
 
     it("does not attach scroll observer when service.initialize() throws", async () => {
         await view.onOpen();
-        expect((view as any).stream.scroll.attach).not.toHaveBeenCalled();
+        expect(view["stream"]["scroll"].attach).not.toHaveBeenCalled();
     });
 });
 
@@ -89,9 +89,9 @@ describe("DailyNotesStreamView — internal-link click handler", () => {
     /** Opens a view on `app`, so click listeners register. */
     async function openClickableView() {
         ({ view } = makeStubbedView(app));
-        registerDomEventSpy = vi.spyOn(view as any, "registerDomEvent");
+        registerDomEventSpy = vi.spyOn(view, "registerDomEvent");
         await view.onOpen();
-        return (view as any).stream.blocks.el as HTMLElement;
+        return view["stream"]["blocks"].el;
     }
 
     function appendInternalLink(parent: HTMLElement, href?: string) {

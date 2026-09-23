@@ -5,6 +5,25 @@
  */
 export { default as moment } from "moment";
 
+// The real declarations, reached past the `obsidian` alias: the mock's
+// signatures borrow them, so src typechecks against the mock as it would
+// against the app.
+import type {
+    App,
+    EventRef,
+    FileStats,
+    KeymapContext,
+    PluginManifest,
+    Scope as AppScope,
+    TFolder,
+    UserEvent,
+    Vault,
+    View,
+    ViewState,
+    WorkspaceLeaf as AppLeaf,
+} from "obsidian/obsidian";
+export type { App, Debouncer, EventRef, Hotkey, Modifier, PaneType, PluginManifest, View } from "obsidian/obsidian";
+
 export function normalizePath(path: string): string {
     return path
         .replace(/\\/g, "/")
@@ -14,9 +33,9 @@ export function normalizePath(path: string): string {
 
 export class TAbstractFile {
     path: string;
-    parent: any;
+    parent: TFolder | null = null;
     name: string;
-    vault: any;
+    vault!: Vault;
     constructor(path: string) {
         this.path = path;
         this.name = path.split("/").pop() || "";
@@ -26,7 +45,7 @@ export class TAbstractFile {
 export class TFile extends TAbstractFile {
     basename: string;
     extension: string;
-    stat: any;
+    stat: FileStats = { ctime: 0, mtime: 0, size: 0 };
     constructor(path: string) {
         super(path);
         // split on the last dot; files without one get extension ""
@@ -36,17 +55,26 @@ export class TFile extends TAbstractFile {
     }
 }
 
-export class WorkspaceLeaf {
-    view: any;
-    app: any;
-    constructor(app: any) {
+class MockLeaf {
+    view!: View;
+    app: App;
+    constructor(app: App) {
         this.app = app;
     }
-    setViewState() {}
-    openFile() {
+    setViewState(_state: ViewState) {
+        return Promise.resolve();
+    }
+    openFile(_file: TFile) {
         return Promise.resolve();
     }
 }
+
+/**
+ * Typed as the app's leaf: src also reaches leaves through `app.workspace`,
+ * which hands back the real type, so a mock type would split the two.
+ */
+export const WorkspaceLeaf = MockLeaf as unknown as new (app: App) => AppLeaf;
+export type WorkspaceLeaf = AppLeaf;
 
 /**
  * Obsidian's parent/child lifecycle, which is what frees a note's rendered
@@ -89,30 +117,34 @@ export class Component {
         this.cleanups.push(cb);
     }
 
-    registerDomEvent(el: HTMLElement, type: string, cb: EventListener) {
+    registerDomEvent<K extends keyof HTMLElementEventMap>(
+        el: HTMLElement,
+        type: K,
+        cb: (this: HTMLElement, ev: HTMLElementEventMap[K]) => unknown
+    ) {
         el.addEventListener(type, cb);
     }
 }
 
 /** A view is a Component: it owns what its notes register. */
 export class ItemView extends Component {
-    contentEl: any;
+    contentEl: HTMLElement;
     /** Obsidian hands a view's scope the keys pressed while its leaf is active. */
     scope: Scope | null = null;
     containerEl: HTMLElement;
-    app: any;
+    app: App;
     /** View actions, recorded so tests can invoke what onOpen() wired up. */
-    actions: { icon: string; title: string; callback: (_evt: any) => any }[] = [];
+    actions: { icon: string; title: string; callback: (evt: MouseEvent) => unknown }[] = [];
     constructor(leaf: WorkspaceLeaf) {
         super();
-        this.app = leaf.app;
+        this.app = (leaf as unknown as MockLeaf).app;
         this.containerEl = document.createElement("div");
         this.contentEl = this.containerEl.createDiv({ cls: "view-content" });
         this.load();
     }
-    registerEvent() {}
+    registerEvent(_ref: EventRef) {}
     register() {}
-    addAction(icon: string, title: string, callback: (_evt: any) => any) {
+    addAction(icon: string, title: string, callback: (evt: MouseEvent) => unknown) {
         this.actions.push({ icon, title, callback });
         return document.createElement("div");
     }
@@ -129,26 +161,24 @@ export class Notice {
     }
 }
 
+type KeyHandler = (evt: KeyboardEvent, ctx: KeymapContext) => unknown;
+
 /** Obsidian's keymap scope: the modal owns it, so it needs no teardown. */
 export class Scope {
-    registered: { modifiers: string[] | null; key: string | null; callback: (..._args: any[]) => unknown }[] = [];
-    constructor(readonly parent?: Scope) {}
-    register(modifiers: string[] | null, key: string | null, callback: (..._args: any[]) => unknown) {
+    registered: { modifiers: string[] | null; key: string | null; callback: KeyHandler }[] = [];
+    constructor(readonly parent?: AppScope | Scope) {}
+    register(modifiers: string[] | null, key: string | null, callback: KeyHandler) {
         this.registered.push({ modifiers, key, callback });
         return callback;
-    }
-    /** Fires what `register` bound to `key`, as a hotkey press would. */
-    press(key: string) {
-        for (const h of this.registered) if (h.key === key) h.callback();
     }
 }
 
 export class Modal {
-    app: any;
+    app: App;
     scope = new Scope();
     contentEl: HTMLElement = document.createElement("div");
     titleEl: HTMLElement = document.createElement("div");
-    constructor(app: any) {
+    constructor(app: App) {
         this.app = app;
     }
     setTitle(title: string) {
@@ -156,11 +186,13 @@ export class Modal {
         return this;
     }
     open() {
-        (this as any).onOpen?.();
+        this.onOpen();
     }
     close() {
-        (this as any).onClose?.();
+        this.onClose();
     }
+    onOpen() {}
+    onClose() {}
 }
 
 /**
@@ -169,7 +201,7 @@ export class Modal {
  * scrolling; what a test needs is the query-in, choice-out loop, so `type` and
  * `choose` stand in for the reader.
  */
-export class SuggestModal<T> extends Modal {
+export abstract class SuggestModal<T> extends Modal {
     inputEl: HTMLInputElement = document.createElement("input");
     resultContainerEl: HTMLElement = document.createElement("div");
     /** How many suggestions the list holds; the subclass lowers it. */
@@ -177,7 +209,7 @@ export class SuggestModal<T> extends Modal {
     emptyStateText = "No results";
     private suggestions: T[] = [];
 
-    constructor(app: any) {
+    constructor(app: App) {
         super(app);
         const container = this.contentEl.createDiv({ cls: "prompt-input-container" });
         container.appendChild(this.inputEl);
@@ -189,6 +221,10 @@ export class SuggestModal<T> extends Modal {
         this.inputEl.placeholder = text;
     }
 
+    abstract getSuggestions(query: string): T[];
+    abstract renderSuggestion(value: T, el: HTMLElement): void;
+    abstract onChooseSuggestion(item: T, evt: MouseEvent | KeyboardEvent): void;
+
     /** Obsidian's own: focus the query and draw the unfiltered list. */
     onOpen() {
         this.type("");
@@ -197,11 +233,10 @@ export class SuggestModal<T> extends Modal {
     /** Runs the query the reader typed and redraws the list. */
     type(query: string) {
         this.inputEl.value = query;
-        const self = this as any;
-        this.suggestions = (self.getSuggestions(query) as T[]).slice(0, this.limit);
+        this.suggestions = this.getSuggestions(query).slice(0, this.limit);
         this.resultContainerEl.empty();
         for (const suggestion of this.suggestions) {
-            self.renderSuggestion(suggestion, this.resultContainerEl.createDiv({ cls: "suggestion-item" }));
+            this.renderSuggestion(suggestion, this.resultContainerEl.createDiv({ cls: "suggestion-item" }));
         }
     }
 
@@ -209,31 +244,32 @@ export class SuggestModal<T> extends Modal {
     choose(index = 0) {
         const suggestion = this.suggestions[index];
         if (suggestion === undefined) return;
-        (this as any).onChooseSuggestion(suggestion, new KeyboardEvent("keydown"));
+        this.onChooseSuggestion(suggestion, new KeyboardEvent("keydown"));
     }
 }
 
 export const MarkdownRenderer = {
-    render: () => Promise.resolve(),
+    render: (_app: App, _markdown: string, _el: HTMLElement, _sourcePath: string, _component: Component) =>
+        Promise.resolve(),
 };
 
-export const setIcon = (el: any, iconName: string) => {
+export const setIcon = (el: HTMLElement, iconName: string) => {
     // Record the icon so tests can assert on it; the real setIcon injects SVG.
     el.dataset.icon = iconName;
 };
 
 export class MarkdownView {
-    file: any = null;
+    file: TFile | null = null;
 }
 
 /** Obsidian's own modifier reading: Cmd/Ctrl or middle-click opens a tab. */
 export class Keymap {
-    static isModEvent(evt?: any): "tab" | "split" | "window" | boolean {
+    static isModEvent(evt?: UserEvent | null): "tab" | "split" | "window" | boolean {
         if (!evt) return false;
         const mod = evt.ctrlKey || evt.metaKey;
         if (mod && evt.altKey && evt.shiftKey) return "window";
         if (mod && evt.altKey) return "split";
-        if (mod || evt.button === 1) return "tab";
+        if (mod || (evt instanceof MouseEvent && evt.button === 1)) return "tab";
         return false;
     }
 }
@@ -270,9 +306,9 @@ export function debounce<T extends unknown[]>(cb: (...args: T) => unknown, timeo
 }
 
 export class PluginSettingTab {
-    app: any;
+    app: App;
     containerEl: HTMLElement = document.createElement("div");
-    constructor(app: any, _plugin: any) {
+    constructor(app: App, _plugin: Plugin) {
         this.app = app;
     }
 }
@@ -333,7 +369,7 @@ export class ButtonComponent {
         this.cta = true;
         return this;
     }
-    onClick(cb: (_evt: any) => unknown) {
+    onClick(cb: (evt: MouseEvent) => unknown) {
         this.buttonEl.addEventListener("click", cb);
         return this;
     }
@@ -386,17 +422,19 @@ export class Setting {
     }
 }
 
+type Command = { id: string; name: string; callback: () => unknown };
+
 export class Plugin {
-    app: any;
-    manifest: any;
+    app: App;
+    manifest: PluginManifest;
     /** Registrations recorded so tests can invoke what onload() wired up. */
-    views: Record<string, (_leaf: any) => any> = {};
-    ribbonIcons: { icon: string; title: string; callback: (_evt: any) => any }[] = [];
-    commands: { id: string; name: string; callback: () => any }[] = [];
-    settingTabs: any[] = [];
+    views: Record<string, (leaf: AppLeaf) => ItemView> = {};
+    ribbonIcons: { icon: string; title: string; callback: (evt: MouseEvent) => unknown }[] = [];
+    commands: Command[] = [];
+    settingTabs: PluginSettingTab[] = [];
     data: unknown = null;
 
-    constructor(app?: any, manifest?: any) {
+    constructor(app: App, manifest: PluginManifest) {
         this.app = app;
         this.manifest = manifest;
     }
@@ -407,21 +445,21 @@ export class Plugin {
         this.data = data;
         return Promise.resolve();
     }
-    registerView(type: string, cb: (_leaf: any) => any) {
+    registerView(type: string, cb: (leaf: AppLeaf) => ItemView) {
         this.views[type] = cb;
     }
-    addRibbonIcon(icon: string, title: string, callback: (_evt: any) => any) {
+    addRibbonIcon(icon: string, title: string, callback: (evt: MouseEvent) => unknown) {
         this.ribbonIcons.push({ icon, title, callback });
         return document.createElement("div");
     }
-    addCommand(cmd: { id: string; name: string; callback: () => any }) {
+    addCommand(cmd: Command) {
         this.commands.push(cmd);
         return cmd;
     }
-    addSettingTab(tab: any) {
+    addSettingTab(tab: PluginSettingTab) {
         this.settingTabs.push(tab);
     }
-    registerEvent(_e: any) {}
+    registerEvent(_ref: EventRef) {}
 }
 
 /** Mutable, so a test can stand in for either platform. */

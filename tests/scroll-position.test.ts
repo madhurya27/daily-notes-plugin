@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { captureAnchor, restoreAnchor, scrollIntoPlace } from "../src/stream/scroll-position";
 import { TFile } from "obsidian";
 

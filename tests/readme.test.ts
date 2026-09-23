@@ -3,6 +3,8 @@ import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import DailyNotesStreamPlugin from "../src/main";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
+import type { PluginManifest } from "./mocks/obsidian";
+import { asApp } from "./stream-view-fixture";
 
 const repoRoot = resolve(__dirname, "..");
 const readme = readFileSync(resolve(repoRoot, "README.md"), "utf8");
@@ -18,7 +20,7 @@ async function loadedPlugin() {
         metadataCache: { on: vi.fn().mockReturnValue({}) },
         loadLocalStorage: vi.fn().mockReturnValue(null),
     };
-    const plugin = new DailyNotesStreamPlugin(app as any, { id: "daily-notes-stream" } as any);
+    const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
     await plugin.onload();
     return plugin;
 }

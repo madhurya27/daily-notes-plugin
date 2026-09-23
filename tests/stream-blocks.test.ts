@@ -25,12 +25,12 @@ describe("StreamBlocks", () => {
         // A per-lookup querySelector made captureAnchor O(n^2) across a
         // refresh, and the window manager adds another hot caller.
         it("resolves a block through the index, not a DOM query", () => {
-            container.querySelector = vi.fn(() => null);
+            const querySelector = vi.spyOn(container, "querySelector");
             const el = block();
             blocks.append("Notes/2025-01-01.md", el);
 
             expect(blocks.get("Notes/2025-01-01.md")).toBe(el);
-            expect(container.querySelector).not.toHaveBeenCalled();
+            expect(querySelector).not.toHaveBeenCalled();
         });
 
         it("matches paths containing CSS selector metacharacters", () => {

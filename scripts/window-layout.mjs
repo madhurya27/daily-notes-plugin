@@ -52,6 +52,12 @@ const MARGIN = 40;
  * Obsidian keeps zoom there too — but never a maximised state, which would
  * swallow the size just asked for. A window too big for the screen needs no
  * clamping: macOS shrinks it to fit.
+ *
+ * @param {{
+ *     saved?: object,
+ *     size: { width: number, height: number } | null,
+ *     position?: { x: number, y: number } | null,
+ * }} options
  */
 export function boundsFor({ saved = {}, size, position = null }) {
     const bounds = { zoom: 0, ...saved, x: MARGIN, y: MARGIN, isMaximized: false, ...size };

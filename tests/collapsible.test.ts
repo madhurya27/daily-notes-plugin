@@ -1,20 +1,20 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
+import { Component } from "obsidian";
 import { CollapsibleManager } from "../src/render/collapsible";
 import type { CollapsibleStateStore } from "../src/render/collapse-store";
+import { fake } from "./stream-view-fixture";
 
 function makeStore(collapsedByDefault = false): CollapsibleStateStore {
-    return {
+    return fake<CollapsibleStateStore>({
         isCollapsed: vi.fn().mockReturnValue(collapsedByDefault),
         collapsedOr: vi.fn().mockReturnValue(collapsedByDefault),
         setCollapsed: vi.fn(),
         clearForFile: vi.fn(),
-    } as any;
+    });
 }
 
 /** Wires delegation the way the view does, then builds the chevrons. */
-const delegateComponent = {
-    registerDomEvent: (el: HTMLElement, type: string, cb: EventListener) => el.addEventListener(type, cb),
-} as any;
+const delegateComponent = new Component();
 
 function makeCollapsible(manager: CollapsibleManager, content: HTMLElement, filePath: string): void {
     manager.delegate(delegateComponent, content);
@@ -40,7 +40,7 @@ describe("CollapsibleManager — keyboard and ARIA", () => {
 
     beforeEach(() => {
         store = makeStore();
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
     });
 
     it("exposes each chevron as a focusable button", () => {
@@ -66,7 +66,7 @@ describe("CollapsibleManager — keyboard and ARIA", () => {
 
     it("starts with aria-expanded false for a stored collapsed section", () => {
         store = makeStore(true);
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
         const content = document.createElement("div");
         content.innerHTML = "<h2>Section</h2><p>Body</p>";
         makeCollapsible(manager, content, "file.md");
@@ -130,7 +130,7 @@ describe("CollapsibleManager — duplicate section keys", () => {
 
     beforeEach(() => {
         store = makeStore();
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
     });
 
     it("suffixes repeated header text so each heading keeps its own state", () => {
@@ -180,7 +180,7 @@ describe("CollapsibleManager — headers", () => {
 
     beforeEach(() => {
         store = makeStore();
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
     });
 
     it("adds is-collapsible class to each header", () => {
@@ -199,7 +199,7 @@ describe("CollapsibleManager — headers", () => {
 
     it("reads initial state from store and adds is-collapsed when true", () => {
         store = makeStore(true);
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
         const content = document.createElement("div");
         content.innerHTML = "<h1>Title</h1><p>Content</p>";
         makeCollapsible(manager, content, "file.md");
@@ -208,7 +208,7 @@ describe("CollapsibleManager — headers", () => {
 
     it("applies is-hidden to siblings when initially collapsed", () => {
         store = makeStore(true);
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
         const content = document.createElement("div");
         content.innerHTML = "<h1>Title</h1><p>Body</p>";
         makeCollapsible(manager, content, "file.md");
@@ -370,7 +370,7 @@ describe("CollapsibleManager — lists", () => {
 
     beforeEach(() => {
         store = makeStore();
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
     });
 
     it("adds is-collapsible to li that has a nested list", () => {
@@ -396,7 +396,7 @@ describe("CollapsibleManager — lists", () => {
 
     it("applies is-collapsed from store to list item", () => {
         store = makeStore(true);
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
         const content = document.createElement("div");
         content.innerHTML = "<ul><li>Item<ul><li>Sub</li></ul></li></ul>";
         makeCollapsible(manager, content, "file.md");
@@ -439,7 +439,7 @@ describe("CollapsibleManager — lists", () => {
                 <li>Beta<ul><li>Sub-B</li></ul></li>
             </ul>`;
         makeCollapsible(manager, content, "file.md");
-        const indicators = Array.from(content.querySelectorAll("ul > li > .collapse-indicator")) as HTMLElement[];
+        const indicators = Array.from(content.querySelectorAll<HTMLElement>("ul > li > .collapse-indicator"));
         indicators[0]!.click();
         indicators[1]!.click();
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-alpha", true);
@@ -458,18 +458,16 @@ describe("CollapsibleManager — delegated listeners", () => {
     let store: ReturnType<typeof makeStore>;
     let manager: CollapsibleManager;
     let root: HTMLElement;
-    let component: { registerDomEvent: ReturnType<typeof vi.fn> };
+    let component: Component;
+    let registerDomEvent: MockInstance<Component["registerDomEvent"]>;
 
     beforeEach(() => {
         store = makeStore();
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
         root = document.createElement("div");
         document.body.appendChild(root);
-        component = {
-            registerDomEvent: vi.fn((el: HTMLElement, type: string, cb: EventListener) =>
-                el.addEventListener(type, cb)
-            ),
-        };
+        component = new Component();
+        registerDomEvent = vi.spyOn(component, "registerDomEvent");
     });
 
     afterEach(() => root.remove());
@@ -483,6 +481,7 @@ describe("CollapsibleManager — delegated listeners", () => {
             sectionKey: "section",
             defaultCollapsed: false,
             apply: vi.fn(),
+            hides: () => false,
         });
         return h.querySelector(".collapse-indicator") as HTMLElement;
     }
@@ -495,29 +494,29 @@ describe("CollapsibleManager — delegated listeners", () => {
     });
 
     it("registers one listener pair on the root, whatever the chevron count", () => {
-        manager.delegate(component as any, root);
+        manager.delegate(component, root);
         heading();
         heading();
         heading();
-        expect(component.registerDomEvent).toHaveBeenCalledTimes(2);
-        expect(component.registerDomEvent.mock.calls.map((c) => c[1])).toEqual(["click", "keydown"]);
+        expect(registerDomEvent).toHaveBeenCalledTimes(2);
+        expect(registerDomEvent.mock.calls.map((c) => c[1])).toEqual(["click", "keydown"]);
     });
 
     it("toggles the chevron a delegated click landed on", () => {
-        manager.delegate(component as any, root);
+        manager.delegate(component, root);
         heading().click();
         expect(store.setCollapsed).toHaveBeenCalledWith("Notes/2026-01-01.md", "section", true);
     });
 
     it("ignores a delegated click outside any chevron", () => {
-        manager.delegate(component as any, root);
+        manager.delegate(component, root);
         heading();
         root.click();
         expect(store.setCollapsed).not.toHaveBeenCalled();
     });
 
     it("ignores Enter pressed outside any chevron", () => {
-        manager.delegate(component as any, root);
+        manager.delegate(component, root);
         heading();
         root.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
         expect(store.setCollapsed).not.toHaveBeenCalled();
@@ -531,7 +530,7 @@ describe("CollapsibleManager — unfolding for search", () => {
 
     beforeEach(() => {
         store = makeStore(true);
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
         content = document.createElement("div");
         content.innerHTML =
             "<h2>Top</h2><p id='a'>A</p>" +
@@ -551,7 +550,7 @@ describe("CollapsibleManager — unfolding for search", () => {
 
     it("hides nothing once every section is expanded", () => {
         store = makeStore(false);
-        manager = new CollapsibleManager(store as any);
+        manager = new CollapsibleManager(store);
         makeCollapsible(manager, content, "fresh.md");
         expect(manager.folds(text("deep"))).toBe(false);
     });

@@ -94,7 +94,7 @@ describe("SearchHighlighter", () => {
 
     it("tracks ranges without painting where the platform has no highlight API", () => {
         const registry = CSS.highlights;
-        (CSS as any).highlights = undefined;
+        (CSS as { highlights?: HighlightRegistry }).highlights = undefined;
         try {
             const { block, component } = renderedBlock("<p>milk</p>");
             highlighter.setQuery("milk");
@@ -103,7 +103,7 @@ describe("SearchHighlighter", () => {
 
             expect(highlighter.rangesIn(block).map((r) => r.toString())).toEqual(["milk"]);
         } finally {
-            (CSS as any).highlights = registry;
+            CSS.highlights = registry;
         }
     });
 });

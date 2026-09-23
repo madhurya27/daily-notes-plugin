@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import DailyNotesStreamPlugin from "../src/main";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/ui/stream-view";
 import { DEFAULT_SETTINGS } from "../src/settings";
 import { DailyNoteService } from "../src/notes/daily-note-service";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
-import { WorkspaceLeaf } from "./mocks/obsidian";
+import { WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
+import { asApp } from "./stream-view-fixture";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 
 function makeApp() {
@@ -29,7 +30,7 @@ function makeLeaf(app: ReturnType<typeof makeApp>) {
 
 async function loadPlugin(data: unknown = null) {
     const app = makeApp();
-    const plugin = new DailyNotesStreamPlugin(app as any, { id: "daily-notes-stream" } as any);
+    const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
     plugin.data = data;
     await plugin.onload();
     return { plugin, app };
@@ -40,7 +41,7 @@ function flushPromises(): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-let errorSpy: ReturnType<typeof vi.spyOn>;
+let errorSpy: MockInstance<typeof console.error>;
 
 beforeEach(() => {
     __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
@@ -64,7 +65,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
         const { plugin, app } = await loadPlugin();
 
         const factory = plugin.views[VIEW_TYPE_DAILY_NOTES_STREAM]!;
-        const view = factory(new WorkspaceLeaf(app as any));
+        const view = factory(new WorkspaceLeaf(asApp(app)));
 
         expect(view).toBeInstanceOf(DailyNotesStreamView);
     });
@@ -72,8 +73,8 @@ describe("DailyNotesStreamPlugin — onload", () => {
     it("registers the ribbon icon, command and settings tab", async () => {
         const { plugin } = await loadPlugin();
 
-        expect(plugin.ribbonIcons).toEqual([
-            { icon: "calendar-days", title: "Open daily notes stream", callback: expect.any(Function) },
+        expect(plugin.ribbonIcons.map(({ icon, title }) => ({ icon, title }))).toEqual([
+            { icon: "calendar-days", title: "Open daily notes stream" },
         ]);
         expect(plugin.commands.map((c) => c.id)).toEqual(["open-stream", "jump-to-date"]);
         expect(plugin.settingTabs).toHaveLength(1);
@@ -100,7 +101,7 @@ describe.each([
 ])("DailyNotesStreamPlugin — %s", (_label, trigger) => {
     it("activates the view", async () => {
         const { plugin } = await loadPlugin();
-        const activate = vi.spyOn(plugin, "activateView").mockResolvedValue(undefined);
+        const activate = vi.spyOn(plugin, "activateView").mockResolvedValue(null);
 
         trigger(plugin);
 
@@ -125,7 +126,8 @@ describe("DailyNotesStreamPlugin — jump-to-date command", () => {
     function makeViewLeaf() {
         const view = Object.create(DailyNotesStreamView.prototype) as DailyNotesStreamView;
         view.promptJumpToDate = vi.fn();
-        return { leaf: { view } as any, view };
+        // The mock ItemView is no View in the type world, though it is one to main.ts.
+        return { leaf: { view } as unknown as Leaf, view };
     }
 
     it("prompts on the view it activated", async () => {
@@ -218,7 +220,7 @@ describe("DailyNotesStreamPlugin — saveSettings", () => {
 
     it("refreshes every open stream view", async () => {
         const { plugin, app } = await loadPlugin();
-        const view = new DailyNotesStreamView(new WorkspaceLeaf(app as any), plugin);
+        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin);
         const refresh = vi.spyOn(view, "refresh").mockResolvedValue(undefined);
         app.workspace.getLeavesOfType.mockReturnValue([{ view }]);
 
@@ -239,7 +241,7 @@ describe("DailyNotesStreamPlugin — saveSettings", () => {
 
     it("logs when a refresh fails", async () => {
         const { plugin, app } = await loadPlugin();
-        const view = new DailyNotesStreamView(new WorkspaceLeaf(app as any), plugin);
+        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin);
         vi.spyOn(view, "refresh").mockRejectedValue(new Error("render blew up"));
         app.workspace.getLeavesOfType.mockReturnValue([{ view }]);
 

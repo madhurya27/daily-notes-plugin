@@ -11,11 +11,10 @@ describe("DailyNotesStreamView — the jump action", () => {
             opened.push(this);
         });
 
-        const action = (view as any).actions.find((a: { title: string }) => a.title === "Jump to date");
-        action.callback();
-        (opened[0] as any).onSubmit(moment("2025-01-05", "YYYY-MM-DD", true));
+        view.actions.find((a) => a.title === "Jump to date")!.callback(new MouseEvent("click"));
+        opened[0]!["onSubmit"](moment("2025-01-05", "YYYY-MM-DD", true));
 
         expect(plugin.service.indexForDate).toHaveBeenCalledOnce();
-        expect(plugin.service.indexForDate.mock.calls[0]![0].format("YYYY-MM-DD")).toBe("2025-01-05");
+        expect(vi.mocked(plugin.service.indexForDate).mock.calls[0]![0].format("YYYY-MM-DD")).toBe("2025-01-05");
     });
 });

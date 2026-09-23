@@ -3,9 +3,9 @@
  * so that code calling .addClass(), .createDiv(), etc. works in tests.
  */
 
-const proto = HTMLElement.prototype as any;
+const proto = HTMLElement.prototype;
 
-proto.addClass = function (...classes: string[]) {
+proto.addClass = function (this: HTMLElement, ...classes: string[]) {
     for (const cls of classes) {
         for (const c of cls.trim().split(/\s+/).filter(Boolean)) {
             this.classList.add(c);
@@ -14,35 +14,35 @@ proto.addClass = function (...classes: string[]) {
     return this;
 };
 
-proto.removeClass = function (...classes: string[]) {
+proto.removeClass = function (this: HTMLElement, ...classes: string[]) {
     for (const cls of classes) this.classList.remove(cls);
     return this;
 };
 
-proto.toggleClass = function (cls: string, value?: boolean) {
+proto.toggleClass = function (this: HTMLElement, cls: string, value?: boolean) {
     this.classList.toggle(cls, value);
     return this;
 };
 
-proto.hasClass = function (cls: string): boolean {
+proto.hasClass = function (this: HTMLElement, cls: string): boolean {
     return this.classList.contains(cls);
 };
 
-proto.getText = function () {
+proto.getText = function (this: HTMLElement) {
     return this.textContent ?? "";
 };
 
-proto.setText = function (text: string) {
+proto.setText = function (this: HTMLElement, text: string) {
     this.textContent = text;
     return this;
 };
 
-proto.empty = function () {
+proto.empty = function (this: HTMLElement) {
     while (this.firstChild) this.removeChild(this.firstChild);
     return this;
 };
 
-proto.createDiv = function (params?: { cls?: string; text?: string }) {
+proto.createDiv = function (this: HTMLElement, params?: { cls?: string; text?: string }) {
     const el = document.createElement("div");
     if (params?.cls) el.addClass(params.cls);
     if (params?.text) el.setText(params.text);
@@ -50,8 +50,9 @@ proto.createDiv = function (params?: { cls?: string; text?: string }) {
     return el;
 };
 
-proto.createEl = function (
-    tag: string,
+proto.createEl = function <K extends keyof HTMLElementTagNameMap>(
+    this: HTMLElement,
+    tag: K,
     params?: { cls?: string; text?: string; href?: string; type?: string; placeholder?: string }
 ) {
     const el = document.createElement(tag);
@@ -64,20 +65,20 @@ proto.createEl = function (
     return el;
 };
 
-proto.createSpan = function (params?: { cls?: string; text?: string }) {
+proto.createSpan = function (this: HTMLElement, params?: { cls?: string; text?: string }) {
     return this.createEl("span", params);
 };
 
 /** jsdom implements no scrolling; Obsidian runs on Chromium, which does. */
 proto.scrollIntoView ??= function () {};
 
-proto.onClickEvent = function (handler: (e: MouseEvent) => void) {
+proto.onClickEvent = function (this: HTMLElement, handler: (e: MouseEvent) => void) {
     this.addEventListener("click", handler);
 };
 
 proto.prepend =
     proto.prepend ??
-    function (node: Node) {
+    function (this: HTMLElement, node: Node) {
         this.insertBefore(node, this.firstChild);
     };
 
@@ -86,7 +87,9 @@ proto.prepend =
  * Escapes every character outside [A-Za-z0-9_-] — stricter than the CSSOM
  * algorithm, and valid wherever the result is used (identifier or quoted value).
  */
-(globalThis as any).CSS ??= {
+const jsdomGaps = globalThis as { CSS?: Partial<typeof CSS>; Highlight?: typeof Highlight };
+
+jsdomGaps.CSS ??= {
     escape: (value: string): string => value.replace(/[^\w-]/g, (c) => `\\${c}`),
 };
 
@@ -94,5 +97,5 @@ proto.prepend =
  * jsdom ships no CSS Custom Highlight API; Chromium does. A highlight is a
  * set of ranges, and the registry a map of them by name.
  */
-(globalThis as any).Highlight ??= class Highlight extends Set<AbstractRange> {};
-(globalThis as any).CSS.highlights ??= new Map();
+jsdomGaps.Highlight ??= class Highlight extends Set<AbstractRange> {} as unknown as typeof Highlight;
+jsdomGaps.CSS.highlights ??= new Map() as unknown as HighlightRegistry;

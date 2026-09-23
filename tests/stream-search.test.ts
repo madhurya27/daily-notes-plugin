@@ -262,7 +262,7 @@ describe("StreamSearch", () => {
         const boxes = vi.fn(function (this: Range) {
             return this.startOffset === 0 ? [] : [{}];
         });
-        (Range.prototype as any).getClientRects = boxes;
+        Object.defineProperty(Range.prototype, "getClientRects", { value: boxes, configurable: true });
         try {
             search = new StreamSearch(
                 { notes: () => notes, read: (file) => Promise.resolve(SOURCES[notes.indexOf(file)]![1]) },
@@ -283,7 +283,7 @@ describe("StreamSearch", () => {
 
             expect(current()[0]!.startOffset).toBe(14);
         } finally {
-            delete (Range.prototype as any).getClientRects;
+            Reflect.deleteProperty(Range.prototype, "getClientRects");
         }
     });
 
@@ -335,7 +335,7 @@ describe("StreamSearch", () => {
 
     it("reads nothing on a vault change while no search is open", async () => {
         const read = vi.fn();
-        (search as any).source.read = read;
+        search["source"].read = read;
 
         await search.refresh();
 
@@ -355,10 +355,10 @@ describe("StreamSearch", () => {
 
     it("logs a failed read and keeps answering", async () => {
         const error = vi.spyOn(console, "error").mockImplementation(() => {});
-        (search as any).source.read = () => Promise.reject(new Error("gone"));
+        search["source"].read = () => Promise.reject(new Error("gone"));
 
         await search.search("milk");
-        (search as any).source.read = () => Promise.resolve("milk");
+        search["source"].read = () => Promise.resolve("milk");
         await search.search("milk");
 
         expect(error).toHaveBeenCalledWith("DailyNotesStream: Search failed", expect.any(Error));

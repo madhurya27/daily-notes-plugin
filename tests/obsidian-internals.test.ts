@@ -79,30 +79,30 @@ describe("openTagSearch", () => {
         return { app: { internalPlugins: { getPluginById } } as unknown as App, getPluginById };
     }
 
-    it("opens the global search with the tag as its query", () => {
+    it("opens the global search with the tag as its query", async () => {
         const openGlobalSearch = vi.fn();
         const { app, getPluginById } = makeSearchApp({ instance: { openGlobalSearch } });
 
-        openTagSearch(app, "work");
+        await openTagSearch(app, "work");
 
         expect(getPluginById).toHaveBeenCalledWith("global-search");
         expect(openGlobalSearch).toHaveBeenCalledWith("tag:#work");
     });
 
-    it("takes a tag already written with its hash", () => {
+    it("takes a tag already written with its hash", async () => {
         const openGlobalSearch = vi.fn();
         const { app } = makeSearchApp({ instance: { openGlobalSearch } });
 
-        openTagSearch(app, "#work/daily");
+        await openTagSearch(app, "#work/daily");
 
         expect(openGlobalSearch).toHaveBeenCalledWith("tag:#work/daily");
     });
 
-    it("quotes a tag holding a space, so the query stays one term", () => {
+    it("quotes a tag holding a space, so the query stays one term", async () => {
         const openGlobalSearch = vi.fn();
         const { app } = makeSearchApp({ instance: { openGlobalSearch } });
 
-        openTagSearch(app, "on hold");
+        await openTagSearch(app, "on hold");
 
         expect(openGlobalSearch).toHaveBeenCalledWith('tag:"#on hold"');
     });

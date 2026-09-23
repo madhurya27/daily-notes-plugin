@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DailyNotesStreamSettingTab, DEFAULT_SETTINGS } from "../src/settings";
+import type DailyNotesStreamPlugin from "../src/main";
 import { Setting } from "./mocks/obsidian";
+import { asApp, fake } from "./stream-view-fixture";
 
 function makePlugin() {
     return {
@@ -10,7 +12,7 @@ function makePlugin() {
 }
 
 function makeTab(plugin: ReturnType<typeof makePlugin>) {
-    return new DailyNotesStreamSettingTab({} as any, plugin as any);
+    return new DailyNotesStreamSettingTab(asApp({}), fake<DailyNotesStreamPlugin>(plugin));
 }
 
 describe("DailyNotesStreamSettingTab", () => {
