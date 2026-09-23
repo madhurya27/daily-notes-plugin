@@ -18,6 +18,10 @@ describe("DailyNotesStreamView — view API", () => {
         expect(view.getDisplayText()).toBe("Daily notes stream");
     });
 
+    it("is navigable, so the status bar stops describing the last note while the stream has focus", () => {
+        expect(view.navigation).toBe(true);
+    });
+
     it("getIcon returns 'calendar-days'", () => {
         expect(view.getIcon()).toBe("calendar-days");
     });

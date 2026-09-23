@@ -44,6 +44,16 @@ test.describe("links in a note", () => {
         await expect.poll(() => openNotes(page)).toEqual([{ path: "Reading list.md", besideStream: true }]);
     });
 
+    test("create a missing note beside the stream", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await (await firstLink(page, "Someday")).click();
+
+        await expect.poll(() => openNotes(page)).toEqual([{ path: "Someday.md", besideStream: true }]);
+        await page.evaluate(async () => {
+            await window.app.vault.delete(window.app.vault.getFileByPath("Someday.md")!);
+        });
+    });
+
     test("return to the tab already showing the linked note", async ({ obsidian }) => {
         const { page } = obsidian;
         const link = await firstLink(page, "Reading list");

@@ -18,6 +18,11 @@ const SEARCH_REFRESH_DEBOUNCE_MS = 500;
 
 export class DailyNotesStreamView extends ItemView implements HoverParent {
     hoverPopover: HoverPopover | null = null;
+    /**
+     * Obsidian takes a view that isn't navigable for a sidebar, and keeps the
+     * last note active behind it: its word count stays in the status bar.
+     */
+    navigation = true;
     private plugin: DailyNotesStreamPlugin;
     private renderer: NoteRenderer;
     private collapsible: CollapsibleManager;

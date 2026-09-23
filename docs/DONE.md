@@ -10,6 +10,7 @@
 - [x] Live updates: new/modified/renamed/deleted notes reflect instantly
 - [x] Smart internal links: reuse existing open tab instead of opening a new one
 - [x] Links to missing notes fade as in reading view, and unfade once the note exists
+- [x] The status bar clears while the stream has focus, instead of describing the last note
 - [x] Visual separation: vertical spacing between notes
 - [x] Collapsible headers (H1–H6) and nested lists
 - [x] Settings refresh: view re-renders on settings change, scroll position preserved

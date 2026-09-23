@@ -443,3 +443,20 @@ the API alone opens a new tab per click.
 - A pencil button per note — the title does it.
 - Append to today's note — needs the inline editor 2026-09-15 rejects.
 - Rename and delete in the menu — not public API.
+
+## 2026-09-23 — The stream is a navigable view
+
+**Decision:** `navigation = true`. The stream's own clicks still open beside
+it; Obsidian's openers (quick switcher, file explorer, the daily-note
+command), run from the stream, replace it in its tab, as they do the graph.
+
+**Why:** Obsidian takes a non-navigable view for a sidebar and keeps the last
+note active behind it, so the status bar showed that note's word count and
+backlinks. Navigable, the stream has no active file, and every per-note item
+clears, other plugins' included.
+
+**Rejected:**
+- Overriding the leaf's `canNavigate` to keep the stream unreplaceable —
+  patches an unsupported method.
+- Hiding the core items with CSS while the stream has focus — core class
+  names, and other plugins' items stay stale.

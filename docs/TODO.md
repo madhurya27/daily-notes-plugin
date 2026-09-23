@@ -6,8 +6,6 @@ Ordered by priority, from the 2026-09 comparison against
 
 - [ ] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
   frame rate; loading is not the cost, so preloading would not help.
-- [ ] The status bar keeps the last note's word count etc. after focus returns to the stream, so it reads
-  as the stream's. Clear it, or show nothing, while the stream is active.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
   - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**; includes the jump suggester's date
         wheel, which the e2e mobile project cannot reach (desktop Chromium)
