@@ -1,4 +1,4 @@
-import { Component, setIcon } from "obsidian";
+import { Component, TFile, setIcon } from "obsidian";
 import { CollapsibleStateStore } from "./collapse-store";
 
 function slugify(text: string): string {
@@ -7,6 +7,15 @@ function slugify(text: string): string {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
 }
+
+/** Reserved key for the properties panel; a heading slug can never contain ":". */
+export const PROPERTIES_SECTION_KEY = ":properties";
+
+/**
+ * How long a note must go unwritten before a section missing from it counts as
+ * removed: sooner, a heading being retyped would lose its state.
+ */
+const SETTLED_AFTER_MS = 24 * 60 * 60 * 1000;
 
 /** A section whose collapsed state is persisted per note. */
 export interface CollapsibleSection {
@@ -139,11 +148,24 @@ export class CollapsibleManager {
             .filter((fold): fold is Fold => fold !== undefined && fold.hides(node));
     }
 
-    makeCollapsible(contentEl: HTMLElement, filePath: string): void {
+    /** Adds a chevron to every header and nested list; returns their section keys. */
+    makeCollapsible(contentEl: HTMLElement, filePath: string): string[] {
         // Shared across headers and lists so every key in a note is unique.
         const seenKeys = new Map<string, number>();
-        this.processHeaders(contentEl, filePath, seenKeys);
-        this.processLists(contentEl, filePath, seenKeys);
+        return [
+            ...this.processHeaders(contentEl, filePath, seenKeys),
+            ...this.processLists(contentEl, filePath, seenKeys),
+        ];
+    }
+
+    /**
+     * Drops the saved state of sections `file` no longer has, once it has gone
+     * a day unwritten. The properties panel's state stays: with the panel
+     * hidden, its key is missing from every render.
+     */
+    forgetRemovedSections(file: TFile, sectionKeys: readonly string[]): void {
+        if (Date.now() - file.stat.mtime < SETTLED_AFTER_MS) return;
+        this.store.retainOnly(file.path, new Set([...sectionKeys, PROPERTIES_SECTION_KEY]));
     }
 
     /**
@@ -156,42 +178,47 @@ export class CollapsibleManager {
         return occurrence === 1 ? key : `${key}-${occurrence}`;
     }
 
-    private processHeaders(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): void {
-        const headers = contentEl.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6");
-        headers.forEach((header) => {
-            if (header.parentElement?.tagName === "LI") return;
-            header.addClass("is-collapsible");
+    private processHeaders(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): string[] {
+        const headers = Array.from(contentEl.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"));
+        return headers
+            .filter((header) => header.parentElement?.tagName !== "LI")
+            .map((header) => {
+                header.addClass("is-collapsible");
 
-            this.attachCollapseToggle(header, {
-                filePath,
-                sectionKey: this.uniqueKey(slugify(header.getText()), seenKeys),
-                defaultCollapsed: false,
-                apply: (collapsed) => {
-                    header.toggleClass("is-collapsed", collapsed);
-                    this.applyHeaderCollapse(header, collapsed);
-                },
-                hides: (node) => this.sectionBody(header).some((el) => el.contains(node)),
+                const sectionKey = this.uniqueKey(slugify(header.getText()), seenKeys);
+                this.attachCollapseToggle(header, {
+                    filePath,
+                    sectionKey,
+                    defaultCollapsed: false,
+                    apply: (collapsed) => {
+                        header.toggleClass("is-collapsed", collapsed);
+                        this.applyHeaderCollapse(header, collapsed);
+                    },
+                    hides: (node) => this.sectionBody(header).some((el) => el.contains(node)),
+                });
+                return sectionKey;
             });
-        });
     }
 
-    private processLists(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): void {
-        const listItems = contentEl.querySelectorAll<HTMLElement>("li");
-        listItems.forEach((li) => {
-            if (!li.querySelector("ul, ol")) return;
+    private processLists(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): string[] {
+        const listItems = Array.from(contentEl.querySelectorAll<HTMLElement>("li"));
+        return listItems
+            .filter((li) => li.querySelector("ul, ol"))
+            .map((li) => {
+                const depth = this.getListDepth(li);
+                li.addClass("is-collapsible");
 
-            const depth = this.getListDepth(li);
-            li.addClass("is-collapsible");
-
-            this.attachCollapseToggle(li, {
-                filePath,
-                sectionKey: this.uniqueKey(`li-${depth}-${slugify(this.ownText(li))}`, seenKeys),
-                defaultCollapsed: false,
-                apply: (collapsed) => li.toggleClass("is-collapsed", collapsed),
-                hides: (node) =>
-                    Array.from(li.children).some((el) => /^(UL|OL)$/.test(el.tagName) && el.contains(node)),
+                const sectionKey = this.uniqueKey(`li-${depth}-${slugify(this.ownText(li))}`, seenKeys);
+                this.attachCollapseToggle(li, {
+                    filePath,
+                    sectionKey,
+                    defaultCollapsed: false,
+                    apply: (collapsed) => li.toggleClass("is-collapsed", collapsed),
+                    hides: (node) =>
+                        Array.from(li.children).some((el) => /^(UL|OL)$/.test(el.tagName) && el.contains(node)),
+                });
+                return sectionKey;
             });
-        });
     }
 
     private applyHeaderCollapse(header: HTMLElement, isCollapsed: boolean): void {

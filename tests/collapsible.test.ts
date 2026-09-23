@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
-import { Component } from "obsidian";
-import { CollapsibleManager } from "../src/render/collapsible";
+import { Component, TFile } from "obsidian";
+import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "../src/render/collapsible";
 import type { CollapsibleStateStore } from "../src/render/collapse-store";
 import { fake } from "./stream-view-fixture";
 
@@ -10,6 +10,7 @@ function makeStore(collapsedByDefault = false): CollapsibleStateStore {
         collapsedOr: vi.fn().mockReturnValue(collapsedByDefault),
         setCollapsed: vi.fn(),
         clearForFile: vi.fn(),
+        retainOnly: vi.fn(),
     });
 }
 
@@ -582,5 +583,42 @@ describe("CollapsibleManager — unfolding for search", () => {
 
         expect(top.classList.contains("is-collapsed")).toBe(true);
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "top", true);
+    });
+});
+
+describe("CollapsibleManager — stale sections", () => {
+    const HOUR_MS = 60 * 60 * 1000;
+    let store: ReturnType<typeof makeStore>;
+    let manager: CollapsibleManager;
+
+    /** A note last written `hoursAgo` hours ago. */
+    function noteWritten(hoursAgo: number): TFile {
+        const file = new TFile("file.md");
+        file.stat.mtime = Date.now() - hoursAgo * HOUR_MS;
+        return file;
+    }
+
+    beforeEach(() => {
+        store = makeStore();
+        manager = new CollapsibleManager(store);
+    });
+
+    it("hands back the key of every section it made", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Notes</h2><h2>Notes</h2><ul><li>Task<ul><li>a</li></ul></li></ul>";
+
+        expect(manager.makeCollapsible(content, "file.md")).toEqual(["notes", "notes-2", "li-1-task"]);
+    });
+
+    it("forgets the sections a settled note no longer has, keeping the properties panel's", () => {
+        manager.forgetRemovedSections(noteWritten(25), ["notes"]);
+
+        expect(store.retainOnly).toHaveBeenCalledWith("file.md", new Set(["notes", PROPERTIES_SECTION_KEY]));
+    });
+
+    it("forgets nothing of a note written in the last day: a heading may be mid-edit", () => {
+        manager.forgetRemovedSections(noteWritten(23), ["notes"]);
+
+        expect(store.retainOnly).not.toHaveBeenCalled();
     });
 });

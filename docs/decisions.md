@@ -416,3 +416,20 @@ throw from, so the view's error path went with it.
 
 **Rejected:** filtering `getAllDailyNotes()`'s result — an evicted note is gone
 before the filter sees it.
+
+## 2026-09-23 — Stale collapse state is pruned a day after the note's last write
+
+**Decision:** after a successful render, a note's saved sections missing from
+that render are forgotten — once the note has gone 24 hours unwritten. The
+properties panel's key is always kept.
+
+**Why:** daily notes are rarely renamed or deleted, so the existing cleanup
+almost never runs, and a renamed heading's state stayed forever. A day covers
+retyping a heading and cutting and pasting a section, and needs no timer: the
+note's `mtime` says it.
+
+**Rejected:**
+- Pruning on every render — typing `## Mee` on the way to `## Meeting` drops its state.
+- Expiring keys unseen for N days — a note untouched for years still has valid state.
+- A cap evicting the least recently toggled notes — bounds size, not staleness.
+- State in frontmatter — every toggle rewrites the file, against the read-only stream.

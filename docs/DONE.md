@@ -31,6 +31,7 @@
 - [x] Startup and live events agree on which files are daily notes; an attachment no longer evicts its day's note
 - [x] Broken daily-note settings show the empty state and recover on correction, not a dead error
 - [x] Two open stream views stay in step on create and delete
+- [x] Collapse state of removed headings and lists is pruned once the note has gone a day unwritten
 - [x] Typecheck and lint `tests/`, against mocks typed by the real API
 - [x] Pruned the unit suite: duplicates dropped, vacuous tests made to assert, names say behaviour
 - [x] `NoteStream` has its own tests; the view's tests cover only its wiring

@@ -81,7 +81,7 @@ function mount(renderer: NoteRenderer, el: HTMLElement): HTMLElement {
 
 function makeCollapsible(store = makeStore()): CollapsibleManager {
     const manager = new CollapsibleManager(new CollapsibleStateStore(asApp(store)));
-    vi.spyOn(manager, "makeCollapsible").mockImplementation(() => {});
+    vi.spyOn(manager, "makeCollapsible").mockReturnValue([]);
     lastCollapsible = manager;
     return manager;
 }
@@ -174,6 +174,30 @@ describe("NoteRenderer.renderInto", () => {
         renderer = new NoteRenderer(asApp(app), new Component(), collapsible, makeSettings(), new SearchHighlighter());
         await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
         expect(collapsible.makeCollapsible).toHaveBeenCalledOnce();
+    });
+
+    it("forgets the sections the rendered note no longer has", async () => {
+        const collapsible = makeCollapsible();
+        vi.mocked(collapsible.makeCollapsible).mockReturnValue(["meeting"]);
+        const forget = vi.spyOn(collapsible, "forgetRemovedSections").mockImplementation(() => {});
+        renderer = new NoteRenderer(asApp(app), new Component(), collapsible, makeSettings(), new SearchHighlighter());
+        const file = new TFile("Notes/2025-01-01.md");
+
+        await renderNote(renderer, file);
+
+        expect(forget).toHaveBeenCalledWith(file, ["meeting"]);
+    });
+
+    it("forgets nothing when the note failed to render: no section was seen", async () => {
+        app.vault.cachedRead = vi.fn().mockRejectedValue(new Error("read failed"));
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const collapsible = makeCollapsible();
+        const forget = vi.spyOn(collapsible, "forgetRemovedSections");
+        renderer = new NoteRenderer(asApp(app), new Component(), collapsible, makeSettings(), new SearchHighlighter());
+
+        await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
+
+        expect(forget).not.toHaveBeenCalled();
     });
 
     it("shows 'Error rendering note' text when the read rejects", async () => {

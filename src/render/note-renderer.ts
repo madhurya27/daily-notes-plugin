@@ -1,11 +1,8 @@
 import { App, Component, Keymap, MarkdownRenderer, MarkdownView, TFile, setIcon } from "obsidian";
-import { CollapsibleManager } from "./collapsible";
+import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
 import type { DailyNotesStreamSettings } from "../settings";
-
-/** Reserved key for the properties panel; a heading slug can never contain ":". */
-const PROPERTIES_SECTION_KEY = ":properties";
 
 /** The fallback, for an Obsidian that resolves no property type. */
 const PROPERTY_ICONS: Record<string, string> = {
@@ -115,7 +112,8 @@ export class NoteRenderer {
 
             await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, noteComponent);
 
-            this.collapsible.makeCollapsible(contentEl, file.path);
+            const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);
+            this.collapsible.forgetRemovedSections(file, sectionKeys);
         } catch (error) {
             console.error(`DailyNotesStream: Failed to render note ${file.path}:`, error);
             contentEl.setText("Error rendering note");

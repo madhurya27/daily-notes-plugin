@@ -32,6 +32,18 @@ export class CollapsibleStateStore {
         this.clearForFile(oldPath);
     }
 
+    /** Forgets the note's sections outside `keep` — headings and lists it no longer has. */
+    retainOnly(filePath: string, keep: ReadonlySet<string>): void {
+        const index = this.readIndex(filePath);
+        const kept = index.filter((sectionKey) => keep.has(sectionKey));
+        if (kept.length === index.length) return;
+
+        for (const sectionKey of index) {
+            if (!keep.has(sectionKey)) this.app.saveLocalStorage(this.sectionStorageKey(filePath, sectionKey), null);
+        }
+        this.app.saveLocalStorage(this.indexStorageKey(filePath), kept.length > 0 ? kept : null);
+    }
+
     clearForFile(filePath: string): void {
         for (const sectionKey of this.readIndex(filePath)) {
             this.app.saveLocalStorage(this.sectionStorageKey(filePath, sectionKey), null);

@@ -1,10 +1,5 @@
 # TODO
 
-## Bugs
-From the 2026-09-23 code review. Ahead of everything in Open.
-
-- [ ] Collapse state of a heading or list item that no longer exists stays in localStorage while its note does.
-
 ## Open
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
