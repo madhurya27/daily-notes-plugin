@@ -167,6 +167,33 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             expect(state.length).toBe(0);
         });
 
+        it("shows the empty state when the vault's last daily note is deleted", async () => {
+            const note = new TFile("Notes/2025-01-01.md");
+            state.reset([note]);
+            plugin.service.removeSorted = vi.fn().mockReturnValue(0);
+            const container = document.createElement("div");
+            (view as any).streamContainerEl = container;
+
+            view.onFileDelete(note);
+            await flushPromises();
+
+            expect(container.querySelector(".daily-notes-empty-state")).not.toBeNull();
+        });
+
+        it("shows no empty state while other daily notes remain", async () => {
+            const note = new TFile("Notes/2025-01-01.md");
+            state.reset([note, new TFile("Notes/2024-12-31.md")]);
+            plugin.service.removeSorted = vi.fn().mockReturnValue(0);
+            plugin.service.length = 1;
+            const container = document.createElement("div");
+            (view as any).streamContainerEl = container;
+
+            view.onFileDelete(note);
+            await flushPromises();
+
+            expect(container.querySelector(".daily-notes-empty-state")).toBeNull();
+        });
+
         it("clears collapse state for the file's path regardless of whether it was cached", async () => {
             plugin.service.removeSorted = vi.fn().mockReturnValue(-1);
             const note = new TFile("Notes/nonexistent.md");

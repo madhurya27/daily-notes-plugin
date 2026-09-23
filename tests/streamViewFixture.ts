@@ -20,6 +20,7 @@ export function makePlugin() {
             dates: vi.fn().mockReturnValue([]),
             formatDate: vi.fn().mockReturnValue(""),
             parseNoteDate: vi.fn().mockReturnValue(null),
+            length: 0,
         },
         collapseStore: new CollapsibleStateStore(app as any),
     } as any;

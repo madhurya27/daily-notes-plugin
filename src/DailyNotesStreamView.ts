@@ -217,6 +217,7 @@ export class DailyNotesStreamView extends ItemView {
         if (globalIndex !== -1 && globalIndex < this.state.length) {
             this.state.remove(file.path);
         }
+        if (this.plugin.service.length === 0) this.showEmptyState();
     }
 
     onFileDelete(file: TAbstractFile) {
@@ -252,14 +253,7 @@ export class DailyNotesStreamView extends ItemView {
         const batch = this.plugin.service.getBatch(this.state.length, BATCH_SIZE);
         if (batch.length === 0) {
             // No recheck: re-triggering on an empty batch spins forever.
-            if (this.state.length === 0 && !this.findEmptyState()) {
-                this.insertBeforeSentinel(
-                    this.streamContainerEl.createDiv({
-                        cls: "daily-notes-empty-state",
-                        text: "No daily notes found. Please check your daily notes settings.",
-                    })
-                );
-            }
+            if (this.state.length === 0) this.showEmptyState();
             return;
         }
 
@@ -412,6 +406,16 @@ export class DailyNotesStreamView extends ItemView {
     // -------------------------------------------------------------------------
     // DOM helpers
     // -------------------------------------------------------------------------
+
+    private showEmptyState(): void {
+        if (this.findEmptyState()) return;
+        this.insertBeforeSentinel(
+            this.streamContainerEl.createDiv({
+                cls: "daily-notes-empty-state",
+                text: "No daily notes found. Please check your daily notes settings.",
+            })
+        );
+    }
 
     private findEmptyState(): HTMLElement | null {
         return this.streamContainerEl.querySelector(".daily-notes-empty-state");

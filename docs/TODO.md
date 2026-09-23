@@ -4,8 +4,6 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
-- [ ] Create today's note from the view — spec'd as F2 in `docs/IMPROVEMENTS.md`. Covers the empty state too:
-  a vault with no daily notes currently renders blank.
 - [ ] Filtering: filter by tag/header — unblocked by note unloading.
 - [ ] Per-note edit action — open in a split, or append to today's note. Read-only stream stays; see
   `docs/decisions.md` (2026-09-15).

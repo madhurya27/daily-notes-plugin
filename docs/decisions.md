@@ -3,6 +3,17 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-22 — The stream does not create notes
+
+**Decision:** no "create today's note" action in the view.
+
+**Why:** core Daily Notes already creates it from its ribbon icon and command;
+a read-only stream missing today is showing the vault as it is.
+
+**Rejected:** a create button above the stream when today is missing — a
+duplicate of core, plus state to keep in sync across create, delete and
+midnight.
+
 ## 2026-09-22 — The obsidian mock hands tests the real moment
 
 **Decision:** `tests/mocks/obsidian.ts` re-exports moment, a devDependency, in
