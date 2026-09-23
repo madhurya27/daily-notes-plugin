@@ -3,7 +3,6 @@ import {
     Component,
     Keymap,
     MarkdownRenderer,
-    MarkdownView,
     Menu,
     TFile,
     parseLinktext,
@@ -56,21 +55,7 @@ interface NoteTarget {
 }
 
 /** The view the stream's gestures belong to; Page preview hangs popovers on it. */
-type HoverView = Component & HoverParent & Pick<View, "getViewType" | "navigation">;
-
-/**
- * Opens where a plain click goes, never the stream's own tab. The stream is
- * navigable, so Obsidian would take it for "the current tab"; it stands aside
- * while Obsidian picks one, which it does before `open` first awaits.
- */
-function besideStream<T>(view: HoverView, open: () => T): T {
-    view.navigation = false;
-    try {
-        return open();
-    } finally {
-        view.navigation = true;
-    }
-}
+type HoverView = Component & HoverParent & Pick<View, "getViewType">;
 
 /** Marks the values whose pills search, so a click can tell them apart. */
 const TAG_VALUE_CLASS = "daily-note-tags-value";
@@ -231,7 +216,7 @@ export class NoteRenderer {
                 return;
             }
 
-            const note = this.noteAt(target, view);
+            const note = this.noteAt(target);
             if (!note) return;
             evt.preventDefault();
             note.open(Keymap.isModEvent(evt));
@@ -239,14 +224,14 @@ export class NoteRenderer {
 
         // A middle button fires auxclick, never click.
         view.registerDomEvent(root, "auxclick", (evt) => {
-            const note = evt.button === 1 ? this.noteAt(evt.target as HTMLElement, view) : null;
+            const note = evt.button === 1 ? this.noteAt(evt.target as HTMLElement) : null;
             if (!note) return;
             evt.preventDefault();
             note.open("tab");
         });
 
         view.registerDomEvent(root, "contextmenu", (evt) => {
-            const note = this.noteAt(evt.target as HTMLElement, view);
+            const note = this.noteAt(evt.target as HTMLElement);
             if (!note) return;
             evt.preventDefault();
             this.showNoteMenu(note, evt);
@@ -285,23 +270,18 @@ export class NoteRenderer {
     }
 
     /** The note a title or an internal link under the pointer points at. */
-    private noteAt(target: HTMLElement, view: HoverView): NoteTarget | null {
+    private noteAt(target: HTMLElement): NoteTarget | null {
         const title = target.closest<HTMLElement>(".daily-note-title");
         const file = title ? this.titles.get(title) : undefined;
-        if (file) return { file, menuSource: "daily-notes-stream", open: (pane) => this.openNote(file, pane, view) };
+        if (file) return { file, menuSource: "daily-notes-stream", open: (pane) => this.openNote(file, pane) };
 
         const link = this.linkAt(target);
         if (!link) return null;
         const { linktext, sourcePath } = link;
-        const { path, subpath } = parseLinktext(linktext);
-        const linked = this.app.metadataCache.getFirstLinkpathDest(path, sourcePath);
         return {
-            file: linked,
+            file: this.app.metadataCache.getFirstLinkpathDest(parseLinktext(linktext).path, sourcePath),
             menuSource: "link-context-menu",
-            open: (pane) => {
-                if (!pane && linked && this.revealOpenNote(linked, subpath)) return;
-                this.openLink(linktext, sourcePath, pane, view);
-            },
+            open: (pane) => this.openLink(linktext, sourcePath, pane),
         };
     }
 
@@ -344,46 +324,20 @@ export class NoteRenderer {
     }
 
     /** A link to a note not yet created creates it, as Obsidian's links do. */
-    private openLink(linktext: string, sourcePath: string, pane: PaneType | boolean, view: HoverView): void {
-        besideStream(view, () => this.app.workspace.openLinkText(linktext, sourcePath, pane)).catch((error) => {
+    private openLink(linktext: string, sourcePath: string, pane: PaneType | boolean): void {
+        this.app.workspace.openLinkText(linktext, sourcePath, pane).catch((error) => {
             console.error("DailyNotesStream: Failed to open link", error);
         });
     }
 
-    /**
-     * A plain click reuses a tab already showing the note; a chosen pane
-     * always gets its own, as Obsidian's links do.
-     */
-    private openNote(file: TFile, pane: PaneType | boolean, view: HoverView): void {
-        if (!pane && this.revealOpenNote(file, "")) return;
-        besideStream(view, () => this.app.workspace.getLeaf(pane))
+    /** A plain click opens in the stream's own tab, as a link in a note opens in its note's. */
+    private openNote(file: TFile, pane: PaneType | boolean): void {
+        this.app.workspace
+            .getLeaf(pane)
             .openFile(file)
             .catch((error) => {
                 console.error("DailyNotesStream: Failed to open file", error);
             });
-    }
-
-    /**
-     * Brings forward a tab already showing the note, at the heading or block
-     * the link named; false when no tab shows it. The stream never navigates
-     * away, so this stands in for the reading view reusing its own tab.
-     */
-    private revealOpenNote(file: TFile, subpath: string): boolean {
-        const existing = this.app.workspace
-            .getLeavesOfType("markdown")
-            // A "markdown" leaf may still be deferred (unloaded) since 1.7.2.
-            .find((leaf) => leaf.view instanceof MarkdownView && leaf.view.file?.path === file.path);
-        if (!existing) return false;
-        // Revealing brings the tab forward but leaves focus on the stream.
-        void this.app.workspace
-            .revealLeaf(existing)
-            .then(() => this.app.workspace.setActiveLeaf(existing, { focus: true }));
-        if (subpath) {
-            existing.openFile(file, { eState: { subpath } }).catch((error) => {
-                console.error("DailyNotesStream: Failed to open file", error);
-            });
-        }
-        return true;
     }
 
     private renderPropertyRow(container: HTMLElement, key: string, value: unknown): void {

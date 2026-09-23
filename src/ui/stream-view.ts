@@ -10,6 +10,7 @@ import { SearchHighlighter } from "../render/search-highlights";
 import { SearchBar } from "./search-bar";
 import { matchesHotkey } from "./hotkey";
 import { getReadableLineLength, getSearchHotkeys, onVaultConfigChange } from "../obsidian-internals";
+import { isStreamPlace } from "../stream/scroll-position";
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
 
@@ -118,6 +119,21 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.addAction("search", "Search", () => this.searchBar.open());
 
         this.stream.open(this.contentEl, streamContainerEl);
+    }
+
+    /**
+     * Obsidian's history keeps a view's scroll here, not in its state: Back
+     * reopens the stream from its state, then hands this back.
+     */
+    getEphemeralState(): Record<string, unknown> {
+        const place = this.stream.place();
+        return place ? { ...super.getEphemeralState(), place } : super.getEphemeralState();
+    }
+
+    setEphemeralState(state: unknown): void {
+        super.setEphemeralState(state);
+        const place = (state as { place?: unknown } | null | undefined)?.place;
+        if (isStreamPlace(place)) void this.stream.restorePlace(place);
     }
 
     /** Obsidian calls this on a pane resize. */

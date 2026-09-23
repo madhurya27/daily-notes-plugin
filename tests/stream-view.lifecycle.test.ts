@@ -22,6 +22,39 @@ describe("DailyNotesStreamView — view API", () => {
         expect(view.navigation).toBe(true);
     });
 
+    it("hands Obsidian's history its place in the stream", () => {
+        const place = { path: "Notes/2025-01-05.md", offset: -150 };
+        vi.spyOn(view["stream"], "place").mockReturnValue(place);
+
+        expect(view.getEphemeralState()).toEqual({ place });
+    });
+
+    it("hands Obsidian's history nothing for an empty stream", () => {
+        vi.spyOn(view["stream"], "place").mockReturnValue(null);
+
+        expect(view.getEphemeralState()).toEqual({});
+    });
+
+    it("returns to the place Obsidian's history hands back", () => {
+        const restorePlace = vi.spyOn(view["stream"], "restorePlace").mockResolvedValue();
+        const place = { path: "Notes/2025-01-05.md", offset: -150 };
+
+        view.setEphemeralState({ place });
+
+        expect(restorePlace).toHaveBeenCalledWith(place);
+    });
+
+    it.each([undefined, {}, { place: "top" }, { place: { path: 3, offset: 0 } }, { place: { path: "a.md" } }])(
+        "ignores a state it did not write: %o",
+        (state) => {
+            const restorePlace = vi.spyOn(view["stream"], "restorePlace");
+
+            view.setEphemeralState(state);
+
+            expect(restorePlace).not.toHaveBeenCalled();
+        }
+    );
+
     it("getIcon returns 'calendar-days'", () => {
         expect(view.getIcon()).toBe("calendar-days");
     });

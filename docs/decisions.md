@@ -460,3 +460,20 @@ clears, other plugins' included.
   patches an unsupported method.
 - Hiding the core items with CSS while the stream has focus — core class
   names, and other plugins' items stay stale.
+
+## 2026-09-23 — A plain click opens in the stream's tab
+
+**Decision:** amends the two entries above. A plain click on a title or link
+replaces the stream in its tab, as a link in the reading view or the graph
+does; Back returns to the note the stream was scrolled to. Mod-click keeps the
+stream and opens a new tab.
+
+**Why:** the stream is a navigable view, and Obsidian's other navigable views
+navigate on click. Keeping it open took a flag flipped around an Obsidian call
+that happened to pick its tab synchronously, and a tab-reuse rule the rest of
+the app lacks.
+
+**Rejected:**
+- Opening beside the stream — the departure above, and its reliance on
+  Obsidian's internals.
+- Reusing a tab already showing the note — not what Obsidian's links do.

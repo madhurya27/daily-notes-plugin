@@ -731,3 +731,60 @@ describe("what a search moves through", () => {
         expect(stream.firstVisibleNote()).toBeNull();
     });
 });
+
+describe("the stream's place", () => {
+    let notes: TFile[];
+
+    beforeEach(() => {
+        HTMLElement.prototype.scrollIntoView = vi.fn();
+        notes = makeNotes();
+        service.getBatch.mockImplementation((offset: number, limit: number) => notes.slice(offset, offset + limit));
+        service.indexOf = vi.fn((path: string) => notes.findIndex((n) => n.path === path));
+        pane.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
+    });
+
+    it("is the first note reaching into the pane, and how far above the pane it starts", async () => {
+        await stream.loadMoreNotes();
+        stream.blockOf(notes[0]!)!.getBoundingClientRect = () => ({ top: -900, bottom: -10 }) as DOMRect;
+        stream.blockOf(notes[1]!)!.getBoundingClientRect = () => ({ top: -150, bottom: 390 }) as DOMRect;
+
+        expect(stream.place()).toEqual({ path: notes[1]!.path, offset: -150 });
+    });
+
+    it("is nowhere in an empty stream", () => {
+        expect(stream.place()).toBeNull();
+    });
+
+    it("is returned to: the note loaded, scrolled to the top, then as far past it as it was", async () => {
+        const target = placeholder(notes[24]!.path);
+        // Where scrolling it to the top left it: 10px short.
+        target.getBoundingClientRect = () => ({ top: 10, bottom: 600 }) as DOMRect;
+        noteWindow.add.mockImplementation((f: TFile) => (f === notes[24] ? target : placeholder(f.path)));
+        pane.scrollTop = 1000;
+
+        await stream.restorePlace({ path: notes[24]!.path, offset: -150 });
+
+        expect(await loadedCount()).toBe(30);
+        expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+        expect(pane.scrollTop).toBe(1160);
+    });
+
+    it("stays at the top when the note it was at is gone", async () => {
+        pane.scrollTop = 0;
+
+        await stream.restorePlace({ path: "Notes/2024-06-01.md", offset: -150 });
+
+        expect(pane.scrollTop).toBe(0);
+        expect(Notice.shown).toEqual([]);
+    });
+
+    it("stays at the top when the stream runs out before its note", async () => {
+        // A cache that shrank under us: the index can no longer be reached.
+        service.indexOf = vi.fn().mockReturnValue(99);
+        pane.scrollTop = 0;
+
+        await stream.restorePlace({ path: "Notes/2025-01-01.md", offset: -150 });
+
+        expect(pane.scrollTop).toBe(0);
+    });
+});

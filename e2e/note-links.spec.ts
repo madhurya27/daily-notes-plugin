@@ -19,11 +19,8 @@ function activeNote(page: Page) {
     return page.evaluate(() => window.app.workspace.activeLeaf?.view?.file?.path);
 }
 
-async function focusStream(page: Page) {
-    await page.evaluate(() => {
-        const stream = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!;
-        window.app.workspace.setActiveLeaf(stream, { focus: true });
-    });
+async function streamIsOpen(page: Page) {
+    return page.evaluate(() => window.app.workspace.getLeavesOfType("daily-notes-stream-view").length > 0);
 }
 
 async function firstLink(page: Page, text: string) {
@@ -37,48 +34,36 @@ test.describe("links in a note", () => {
         await obsidian.page.evaluate(() => window.app.workspace.detachLeavesOfType("markdown"));
     });
 
-    test("open the linked note without closing the stream", async ({ obsidian }) => {
+    test("open the linked note in the stream's tab", async ({ obsidian }) => {
         const { page } = obsidian;
         await (await firstLink(page, "Reading list")).click();
 
-        await expect.poll(() => openNotes(page)).toEqual([{ path: "Reading list.md", besideStream: true }]);
+        await expect
+            .poll(async () => (await openNotes(page)).map((n: { path?: string }) => n.path))
+            .toEqual(["Reading list.md"]);
+        expect(await streamIsOpen(page)).toBe(false);
     });
 
-    test("create a missing note beside the stream", async ({ obsidian }) => {
+    test("create a missing note in the stream's tab", async ({ obsidian }) => {
         const { page } = obsidian;
         await (await firstLink(page, "Someday")).click();
 
-        await expect.poll(() => openNotes(page)).toEqual([{ path: "Someday.md", besideStream: true }]);
+        await expect
+            .poll(async () => (await openNotes(page)).map((n: { path?: string }) => n.path))
+            .toEqual(["Someday.md"]);
+        expect(await streamIsOpen(page)).toBe(false);
         await page.evaluate(async () => {
             await window.app.vault.delete(window.app.vault.getFileByPath("Someday.md")!);
         });
     });
 
-    test("return to the tab already showing the linked note", async ({ obsidian }) => {
+    test("open the linked note at the heading it names", async ({ obsidian }) => {
         const { page } = obsidian;
-        const link = await firstLink(page, "Reading list");
-        await link.click();
-        await expect.poll(async () => (await openNotes(page)).length).toBe(1);
-        await focusStream(page);
-
-        await link.click();
-
-        await expect.poll(() => activeNote(page)).toBe("Reading list.md");
-        expect(await openNotes(page)).toHaveLength(1);
-    });
-
-    test("scroll the tab already showing the note to the linked heading", async ({ obsidian }) => {
-        const { page } = obsidian;
-        await (await firstLink(page, "Reading list")).click();
-        await expect.poll(async () => (await openNotes(page)).length).toBe(1);
-        await focusStream(page);
-
         await (await firstLink(page, "what's next")).click();
 
         await expect.poll(() => activeNote(page)).toBe("Reading list.md");
         const note = page.locator(".workspace-leaf.mod-active .markdown-source-view");
         await expect(note.getByText("Middlemarch")).toBeInViewport();
-        expect(await openNotes(page)).toHaveLength(1);
     });
 
     test("open in a split when mod-alt-clicked", async ({ obsidian, mobileLayout }) => {
@@ -89,16 +74,11 @@ test.describe("links in a note", () => {
         await expect.poll(() => openNotes(page)).toEqual([{ path: "Reading list.md", besideStream: false }]);
     });
 
-    test("open a second copy in a new tab when mod-clicked", async ({ obsidian }) => {
+    test("open in a new tab when mod-clicked, keeping the stream", async ({ obsidian }) => {
         const { page } = obsidian;
-        const link = await firstLink(page, "Reading list");
-        await link.click();
-        await expect.poll(async () => (await openNotes(page)).length).toBe(1);
-        await focusStream(page);
+        await (await firstLink(page, "Reading list")).click({ modifiers: ["ControlOrMeta"] });
 
-        await link.click({ modifiers: ["ControlOrMeta"] });
-
-        await expect.poll(async () => (await openNotes(page)).length).toBe(2);
+        await expect.poll(() => openNotes(page)).toEqual([{ path: "Reading list.md", besideStream: true }]);
     });
 
     test("open in a new tab when middle-clicked", async ({ obsidian }) => {

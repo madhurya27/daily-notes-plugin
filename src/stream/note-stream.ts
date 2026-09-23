@@ -6,7 +6,7 @@ import { StreamState } from "./stream-state";
 import { StreamBlocks } from "./stream-blocks";
 import { InfiniteScrollController } from "./infinite-scroll";
 import { NoteWindowManager } from "./note-window";
-import { captureAnchor, restoreAnchor, scrollIntoPlace, type StreamLayout } from "./scroll-position";
+import { captureAnchor, restoreAnchor, scrollIntoPlace, type StreamLayout, type StreamPlace } from "./scroll-position";
 
 /** Obsidian autosaves as you type; one render per save is wasted work. */
 const MODIFY_DEBOUNCE_MS = 300;
@@ -228,6 +228,23 @@ export class NoteStream {
     firstVisibleNote(): TFile | null {
         const find = (f: TFile) => this.blocks.get(f.path);
         return captureAnchor(this.state.notes, this.scrollRoot, find)?.file ?? null;
+    }
+
+    /** Where the pane is scrolled to; null when no note is in it. */
+    place(): StreamPlace | null {
+        const find = (f: TFile) => this.blocks.get(f.path);
+        const anchor = captureAnchor(this.state.notes, this.scrollRoot, find);
+        return anchor && { path: anchor.file.path, offset: anchor.relativeTopPx };
+    }
+
+    /** Scrolls back to `place`; stays put when its note is gone. */
+    async restorePlace(place: StreamPlace): Promise<void> {
+        const index = this.service.indexOf(place.path);
+        const block = index === -1 ? null : await this.revealIndex(index);
+        if (block) {
+            const top = block.getBoundingClientRect().top - this.scrollRoot.getBoundingClientRect().top;
+            this.scrollRoot.scrollTop += top - place.offset;
+        }
     }
 
     /** The window manager's renders, drained through the queue they run on. */

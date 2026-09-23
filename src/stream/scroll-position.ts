@@ -7,6 +7,21 @@ export interface AnchorSnapshot {
 }
 
 /**
+ * Where the stream is scrolled to, in a form Obsidian's history can keep: the
+ * first note reaching into the pane, and its top's offset from the pane's.
+ */
+export interface StreamPlace {
+    path: string;
+    offset: number;
+}
+
+export function isStreamPlace(value: unknown): value is StreamPlace {
+    if (typeof value !== "object" || value === null) return false;
+    const { path, offset } = value as Partial<StreamPlace>;
+    return typeof path === "string" && typeof offset === "number";
+}
+
+/**
  * Captures the first note element that is at or below the current scroll position
  * as an anchor for later restoration.
  *
