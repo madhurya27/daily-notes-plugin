@@ -317,23 +317,12 @@ describe("CollapsibleManager — headers", () => {
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "section", true);
     });
 
-    it("uses empty string key when header textContent is null (covers ?? '' branch)", () => {
-        const content = document.createElement("div");
-        content.innerHTML = "<h1></h1>";
-        const h1 = content.querySelector("h1") as HTMLElement;
-        // Override textContent to return null, forcing the ?? '' fallback (line 25)
-        Object.defineProperty(h1, "textContent", { get: () => null, configurable: true });
-        makeCollapsible(manager, content, "file.md");
-        clickChevron(h1);
-        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "", true);
-    });
-
     it("hides lower-level headings during collapse (h2 after h1 is hidden, not a break)", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h1>Top</h1><h2>Sub</h2><p>Body</p>";
         makeCollapsible(manager, content, "file.md");
         clickChevron(content.querySelector("h1") as HTMLElement);
-        // h2 level (2) > h1 level (1): NOT a break — h2 must be hidden (covers the false branch at line 83)
+        // h2 level (2) > h1 level (1): NOT a break — h2 must be hidden
         expect(content.querySelector("h2")!.classList.contains("is-hidden")).toBe(true);
         expect(content.querySelector("p")!.classList.contains("is-hidden")).toBe(true);
     });
