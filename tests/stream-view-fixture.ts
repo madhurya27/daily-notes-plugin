@@ -3,7 +3,6 @@ import { DailyNotesStreamView } from "../src/ui/stream-view";
 import { Component, WorkspaceLeaf } from "./mocks/obsidian";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
-import { StreamState } from "../src/stream/stream-state";
 
 /** Minimal plugin stub — satisfies DailyNotesStreamView's constructor needs. */
 export function makePlugin() {
@@ -94,6 +93,5 @@ export function makeStubbedView(app: object = makeApp()) {
 export async function makeViewSetup(app: object = makeApp()) {
     const { view, plugin } = makeStubbedView(app);
     await view.onOpen();
-    const state = (view as any).stream.state as StreamState;
-    return { view, plugin, state };
+    return { view, plugin };
 }
