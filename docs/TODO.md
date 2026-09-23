@@ -41,6 +41,16 @@ Out of scope: random note (core ships it), task rollup (Tasks owns it, and read-
 folder/tag modes (dilutes what the plugin is), a tag/header filter (search does it),
 sticky date header (`docs/decisions.md`, 2026-09-21).
 
+## Performance
+Measured 2026-09-23 in real Obsidian, CPU throttled 6×: opening the stream takes up to 130 ms in a 10-year
+vault with 5,000 other notes, 70 ms of it `DailyNoteService.initialize()`.
+
+- [ ] Skip files outside the daily-notes folder before the strict date parse — each other note costs ~6 µs at
+  6×, ~30 ms per open for 5,000 of them. `parseDate` already rejects them, so the stream cannot change.
+- [ ] Keep each note's parsed date beside it in `_sorted` — parsing 3,650 notes costs ~37 ms per open at 6×,
+  and `dates()` re-parses them each time the jump picker opens (~25 ms). Create, delete and rename must keep
+  it in step.
+
 ## Deferred, contingent on how unloading behaves in real use
 Only worth doing if the placeholder estimate proves visibly wrong; Chromium's
 own scroll anchoring absorbs most of it today
