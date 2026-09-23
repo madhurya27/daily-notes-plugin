@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import type DailyNotesStreamPlugin from "../src/main";
+import type { DailyNoteService } from "../src/notes/daily-note-service";
 import { makeApp, makeViewSetup } from "./stream-view-fixture";
 
 const CONFIG_FILE = ".obsidian/daily-notes.json";
@@ -13,12 +13,12 @@ function writeConfig(app: ReturnType<typeof makeApp>, path = CONFIG_FILE) {
 
 describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () => {
     let app: ReturnType<typeof makeApp>;
-    let plugin: DailyNotesStreamPlugin;
+    let service: DailyNoteService;
 
     beforeEach(async () => {
         vi.useFakeTimers();
         app = makeApp();
-        ({ plugin } = await makeViewSetup(app));
+        ({ service } = await makeViewSetup(app));
     });
 
     afterEach(() => {
@@ -36,13 +36,13 @@ describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () 
         writeConfig(app);
         await settle();
 
-        expect(plugin.service.refreshIfSettingsChanged).toHaveBeenCalledOnce();
+        expect(service.refreshIfSettingsChanged).toHaveBeenCalledOnce();
     });
 
     it("ignores writes outside the config directory", async () => {
         writeConfig(app, "Notes/2025-01-01.md");
         await settle();
 
-        expect(plugin.service.refreshIfSettingsChanged).not.toHaveBeenCalled();
+        expect(service.refreshIfSettingsChanged).not.toHaveBeenCalled();
     });
 });

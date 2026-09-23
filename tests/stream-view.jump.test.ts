@@ -5,7 +5,7 @@ import { makeViewSetup } from "./stream-view-fixture";
 
 describe("DailyNotesStreamView — the jump action", () => {
     it("carries the date the modal returns into a jump", async () => {
-        const { view, plugin } = await makeViewSetup();
+        const { view, service } = await makeViewSetup();
         const opened: JumpToDateModal[] = [];
         vi.spyOn(JumpToDateModal.prototype, "open").mockImplementation(function (this: JumpToDateModal) {
             opened.push(this);
@@ -14,7 +14,7 @@ describe("DailyNotesStreamView — the jump action", () => {
         view.actions.find((a) => a.title === "Jump to date")!.callback(new MouseEvent("click"));
         opened[0]!["onSubmit"](moment("2025-01-05", "YYYY-MM-DD", true));
 
-        expect(plugin.service.indexForDate).toHaveBeenCalledOnce();
-        expect(vi.mocked(plugin.service.indexForDate).mock.calls[0]![0].format("YYYY-MM-DD")).toBe("2025-01-05");
+        expect(service.indexForDate).toHaveBeenCalledOnce();
+        expect(vi.mocked(service.indexForDate).mock.calls[0]![0].format("YYYY-MM-DD")).toBe("2025-01-05");
     });
 });

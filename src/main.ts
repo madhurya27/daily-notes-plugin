@@ -1,24 +1,23 @@
 import { Plugin, WorkspaceLeaf } from "obsidian";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "./ui/stream-view";
 import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab } from "./settings";
-import { DailyNoteService } from "./notes/daily-note-service";
 import { CollapsibleStateStore } from "./render/collapse-store";
+import { DailyNoteService } from "./notes/daily-note-service";
 
 export default class DailyNotesStreamPlugin extends Plugin {
     settings!: DailyNotesStreamSettings;
-    service!: DailyNoteService;
     collapseStore!: CollapsibleStateStore;
 
     async onload() {
         await this.loadSettings();
 
-        this.service = new DailyNoteService(() => this.app.vault.getMarkdownFiles());
-        // initialize() is called lazily in onOpen(): at load the vault may not
-        // have indexed its files yet.
-
         this.collapseStore = new CollapsibleStateStore(this.app);
 
-        this.registerView(VIEW_TYPE_DAILY_NOTES_STREAM, (leaf) => new DailyNotesStreamView(leaf, this));
+        this.registerView(
+            VIEW_TYPE_DAILY_NOTES_STREAM,
+            (leaf) =>
+                new DailyNotesStreamView(leaf, this, new DailyNoteService(() => this.app.vault.getMarkdownFiles()))
+        );
 
         this.addRibbonIcon("calendar-days", "Open daily notes stream", () => {
             this.activateView().catch((error) => {

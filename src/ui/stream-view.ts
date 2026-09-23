@@ -4,6 +4,7 @@ import { JumpToDateModal } from "./jump-to-date-modal";
 import { NoteRenderer } from "../render/note-renderer";
 import { CollapsibleManager } from "../render/collapsible";
 import { NoteStream } from "../stream/note-stream";
+import type { DailyNoteService } from "../notes/daily-note-service";
 import { StreamSearch } from "../stream/stream-search";
 import { SearchHighlighter } from "../render/search-highlights";
 import { SearchBar } from "./search-bar";
@@ -23,7 +24,16 @@ export class DailyNotesStreamView extends ItemView {
     private search: StreamSearch;
     private searchBar: SearchBar;
 
-    constructor(leaf: WorkspaceLeaf, plugin: DailyNotesStreamPlugin) {
+    /**
+     * `service` must be this view's own: a stream applies every vault event to
+     * it, so a shared cache would take the first view's insert and leave the
+     * next nothing to do.
+     */
+    constructor(
+        leaf: WorkspaceLeaf,
+        plugin: DailyNotesStreamPlugin,
+        private readonly service: DailyNoteService
+    ) {
         super(leaf);
         this.plugin = plugin;
         this.collapsible = new CollapsibleManager(plugin.collapseStore);
@@ -36,11 +46,11 @@ export class DailyNotesStreamView extends ItemView {
             () => plugin.settings,
             highlighter
         );
-        this.stream = new NoteStream(plugin.service, plugin.collapseStore, this.renderer);
+        this.stream = new NoteStream(this.service, plugin.collapseStore, this.renderer);
 
         this.search = new StreamSearch(
             {
-                notes: () => plugin.service.getBatch(0, plugin.service.length),
+                notes: () => this.service.getBatch(0, this.service.length),
                 read: (file) => this.app.vault.cachedRead(file),
             },
             this.stream,
@@ -89,7 +99,7 @@ export class DailyNotesStreamView extends ItemView {
         this.registerEvent(onVaultConfigChange(this.app, () => this.stream.onDailyNoteSettingsChange()));
 
         // Not in onload(): the vault may not have indexed its files yet.
-        this.plugin.service.initialize();
+        this.service.initialize();
 
         this.collapsible.delegate(this, streamContainerEl);
         this.renderer.delegate(this, streamContainerEl);
@@ -165,7 +175,7 @@ export class DailyNotesStreamView extends ItemView {
 
     /** Asks for a date, then jumps to it. */
     promptJumpToDate(): void {
-        new JumpToDateModal(this.app, this.plugin.service, (target) => void this.stream.jumpToDate(target)).open();
+        new JumpToDateModal(this.app, this.service, (target) => void this.stream.jumpToDate(target)).open();
     }
 
     refresh(): Promise<void> {

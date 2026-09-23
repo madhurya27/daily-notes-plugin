@@ -76,6 +76,8 @@ Traps that span files, so no single file's comments can hold them.
   pagination — notes skipped or duplicated on further scroll. `create`/`delete`/`rename` must route through
   `service.insertSorted`/`removeSorted`, and a note is rendered only when its global index falls in
   `[0, offset)`.
+- **Each view owns its `DailyNoteService`.** Every open view gets every vault event; with one shared cache the
+  first view's `insertSorted` would leave the rest a -1. `main.ts` builds one per view.
 - **`rename` gets `(file, oldPath)`.** Obsidian mutates `TFile` in place, so the DOM's `data-source-path` is the
   *old* path: look the element up by `oldPath`, remove from cache and state by `file.path`.
 - **Re-render is driven by `metadataCache.on("changed")`, not `vault.on("modify")`** — the cache lags the write,

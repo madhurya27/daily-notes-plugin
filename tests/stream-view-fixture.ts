@@ -20,23 +20,27 @@ export function asApp(stub: object): App {
     return stub as App;
 }
 
+/** A service stub holding no notes. */
+export function makeService(): DailyNoteService {
+    return fake<DailyNoteService>({
+        getBatch: vi.fn().mockReturnValue([]),
+        initialize: vi.fn(),
+        refreshIfSettingsChanged: vi.fn().mockReturnValue(false),
+        insertSorted: vi.fn().mockReturnValue(-1),
+        removeSorted: vi.fn().mockReturnValue(-1),
+        indexForDate: vi.fn().mockReturnValue(-1),
+        dates: vi.fn().mockReturnValue([]),
+        formatDate: vi.fn().mockReturnValue(""),
+        parseNoteDate: vi.fn().mockReturnValue(null),
+        length: 0,
+    });
+}
+
 /** Minimal plugin stub — satisfies DailyNotesStreamView's constructor needs. */
 export function makePlugin(): DailyNotesStreamPlugin {
     const app = makeApp();
     return fake<DailyNotesStreamPlugin>({
         settings: { showProperties: false, propertiesCollapsed: false },
-        service: fake<DailyNoteService>({
-            getBatch: vi.fn().mockReturnValue([]),
-            initialize: vi.fn(),
-            refreshIfSettingsChanged: vi.fn().mockReturnValue(false),
-            insertSorted: vi.fn().mockReturnValue(-1),
-            removeSorted: vi.fn().mockReturnValue(-1),
-            indexForDate: vi.fn().mockReturnValue(-1),
-            dates: vi.fn().mockReturnValue([]),
-            formatDate: vi.fn().mockReturnValue(""),
-            parseNoteDate: vi.fn().mockReturnValue(null),
-            length: 0,
-        }),
         collapseStore: new CollapsibleStateStore(asApp(app)),
     });
 }
@@ -79,7 +83,8 @@ export function makeStubbedView(app: object = makeApp()) {
     __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
     __setMockNotes([]);
     const plugin = makePlugin();
-    const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin);
+    const service = makeService();
+    const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, service);
     view["renderer"] = fake<NoteRenderer>({
         createBlock: vi.fn(() => document.createElement("div")),
         renderInto: vi.fn().mockResolvedValue(new Component()),
@@ -105,12 +110,12 @@ export function makeStubbedView(app: object = makeApp()) {
         recheck: vi.fn(),
         getSentinel: vi.fn().mockReturnValue(null),
     });
-    return { view, plugin };
+    return { view, plugin, service };
 }
 
 /** A stubbed view, opened. */
 export async function makeViewSetup(app: object = makeApp()) {
-    const { view, plugin } = makeStubbedView(app);
-    await view.onOpen();
-    return { view, plugin };
+    const setup = makeStubbedView(app);
+    await setup.view.onOpen();
+    return setup;
 }

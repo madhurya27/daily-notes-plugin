@@ -2,10 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } fr
 import DailyNotesStreamPlugin from "../src/main";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/ui/stream-view";
 import { DEFAULT_SETTINGS } from "../src/settings";
-import { DailyNoteService } from "../src/notes/daily-note-service";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
-import { WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
-import { asApp } from "./stream-view-fixture";
+import { TFile, WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
+import { asApp, makeService } from "./stream-view-fixture";
 import { __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 
 function makeApp() {
@@ -82,24 +81,6 @@ describe("DailyNotesStreamPlugin — onload", () => {
         ]);
         expect(plugin.commands.map((c) => c.id)).toEqual(["open-stream", "jump-to-date"]);
         expect(plugin.settingTabs).toHaveLength(1);
-    });
-
-    it("leaves the service uninitialized — the vault is not ready at load time", async () => {
-        __setMockNotes(["Notes/2026-08-28.md", "Notes/2026-08-27.md"]);
-
-        const { plugin } = await loadPlugin();
-
-        expect(plugin.service).toBeInstanceOf(DailyNoteService);
-        expect(plugin.service.length).toBe(0);
-    });
-
-    it("builds the service over the vault's markdown files", async () => {
-        __setMockNotes(["Notes/2026-08-28.md", "Notes/2026-08-27.md"]);
-
-        const { plugin } = await loadPlugin();
-        plugin.service.initialize();
-
-        expect(plugin.service.length).toBe(2);
     });
 
     it("builds a collapse store bound to the app", async () => {
@@ -233,7 +214,7 @@ describe("DailyNotesStreamPlugin — saveSettings", () => {
 
     it("refreshes every open stream view", async () => {
         const { plugin, app } = await loadPlugin();
-        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin);
+        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, makeService());
         const refresh = vi.spyOn(view, "refresh").mockResolvedValue(undefined);
         app.workspace.getLeavesOfType.mockReturnValue([{ view }]);
 
@@ -254,7 +235,7 @@ describe("DailyNotesStreamPlugin — saveSettings", () => {
 
     it("logs when a refresh fails", async () => {
         const { plugin, app } = await loadPlugin();
-        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin);
+        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, makeService());
         vi.spyOn(view, "refresh").mockRejectedValue(new Error("render blew up"));
         app.workspace.getLeavesOfType.mockReturnValue([{ view }]);
 
@@ -265,5 +246,57 @@ describe("DailyNotesStreamPlugin — saveSettings", () => {
             "DailyNotesStream: Failed to refresh view on settings change",
             expect.any(Error)
         );
+    });
+});
+
+describe("DailyNotesStreamPlugin — two open streams", () => {
+    beforeEach(() => {
+        const observer = { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
+        vi.stubGlobal(
+            "IntersectionObserver",
+            vi.fn(function () {
+                return observer;
+            })
+        );
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    /** Two views of one plugin, each opened with its first batch loaded. */
+    async function openTwoViews() {
+        const { plugin, app } = await loadPlugin();
+        const factory = plugin.views[VIEW_TYPE_DAILY_NOTES_STREAM]!;
+        const views = [factory(new WorkspaceLeaf(asApp(app))), factory(new WorkspaceLeaf(asApp(app)))];
+        const streams = views.map((view) => (view as DailyNotesStreamView)["stream"]);
+        for (const [i, view] of views.entries()) {
+            await (view as DailyNotesStreamView).onOpen();
+            await streams[i]!.loadMoreNotes();
+        }
+        return streams;
+    }
+
+    it("shows a created note in both, as Obsidian tells each", async () => {
+        __setMockNotes(["Notes/2026-08-27.md"]);
+        const streams = await openTwoViews();
+
+        const created = new TFile("Notes/2026-08-28.md");
+        __setMockNotes(["Notes/2026-08-27.md", created.path]);
+        for (const stream of streams) stream.onFileCreate(created);
+        await Promise.all(streams.map((stream) => stream.refresh()));
+
+        expect(streams.map((stream) => stream.blockOf(created) !== null)).toEqual([true, true]);
+    });
+
+    it("drops a deleted note from both, so neither pages past a note", async () => {
+        __setMockNotes(["Notes/2026-08-28.md", "Notes/2026-08-27.md"]);
+        const streams = await openTwoViews();
+
+        const deleted = streams[0]!["state"].notes[0]!;
+        for (const stream of streams) stream.onFileDelete(deleted);
+        await Promise.all(streams.map((stream) => stream.refresh()));
+
+        expect(streams.map((stream) => stream["state"].notes.map((f) => f.path))).toEqual([
+            ["Notes/2026-08-27.md"],
+            ["Notes/2026-08-27.md"],
+        ]);
     });
 });

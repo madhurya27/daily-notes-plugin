@@ -21,8 +21,8 @@ describe("DailyNotesStreamView — search", () => {
         app.vault.cachedRead = vi.fn((file: TFile) => Promise.resolve(SOURCES[file.path]!));
         const setup = await makeViewSetup(app);
         view = setup.view;
-        setup.plugin.service.getBatch = vi.fn((offset: number, limit: number) => NOTES.slice(offset, offset + limit));
-        Object.assign(setup.plugin.service, { length: NOTES.length });
+        setup.service.getBatch = vi.fn((offset: number, limit: number) => NOTES.slice(offset, offset + limit));
+        Object.assign(setup.service, { length: NOTES.length });
         document.body.appendChild(view.containerEl);
     });
 
@@ -108,7 +108,7 @@ describe("DailyNotesStreamView — search", () => {
         SOURCES["Notes/2024-12-31.md"] = "dentist";
 
         try {
-            Object.assign(view["plugin"].service, { length: NOTES.length });
+            Object.assign(view["service"], { length: NOTES.length });
             const handler = app.vault.on.mock.calls.find(([name]) => name === event)![1];
             handler(NOTES[3], "old.md");
             await settle();
