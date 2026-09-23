@@ -342,6 +342,8 @@ function secondaryScreen(): Screen | null {
  * this call. A reload drops them, and the policy with them: callers re-arm.
  */
 async function guardFocus(page: Page): Promise<void> {
+    // The preload sets the bridge; a loaded machine attaches before it runs.
+    await page.waitForFunction(() => window.electron?.remote !== undefined, null, { polling: 10 });
     await page.evaluate(() => {
         const { remote } = window.electron;
         const win = remote.getCurrentWindow();
