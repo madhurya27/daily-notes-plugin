@@ -5,7 +5,7 @@ import type { NoteRenderer } from "./NoteRenderer";
 import { StreamState } from "./StreamState";
 import { InfiniteScrollController } from "./InfiniteScrollController";
 import { NoteWindowManager } from "./NoteWindowManager";
-import { captureAnchor, restoreAnchor } from "./ScrollAnchorManager";
+import { captureAnchor, restoreAnchor, scrollToTop, type StreamLayout } from "./ScrollAnchorManager";
 
 /** Obsidian autosaves as you type; one render per save is wasted work. */
 const MODIFY_DEBOUNCE_MS = 300;
@@ -16,22 +16,6 @@ const CONFIG_DEBOUNCE_MS = 1000;
 const BATCH_SIZE = 10;
 
 const NO_NOTE_FOR_DATE = "No daily note on or before that date.";
-
-/** Passes over a jump's scroll before it is left where it landed. */
-const MAX_SCROLL_PASSES = 8;
-
-/** How near the top of the pane counts as arrived. */
-const SCROLL_TOLERANCE_PX = 2;
-
-/**
- * Two frames: the first gives the scroll a rendering opportunity, the second
- * is when the IntersectionObserver's callback for it has been delivered.
- */
-async function observersDelivered(): Promise<void> {
-    for (let frame = 0; frame < 2; frame++) {
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    }
-}
 
 /**
  * The stream's contents: which notes are loaded, their blocks, and every
@@ -215,33 +199,14 @@ export class NoteStream {
             return;
         }
         const block = this.findNoteElement(file);
-        if (block) await this.scrollTo(block);
+        if (block) await scrollToTop(block, this.scrollRoot, this.layout);
     }
 
-    /**
-     * Puts `block` at the top of the pane and keeps it there. Scrolling to it
-     * brings the window manager to it, and a note rendering *above* it grows
-     * past its placeholder estimate and pushes it down (ADR 0006), so the
-     * scroll is re-applied until the block is at the top of a stream that has
-     * stopped rendering.
-     */
-    private async scrollTo(block: HTMLElement): Promise<void> {
-        for (let pass = 0; pass < MAX_SCROLL_PASSES; pass++) {
-            const changes = this.window.layoutChanges;
-            block.scrollIntoView({ block: "start" });
-            await observersDelivered();
-            // Drains the renders those observers queued.
-            await this.enqueue(async () => {});
-
-            // The block sits at the top the instant it is scrolled to; the
-            // renders that will push it down land after. Arrived means at the
-            // top *and* nothing rendered or unloaded on this pass.
-            const offset = block.getBoundingClientRect().top - this.scrollRoot.getBoundingClientRect().top;
-            if (Math.abs(offset) <= SCROLL_TOLERANCE_PX && this.window.layoutChanges === changes) return;
-        }
-        // Out of passes: a note too short to reach the top of a tall pane
-        // cannot, and the stream is scrolled as far as it goes.
-    }
+    /** The window manager's renders, drained through the queue they run on. */
+    private readonly layout: StreamLayout = {
+        layoutChanges: () => this.window.layoutChanges,
+        drain: () => this.enqueue(async () => {}),
+    };
 
     /**
      * Batches until `index` is loaded, and the note there. Undefined when the

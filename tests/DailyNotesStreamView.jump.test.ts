@@ -79,45 +79,6 @@ describe("DailyNotesStreamView — jumpToDate", () => {
         expect(block.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
     });
 
-    it("scrolls again while renders above the target keep pushing it down", async () => {
-        // Each render above it moves the block; the third pass lands it.
-        const block = blockMoving([300, 80, 1]);
-        targeting(block);
-
-        await jump("2025-01-18");
-
-        expect(block.scrollIntoView).toHaveBeenCalledTimes(3);
-    });
-
-    it("keeps scrolling while the stream is still rendering, top or not", async () => {
-        // At the top from the first pass — but notes are still being rendered,
-        // and each one above the target will move it again.
-        const block = blockMoving([0]);
-        targeting(block);
-        // Read twice per pass, before and after: three passes see the count
-        // move, the fourth sees it hold.
-        const counts = [0, 1, 1, 2, 2, 3, 3, 3];
-        let read = 0;
-        Object.defineProperty((view as any).stream.window, "layoutChanges", {
-            get: () => counts[Math.min(read++, counts.length - 1)],
-        });
-
-        await jump("2025-01-18");
-
-        // Three passes saw a change, the fourth found the stream quiet.
-        expect(block.scrollIntoView).toHaveBeenCalledTimes(4);
-    });
-
-    it("gives up rather than chase a target that never arrives", async () => {
-        // A note too short to reach the top of a tall pane never gets there.
-        const block = blockMoving([500]);
-        targeting(block);
-
-        await jump("2025-01-18");
-
-        expect(block.scrollIntoView).toHaveBeenCalledTimes(8); // MAX_SCROLL_PASSES
-    });
-
     it("stops loading when the stream runs out before the target index", async () => {
         // A cache that shrank under us: the index can no longer be reached.
         plugin.service.indexForDate = vi.fn().mockReturnValue(99);

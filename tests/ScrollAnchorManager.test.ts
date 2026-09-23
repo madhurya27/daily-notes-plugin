@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { captureAnchor, restoreAnchor } from "../src/ScrollAnchorManager";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { captureAnchor, restoreAnchor, scrollToTop } from "../src/ScrollAnchorManager";
 import { TFile } from "obsidian";
 
 function makeFile(path: string): TFile {
@@ -103,5 +103,68 @@ describe("restoreAnchor", () => {
         restoreAnchor(snapshot, scrollEl, () => null);
 
         expect(scrollTop).toBe(100); // unchanged
+    });
+});
+
+describe("scrollToTop", () => {
+    /** A block whose top follows `tops`, holding the last value afterwards. */
+    function blockMoving(tops: number[]) {
+        const block = document.createElement("div");
+        block.scrollIntoView = vi.fn();
+        let pass = 0;
+        block.getBoundingClientRect = vi.fn(() => ({ top: tops[Math.min(pass++, tops.length - 1)] }) as DOMRect);
+        return block;
+    }
+
+    /** The pane the block is scrolled onto, its top at 0. */
+    const pane = makeEl({ top: 0, bottom: 800 });
+
+    /** A layout whose change count follows `counts`, read twice per pass. */
+    function layoutCounting(counts: number[] = [0]) {
+        let read = 0;
+        return {
+            layoutChanges: () => counts[Math.min(read++, counts.length - 1)]!,
+            drain: vi.fn().mockResolvedValue(undefined),
+        };
+    }
+
+    it("stops after one pass when the block lands at the top of a quiet stream", async () => {
+        const block = blockMoving([0]);
+        const layout = layoutCounting();
+
+        await scrollToTop(block, pane, layout);
+
+        expect(block.scrollIntoView).toHaveBeenCalledOnce();
+        expect(block.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+        expect(layout.drain).toHaveBeenCalledOnce();
+    });
+
+    it("scrolls again while renders above the block keep pushing it down", async () => {
+        // Each render above it moves the block; the third pass lands it.
+        const block = blockMoving([300, 80, 1]);
+
+        await scrollToTop(block, pane, layoutCounting());
+
+        expect(block.scrollIntoView).toHaveBeenCalledTimes(3);
+    });
+
+    it("keeps scrolling while the stream is still rendering, top or not", async () => {
+        // At the top from the first pass — but notes are still being rendered,
+        // and each one above the block will move it again. Three passes see
+        // the count move, the fourth sees it hold.
+        const block = blockMoving([0]);
+
+        await scrollToTop(block, pane, layoutCounting([0, 1, 1, 2, 2, 3, 3, 3]));
+
+        expect(block.scrollIntoView).toHaveBeenCalledTimes(4);
+    });
+
+    it("gives up rather than chase a block that never arrives", async () => {
+        // A note too short to reach the top of a tall pane never gets there.
+        const block = blockMoving([500]);
+
+        await scrollToTop(block, pane, layoutCounting());
+
+        expect(block.scrollIntoView).toHaveBeenCalledTimes(8); // MAX_SCROLL_PASSES
     });
 });
