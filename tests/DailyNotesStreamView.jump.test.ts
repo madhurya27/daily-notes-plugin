@@ -17,12 +17,12 @@ describe("DailyNotesStreamView — jumpToDate", () => {
     beforeEach(async () => {
         Notice.reset();
         ({ view, plugin } = await makeViewSetup());
-        (view as any).streamContainerEl = document.createElement("div");
+        (view as any).stream.streamContainerEl = document.createElement("div");
         notes = makeNotes();
         plugin.service.getBatch = vi.fn((offset: number, limit: number) => notes.slice(offset, offset + limit));
     });
 
-    const jump = (date: string) => (view as any).jumpToDate(moment(date, "YYYY-MM-DD", true));
+    const jump = (date: string) => (view as any).stream.jumpToDate(moment(date, "YYYY-MM-DD", true));
 
     it("notices and loads nothing when no note is on or before the date", async () => {
         plugin.service.indexForDate = vi.fn().mockReturnValue(-1);
@@ -40,11 +40,11 @@ describe("DailyNotesStreamView — jumpToDate", () => {
 
         // 24 is the 25th note: three batches of ten.
         expect(plugin.service.getBatch).toHaveBeenCalledTimes(3);
-        expect((view as any).state.length).toBe(30);
+        expect((view as any).stream.state.length).toBe(30);
     });
 
     it("loads no batch when the target note is already on screen", async () => {
-        await (view as any).loadMoreNotes();
+        await (view as any).stream.loadMoreNotes();
         plugin.service.getBatch = vi.fn();
         plugin.service.indexForDate = vi.fn().mockReturnValue(3);
 
@@ -67,7 +67,7 @@ describe("DailyNotesStreamView — jumpToDate", () => {
     /** Targets index 12, and hands `block` back for it. */
     function targeting(block: HTMLElement) {
         plugin.service.indexForDate = vi.fn().mockReturnValue(12);
-        (view as any).findNoteElement = vi.fn((f: TFile) => (f === notes[12] ? block : null));
+        (view as any).stream.findNoteElement = vi.fn((f: TFile) => (f === notes[12] ? block : null));
     }
 
     it("scrolls the target note to the top of the view", async () => {
@@ -98,7 +98,7 @@ describe("DailyNotesStreamView — jumpToDate", () => {
         // move, the fourth sees it hold.
         const counts = [0, 1, 1, 2, 2, 3, 3, 3];
         let read = 0;
-        Object.defineProperty((view as any).window, "layoutChanges", {
+        Object.defineProperty((view as any).stream.window, "layoutChanges", {
             get: () => counts[Math.min(read++, counts.length - 1)],
         });
 
@@ -132,7 +132,7 @@ describe("DailyNotesStreamView — jumpToDate", () => {
 describe("DailyNotesStreamView — the jump action", () => {
     it("carries the date the modal returns into a jump", async () => {
         const { view } = await makeViewSetup();
-        const jump = vi.spyOn(view, "jumpToDate").mockResolvedValue(undefined);
+        const jump = vi.spyOn((view as any).stream, "jumpToDate").mockResolvedValue(undefined);
         const opened: JumpToDateModal[] = [];
         vi.spyOn(JumpToDateModal.prototype, "open").mockImplementation(function (this: JumpToDateModal) {
             opened.push(this);

@@ -138,9 +138,9 @@ describe("plugin submission compliance", () => {
     it("debounces the file-system event it re-renders from", () => {
         // AGENTS.md: debounce file-system handlers. Obsidian autosaves while
         // typing, and each save would otherwise re-render the whole note.
-        const view = sources.find(({ name }) => name === "DailyNotesStreamView.ts")!;
-        expect(view.text).toMatch(/debounce\(/);
-        expect(view.text).toMatch(/flushModified/);
+        const stream = sources.find(({ name }) => name === "NoteStream.ts")!;
+        expect(stream.text).toMatch(/debounce\(/);
+        expect(stream.text).toMatch(/flushModified/);
     });
 
     it("ships the licence the directory requires", () => {

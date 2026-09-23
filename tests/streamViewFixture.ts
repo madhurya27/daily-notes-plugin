@@ -69,7 +69,7 @@ export function makeStubbedView(app: object = makeApp()) {
         delegate: vi.fn(),
     };
     // The window manager hands back placeholders; rendering is its business.
-    (view as any).window = {
+    (view as any).stream.window = {
         attach: vi.fn(),
         detach: vi.fn(),
         add: vi.fn(() => document.createElement("div")),
@@ -80,15 +80,15 @@ export function makeStubbedView(app: object = makeApp()) {
         layoutChanges: 0,
     };
     (view as any).collapsible = { delegate: vi.fn() };
-    (view as any).scroll = {
+    (view as any).stream.scroll = {
         attach: vi.fn(),
         detach: vi.fn(),
         recheck: vi.fn(),
         getSentinel: vi.fn().mockReturnValue(null),
     };
-    (view as any).insertElementAt = vi.fn();
-    (view as any).findNoteElement = vi.fn().mockReturnValue(null);
-    (view as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
+    (view as any).stream.insertElementAt = vi.fn();
+    (view as any).stream.findNoteElement = vi.fn().mockReturnValue(null);
+    (view as any).stream.findNoteElementByPath = vi.fn().mockReturnValue(null);
     return { view, plugin };
 }
 
@@ -96,6 +96,6 @@ export function makeStubbedView(app: object = makeApp()) {
 export async function makeViewSetup(app: object = makeApp()) {
     const { view, plugin } = makeStubbedView(app);
     await view.onOpen();
-    const state = (view as any).state as StreamState;
+    const state = (view as any).stream.state as StreamState;
     return { view, plugin, state };
 }

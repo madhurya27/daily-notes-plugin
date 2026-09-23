@@ -64,7 +64,7 @@ export class NoteWindowManager {
     constructor(
         private readonly renderer: NoteRenderer,
         /**
-         * Renders run through the view's queue, like every other mutation
+         * Renders run through the stream's queue, like every other mutation
          * (ADR 0004). Its promise is the view's to chain; nothing here waits.
          */
         private readonly enqueue: (task: () => Promise<void>) => unknown,

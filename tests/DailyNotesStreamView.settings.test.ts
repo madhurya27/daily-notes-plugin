@@ -21,7 +21,7 @@ describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () 
         app = makeApp();
         ({ view, plugin } = await makeViewSetup(app));
         // The ItemView mock's contentEl is not a jsdom node; the stream container is.
-        (view as any).streamContainerEl = document.createElement("div");
+        (view as any).stream.streamContainerEl = document.createElement("div");
     });
 
     afterEach(() => {
@@ -41,7 +41,7 @@ describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () 
         writeConfig(app);
         await settle();
 
-        expect((view as any).state.notes.map((f: TFile) => f.path)).toEqual(["Journal/2025-01-01.md"]);
+        expect((view as any).stream.state.notes.map((f: TFile) => f.path)).toEqual(["Journal/2025-01-01.md"]);
     });
 
     it("leaves the stream untouched when the settings are unchanged", async () => {
@@ -72,15 +72,15 @@ describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () 
 
     it("drops notes rendered under the old format before loading the new ones", async () => {
         plugin.service.getBatch = vi.fn().mockReturnValue([new TFile("Notes/2025-01-01.md")]);
-        await view.loadMoreNotes();
+        await (view as any).stream.loadMoreNotes();
 
         plugin.service.refreshIfSettingsChanged = vi.fn().mockReturnValue(true);
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
         writeConfig(app);
         await settle();
 
-        expect((view as any).state.notes).toEqual([]);
-        expect((view as any).streamContainerEl.querySelector(".daily-notes-empty-state")).not.toBeNull();
+        expect((view as any).stream.state.notes).toEqual([]);
+        expect((view as any).stream.streamContainerEl.querySelector(".daily-notes-empty-state")).not.toBeNull();
     });
 
     it("re-arms infinite scroll against the reloaded stream", async () => {
@@ -88,11 +88,11 @@ describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () 
         writeConfig(app);
         await settle();
 
-        const attach = (view as any).scroll.attach.mock.calls.at(-1);
+        const attach = (view as any).stream.scroll.attach.mock.calls.at(-1);
         plugin.service.getBatch = vi.fn().mockReturnValue([new TFile("Journal/2025-02-01.md")]);
         await attach[2]();
 
-        expect((view as any).state.notes.map((f: TFile) => f.path)).toEqual(["Journal/2025-02-01.md"]);
+        expect((view as any).stream.state.notes.map((f: TFile) => f.path)).toEqual(["Journal/2025-02-01.md"]);
     });
 
     it("keeps the view alive when rebuilding the cache throws", async () => {

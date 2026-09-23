@@ -23,7 +23,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
     // -----------------------------------------------------------------------
     describe("onFileCreate", () => {
         it("does nothing for a non-TFile argument", () => {
-            expect(() => view.onFileCreate({ path: "not-a-tfile" } as any)).not.toThrow();
+            expect(() => (view as any).stream.onFileCreate({ path: "not-a-tfile" } as any)).not.toThrow();
             expect(plugin.service.insertSorted).not.toHaveBeenCalled();
         });
 
@@ -31,11 +31,11 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             plugin.service.insertSorted = vi.fn().mockReturnValue(-1);
             const file = new TFile("Notes/Template.md");
 
-            view.onFileCreate(file);
+            (view as any).stream.onFileCreate(file);
             await flushPromises();
 
             expect(state.length).toBe(0);
-            expect((view as any).window.add).not.toHaveBeenCalled();
+            expect((view as any).stream.window.add).not.toHaveBeenCalled();
         });
 
         it("renders and inserts the note at its global index when within the loaded range", async () => {
@@ -43,11 +43,11 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             plugin.service.insertSorted = vi.fn().mockReturnValue(0);
             const file = new TFile("Notes/2025-01-05.md");
 
-            view.onFileCreate(file);
+            (view as any).stream.onFileCreate(file);
             await flushPromises();
 
             expect(plugin.service.insertSorted).toHaveBeenCalledWith(file);
-            expect((view as any).window.add).toHaveBeenCalledWith(file, undefined);
+            expect((view as any).stream.window.add).toHaveBeenCalledWith(file, undefined);
             expect(state.notes[0]).toBe(file);
             expect(state.length).toBe(3);
         });
@@ -57,10 +57,10 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             plugin.service.insertSorted = vi.fn().mockReturnValue(2);
             const file = new TFile("Notes/2025-01-01.md");
 
-            view.onFileCreate(file);
+            (view as any).stream.onFileCreate(file);
             await flushPromises();
 
-            expect((view as any).window.add).not.toHaveBeenCalled();
+            expect((view as any).stream.window.add).not.toHaveBeenCalled();
             expect(state.length).toBe(2);
         });
 
@@ -68,21 +68,21 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             state.reset([new TFile("Notes/2025-01-04.md"), new TFile("Notes/2025-01-03.md")]);
             plugin.service.insertSorted = vi.fn().mockReturnValue(2);
 
-            view.onFileCreate(new TFile("Notes/2025-01-01.md"));
+            (view as any).stream.onFileCreate(new TFile("Notes/2025-01-01.md"));
             await flushPromises();
 
-            expect((view as any).scroll.recheck).toHaveBeenCalledOnce();
+            expect((view as any).stream.scroll.recheck).toHaveBeenCalledOnce();
         });
 
         it("derives the loaded range from state.length, so the next batch starts after the insert", async () => {
             state.reset([new TFile("Notes/2025-01-04.md"), new TFile("Notes/2025-01-03.md")]);
             plugin.service.insertSorted = vi.fn().mockReturnValue(0);
 
-            view.onFileCreate(new TFile("Notes/2025-01-05.md"));
+            (view as any).stream.onFileCreate(new TFile("Notes/2025-01-05.md"));
             await flushPromises();
 
             expect(state.length).toBe(3);
-            await view.loadMoreNotes();
+            await (view as any).stream.loadMoreNotes();
             expect(plugin.service.getBatch).toHaveBeenCalledWith(3, 10);
         });
 
@@ -93,8 +93,8 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             const middle = new TFile("Notes/2025-01-02.md");
             plugin.service.insertSorted = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(1);
 
-            view.onFileCreate(newer);
-            view.onFileCreate(middle);
+            (view as any).stream.onFileCreate(newer);
+            (view as any).stream.onFileCreate(middle);
             await flushPromises();
 
             expect(state.notes).toEqual([newer, middle, existing]);
@@ -103,22 +103,22 @@ describe("DailyNotesStreamView — vault event handlers", () => {
         it("rechecks the sentinel for the first note created into an empty stream", async () => {
             plugin.service.insertSorted = vi.fn().mockReturnValue(0);
 
-            view.onFileCreate(new TFile("Notes/2025-01-01.md"));
+            (view as any).stream.onFileCreate(new TFile("Notes/2025-01-01.md"));
             await flushPromises();
 
-            expect((view as any).window.add).not.toHaveBeenCalled();
-            expect((view as any).scroll.recheck).toHaveBeenCalledOnce();
+            expect((view as any).stream.window.add).not.toHaveBeenCalled();
+            expect((view as any).stream.scroll.recheck).toHaveBeenCalledOnce();
         });
 
         it("onFileCreate logs error when the placeholder cannot be built", async () => {
             const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
             state.reset([new TFile("Notes/2025-01-04.md")]);
             plugin.service.insertSorted = vi.fn().mockReturnValue(0);
-            (view as any).window.add = vi.fn(() => {
+            (view as any).stream.window.add = vi.fn(() => {
                 throw new Error("create failed");
             });
 
-            view.onFileCreate(new TFile("Notes/2025-01-05.md"));
+            (view as any).stream.onFileCreate(new TFile("Notes/2025-01-05.md"));
             await flushPromises();
 
             expect(consoleSpy).toHaveBeenCalled();
@@ -135,7 +135,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
     // -----------------------------------------------------------------------
     describe("onFileDelete", () => {
         it("does nothing for a non-TFile argument", () => {
-            expect(() => view.onFileDelete({ path: "not-a-tfile" } as any)).not.toThrow();
+            expect(() => (view as any).stream.onFileDelete({ path: "not-a-tfile" } as any)).not.toThrow();
             expect(plugin.service.removeSorted).not.toHaveBeenCalled();
         });
 
@@ -144,9 +144,9 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             state.reset([note]);
             plugin.service.removeSorted = vi.fn().mockReturnValue(0);
             const mockEl = { remove: vi.fn() };
-            (view as any).findNoteElementByPath = vi.fn().mockReturnValue(mockEl);
+            (view as any).stream.findNoteElementByPath = vi.fn().mockReturnValue(mockEl);
 
-            view.onFileDelete(note);
+            (view as any).stream.onFileDelete(note);
             await flushPromises();
 
             expect(plugin.service.removeSorted).toHaveBeenCalledWith(note.path);
@@ -158,9 +158,9 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             plugin.service.removeSorted = vi.fn().mockReturnValue(3);
             const note = new TFile("Notes/2025-01-10.md");
             const mockEl = { remove: vi.fn() };
-            (view as any).findNoteElementByPath = vi.fn().mockReturnValue(mockEl);
+            (view as any).stream.findNoteElementByPath = vi.fn().mockReturnValue(mockEl);
 
-            view.onFileDelete(note);
+            (view as any).stream.onFileDelete(note);
             await flushPromises();
 
             expect(mockEl.remove).toHaveBeenCalled();
@@ -172,9 +172,9 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             state.reset([note]);
             plugin.service.removeSorted = vi.fn().mockReturnValue(0);
             const container = document.createElement("div");
-            (view as any).streamContainerEl = container;
+            (view as any).stream.streamContainerEl = container;
 
-            view.onFileDelete(note);
+            (view as any).stream.onFileDelete(note);
             await flushPromises();
 
             expect(container.querySelector(".daily-notes-empty-state")).not.toBeNull();
@@ -186,9 +186,9 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             plugin.service.removeSorted = vi.fn().mockReturnValue(0);
             plugin.service.length = 1;
             const container = document.createElement("div");
-            (view as any).streamContainerEl = container;
+            (view as any).stream.streamContainerEl = container;
 
-            view.onFileDelete(note);
+            (view as any).stream.onFileDelete(note);
             await flushPromises();
 
             expect(container.querySelector(".daily-notes-empty-state")).toBeNull();
@@ -199,7 +199,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             const note = new TFile("Notes/nonexistent.md");
             const clearSpy = vi.spyOn(plugin.collapseStore, "clearForFile");
 
-            view.onFileDelete(note);
+            (view as any).stream.onFileDelete(note);
             await flushPromises();
 
             expect(clearSpy).toHaveBeenCalledWith(note.path);
@@ -216,7 +216,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
     // -----------------------------------------------------------------------
     describe("onFileRename", () => {
         it("does nothing for a non-TFile argument", () => {
-            expect(() => view.onFileRename({ path: "x" } as any, "old.md")).not.toThrow();
+            expect(() => (view as any).stream.onFileRename({ path: "x" } as any, "old.md")).not.toThrow();
         });
 
         it("looks up the old DOM element by oldPath, removes it from the cache by the new path, and re-creates", async () => {
@@ -225,9 +225,9 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             plugin.service.insertSorted = vi.fn().mockReturnValue(-1);
             const mockEl = { remove: vi.fn() };
             const findSpy = vi.fn().mockReturnValue(mockEl);
-            (view as any).findNoteElementByPath = findSpy;
+            (view as any).stream.findNoteElementByPath = findSpy;
 
-            view.onFileRename(file, "Notes/2025-01-01.md");
+            (view as any).stream.onFileRename(file, "Notes/2025-01-01.md");
             await flushPromises();
 
             expect(findSpy).toHaveBeenCalledWith("Notes/2025-01-01.md");
@@ -240,10 +240,10 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             state.reset([new TFile("Notes/2025-01-02.md")]);
             plugin.service.removeSorted = vi.fn().mockReturnValue(-1);
             plugin.service.insertSorted = vi.fn().mockReturnValue(0);
-            (view as any).findNoteElementByPath = vi.fn().mockReturnValue(null);
+            (view as any).stream.findNoteElementByPath = vi.fn().mockReturnValue(null);
 
             const file = new TFile("Notes/2025-01-05.md");
-            view.onFileRename(file, "Notes/2025-01-01.md");
+            (view as any).stream.onFileRename(file, "Notes/2025-01-01.md");
             await flushPromises();
 
             expect(state.notes[0]).toBe(file);
@@ -254,7 +254,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             const migrateSpy = vi.spyOn(plugin.collapseStore, "migrate");
             const file = new TFile("Notes/2025-01-05.md");
 
-            view.onFileRename(file, "Notes/2025-01-01.md");
+            (view as any).stream.onFileRename(file, "Notes/2025-01-01.md");
             await flushPromises();
 
             expect(migrateSpy).toHaveBeenCalledWith("Notes/2025-01-01.md", file.path);
@@ -262,10 +262,10 @@ describe("DailyNotesStreamView — vault event handlers", () => {
 
         it("always removes the old entry (by oldPath) and re-creates under the new path — regardless of whether either name is a valid daily note", async () => {
             const file = new TFile("Notes/Template.md");
-            const removeSpy = vi.spyOn(view as any, "removeNote");
-            const createSpy = vi.spyOn(view, "onFileCreate");
+            const removeSpy = vi.spyOn((view as any).stream, "removeNote");
+            const createSpy = vi.spyOn((view as any).stream, "onFileCreate");
 
-            view.onFileRename(file, "Notes/2025-01-01.md");
+            (view as any).stream.onFileRename(file, "Notes/2025-01-01.md");
             await flushPromises();
 
             expect(removeSpy).toHaveBeenCalledWith(file, "Notes/2025-01-01.md");
@@ -281,60 +281,60 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             const container = document.createElement("div");
             const els = new Map(paths.map((p) => [p, document.createElement("div")]));
             for (const el of els.values()) container.appendChild(el);
-            (view as any).streamContainerEl = container;
-            (view as any).findNoteElement = vi.fn((f: TFile) => els.get(f.path) ?? null);
+            (view as any).stream.streamContainerEl = container;
+            (view as any).stream.findNoteElement = vi.fn((f: TFile) => els.get(f.path) ?? null);
             return container;
         }
 
         it("renders nothing until the window elapses", () => {
             wireContainer(["Notes/2025-01-01.md"]);
-            view.onFileModify(new TFile("Notes/2025-01-01.md"));
+            (view as any).stream.onFileModify(new TFile("Notes/2025-01-01.md"));
             vi.advanceTimersByTime(299);
-            expect((view as any).window.refresh).not.toHaveBeenCalled();
+            expect((view as any).stream.window.refresh).not.toHaveBeenCalled();
         });
 
         it("collapses a burst of saves into one re-render", async () => {
             wireContainer(["Notes/2025-01-01.md"]);
             const file = new TFile("Notes/2025-01-01.md");
             for (let i = 0; i < 5; i++) {
-                view.onFileModify(file);
+                (view as any).stream.onFileModify(file);
                 vi.advanceTimersByTime(100);
             }
             vi.advanceTimersByTime(300);
             await vi.runAllTimersAsync();
-            expect((view as any).window.refresh).toHaveBeenCalledTimes(1);
+            expect((view as any).stream.window.refresh).toHaveBeenCalledTimes(1);
         });
 
         it("re-renders every file touched during the window", async () => {
             wireContainer(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]);
-            view.onFileModify(new TFile("Notes/2025-01-01.md"));
-            view.onFileModify(new TFile("Notes/2025-01-02.md"));
+            (view as any).stream.onFileModify(new TFile("Notes/2025-01-01.md"));
+            (view as any).stream.onFileModify(new TFile("Notes/2025-01-02.md"));
             vi.advanceTimersByTime(300);
             await vi.runAllTimersAsync();
-            expect((view as any).window.refresh).toHaveBeenCalledTimes(2);
+            expect((view as any).stream.window.refresh).toHaveBeenCalledTimes(2);
         });
 
         it("drops a pending re-render when the view closes", async () => {
             wireContainer(["Notes/2025-01-01.md"]);
-            view.onFileModify(new TFile("Notes/2025-01-01.md"));
+            (view as any).stream.onFileModify(new TFile("Notes/2025-01-01.md"));
             await view.onClose();
             vi.advanceTimersByTime(300);
             await vi.runAllTimersAsync();
-            expect((view as any).window.refresh).not.toHaveBeenCalled();
+            expect((view as any).stream.window.refresh).not.toHaveBeenCalled();
         });
     });
 
     describe("onFileModify", () => {
         it("does nothing for a non-TFile argument", () => {
-            expect(() => view.onFileModify({ path: "not-a-tfile" } as any)).not.toThrow();
-            expect((view as any).window.refresh).not.toHaveBeenCalled();
+            expect(() => (view as any).stream.onFileModify({ path: "not-a-tfile" } as any)).not.toThrow();
+            expect((view as any).stream.window.refresh).not.toHaveBeenCalled();
         });
 
         it("does nothing when the note element is not in the DOM", async () => {
-            view.onFileModify(new TFile("Notes/2025-01-01.md"));
-            (view as any).flushModified.run();
+            (view as any).stream.onFileModify(new TFile("Notes/2025-01-01.md"));
+            (view as any).stream.flushModified.run();
             await flushPromises();
-            expect((view as any).window.refresh).not.toHaveBeenCalled();
+            expect((view as any).stream.window.refresh).not.toHaveBeenCalled();
         });
 
         // The block stays: only its content is rebuilt, so the path stays
@@ -344,14 +344,14 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             const existingEl = document.createElement("div");
             const container = document.createElement("div");
             container.appendChild(existingEl);
-            (view as any).streamContainerEl = container;
-            (view as any).findNoteElement = vi.fn().mockReturnValue(existingEl);
+            (view as any).stream.streamContainerEl = container;
+            (view as any).stream.findNoteElement = vi.fn().mockReturnValue(existingEl);
 
-            view.onFileModify(file);
-            (view as any).flushModified.run();
+            (view as any).stream.onFileModify(file);
+            (view as any).stream.flushModified.run();
             await flushPromises();
 
-            expect((view as any).window.refresh).toHaveBeenCalledWith(existingEl);
+            expect((view as any).stream.window.refresh).toHaveBeenCalledWith(existingEl);
             expect(container.contains(existingEl)).toBe(true);
         });
 
@@ -360,12 +360,12 @@ describe("DailyNotesStreamView — vault event handlers", () => {
             const container = document.createElement("div");
             const existingEl = document.createElement("div");
             container.appendChild(existingEl);
-            (view as any).streamContainerEl = container;
-            (view as any).findNoteElement = vi.fn().mockReturnValue(existingEl);
-            (view as any).window.refresh = vi.fn().mockRejectedValue(new Error("render failed"));
+            (view as any).stream.streamContainerEl = container;
+            (view as any).stream.findNoteElement = vi.fn().mockReturnValue(existingEl);
+            (view as any).stream.window.refresh = vi.fn().mockRejectedValue(new Error("render failed"));
 
-            view.onFileModify(new TFile("Notes/2025-01-01.md"));
-            (view as any).flushModified.run();
+            (view as any).stream.onFileModify(new TFile("Notes/2025-01-01.md"));
+            (view as any).stream.flushModified.run();
             await flushPromises();
 
             expect(consoleSpy).toHaveBeenCalled();
@@ -394,7 +394,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
 
         it("metadataCache 'changed' callback delegates to onFileModify", async () => {
             const { view, callbacks } = await makeWiredView();
-            const spy = vi.spyOn(view, "onFileModify");
+            const spy = vi.spyOn((view as any).stream, "onFileModify");
             const file = new TFile("Notes/2025-01-01.md");
             callbacks["changed"]?.(file);
             expect(spy).toHaveBeenCalledWith(file);
@@ -410,7 +410,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
 
         it("vault 'create' callback delegates to onFileCreate", async () => {
             const { view, callbacks } = await makeWiredView();
-            const spy = vi.spyOn(view, "onFileCreate");
+            const spy = vi.spyOn((view as any).stream, "onFileCreate");
             const file = new TFile("Notes/2025-01-01.md");
             callbacks["create"]?.(file);
             expect(spy).toHaveBeenCalledWith(file);
@@ -418,7 +418,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
 
         it("vault 'delete' callback delegates to onFileDelete", async () => {
             const { view, callbacks } = await makeWiredView();
-            const spy = vi.spyOn(view, "onFileDelete");
+            const spy = vi.spyOn((view as any).stream, "onFileDelete");
             const file = new TFile("Notes/2025-01-01.md");
             callbacks["delete"]?.(file);
             expect(spy).toHaveBeenCalledWith(file);
@@ -426,7 +426,7 @@ describe("DailyNotesStreamView — vault event handlers", () => {
 
         it("vault 'rename' callback delegates to onFileRename with the old path", async () => {
             const { view, callbacks } = await makeWiredView();
-            const spy = vi.spyOn(view, "onFileRename");
+            const spy = vi.spyOn((view as any).stream, "onFileRename");
             const file = new TFile("Notes/2025-01-01.md");
             callbacks["rename"]?.(file, "Notes/old-name.md");
             expect(spy).toHaveBeenCalledWith(file, "Notes/old-name.md");

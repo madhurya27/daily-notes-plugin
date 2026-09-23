@@ -24,7 +24,7 @@ describe("DailyNotesStreamView — view API", () => {
 
     it("onClose calls scroll.detach", async () => {
         await view.onClose();
-        expect((view as any).scroll.detach).toHaveBeenCalled();
+        expect((view as any).stream.scroll.detach).toHaveBeenCalled();
     });
 
     it("gives the renderer a live view of the plugin settings", async () => {
@@ -49,7 +49,7 @@ describe("DailyNotesStreamView — onResize", () => {
     it("recomputes the window margins", async () => {
         const { view } = await makeViewSetup();
         view.onResize();
-        expect((view as any).window.refreshMargins).toHaveBeenCalled();
+        expect((view as any).stream.window.refreshMargins).toHaveBeenCalled();
     });
 });
 
@@ -70,17 +70,17 @@ describe("DailyNotesStreamView — onOpen error path", () => {
 
     it("does not attach scroll observer when service.initialize() throws", async () => {
         await view.onOpen();
-        expect((view as any).scroll.attach).not.toHaveBeenCalled();
+        expect((view as any).stream.scroll.attach).not.toHaveBeenCalled();
     });
 });
 
 describe("DailyNotesStreamView — scroll.attach callbacks", () => {
     it("scroll.attach callback in onOpen delegates to loadMoreNotes", async () => {
         const { view, plugin } = await makeViewSetup();
-        (view as any).streamContainerEl = document.createElement("div");
+        (view as any).stream.streamContainerEl = document.createElement("div");
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
         // Retrieve the callback registered with scroll.attach during onOpen
-        const attachCalls: any[][] = (view as any).scroll.attach.mock.calls;
+        const attachCalls: any[][] = (view as any).stream.scroll.attach.mock.calls;
         const loadMoreCb = attachCalls[attachCalls.length - 1]?.[2] as () => Promise<void>;
         expect(typeof loadMoreCb).toBe("function");
         await loadMoreCb();
@@ -89,13 +89,13 @@ describe("DailyNotesStreamView — scroll.attach callbacks", () => {
 
     it("scroll.attach callback in refresh delegates to loadMoreNotes", async () => {
         const { view, plugin, state } = await makeViewSetup();
-        (view as any).contentEl = document.createElement("div");
-        (view as any).streamContainerEl = document.createElement("div");
+        (view as any).stream.scrollRoot = document.createElement("div");
+        (view as any).stream.streamContainerEl = document.createElement("div");
         plugin.service.getBatch = vi.fn().mockReturnValue([]);
         state.reset([]);
         await (view as any).refresh();
         // The most recent attach call is from refresh
-        const attachCalls: any[][] = (view as any).scroll.attach.mock.calls;
+        const attachCalls: any[][] = (view as any).stream.scroll.attach.mock.calls;
         const loadMoreCb = attachCalls[attachCalls.length - 1]?.[2] as () => Promise<void>;
         expect(typeof loadMoreCb).toBe("function");
         await loadMoreCb();
@@ -114,7 +114,7 @@ describe("DailyNotesStreamView — internal-link click handler", () => {
         (view as any).contentEl = document.createElement("div");
         registerDomEventSpy = vi.spyOn(view as any, "registerDomEvent");
         await view.onOpen();
-        return (view as any).streamContainerEl as HTMLElement;
+        return (view as any).stream.streamContainerEl as HTMLElement;
     }
 
     function appendInternalLink(parent: HTMLElement, href?: string) {
