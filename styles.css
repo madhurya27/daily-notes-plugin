@@ -251,8 +251,6 @@
 
 /* Header Collapse Alignment */
 .daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible {
-    display: flex;
-    align-items: center;
     margin-left: calc(-1 * var(--size-4-4));
     padding-left: var(--size-4-4);
     margin-block-start: 0;
@@ -265,9 +263,13 @@
     margin-block-end: calc(var(--p-spacing) * 0.25);
 }
 
+/* Centred on the first line by offset, so a heading stays one run of text: a
+   flex heading lays a link and the words after it out as columns. The box
+   stays square, as the chevron turns in it. */
 .daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible > .collapse-indicator {
     position: absolute;
     left: 0;
+    top: calc((1lh - var(--size-4-4)) / 2);
 }
 
 .daily-note-content .is-collapsible:is(:hover, :active) > .collapse-indicator {

@@ -185,6 +185,53 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(step.nested).toBeCloseTo(36, 0);
     });
 
+    test.describe("a heading holding a link", () => {
+        const NOTE = "Notes/2026-03-20.md";
+        const HEADING =
+            "## [An episode on anxiety, long enough to wrap on a phone and a desktop note alike, and then some more](https://example.com) - a podcast";
+
+        test.beforeEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate(
+                async ({ note, heading }) => {
+                    await window.app.vault.create(note, `${heading}\n\nText.\n`);
+                },
+                { note: NOTE, heading: HEADING }
+            );
+        });
+        test.afterEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate(async (note) => {
+                await window.app.vault.delete(window.app.vault.getFileByPath(note)!);
+            }, NOTE);
+        });
+
+        // Link and words run on as one line of text, not side-by-side columns.
+        test("wraps as reading view wraps it", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const height = (h: Element) => Math.round(h.getBoundingClientRect().height);
+            const heading = (await openStream(page)).locator(".daily-note-block").first().locator("h2");
+            const stream = await heading.evaluate(height);
+
+            await page.evaluate(async (note) => {
+                const file = window.app.vault.getFileByPath(note);
+                await window.app.workspace.getLeaf("tab").openFile(file!, { state: { mode: "preview" } });
+            }, NOTE);
+            const reading = page.locator(".workspace-leaf.mod-active .markdown-reading-view h2").first();
+            await expect(reading).toBeVisible();
+
+            expect(stream).toBe(await reading.evaluate(height));
+        });
+
+        test("centres its chevron on the first line", async ({ obsidian }) => {
+            const heading = (await openStream(obsidian.page)).locator(".daily-note-block").first().locator("h2");
+            const [chevron, line] = await heading.evaluate((h) => {
+                const centre = (r: DOMRect) => r.top + r.height / 2;
+                const svg = h.querySelector(".collapse-indicator svg")!.getBoundingClientRect();
+                return [centre(svg), centre(h.querySelector("a")!.getClientRects()[0]!)];
+            });
+            expect(Math.abs(chevron - line)).toBeLessThanOrEqual(1);
+        });
+    });
+
     test("toggles a heading from the keyboard", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
