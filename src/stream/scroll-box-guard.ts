@@ -1,14 +1,13 @@
 import { debounce } from "obsidian";
-import { fitBaseToWidth } from "../render/bases-fit";
 import { SCROLL_IDLE_MS } from "./note-window";
 
 /** Clipped by the stylesheet already, Bases and all. */
 const BASE = ".bases-embed, .block-language-base";
 
 /**
- * Keeps scroll containers out of the stream (ADR 0007): fits each Base to its
- * width as it lays out, and clips whatever else the stylesheet missed once the
- * scroll is still.
+ * Keeps scroll containers out of the stream (ADR 0007): reports each Base as it
+ * lays out, for its owner to fit, and clips whatever else the stylesheet
+ * missed once the scroll is still.
  */
 export class ScrollBoxGuard {
     private observer: MutationObserver | null = null;
@@ -16,6 +15,8 @@ export class ScrollBoxGuard {
     private readonly unchecked = new Set<HTMLElement>();
     // Reading computed styles mid-glide forces a page-wide recalc.
     private readonly checkOnceStill = debounce(() => this.clipScrollBoxes(), SCROLL_IDLE_MS, true);
+
+    constructor(private readonly onBaseLayout: (view: HTMLElement) => void) {}
 
     attach(container: HTMLElement): void {
         this.detach();
@@ -51,7 +52,7 @@ export class ScrollBoxGuard {
                 else this.unchecked.add(node);
             }
         }
-        views.forEach(fitBaseToWidth);
+        for (const view of views) this.onBaseLayout(view);
         if (this.unchecked.size > 0) this.checkOnceStill();
     }
 

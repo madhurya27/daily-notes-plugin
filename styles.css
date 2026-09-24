@@ -486,3 +486,11 @@
 .is-phone .mod-root .daily-notes-search:not(.is-closed) + .view-content {
     margin-top: 0;
 }
+
+/* The hidden header src/render/note-bases.ts reads Bases' header font and
+   padding from, once. */
+.daily-note-bases-probe {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
+}

@@ -19,13 +19,8 @@ interface Fence {
  * when no view converts, so the Base keeps its fitted columns.
  */
 export function asCards(definition: string, first?: string): string | null {
-    let parsed: unknown;
-    try {
-        parsed = parseYaml(definition);
-    } catch {
-        return null;
-    }
-    if (!isRecord(parsed) || !Array.isArray(parsed.views)) return null;
+    const parsed = parseDefinition(definition);
+    if (!parsed || !Array.isArray(parsed.views)) return null;
 
     const views: unknown[] = parsed.views;
     if (!views.some(isTable)) return null;
@@ -35,24 +30,36 @@ export function asCards(definition: string, first?: string): string | null {
     return stringifyYaml({ ...parsed, views: converted }).trimEnd();
 }
 
+/** Where an extracted Base renders; each one is drawn into its own. */
+export const BASE_SLOT_CLASS = "daily-note-base";
+/** An HTML block ends at a blank line, so the line after the placeholder stays markdown. */
+const SLOT = `<div class="${BASE_SLOT_CLASS}"></div>`;
+
+/** A Base as the note writes it, and the markdown that draws it as written. */
+export type BaseSource =
+    | { kind: "block"; definition: string; markdown: string }
+    | { kind: "embed"; link: string; view: string | undefined; markdown: string };
+
 /**
- * The note's markdown with every Base drawn as cards: a `base` block's table
- * views, and an embed alone on its line as a `base` block copied from its file.
- * The rendered copy only: Bases cannot save a block rendered outside an editor.
+ * The note's markdown with each Base — a `base` block, or an embed alone on its
+ * line — swapped for an empty placeholder, and those Bases in order: each one
+ * renders into its own placeholder, so it can be redrawn alone.
  */
-export async function rewriteBasesAsCards(
-    markdown: string,
-    readBase: (linkpath: string) => Promise<string | null>
-): Promise<string> {
+export function extractBases(markdown: string): { markdown: string; bases: BaseSource[] } {
     const out: string[] = [];
+    const bases: BaseSource[] = [];
     let fence: Fence | null = null;
 
     for (const line of markdown.split("\n")) {
         if (fence) {
-            if (closes(fence, line)) {
-                out.push(...closeFence(fence, line));
+            if (!closes(fence, line)) fence.body.push(line);
+            else {
+                if (fence.isBase) {
+                    bases.push(baseBlock(fence, line));
+                    out.push(fence.indent + SLOT, "");
+                } else out.push(fence.opening, ...fence.body, line);
                 fence = null;
-            } else fence.body.push(line);
+            }
             continue;
         }
 
@@ -64,13 +71,14 @@ export async function rewriteBasesAsCards(
         }
 
         const embed = BASE_EMBED.exec(line);
-        const definition = embed ? await readBase(embed[1]!) : null;
-        const cards = definition === null ? null : asCards(definition, embed?.[2]);
-        out.push(...(cards === null ? [line] : ["```base", cards, "```"]));
+        if (embed) {
+            bases.push({ kind: "embed", link: embed[1]!, view: embed[2], markdown: line.trim() });
+            out.push(SLOT, "");
+        } else out.push(line);
     }
 
     if (fence) out.push(fence.opening, ...fence.body);
-    return out.join("\n");
+    return { markdown: out.join("\n"), bases };
 }
 
 /** Closed by a fence of the same character, at least as long. */
@@ -79,18 +87,25 @@ function closes(fence: Fence, line: string): boolean {
     return trimmed.length >= fence.marker.length && trimmed === fence.marker[0]!.repeat(trimmed.length);
 }
 
-function closeFence(fence: Fence, closing: string): string[] {
-    const written = [fence.opening, ...fence.body, closing];
-    if (!fence.isBase) return written;
-    const definition = fence.body.map((line) =>
-        line.startsWith(fence.indent) ? line.slice(fence.indent.length) : line
-    );
-    const cards = asCards(definition.join("\n"));
-    if (cards === null) return written;
-    return [fence.opening, ...cards.split("\n").map((line) => fence.indent + line), closing];
+/** The block without the indent its placeholder keeps. */
+function baseBlock(fence: Fence, closing: string): BaseSource {
+    const dedent = (line: string) => (line.startsWith(fence.indent) ? line.slice(fence.indent.length) : line);
+    const definition = fence.body.map(dedent).join("\n");
+    const markdown = [dedent(fence.opening), definition, dedent(closing)].join("\n");
+    return { kind: "block", definition, markdown };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+/** A Base's YAML as an object, or null when it is not one. */
+export function parseDefinition(definition: string): Record<string, unknown> | null {
+    try {
+        const parsed: unknown = parseYaml(definition);
+        return isRecord(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 

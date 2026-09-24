@@ -3,21 +3,26 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
-## 2026-09-24 — Bases draw as cards on a phone
+## 2026-09-24 — A Base too wide for its note draws as cards
 
-**Decision:** on a phone, a note's Bases render from a rewritten copy of their
-definition, table views switched to `type: cards`: a `base` block's YAML, and a
-`![[X.base]]` embed alone on its line as a block copied from the file, its
-`#view` first. Anything else keeps fitted columns.
+**Decision:** a Base follows the Markdown table rule: cards when its table is
+wider than the note, on any device, re-checked when the width changes. Each
+`base` block, and each `![[X.base]]` alone on its line, renders into its own
+placeholder, so one Base redraws alone. Cards come straight away when the
+headers alone overrun the note (Bases' header font and padding, measured once);
+otherwise the table draws and is measured on its first layout. A measured
+answer is kept per note and width.
 
-**Why:** a phone has no room for columns, and Bases draws cards natively. The
-copy is safe: Bases saves a block only through an editor, and its `this` is the
-note either way. `Platform.isPhone` survives rotation; cards reflow themselves.
+**Why:** consistency with Markdown tables. Measured cost of a redraw, 7 columns
+over a 3–10 year vault: table 100 ms (205–235 at 4× CPU), cards 62–64 ms
+(84–104); vault size adds under 30 ms. The estimate skips the table draw in
+the common case: many columns on a narrow note.
 
 **Rejected:**
+- Cards on any phone (`Platform.isPhone`) — cards even where the table fits.
 - Taller `rowHeight` rows — the table stays cramped.
 - Restyling the table as cards in CSS — Bases positions rows absolutely.
-- Deciding by pane width — needs a re-render when it changes.
+- Re-rendering the whole note on a flip — redraws everything else in it too.
 
 ## 2026-09-23 — Unloading waits for the scroll to stop
 

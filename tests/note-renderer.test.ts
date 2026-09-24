@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi, type MockInstance } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SearchHighlighter } from "../src/render/search-highlights";
 import { NoteRenderer } from "../src/render/note-renderer";
 import { Component, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
-import { Menu, Platform } from "./mocks/obsidian";
+import { Menu } from "./mocks/obsidian";
 import { CollapsibleManager } from "../src/render/collapsible";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import type { DailyNotesStreamSettings } from "../src/settings";
@@ -762,64 +762,55 @@ describe("NoteRenderer tables", () => {
     });
 });
 
-describe("NoteRenderer Bases on a phone", () => {
+describe("NoteRenderer Bases", () => {
     const BASE = "```base\nviews:\n  - type: table\n    name: T\n```";
-    let app: ReturnType<typeof makeApp>;
-    let render: MockInstance<typeof MarkdownRenderer.render>;
+    let renderer: NoteRenderer;
 
     beforeEach(() => {
-        app = makeApp();
-        render = vi.spyOn(MarkdownRenderer, "render");
-        return () => {
-            Platform.isPhone = false;
-        };
-    });
-
-    async function rendered(markdown: string): Promise<string> {
-        app.vault.cachedRead.mockImplementation((file: TFile) =>
-            Promise.resolve(file.extension === "base" ? "views:\n  - type: table\n    name: E" : markdown)
+        vi.stubGlobal(
+            "ResizeObserver",
+            class {
+                observe() {}
+                disconnect() {}
+            }
         );
-        const renderer = new NoteRenderer(
-            asApp(app),
+        renderer = new NoteRenderer(
+            asApp(makeApp({ readResult: `Before\n${BASE}\nAfter` })),
             new Component(),
             makeCollapsible(),
             makeSettings(),
             new SearchHighlighter()
         );
-        await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
-        return render.mock.calls.at(-1)![1];
-    }
-
-    it("renders a table Base as cards", async () => {
-        Platform.isPhone = true;
-
-        expect(await rendered(BASE)).toContain("type: cards");
+        return () => vi.unstubAllGlobals();
     });
 
-    it("keeps the table on a larger screen", async () => {
-        expect(await rendered(BASE)).toBe(BASE);
+    // Each Base draws into its own placeholder, so it can be redrawn alone.
+    it("draws each Base into a placeholder of its own", async () => {
+        const render = vi.spyOn(MarkdownRenderer, "render").mockImplementationOnce((_app, markdown, el) => {
+            el.createDiv({ cls: "daily-note-base" });
+            expect(markdown).toBe('Before\n<div class="daily-note-base"></div>\n\nAfter');
+            return Promise.resolve();
+        });
+
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        expect(render).toHaveBeenLastCalledWith(
+            expect.anything(),
+            BASE,
+            el.querySelector(".daily-note-base"),
+            "Notes/2025-01-01.md",
+            expect.any(Component)
+        );
     });
 
-    // Resolved as Obsidian resolves the embed: from the note.
-    it("renders an embedded Base from its file", async () => {
-        Platform.isPhone = true;
-        app.metadataCache.getFirstLinkpathDest.mockReturnValue(new TFile("Bases/Views.base"));
+    it("fits a Base it did not draw", () => {
+        const view = document.createElement("div");
+        Object.defineProperty(view, "clientWidth", { get: () => 300 });
+        view.createDiv({ cls: "bases-thead" }).setAttribute("style", "width: 600px");
 
-        const markdown = await rendered("![[Views.base]]");
+        renderer.onBaseLayout(view);
 
-        expect(app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith("Views.base", "Notes/2025-01-01.md");
-        expect(markdown).toContain("name: E");
-        expect(markdown).toContain("type: cards");
-    });
-
-    it.each([
-        ["a missing file", null],
-        ["a file that is not a Base", new TFile("Views.base.md")],
-    ])("leaves an embed of %s", async (_case, dest) => {
-        Platform.isPhone = true;
-        app.metadataCache.getFirstLinkpathDest.mockReturnValue(dest);
-
-        expect(await rendered("![[Views.base]]")).toBe("![[Views.base]]");
+        expect(view.style.getPropertyValue("--bases-table-column-max-width")).toBe("150px");
     });
 });
 

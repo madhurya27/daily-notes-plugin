@@ -12,14 +12,12 @@ const caps = new WeakMap<HTMLElement, number>();
  * from a CSS variable when it lays out; a hand-resized column ignores it.
  */
 export function fitBaseToWidth(view: HTMLElement): void {
-    const thead = view.querySelector<HTMLElement>(".bases-thead");
-    // Bases sets the table's width on its header row.
-    const tableWidth = thead ? parseFloat(thead.style.width) : NaN;
+    const width = tableWidth(view);
     const available = view.clientWidth;
-    if (!(tableWidth > available) || available <= 0) return;
+    if (!(width > available) || available <= 0) return;
 
     const current = caps.get(view) ?? DEFAULT_MAX_COLUMN_PX;
-    const next = Math.max(MIN_COLUMN_PX, Math.floor((current * available) / tableWidth));
+    const next = Math.max(MIN_COLUMN_PX, Math.floor((current * available) / width));
     if (next >= current) return;
 
     caps.set(view, next);
@@ -27,4 +25,10 @@ export function fitBaseToWidth(view: HTMLElement): void {
     view.style.setProperty("--bases-table-column-min-width", `${MIN_COLUMN_PX}px`);
     // Bases lays the table out again on a scroll event on its view.
     view.dispatchEvent(new Event("scroll"));
+}
+
+/** The width Bases laid the view's table out at, set on its header row; NaN before. */
+export function tableWidth(view: HTMLElement): number {
+    const thead = view.querySelector<HTMLElement>(".bases-thead");
+    return thead ? parseFloat(thead.style.width) : NaN;
 }

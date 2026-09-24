@@ -4,7 +4,6 @@ import {
     Keymap,
     MarkdownRenderer,
     Menu,
-    Platform,
     TFile,
     parseLinktext,
     setIcon,
@@ -15,7 +14,8 @@ import {
 import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
 import { stackWideTables } from "./wide-tables";
-import { rewriteBasesAsCards } from "./bases-as-cards";
+import { extractBases } from "./bases-as-cards";
+import { NoteBases } from "./note-bases";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
 import type { DailyNotesStreamSettings } from "../settings";
 
@@ -91,13 +91,18 @@ function displayValue(value: unknown): string {
 }
 
 export class NoteRenderer {
+    /** Each view's own: what it measured is per pane. */
+    private readonly bases: NoteBases;
+
     constructor(
         private readonly app: App,
         private readonly component: Component,
         private readonly collapsible: CollapsibleManager,
         private readonly getSettings: () => DailyNotesStreamSettings,
         private readonly highlighter: SearchHighlighter
-    ) {}
+    ) {
+        this.bases = new NoteBases(app);
+    }
 
     /**
      * The block a note always has, rendered or not: `renderInto` fills it and
@@ -145,10 +150,9 @@ export class NoteRenderer {
             if (frontmatterPos) {
                 markdown = markdown.slice(frontmatterPos.end.offset).trim();
             }
-            // A phone has no room for a Base's columns (docs/decisions.md, 2026-09-24).
-            if (Platform.isPhone) markdown = await rewriteBasesAsCards(markdown, (link) => this.readBase(link, file));
-
-            await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, noteComponent);
+            const { markdown: body, bases } = extractBases(markdown);
+            await MarkdownRenderer.render(this.app, body, contentEl, file.path, noteComponent);
+            await this.bases.render(contentEl, file, noteComponent, bases);
             this.markUnresolvedLinks(contentEl);
             stackWideTables(contentEl, noteComponent);
 
@@ -163,10 +167,9 @@ export class NoteRenderer {
         return noteComponent;
     }
 
-    /** The definition an embed in `note` links to, or null when it is not a Base. */
-    private async readBase(linkpath: string, note: TFile): Promise<string | null> {
-        const base = this.app.metadataCache.getFirstLinkpathDest(linkpath, note.path);
-        return base?.extension === "base" ? this.app.vault.cachedRead(base) : null;
+    /** Bases laid a table out: cards if it is too wide for its note, else fitted columns. */
+    onBaseLayout(view: HTMLElement): void {
+        this.bases.onLayout(view);
     }
 
     /** Frees everything the note registered while it was rendered. */

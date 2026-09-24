@@ -60,7 +60,7 @@ vi.mock("../src/stream/scroll-box-guard", () => ({
         attach = vi.fn();
         detach = vi.fn();
         onScroll = vi.fn();
-        constructor() {
+        constructor(readonly onBaseLayout: (view: HTMLElement) => void) {
             fakes.guards.push(this as unknown as FakeGuard);
         }
     },
@@ -88,12 +88,14 @@ let container: HTMLElement;
 let noteWindow: FakeWindow;
 let infiniteScroll: FakeScroll;
 let guard: FakeGuard;
+let renderer: { onBaseLayout: ReturnType<typeof vi.fn> };
 
 beforeEach(() => {
     Notice.reset();
     service = vi.mocked(makeService());
     collapseStore = makePlugin().collapseStore;
-    stream = new NoteStream(service, collapseStore, {} as NoteRenderer);
+    renderer = { onBaseLayout: vi.fn() };
+    stream = new NoteStream(service, collapseStore, renderer as unknown as NoteRenderer);
     noteWindow = fakes.windows.at(-1)!;
     infiniteScroll = fakes.scrolls.at(-1)!;
     guard = fakes.guards.at(-1)!;
@@ -526,6 +528,15 @@ describe("the pane", () => {
 
     it("keeps scroll boxes out of the notes it holds", () => {
         expect(guard.attach).toHaveBeenCalledWith(container);
+    });
+
+    // The renderer drew the Base, so it decides: cards, or fitted columns.
+    it("hands a Base's layout to the renderer", () => {
+        const view = document.createElement("div");
+
+        (guard as unknown as { onBaseLayout: (view: HTMLElement) => void }).onBaseLayout(view);
+
+        expect(renderer.onBaseLayout).toHaveBeenCalledWith(view);
     });
 
     // Its style reads wait for the scroll to stop, like unloads.

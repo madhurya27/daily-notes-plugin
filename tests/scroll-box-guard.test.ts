@@ -14,27 +14,23 @@ function scrollBox(overflow = "auto"): HTMLElement {
     return el;
 }
 
-/** The width of every `.bases-view`; jsdom lays nothing out. */
-let viewWidth: number;
-
 /** A `.bases-view` around a table Bases laid out `tableWidth` wide. */
 function baseView(tableWidth: string): { view: HTMLElement; thead: HTMLElement } {
     const view = document.createElement("div");
     view.addClass("bases-view");
-    Object.defineProperty(view, "clientWidth", { get: () => viewWidth });
     const thead = view.createDiv({ cls: "bases-thead" });
     thead.setAttribute("style", `width: ${tableWidth}`);
     return { view, thead };
 }
 
-const cap = (view: HTMLElement) => view.style.getPropertyValue("--bases-table-column-max-width");
+const laidOut = vi.fn<(view: HTMLElement) => void>();
 
 beforeEach(() => {
     vi.useFakeTimers();
-    viewWidth = 300;
+    laidOut.mockReset();
     container = document.createElement("div");
     document.body.appendChild(container);
-    guard = new ScrollBoxGuard();
+    guard = new ScrollBoxGuard(laidOut);
     guard.attach(container);
 });
 
@@ -160,7 +156,16 @@ describe("ScrollBoxGuard safety net", () => {
 });
 
 describe("ScrollBoxGuard Bases", () => {
-    it("fits a Base as it renders", async () => {
+    /** Appends a Base's view, then forgets that it was reported. */
+    async function mounted(): Promise<{ view: HTMLElement; thead: HTMLElement }> {
+        const base = baseView("300px");
+        container.appendChild(base.view);
+        await Promise.resolve();
+        laidOut.mockClear();
+        return base;
+    }
+
+    it("reports a Base as it renders", async () => {
         const embed = document.createElement("div");
         embed.addClass("bases-embed");
         const { view } = baseView("600px");
@@ -169,55 +174,45 @@ describe("ScrollBoxGuard Bases", () => {
         container.appendChild(embed);
         await Promise.resolve();
 
-        expect(cap(view)).toBe("150px");
+        expect(laidOut).toHaveBeenCalledExactlyOnceWith(view);
     });
 
-    it("refits a Base when its rows change", async () => {
-        const { view, thead } = baseView("300px");
-        container.appendChild(view);
-        await Promise.resolve();
+    it("reports a Base once for a batch of changes", async () => {
+        const { view, thead } = await mounted();
 
         thead.setAttribute("style", "width: 600px");
         view.createDiv({ cls: "bases-tr" });
         await Promise.resolve();
 
-        expect(cap(view)).toBe("150px");
+        expect(laidOut).toHaveBeenCalledExactlyOnceWith(view);
     });
 
     // Bases sets the table's width on its header row when it lays out.
-    it("refits a Base when its table widens", async () => {
-        const { view, thead } = baseView("300px");
-        container.appendChild(view);
-        await Promise.resolve();
+    it("reports a Base when its table's width changes", async () => {
+        const { view, thead } = await mounted();
 
         thead.setAttribute("style", "width: 600px");
         await Promise.resolve();
 
-        expect(cap(view)).toBe("150px");
+        expect(laidOut).toHaveBeenCalledExactlyOnceWith(view);
     });
 
-    // The cap is a style write on the view itself; reacting to it would loop.
+    // A fitted cap is a style write on the view itself; reacting to it would loop.
     it("ignores other style changes in a Base", async () => {
-        const { view } = baseView("300px");
-        container.appendChild(view);
-        await Promise.resolve();
+        const { view } = await mounted();
 
-        viewWidth = 150;
         view.setAttribute("style", "color: red");
         await Promise.resolve();
 
-        expect(cap(view)).toBe("");
+        expect(laidOut).not.toHaveBeenCalled();
     });
 
     it("ignores changes outside a Base", async () => {
-        const { view } = baseView("300px");
-        container.appendChild(view);
-        await Promise.resolve();
+        await mounted();
 
-        viewWidth = 150;
         container.appendChild(document.createElement("p"));
         await Promise.resolve();
 
-        expect(cap(view)).toBe("");
+        expect(laidOut).not.toHaveBeenCalled();
     });
 });

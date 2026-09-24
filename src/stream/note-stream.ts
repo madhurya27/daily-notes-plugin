@@ -30,7 +30,7 @@ export class NoteStream {
     private window: NoteWindowManager;
     private scrollRoot!: HTMLElement;
     private blocks = new StreamBlocks(() => this.scroll.getSentinel());
-    private scrollBoxes = new ScrollBoxGuard();
+    private scrollBoxes: ScrollBoxGuard;
 
     // Serialized: an event interleaving with an in-flight batch would leave
     // state and the service cache disagreeing.
@@ -46,6 +46,7 @@ export class NoteStream {
         renderer: NoteRenderer
     ) {
         this.window = new NoteWindowManager(renderer, this.enqueue.bind(this));
+        this.scrollBoxes = new ScrollBoxGuard((view) => renderer.onBaseLayout(view));
     }
 
     /** Starts watching `container`, inside the pane `scrollRoot`, for the first batch. */

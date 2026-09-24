@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { parseYaml } from "obsidian";
-import { asCards, rewriteBasesAsCards } from "../src/render/bases-as-cards";
+import { asCards, extractBases } from "../src/render/bases-as-cards";
 
 const lines = (...l: string[]) => l.join("\n");
 
@@ -57,103 +57,61 @@ describe("asCards", () => {
     });
 });
 
-describe("rewriteBasesAsCards", () => {
-    const noBase = () => Promise.resolve(null);
+describe("extractBases", () => {
+    const SLOT = '<div class="daily-note-base"></div>';
 
-    it("draws a base block as cards", async () => {
+    it("swaps a base block for a placeholder the Base renders into", () => {
         const markdown = lines("Before", "```base", TABLE, "```", "After");
 
-        const rewritten = await rewriteBasesAsCards(markdown, noBase);
+        const { markdown: rest, bases } = extractBases(markdown);
 
-        const [before, open, ...rest] = rewritten.split("\n");
-        expect([before, open, rest.at(-2), rest.at(-1)]).toEqual(["Before", "```base", "```", "After"]);
-        expect(views(rest.slice(0, -2).join("\n"))[0]!.type).toBe("cards");
+        // The blank line ends the HTML block; without it "After" joins it.
+        expect(rest).toBe(lines("Before", SLOT, "", "After"));
+        expect(bases).toEqual([{ kind: "block", definition: TABLE, markdown: lines("```base", TABLE, "```") }]);
     });
 
-    it("keeps a block's fence and indent", async () => {
+    it("keeps a block's indent on its placeholder, and reads it without", () => {
         const indented = TABLE.split("\n").map((l) => `  ${l}`);
-        const markdown = lines("  ~~~~ base", ...indented, "  ~~~~");
 
-        const rewritten = (await rewriteBasesAsCards(markdown, noBase)).split("\n");
+        const { markdown, bases } = extractBases(lines("- item", "  ~~~~ base", ...indented, "  ~~~~"));
 
-        expect([rewritten[0], rewritten.at(-1)]).toEqual(["  ~~~~ base", "  ~~~~"]);
-        expect(rewritten.slice(1, -1).every((l) => l.startsWith("  "))).toBe(true);
-        expect(views(rewritten.slice(1, -1).join("\n"))[0]!.type).toBe("cards");
+        expect(markdown).toBe(lines("- item", `  ${SLOT}`, ""));
+        expect(bases).toEqual([{ kind: "block", definition: TABLE, markdown: lines("~~~~ base", TABLE, "~~~~") }]);
     });
 
     // CommonMark strips up to the fence's indent; a line may have less.
-    it("reads a line indented less than its fence", async () => {
-        const markdown = lines("  ```base", TABLE, "  ```");
+    it("reads a line indented less than its fence", () => {
+        const { bases } = extractBases(lines("  ```base", "filters: x", "  ```"));
 
-        const rewritten = (await rewriteBasesAsCards(markdown, noBase)).split("\n");
-
-        expect(views(rewritten.slice(1, -1).join("\n"))[0]!.type).toBe("cards");
+        expect(bases[0]).toMatchObject({ definition: "filters: x" });
     });
 
-    it("leaves a block it cannot convert as written", async () => {
-        const markdown = lines("```base", "views: [unclosed", "```");
+    it("swaps an embed alone on its line, naming its view", () => {
+        const { markdown, bases } = extractBases(lines("Hi", "![[Views.base#Second|300]]"));
 
-        expect(await rewriteBasesAsCards(markdown, noBase)).toBe(markdown);
-    });
-
-    it("leaves a base block quoted inside another fence", async () => {
-        const markdown = lines("````md", "```base", TABLE, "```", "````");
-
-        expect(await rewriteBasesAsCards(markdown, noBase)).toBe(markdown);
-    });
-
-    it("leaves a block that never closes", async () => {
-        const markdown = lines("```base", TABLE);
-
-        expect(await rewriteBasesAsCards(markdown, noBase)).toBe(markdown);
-    });
-
-    // A shorter or other-character fence is content, not the close.
-    it("closes a block only on a matching fence", async () => {
-        const markdown = lines("````base", TABLE, "```", "~~~~", "````");
-
-        const rewritten = await rewriteBasesAsCards(markdown, noBase);
-
-        expect(rewritten).toBe(markdown);
-    });
-
-    it("draws an embedded Base as a cards block, its named view first", async () => {
-        const readBase = vi.fn().mockResolvedValue(lines(TABLE, "  - type: table", "    name: Second"));
-
-        const rewritten = (await rewriteBasesAsCards(lines("Hi", "![[Views.base#Second|300]]"), readBase)).split("\n");
-
-        expect(readBase).toHaveBeenCalledWith("Views.base");
-        expect([rewritten[0], rewritten[1], rewritten.at(-1)]).toEqual(["Hi", "```base", "```"]);
-        expect(views(rewritten.slice(2, -1).join("\n")).map((v) => [v.name, v.type])).toEqual([
-            ["Second", "cards"],
-            ["Files", "cards"],
+        expect(markdown).toBe(lines("Hi", SLOT, ""));
+        expect(bases).toEqual([
+            { kind: "embed", link: "Views.base", view: "Second", markdown: "![[Views.base#Second|300]]" },
         ]);
     });
 
-    it.each([
-        ["not a Base", null],
-        ["a Base it cannot convert", lines("views:", "  - type: cards", "    name: C")],
-    ])("leaves an embed of %s", async (_case, definition) => {
-        const markdown = "![[Views.base]]";
+    it("keeps the Bases in the order they appear", () => {
+        const { bases } = extractBases(lines("![[A.base]]", "```base", TABLE, "```", "![[B.base]]"));
 
-        expect(await rewriteBasesAsCards(markdown, () => Promise.resolve(definition))).toBe(markdown);
+        expect(bases.map((b) => (b.kind === "embed" ? b.link : b.kind))).toEqual(["A.base", "block", "B.base"]);
     });
 
-    // A fenced block cannot sit inside a paragraph or a list item.
-    it.each(["See ![[Views.base]]", "- ![[Views.base]]", "    ![[Views.base]]"])(
-        "leaves an embed that is not alone on its line: %s",
-        async (markdown) => {
-            const readBase = vi.fn().mockResolvedValue(TABLE);
-
-            expect(await rewriteBasesAsCards(markdown, readBase)).toBe(markdown);
-            expect(readBase).not.toHaveBeenCalled();
-        }
-    );
-
-    it("leaves an embed quoted inside a fence", async () => {
-        const readBase = vi.fn().mockResolvedValue(TABLE);
-        const markdown = lines("```", "![[Views.base]]", "```");
-
-        expect(await rewriteBasesAsCards(markdown, readBase)).toBe(markdown);
+    it.each([
+        ["quoted inside another fence", lines("````md", "```base", TABLE, "```", "````")],
+        ["never closed", lines("```base", TABLE)],
+        // A shorter or other-character fence is content, not the close.
+        ["closed only by a mismatched fence", lines("````base", TABLE, "```", "~~~~")],
+        ["not alone on its line", "See ![[Views.base]]"],
+        ["in a list item", "- ![[Views.base]]"],
+        ["indented as code", "    ![[Views.base]]"],
+        ["an embed quoted inside a fence", lines("```", "![[Views.base]]", "```")],
+        ["an embed of a note", "![[Views.md]]"],
+    ])("leaves a Base %s where it is", (_case, markdown) => {
+        expect(extractBases(markdown)).toEqual({ markdown, bases: [] });
     });
 });
