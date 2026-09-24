@@ -287,6 +287,12 @@
     margin-block-end: 0;
 }
 
+/* A long URL breaks mid-word rather than widening the stream, as in reading
+   view: Obsidian sets this on .markdown-preview-view, which the stream lacks. */
+.daily-note-content {
+    overflow-wrap: break-word;
+}
+
 /* Wide content scrolls inside its own box. Without this a table or a long code
    line widens the whole stream, dragging every other note sideways with it —
    worst on a phone, where the page ends up narrower than the table. */

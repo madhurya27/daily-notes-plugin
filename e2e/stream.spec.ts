@@ -330,9 +330,10 @@ test.describe("daily notes stream in real Obsidian", () => {
         const { page } = obsidian;
         const container = await openStream(page);
         await expect(container.locator("table").first()).toBeVisible();
+        await expect(container.locator("p > a.external-link").first()).toBeVisible();
 
         // The mobile project is where this bites: a phone has no room for a wide
-        // table or code line, so it pushes the page sideways instead.
+        // table, code line or URL, so it pushes the page sideways instead.
         const overflow = await container.evaluate((el) => {
             const scroller = el.parentElement!;
             // Both are viewport coordinates: the scroller need not start at 0.
@@ -340,7 +341,7 @@ test.describe("daily notes stream in real Obsidian", () => {
             return {
                 pageOverflow: scroller.scrollWidth - scroller.clientWidth,
                 widest: Math.max(
-                    ...Array.from(el.querySelectorAll("table, pre")).map((child) =>
+                    ...Array.from(el.querySelectorAll("table, pre, p > a.external-link")).map((child) =>
                         Math.round(child.getBoundingClientRect().right - limit)
                     )
                 ),

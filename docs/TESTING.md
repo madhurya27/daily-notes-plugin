@@ -169,7 +169,8 @@ Then a real device:
 
 Checks:
 
-- Notes fill the width with no horizontal scroll; code blocks and tables scroll inside themselves.
+- Notes fill the width with no horizontal scroll; code blocks and tables scroll inside themselves, and a long
+  URL wraps. **[e2e]**
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading
   *text* still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall; repeated flicks keep loading.
