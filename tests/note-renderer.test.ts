@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi, type MockInstance } from "vitest";
 import { SearchHighlighter } from "../src/render/search-highlights";
 import { NoteRenderer } from "../src/render/note-renderer";
 import { Component, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
-import { Menu } from "./mocks/obsidian";
+import { Menu, Platform } from "./mocks/obsidian";
 import { CollapsibleManager } from "../src/render/collapsible";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import type { DailyNotesStreamSettings } from "../src/settings";
@@ -759,6 +759,67 @@ describe("NoteRenderer tables", () => {
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 
         expect(el.querySelector("td")?.dataset.column).toBe("Pace");
+    });
+});
+
+describe("NoteRenderer Bases on a phone", () => {
+    const BASE = "```base\nviews:\n  - type: table\n    name: T\n```";
+    let app: ReturnType<typeof makeApp>;
+    let render: MockInstance<typeof MarkdownRenderer.render>;
+
+    beforeEach(() => {
+        app = makeApp();
+        render = vi.spyOn(MarkdownRenderer, "render");
+        return () => {
+            Platform.isPhone = false;
+        };
+    });
+
+    async function rendered(markdown: string): Promise<string> {
+        app.vault.cachedRead.mockImplementation((file: TFile) =>
+            Promise.resolve(file.extension === "base" ? "views:\n  - type: table\n    name: E" : markdown)
+        );
+        const renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+        await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
+        return render.mock.calls.at(-1)![1];
+    }
+
+    it("renders a table Base as cards", async () => {
+        Platform.isPhone = true;
+
+        expect(await rendered(BASE)).toContain("type: cards");
+    });
+
+    it("keeps the table on a larger screen", async () => {
+        expect(await rendered(BASE)).toBe(BASE);
+    });
+
+    // Resolved as Obsidian resolves the embed: from the note.
+    it("renders an embedded Base from its file", async () => {
+        Platform.isPhone = true;
+        app.metadataCache.getFirstLinkpathDest.mockReturnValue(new TFile("Bases/Views.base"));
+
+        const markdown = await rendered("![[Views.base]]");
+
+        expect(app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith("Views.base", "Notes/2025-01-01.md");
+        expect(markdown).toContain("name: E");
+        expect(markdown).toContain("type: cards");
+    });
+
+    it.each([
+        ["a missing file", null],
+        ["a file that is not a Base", new TFile("Views.base.md")],
+    ])("leaves an embed of %s", async (_case, dest) => {
+        Platform.isPhone = true;
+        app.metadataCache.getFirstLinkpathDest.mockReturnValue(dest);
+
+        expect(await rendered("![[Views.base]]")).toBe("![[Views.base]]");
     });
 });
 

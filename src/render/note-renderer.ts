@@ -4,6 +4,7 @@ import {
     Keymap,
     MarkdownRenderer,
     Menu,
+    Platform,
     TFile,
     parseLinktext,
     setIcon,
@@ -14,6 +15,7 @@ import {
 import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
 import { stackWideTables } from "./wide-tables";
+import { rewriteBasesAsCards } from "./bases-as-cards";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
 import type { DailyNotesStreamSettings } from "../settings";
 
@@ -143,6 +145,8 @@ export class NoteRenderer {
             if (frontmatterPos) {
                 markdown = markdown.slice(frontmatterPos.end.offset).trim();
             }
+            // A phone has no room for a Base's columns (docs/decisions.md, 2026-09-24).
+            if (Platform.isPhone) markdown = await rewriteBasesAsCards(markdown, (link) => this.readBase(link, file));
 
             await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, noteComponent);
             this.markUnresolvedLinks(contentEl);
@@ -157,6 +161,12 @@ export class NoteRenderer {
 
         this.highlighter.track(block, noteComponent);
         return noteComponent;
+    }
+
+    /** The definition an embed in `note` links to, or null when it is not a Base. */
+    private async readBase(linkpath: string, note: TFile): Promise<string | null> {
+        const base = this.app.metadataCache.getFirstLinkpathDest(linkpath, note.path);
+        return base?.extension === "base" ? this.app.vault.cachedRead(base) : null;
     }
 
     /** Frees everything the note registered while it was rendered. */

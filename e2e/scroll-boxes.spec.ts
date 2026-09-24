@@ -36,6 +36,9 @@ const ZOO = [
     "",
     "![[Resized.base]]",
     "",
+    // Inline, so it stays a table on a phone too.
+    "Fitted: ![[Wide.base]]",
+    "",
     "![[Reading list]]",
     "",
     "![[Reading list#Later]]",
@@ -100,13 +103,14 @@ test.describe("nothing inside the stream scrolls", () => {
         await expect.poll(() => scrollBoxes(container)).toEqual([]);
     });
 
-    test("has no scroll box around Bases, math, diagrams or embedded notes", async ({ obsidian }) => {
+    test("has no scroll box around Bases, math, diagrams or embedded notes", async ({ obsidian, mobileLayout }) => {
         const { page } = obsidian;
         await seedZoo(page);
         const container = await openStream(page);
         const note = container.locator(".daily-note-block").first();
-        await expect(note.locator(".bases-view")).toHaveCount(3);
+        await expect(note.locator(".bases-view")).toHaveCount(4);
         await expect(note.locator(".bases-tr").first()).toBeVisible();
+        if (mobileLayout) await expect(note.locator(".bases-cards-item").first()).toBeVisible();
         await expect(note.locator(".mermaid svg")).toBeVisible();
 
         await expect.poll(() => scrollBoxes(container)).toEqual([]);
@@ -128,7 +132,7 @@ test.describe("nothing inside the stream scrolls", () => {
         const { page } = obsidian;
         await seedZoo(page);
         const container = await openStream(page);
-        const view = container.locator(".bases-view").first();
+        const view = container.locator(".bases-view:has(.bases-thead)").first();
         await expect(view.locator(".bases-tr").first()).toBeVisible();
 
         await expect

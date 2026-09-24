@@ -57,7 +57,7 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
 - `stream/` also holds the loaded range (`stream-state.ts`), the sentinel (`infinite-scroll.ts`) and scroll
   anchoring (`scroll-position.ts`).
 - `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`), wide
-  tables as cards (`wide-tables.ts`),
+  tables as cards (`wide-tables.ts`), Bases as cards on a phone (`bases-as-cards.ts`),
   collapsible sections (`collapsible.ts`) and their persisted state (`collapse-store.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and

@@ -17,12 +17,6 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] Rotation: unloaded notes keep heights measured at the old width, and nothing restores the reader's place.
   Save `place()` when the scroll stops and restore it on a width change; mark unloaded heights unmeasured so a
   held note (`fix/lock-rerender-height`) is not clipped at a stale one. Reproduce in e2e by resizing first.
-- [ ] Bases as cards on a narrow screen, with no setup by the user: render each Base from a rewritten copy of
-  its definition, view switched to `type: cards` (a ```` ```base ```` block's YAML; an `![[X.base]]` embed's file,
-  `#view` or first). Bases draws native cards; the files stay untouched. Falls back to fitted columns for a view
-  it cannot convert. Verify first: a toolbar edit cannot save the rewritten copy over the note; `this.file`
-  still means the note; a rotation re-renders. Considered: taller `rowHeight` rows, which keep the table
-  cramped.
 - [ ] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
   frame rate; loading is not the cost, so preloading would not help.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:

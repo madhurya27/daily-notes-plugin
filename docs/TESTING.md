@@ -171,7 +171,8 @@ Then a real device:
 
 Checks:
 
-- No horizontal scroll: code and URLs wrap, wide tables stack, Bases fit. **[e2e]**
+- No horizontal scroll: code and URLs wrap, wide tables stack, Bases draw as cards. **[e2e]**
+- Rotate with a Base on screen: its cards reflow to the new width.
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides out.
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading
   *text* still selects.

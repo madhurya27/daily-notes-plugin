@@ -3,6 +3,22 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-24 — Bases draw as cards on a phone
+
+**Decision:** on a phone, a note's Bases render from a rewritten copy of their
+definition, table views switched to `type: cards`: a `base` block's YAML, and a
+`![[X.base]]` embed alone on its line as a block copied from the file, its
+`#view` first. Anything else keeps fitted columns.
+
+**Why:** a phone has no room for columns, and Bases draws cards natively. The
+copy is safe: Bases saves a block only through an editor, and its `this` is the
+note either way. `Platform.isPhone` survives rotation; cards reflow themselves.
+
+**Rejected:**
+- Taller `rowHeight` rows — the table stays cramped.
+- Restyling the table as cards in CSS — Bases positions rows absolutely.
+- Deciding by pane width — needs a re-render when it changes.
+
 ## 2026-09-23 — Unloading waits for the scroll to stop
 
 **Decision:** a rendered block that leaves the unload margin waits until the
