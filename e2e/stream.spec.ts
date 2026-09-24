@@ -351,6 +351,28 @@ test.describe("daily notes stream in real Obsidian", () => {
         });
     });
 
+    // The stream is a column of notes, so it takes a note's margins: the
+    // theme's, with nothing of its own added.
+    test("lays a note's text out as wide as reading view does", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const edges = (p: Element) => {
+            const { left, right } = p.getBoundingClientRect();
+            return { left: Math.round(left), right: Math.round(right) };
+        };
+        const block = (await openStream(page)).locator(".daily-note-block").first();
+        const path = await block.getAttribute("data-source-path");
+        const stream = await block.locator(".daily-note-content p").first().evaluate(edges);
+
+        await page.evaluate(async (path) => {
+            const file = window.app.vault.getFileByPath(path);
+            await window.app.workspace.getLeaf("tab").openFile(file!, { state: { mode: "preview" } });
+        }, path!);
+        const reading = page.locator(".workspace-leaf.mod-active .markdown-reading-view p").first();
+        await expect(reading).toBeVisible();
+
+        expect(stream).toEqual(await reading.evaluate(edges));
+    });
+
     test("keeps wide content inside the stream instead of scrolling the page", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);

@@ -3,6 +3,17 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-24 — The stream takes a note's margins from the theme
+
+**Decision:** the pane is padded with `--file-margins`, and the stream is a
+column capped at the line width inside it, as reading view lays out a note.
+
+**Why:** the stream added 20px a side of its own on top of the theme's width,
+so under Minimal (88% line width) a phone lost ~43pt a side against ~24pt in
+reading view.
+
+**Rejected:** full width on phones — wider than every other note.
+
 ## 2026-09-24 — A Base too wide for its note draws as cards, on mobile
 
 **Decision:** on mobile a Base follows the Markdown table rule: cards when its
