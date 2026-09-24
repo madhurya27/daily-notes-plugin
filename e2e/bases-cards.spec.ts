@@ -115,6 +115,27 @@ test.describe("Bases on mobile", () => {
         expect(await page.evaluate(() => (window as unknown as { tablesDrawn: number }).tablesDrawn)).toBe(0);
     });
 
+    // Bases draws a card's border as a 1px ring outside it: nothing clips that.
+    test("shows each card's whole border", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await seed(page, block("views:", ...table("Wide", HEADERS_WIDE)));
+        const card = cards((await openStream(page)).locator(".daily-note-base").first()).first();
+        await expect(card).toBeVisible();
+
+        const clipped = await card.evaluate((el) => {
+            const ring = el.getBoundingClientRect();
+            const found: string[] = [];
+            for (let e = el.parentElement; e && !e.matches(".daily-note-block"); e = e.parentElement) {
+                if (getComputedStyle(e).overflowX === "visible") continue;
+                const box = e.getBoundingClientRect();
+                if (box.left > ring.left - 1 || box.right < ring.right + 1 || box.top > ring.top - 1)
+                    found.push(e.className);
+            }
+            return found;
+        });
+        expect(clipped).toEqual([]);
+    });
+
     test("measures a table whose values overrun the note, and redraws it as cards", async ({ obsidian }) => {
         const { page } = obsidian;
         await seed(page, block(...VALUES_WIDE));

@@ -388,6 +388,12 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
     overflow: clip !important;
 }
 
+/* A card's border is a ring Bases draws just outside it, which the grid ends
+   on; the view around the grid still clips, in its padding. */
+.is-mobile .daily-note-block :is(.bases-cards-container, .bases-cards-group) {
+    overflow: visible !important;
+}
+
 /* Obsidian pins the copy button to a code block's top-right corner and wraps
    rendered code, so a long first line runs under the icon — its last few
    characters unreadable. An empty float in that corner is the one thing text
