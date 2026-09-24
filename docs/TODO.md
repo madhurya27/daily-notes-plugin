@@ -4,6 +4,9 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
+- [ ] Mobile: the jump suggester's calendar button does nothing — no date wheel opens.
+- [ ] Mobile: search does not highlight the matches.
+- [ ] Opening the stream opens a new tab instead of using the current one.
 - [ ] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
   frame rate; loading is not the cost, so preloading would not help.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
