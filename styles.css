@@ -398,6 +398,13 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
     overflow: visible !important;
 }
 
+/* Bases fixes a card's line at 24px, which a tag pill outgrows at a larger
+   font. Its ratio to the default font, kept at every size; Bases lays cards
+   out from this. */
+.is-mobile .daily-note-block {
+    --bases-cards-line-height: calc(var(--font-text-size) * 1.5);
+}
+
 /* Obsidian pins the copy button to a code block's top-right corner and wraps
    rendered code, so a long first line runs under the icon — its last few
    characters unreadable. An empty float in that corner is the one thing text

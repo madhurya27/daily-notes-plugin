@@ -136,6 +136,42 @@ test.describe("Bases on mobile", () => {
         expect(clipped).toEqual([]);
     });
 
+    // Bases draws a card's line at a fixed height, which a pill outgrows as
+    // the font grows.
+    test("fits a tag pill inside its card line at a large font", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(() => {
+            window.app.vault.setConfig("baseFontSize", 22);
+            window.app.updateFontSize();
+        });
+        try {
+            await seed(page, [
+                "---",
+                "tags:",
+                "  - Books",
+                "---",
+                "",
+                ...block("views:", "  - type: cards", "    name: Tags", "    order:", "      - note.tags"),
+            ]);
+            const line = cards((await openStream(page)).locator(".daily-note-base").first())
+                .first()
+                .locator(".bases-cards-line");
+            await expect(line.locator(".value-list-element").first()).toBeVisible();
+
+            const overrun = await line.first().evaluate((el) => {
+                const bottom = el.getBoundingClientRect().bottom;
+                const pill = el.querySelector(".value-list-element")!.getBoundingClientRect().bottom;
+                return pill - bottom;
+            });
+            expect(overrun).toBeLessThanOrEqual(0);
+        } finally {
+            await page.evaluate(() => {
+                window.app.vault.setConfig("baseFontSize", 16);
+                window.app.updateFontSize();
+            });
+        }
+    });
+
     test("measures a table whose values overrun the note, and redraws it as cards", async ({ obsidian }) => {
         const { page } = obsidian;
         await seed(page, block(...VALUES_WIDE));
