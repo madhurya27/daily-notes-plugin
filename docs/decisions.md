@@ -3,6 +3,19 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-24 — A redrawn Base holds its last height until Bases refills it
+
+**Decision:** `NoteBases` keeps the height each Base last laid out at, per note,
+width and definition, and a redraw holds it as `min-height` until the drawn view
+reaches it, or for 2s.
+
+**Why:** Bases fills a view after it is drawn. A note coming back into view, or
+a table redrawn as cards, dropped by the Bases' height for a few frames and
+grew back; iOS has no scroll anchoring, so the text jumped and returned.
+
+**Rejected:** holding the whole block until it settles — no signal says when a
+note is done, and only Bases was measured dipping.
+
 ## 2026-09-24 — The stream takes a note's margins from the theme
 
 **Decision:** the pane is padded with `--file-margins`, and the stream is a

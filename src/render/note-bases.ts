@@ -4,18 +4,30 @@ import { fitBaseToWidth, tableWidth } from "./bases-fit";
 import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
 
 /**
+ * How long a redrawn Base holds the height it last laid out at, if it never
+ * refills it: it may have lost rows since.
+ */
+const HOLD_MS = 2000;
+
+/**
  * A note's Bases, each drawn into its own placeholder as a table or, when the
  * table is wider than the note, as cards — the rule a Markdown table follows
  * (docs/decisions.md, 2026-09-24). Cards come straight away when the headers
  * alone overrun the note; otherwise the table is drawn, measured on its first
  * layout, and redrawn alone. A measured answer is kept per note and width, so
  * a note that unloads and comes back is drawn once.
+ *
+ * Bases fills a view after it is drawn, so a redraw holds the height the Base
+ * last laid out at until it refills it: without it, everything below jumps and
+ * returns, and iOS has no scroll anchoring to hide that.
  */
 export class NoteBases {
     /** Undefined until the first Base; null when nothing could be measured. */
     private headers: HeaderMetrics | null | undefined;
     /** Bases measured too wide, keyed by note, width and source. */
     private readonly tooWide = new Set<string>();
+    /** The height each Base last laid out at, keyed as `tooWide` is. */
+    private readonly heights = new Map<string, number>();
     private readonly slots = new WeakMap<Element, BaseSlot>();
     /** Embedded Bases in rendered notes, by the path of the file they copy. */
     private readonly copies = new Map<string, Set<BaseSlot>>();
@@ -46,8 +58,9 @@ export class NoteBases {
             this.slots.set(placeholder, slot);
             if (base) this.track(base.path, slot, noteComponent);
             slots.push(slot);
-            await slot.draw(this.wantsCards(slot, width) ? "cards" : "table");
+            await this.draw(slot, this.wantsCards(slot, width) ? "cards" : "table");
         }
+        noteComponent.register(() => slots.forEach((slot) => this.remember(slot)));
 
         const observer = new ResizeObserver(() => {
             if (contentEl.clientWidth === width) return;
@@ -74,7 +87,7 @@ export class NoteBases {
 
     private async recheck(slot: BaseSlot, width: number): Promise<void> {
         if (slot.mode === "cards") {
-            if (!this.wantsCards(slot, width)) await slot.draw("table");
+            if (!this.wantsCards(slot, width)) await this.draw(slot, "table");
             return;
         }
         const view = slot.placeholder.querySelector<HTMLElement>(".bases-view");
@@ -83,7 +96,18 @@ export class NoteBases {
 
     private showCards(slot: BaseSlot, width: number): Promise<void> {
         this.tooWide.add(slot.key(width));
-        return slot.draw("cards");
+        return this.draw(slot, "cards");
+    }
+
+    private async draw(slot: BaseSlot, mode: "table" | "cards"): Promise<void> {
+        this.remember(slot);
+        await slot.draw(mode, this.heights.get(slot.key(slot.contentWidth)));
+    }
+
+    /** Keeps the height `slot` is laid out at now, unless held to an older one. */
+    private remember(slot: BaseSlot): void {
+        const height = slot.placeholder.getBoundingClientRect().height;
+        if (height > 0 && !slot.held) this.heights.set(slot.key(slot.contentWidth), height);
     }
 
     private wantsCards(slot: BaseSlot, width: number): boolean {
@@ -102,7 +126,8 @@ export class NoteBases {
         const definition = await this.app.vault.cachedRead(file);
         for (const slot of slots) {
             slot.redefine(definition);
-            if (slot.mode === "cards") await slot.draw(this.wantsCards(slot, slot.contentWidth) ? "cards" : "table");
+            if (slot.mode === "cards")
+                await this.draw(slot, this.wantsCards(slot, slot.contentWidth) ? "cards" : "table");
         }
     }
 
@@ -159,14 +184,43 @@ class BaseSlot {
         return [this.file.path, width, this.source.markdown, this.definition].join("\n");
     }
 
-    /** Replaces what the Base drew with `mode`, freeing what the last draw registered. */
-    async draw(mode: "table" | "cards"): Promise<void> {
+    /** Whether a redraw is holding the placeholder at an earlier height. */
+    get held(): boolean {
+        return this.placeholder.style.getPropertyValue("--daily-note-base-held-height") !== "";
+    }
+
+    /**
+     * Replaces what the Base drew with `mode`, freeing what the last draw
+     * registered, and holds `height` until the new draw fills it.
+     */
+    async draw(mode: "table" | "cards", height: number | undefined): Promise<void> {
         if (this.component) this.noteComponent.removeChild(this.component);
         this.placeholder.empty();
         this.mode = mode;
-        this.component = this.noteComponent.addChild(new Component());
+        const component = (this.component = this.noteComponent.addChild(new Component()));
+        const hold = height ? this.hold(height, component) : null;
         const markdown = mode === "cards" ? this.cards! : this.source.markdown;
-        await MarkdownRenderer.render(this.app, markdown, this.placeholder, this.file.path, this.component);
+        await MarkdownRenderer.render(this.app, markdown, this.placeholder, this.file.path, component);
+        // The hold keeps the placeholder still: only what was drawn in it grows.
+        const drawn = this.placeholder.lastElementChild;
+        if (hold && drawn) hold.observe(drawn);
+    }
+
+    /** Holds the placeholder at `height` until what is drawn in it reaches that, or for `HOLD_MS`. */
+    private hold(height: number, component: Component): ResizeObserver {
+        const placeholder = this.placeholder;
+        placeholder.style.setProperty("--daily-note-base-held-height", `${height}px`);
+        const observer = new ResizeObserver((entries) => {
+            if (entries.some((entry) => entry.target.getBoundingClientRect().height >= height - 1)) release();
+        });
+        const timer = window.setTimeout(() => release(), HOLD_MS);
+        const release = () => {
+            placeholder.style.removeProperty("--daily-note-base-held-height");
+            observer.disconnect();
+            window.clearTimeout(timer);
+        };
+        component.register(release);
+        return observer;
     }
 }
 

@@ -26,10 +26,17 @@ const metrics: HeaderMetrics = { chrome: 34, textWidth: () => 65 };
 class FakeResizeObserver {
     static instances: FakeResizeObserver[] = [];
     disconnected = false;
-    constructor(readonly callback: () => void) {
+    readonly targets: Element[] = [];
+    constructor(readonly callback: (entries: { target: Element }[]) => void) {
         FakeResizeObserver.instances.push(this);
     }
-    observe() {}
+    observe(target: Element) {
+        this.targets.push(target);
+    }
+    /** Reports every observed element as resized. */
+    resized() {
+        this.callback(this.targets.map((target) => ({ target })));
+    }
     disconnect() {
         this.disconnected = true;
     }
@@ -262,7 +269,7 @@ describe("NoteBases measuring a drawn table", () => {
 describe("NoteBases when the note's width changes", () => {
     const resize = (width: number) => {
         noteWidth = width;
-        FakeResizeObserver.instances[0]!.callback();
+        FakeResizeObserver.instances[0]!.resized();
     };
 
     it("redraws cards as a table when the table may fit", async () => {
@@ -398,6 +405,102 @@ describe("NoteBases when an embedded Base's file changes", () => {
         await bases.onBaseModified(base);
 
         expect(render).toHaveBeenCalledOnce();
+    });
+});
+
+describe("NoteBases holding a redrawn Base's height", () => {
+    /** Lays `slot` out at `height`, as a drawn Base would. */
+    const tall = (slot: Element, height: number) => {
+        slot.getBoundingClientRect = () => ({ height }) as DOMRect;
+    };
+    /** Bases refills the view it drew to `height`, and says so. */
+    const refill = (slot: Element, height: number) => {
+        slot.lastElementChild!.getBoundingClientRect = () => ({ height }) as DOMRect;
+        for (const observer of FakeResizeObserver.instances) observer.resized();
+    };
+
+    // Draws an element, as the real renderer does, for the hold to watch.
+    beforeEach(() => {
+        render.mockImplementation(async (_app, _markdown, el) => {
+            el.createDiv();
+        });
+    });
+    const held = (slot: Element) => (slot as HTMLElement).style.getPropertyValue("--daily-note-base-held-height");
+
+    it("holds a table redrawn as cards at the table's height", async () => {
+        const content = await renderNote(BLOCK);
+        tall(slotOf(content), 112);
+
+        bases.onLayout(layOut(slotOf(content), 900));
+
+        expect(held(slotOf(content))).toBe("112px");
+    });
+
+    it("holds a note's Base, back after unloading, at the height it left at", async () => {
+        const component = loaded();
+        tall(slotOf(await renderNote(BLOCK, component)), 300);
+        component.unload();
+
+        const again = await renderNote(BLOCK);
+
+        expect(held(slotOf(again))).toBe("300px");
+    });
+
+    it("lets go once the Base refills that height", async () => {
+        const component = loaded();
+        tall(slotOf(await renderNote(BLOCK, component)), 112);
+        component.unload();
+        const content = await renderNote(BLOCK);
+
+        refill(slotOf(content), 100);
+        expect(held(slotOf(content))).toBe("112px");
+        refill(slotOf(content), 112);
+        expect(held(slotOf(content))).toBe("");
+    });
+
+    // It may have lost rows since: then it never gets back to that height.
+    it("lets go after a while regardless", async () => {
+        vi.useFakeTimers();
+        const content = await renderNote(BLOCK);
+        tall(slotOf(content), 112);
+        bases.onLayout(layOut(slotOf(content), 900));
+
+        vi.runAllTimers();
+        vi.useRealTimers();
+
+        expect(held(slotOf(content))).toBe("");
+    });
+
+    it("keeps the height it knows through a redraw while held", async () => {
+        const component = loaded();
+        tall(slotOf(await renderNote(BLOCK, component)), 300);
+        component.unload();
+        const again = await renderNote(BLOCK);
+        tall(slotOf(again), 50);
+
+        bases.onLayout(layOut(slotOf(again), 900));
+
+        expect(held(slotOf(again))).toBe("300px");
+    });
+
+    it("stops watching a Base unloaded while held", async () => {
+        const component = loaded();
+        const content = await renderNote(BLOCK, component);
+        tall(slotOf(content), 112);
+        bases.onLayout(layOut(slotOf(content), 900));
+
+        component.unload();
+
+        expect(FakeResizeObserver.instances.every((observer) => observer.disconnected)).toBe(true);
+        expect(held(slotOf(content))).toBe("");
+    });
+
+    it("holds nothing it never saw laid out", async () => {
+        const content = await renderNote(BLOCK);
+
+        bases.onLayout(layOut(slotOf(content), 900));
+
+        expect(held(slotOf(content))).toBe("");
     });
 });
 

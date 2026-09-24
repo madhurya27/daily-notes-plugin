@@ -172,6 +172,39 @@ test.describe("Bases on mobile", () => {
         }
     });
 
+    // Bases fills a view after it is drawn. A note coming back holds its
+    // height until its Bases refill it, or everything below jumps and
+    // returns — plainly on iOS, which has no scroll anchoring.
+    test("holds a note's height while its Bases redraw on scrolling back", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await seed(page, block("views:", ...table("Wide", HEADERS_WIDE)));
+        const container = await openStream(page);
+        const top = container.locator(".daily-note-block").first();
+        const base = top.locator(".daily-note-base").first();
+        await expect(cards(base).first()).toBeVisible();
+        await page.waitForTimeout(500);
+
+        await container.locator(".daily-note-block").nth(6).scrollIntoViewIfNeeded();
+        await expect(top).toHaveClass(/is-unloaded/);
+        const height = (await top.boundingBox())!.height;
+
+        // Read after every change to the note: layout is forced, so no frame
+        // is needed to catch a dip.
+        await top.evaluate((el) => {
+            const w = window as unknown as { lowest: number };
+            w.lowest = Infinity;
+            new MutationObserver(() => {
+                w.lowest = Math.min(w.lowest, el.getBoundingClientRect().height);
+            }).observe(el, { childList: true, subtree: true, attributes: true });
+        });
+        await top.scrollIntoViewIfNeeded();
+        await expect(cards(base).first()).toBeVisible();
+        await page.waitForTimeout(500);
+
+        const lowest = await page.evaluate(() => (window as unknown as { lowest: number }).lowest);
+        expect(lowest).toBeGreaterThanOrEqual(height - 1);
+    });
+
     test("measures a table whose values overrun the note, and redraws it as cards", async ({ obsidian }) => {
         const { page } = obsidian;
         await seed(page, block(...VALUES_WIDE));
