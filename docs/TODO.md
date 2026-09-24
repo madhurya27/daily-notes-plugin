@@ -55,8 +55,13 @@ folder/tag modes (dilutes what the plugin is), a tag/header filter (search does 
 sticky date header (`docs/decisions.md`, 2026-09-21).
 
 ## Deferred, contingent on how unloading behaves in real use
-Only worth doing if the placeholder estimate proves visibly wrong; Chromium's
-own scroll anchoring absorbs most of it today
-([ADR 0006](adr/0006-unload-off-screen-notes.md)).
-- [ ] Correct `scrollTop` by the delta when a block **above** the viewport renders and changes height — removes the jump whatever the estimate. Needs `overflow-anchor: none` on the container, which means owning behaviour Chromium currently handles.
+Only worth doing if jumps show up on a phone. Chromium's scroll anchoring
+absorbs them on desktop; iOS WebKit has none
+([ADR 0006](adr/0006-unload-off-screen-notes.md)). A flick past unrendered
+placeholders, anchoring off in e2e mobile, jumped 891–2673px as they rendered
+above the viewport (400px estimate → 1291px notes).
+- [ ] Correct `scrollTop` by the delta when a block **above** the viewport changes height, only where
+  `CSS.supports("overflow-anchor", "auto")` is false. Check on a phone that it does not end a glide
+  (ADR 0008); if it does, correct once the scroll stops.
+- [ ] Learn the estimate on render, not only on unload: until a note unloads, a fresh stream reserves 400px.
 - [ ] Estimate per note from `TFile.stat.size` — only if the median proves too coarse for a vault of uneven notes.
