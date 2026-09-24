@@ -4,6 +4,7 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
+- [ ] **Mobile scroll stalls** — implement [`handoff-mobile-scroll-stalls.md`](handoff-mobile-scroll-stalls.md).
 - [ ] Mobile: the jump suggester's calendar button does nothing — no date wheel opens.
 - [ ] Mobile: search does not highlight the matches.
 - [ ] Opening the stream opens a new tab instead of using the current one.
