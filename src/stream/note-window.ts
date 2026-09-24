@@ -1,4 +1,4 @@
-import { Component, TFile } from "obsidian";
+import { Component, TFile, debounce } from "obsidian";
 import type { NoteRenderer } from "../render/note-renderer";
 
 /**
@@ -22,6 +22,9 @@ const RENDER_VIEWPORTS = 1.5;
 const UNLOAD_VIEWPORTS = 4;
 /** A pane dragged to nothing, or a root not laid out yet, still gets a window. */
 const MIN_VIEWPORT_PX = 400;
+
+/** How long the scroll is still before leaving blocks unload (docs/decisions.md, 2026-09-23). */
+export const SCROLL_IDLE_MS = 300;
 
 interface NoteWindow {
     file: TFile;
@@ -60,6 +63,9 @@ export class NoteWindowManager {
     private readonly measured: number[] = [];
     /** The height the current margins were computed from. */
     private rootHeight = 0;
+    /** Rendered blocks past the unload margin, waiting for the scroll to be still. */
+    private readonly leaving = new Set<HTMLElement>();
+    private readonly unloadOnceStill = debounce(() => this.unloadLeaving(), SCROLL_IDLE_MS, true);
 
     constructor(
         private readonly renderer: NoteRenderer,
@@ -89,7 +95,9 @@ export class NoteWindowManager {
         this.unloadObserver = new IntersectionObserver(
             (entries) => {
                 for (const entry of entries) {
-                    if (!entry.isIntersecting) this.unload(entry.target as HTMLElement);
+                    const block = entry.target as HTMLElement;
+                    if (entry.isIntersecting) this.leaving.delete(block);
+                    else this.unload(block);
                 }
             },
             { root: scrollRoot, rootMargin: `${Math.round(this.rootHeight * UNLOAD_VIEWPORTS)}px` }
@@ -106,6 +114,11 @@ export class NoteWindowManager {
         if (!this.scrollRoot) return;
         if (Math.max(this.scrollRoot.clientHeight, MIN_VIEWPORT_PX) === this.rootHeight) return;
         this.attach(this.scrollRoot);
+    }
+
+    /** A scroll restarts the wait on any block that left the margin. */
+    onScroll(): void {
+        if (this.leaving.size > 0) this.unloadOnceStill();
     }
 
     /** An unloaded block for `file`, reserving `height` — or the estimate. */
@@ -162,12 +175,15 @@ export class NoteWindowManager {
         const window = this.windows.get(block);
         if (!window) return;
         this.unobserve(block);
+        this.leaving.delete(block);
         this.discard(window);
         this.windows.delete(block);
     }
 
     detach(): void {
         this.detachObservers();
+        this.unloadOnceStill.cancel();
+        this.leaving.clear();
         this.scrollRoot = null;
         for (const window of this.windows.values()) this.discard(window);
         this.windows.clear();
@@ -208,7 +224,7 @@ export class NoteWindowManager {
                 block.removeClass("is-unloaded");
                 block.style.removeProperty("--daily-note-placeholder-height");
 
-                if (window.unloadWanted) this.unloadNow(block, window);
+                if (window.unloadWanted) this.leave(block);
             } finally {
                 this.changes++;
                 window.rendering = false;
@@ -230,7 +246,22 @@ export class NoteWindowManager {
         }
         if (!window.component) return;
 
-        this.unloadNow(block, window);
+        this.leave(block);
+    }
+
+    private leave(block: HTMLElement): void {
+        this.leaving.add(block);
+        this.unloadOnceStill();
+    }
+
+    private unloadLeaving(): void {
+        for (const block of this.leaving) {
+            const window = this.windows.get(block);
+            // A refresh in flight has no component yet: it waits for the next still scroll.
+            if (!window?.component) continue;
+            this.unloadNow(block, window);
+            this.leaving.delete(block);
+        }
     }
 
     private unloadNow(block: HTMLElement, window: NoteWindow): void {

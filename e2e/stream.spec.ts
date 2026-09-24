@@ -255,6 +255,31 @@ test.describe("daily notes stream in real Obsidian", () => {
             expect((await top.boundingBox())!.height).toBeCloseTo(renderedHeight, -1);
         });
 
+        // On iOS an unload mid-glide ends the glide, so none happens until the
+        // scroll stops (docs/decisions.md, 2026-09-23).
+        test("keeps a note scrolled far above rendered until the scroll stops", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const container = await openStream(page);
+            const top = container.locator(".daily-note-block").first();
+            await expect(top.locator(".daily-note-content")).toBeVisible();
+
+            await container.locator(".daily-note-block").nth(3).scrollIntoViewIfNeeded();
+            // A glide: a small scroll every frame-ish, for well past the idle wait.
+            const scroller = container.locator("xpath=..");
+            const stillRendered = await scroller.evaluate(async (el) => {
+                const block = el.querySelector(".daily-note-block")!;
+                for (let i = 0; i < 40; i++) {
+                    el.scrollBy(0, i % 2 ? 1 : -1);
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                    if (block.classList.contains("is-unloaded")) return false;
+                }
+                return true;
+            });
+            expect(stillRendered).toBe(true);
+
+            await expect(top).toHaveClass(/is-unloaded/);
+        });
+
         test("leaves the scroll position where it was when a note unloads", async ({ obsidian }) => {
             const { page } = obsidian;
             const container = await openStream(page);

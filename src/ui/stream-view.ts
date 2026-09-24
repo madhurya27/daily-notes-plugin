@@ -126,6 +126,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.addAction("calendar-1", "Jump to date", () => this.promptJumpToDate());
         this.addAction("search", "Search", () => this.searchBar.open());
 
+        this.registerDomEvent(this.contentEl, "scroll", () => this.stream.onScroll());
         this.stream.open(this.contentEl, streamContainerEl);
     }
 

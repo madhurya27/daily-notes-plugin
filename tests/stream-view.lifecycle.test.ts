@@ -85,6 +85,15 @@ describe("DailyNotesStreamView — onResize", () => {
     });
 });
 
+describe("DailyNotesStreamView — scroll", () => {
+    // Unloads wait for the scroll to stop, so the window has to hear every one.
+    it("tells the window the stream scrolled", async () => {
+        const { view } = await makeViewSetup();
+        view.contentEl.dispatchEvent(new Event("scroll"));
+        expect(view["stream"]["window"].onScroll).toHaveBeenCalled();
+    });
+});
+
 describe("DailyNotesStreamView — refresh", () => {
     // The plugin calls it when its own settings change; the rebuild is note-stream.test.ts's.
     it("rebuilds the stream", async () => {

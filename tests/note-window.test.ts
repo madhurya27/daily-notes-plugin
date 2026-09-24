@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Component, TFile } from "obsidian";
-import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX } from "../src/stream/note-window";
+import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX, SCROLL_IDLE_MS } from "../src/stream/note-window";
 
 /**
  * The two observers, by the rootMargin they were constructed with: the render
@@ -92,16 +92,25 @@ function makeManager(renderer = makeRenderer(), measure = () => 500, scrollRoot 
     return { manager, renderer, scrollRoot };
 }
 
-/** Settles the render promise chain. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+/** Settles the render promise chain. Timers are fake, so this only runs what is due. */
+const settle = () => vi.advanceTimersByTimeAsync(0);
+
+/** Lets the scroll be still long enough for waiting unloads to run. */
+const still = () => vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS);
 
 const FILE = new TFile("Notes/2025-01-01.md");
 
 /** The reserved height, which styles.css turns into a real one. */
 const placeholderHeight = (block: HTMLElement) => block.style.getPropertyValue("--daily-note-placeholder-height");
 
-beforeEach(() => stubObservers());
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => {
+    stubObservers();
+    vi.useFakeTimers();
+});
+afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+});
 
 // ---------------------------------------------------------------------------
 // Measurement
@@ -116,8 +125,9 @@ describe("NoteWindowManager measurement", () => {
         document.body.appendChild(block);
 
         fire(observers.render, block, true);
-        return settle().then(() => {
+        return settle().then(async () => {
             fire(observers.unload, block, false);
+            await still();
             expect(manager.heightOf(block)).toBe(321);
         });
     });
@@ -172,6 +182,7 @@ describe("NoteWindowManager estimates", () => {
         await settle();
         heights.push(px);
         fire(observers.unload, block, false);
+        await still();
     }
 
     /** A manager whose measurement returns each queued height in turn. */
@@ -236,6 +247,7 @@ describe("NoteWindowManager estimates", () => {
 
         heights.push(0);
         fire(observers.unload, block, false);
+        await still();
 
         expect(placeholderHeight(block)).toBe("700px");
     });
@@ -386,6 +398,7 @@ describe("NoteWindowManager unload", () => {
         const { block } = await rendered(() => 640);
 
         fire(observers.unload, block, false);
+        await still();
 
         expect(block.childElementCount).toBe(0);
         expect(placeholderHeight(block)).toBe("640px");
@@ -395,12 +408,14 @@ describe("NoteWindowManager unload", () => {
     it("discards the note's component, not just its DOM", async () => {
         const { renderer, block } = await rendered();
         fire(observers.unload, block, false);
+        await still();
         expect(renderer.discard).toHaveBeenCalledTimes(1);
     });
 
     it("keeps the measured height for the next placeholder rebuild", async () => {
         const { manager, block } = await rendered(() => 640);
         fire(observers.unload, block, false);
+        await still();
         expect(manager.heightOf(block)).toBe(640);
     });
 
@@ -433,6 +448,126 @@ describe("NoteWindowManager unload", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Unloading waits for a still scroll
+// ---------------------------------------------------------------------------
+
+/** On iOS an unload mid-glide ends the glide (docs/decisions.md, 2026-09-23). */
+describe("NoteWindowManager while scrolling", () => {
+    async function rendered() {
+        const renderer = makeRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        return { manager, renderer, block };
+    }
+
+    const isRendered = (block: HTMLElement) => !block.classList.contains("is-unloaded");
+
+    it("keeps a block that left the margin rendered until the scroll is still", async () => {
+        const { block } = await rendered();
+
+        fire(observers.unload, block, false);
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
+        expect(isRendered(block)).toBe(true);
+
+        await vi.advanceTimersByTimeAsync(1);
+        expect(isRendered(block)).toBe(false);
+    });
+
+    it("waits again after every scroll", async () => {
+        const { manager, block } = await rendered();
+
+        fire(observers.unload, block, false);
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
+        manager.onScroll();
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
+        expect(isRendered(block)).toBe(true);
+
+        await vi.advanceTimersByTimeAsync(1);
+        expect(isRendered(block)).toBe(false);
+    });
+
+    it("keeps a block that came back before the scroll stopped", async () => {
+        const { renderer, block } = await rendered();
+
+        fire(observers.unload, block, false);
+        fire(observers.unload, block, true);
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS);
+
+        expect(isRendered(block)).toBe(true);
+        expect(renderer.discard).not.toHaveBeenCalled();
+    });
+
+    it("unloads every block that left, once the scroll is still", async () => {
+        const renderer = makeRenderer();
+        const { manager } = makeManager(renderer);
+        const blocks = [FILE, new TFile("Notes/2025-01-02.md")].map((file) => manager.add(file));
+        document.body.append(...blocks);
+        for (const block of blocks) fire(observers.render, block, true);
+        await settle();
+
+        for (const block of blocks) fire(observers.unload, block, false);
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS);
+
+        expect(blocks.map(isRendered)).toEqual([false, false]);
+    });
+
+    it("forgets a waiting block that was removed", async () => {
+        const { manager, renderer, block } = await rendered();
+
+        fire(observers.unload, block, false);
+        manager.remove(block);
+        renderer.discard.mockClear();
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS);
+
+        expect(renderer.discard).not.toHaveBeenCalled();
+    });
+
+    it("stops waiting on detach", async () => {
+        const { manager, renderer, block } = await rendered();
+
+        fire(observers.unload, block, false);
+        manager.detach();
+        renderer.discard.mockClear();
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS);
+
+        expect(renderer.discard).not.toHaveBeenCalled();
+    });
+
+    // A note saved while it waits re-renders; mid-refresh it has nothing to unload.
+    it("unloads a block whose refresh was in flight on the next still scroll", async () => {
+        const renderer = makeRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+
+        fire(observers.unload, block, false);
+        renderer.renderInto.mockImplementationOnce(async (el: HTMLElement) => {
+            await new Promise((resolve) => setTimeout(resolve, SCROLL_IDLE_MS * 2));
+            el.createDiv({ cls: "daily-note-content" });
+            return new Component();
+        });
+        void manager.refresh(block);
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS * 2);
+        expect(isRendered(block)).toBe(true);
+
+        manager.onScroll();
+        await still();
+        expect(isRendered(block)).toBe(false);
+    });
+
+    it("sets no timer for a scroll with nothing waiting", async () => {
+        const { manager } = await rendered();
+        manager.onScroll();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Fast scrolling
 // ---------------------------------------------------------------------------
 
@@ -454,7 +589,7 @@ describe("NoteWindowManager under a fast scroll", () => {
         return renderer;
     }
 
-    const settleSlow = () => new Promise((resolve) => setTimeout(resolve, 50));
+    const settleSlow = () => vi.advanceTimersByTimeAsync(50);
 
     it("leaves no rendered note behind when a block flies past mid-render", async () => {
         const renderer = makeSlowRenderer();
@@ -492,17 +627,19 @@ describe("NoteWindowManager under a fast scroll", () => {
 
     // The unload arrives after renderInto has started, not while it is queued:
     // the markdown is already on its way and cannot be skipped.
-    it("unloads a block that left while its markdown was in flight", async () => {
+    it("unloads a block that left while its markdown was in flight, once the scroll is still", async () => {
         const renderer = makeSlowRenderer();
         const { manager } = makeManager(renderer);
         const block = manager.add(FILE);
         document.body.appendChild(block);
 
         fire(observers.render, block, true);
-        await new Promise((resolve) => setTimeout(resolve, 1)); // into the render
+        await vi.advanceTimersByTimeAsync(1); // into the render
         fire(observers.unload, block, false);
         await settleSlow();
+        expect(renderer.discard).not.toHaveBeenCalled();
 
+        await still();
         expect(renderer.renderInto).toHaveBeenCalledTimes(1);
         expect(renderer.discard).toHaveBeenCalledTimes(1);
         expect(block.classList.contains("is-unloaded")).toBe(true);
@@ -517,7 +654,7 @@ describe("NoteWindowManager under a fast scroll", () => {
         document.body.appendChild(block);
 
         fire(observers.render, block, true);
-        await new Promise((resolve) => setTimeout(resolve, 1)); // into the render
+        await vi.advanceTimersByTimeAsync(1); // into the render
         fire(observers.unload, block, false);
         fire(observers.render, block, true);
         await settleSlow();
@@ -687,6 +824,7 @@ describe("NoteWindowManager.layoutChanges", () => {
         const before = manager.layoutChanges;
 
         fire(observers.unload, block, false);
+        await still();
 
         expect(manager.layoutChanges).toBe(before + 1);
     });

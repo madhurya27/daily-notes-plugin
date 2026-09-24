@@ -56,6 +56,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - Back from a note opened in the stream's tab returns to the note the stream was scrolled to, as it does
   from the quick switcher (Mod-O). **[e2e]**
 - Scrolling to the bottom loads the next batch without duplicates. **[e2e]**
+- On iOS, flicks glide to a natural stop, however far the stream has scrolled. **[e2e]** for the wait; the
+  glide by hand.
 - Tall window, short notes → loading continues past the first batch.
 
 ### Jump to date

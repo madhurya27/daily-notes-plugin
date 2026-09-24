@@ -68,6 +68,11 @@ export class NoteStream {
         this.window.refreshMargins();
     }
 
+    /** Unloads wait for the scroll to stop. */
+    onScroll(): void {
+        this.window.onScroll();
+    }
+
     onFileModify(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
         // Keyed by path, so a burst touching two notes still re-renders both

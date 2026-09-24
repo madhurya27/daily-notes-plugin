@@ -24,6 +24,7 @@
 - [x] Empty state returns when the last daily note is deleted
 - [x] Reload the stream when Obsidian's daily-note format or folder changes
 - [x] Unload off-screen notes: only blocks near the viewport hold content, and a placeholder holds their space
+- [x] iOS flicks glide to a natural stop: unloads wait for the scroll to stop
 - [x] Tag click opens Obsidian's search on that tag; mod-click opens it in a new pane
 - [x] Properties panel shown by default
 - [x] Jump to date, from the view header or the command palette

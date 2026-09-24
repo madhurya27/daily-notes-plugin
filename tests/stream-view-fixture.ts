@@ -101,6 +101,7 @@ export function makeStubbedView(app: object = makeApp()) {
         heightOf: vi.fn().mockReturnValue(undefined),
         render: vi.fn(),
         refreshMargins: vi.fn(),
+        onScroll: vi.fn(),
         layoutChanges: 0,
     });
     view["collapsible"] = fake<CollapsibleManager>({ delegate: vi.fn() });

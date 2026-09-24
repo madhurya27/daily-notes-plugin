@@ -3,6 +3,21 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-23 — Unloading waits for the scroll to stop
+
+**Decision:** a rendered block that leaves the unload margin waits until the
+scroll has been still for `SCROLL_IDLE_MS` (300 ms); one that comes back first
+stays rendered.
+
+**Why:** on an iPhone, a third of traced flicks stalled mid-glide while
+unloads ran; none did with unloading off. A glide scrolls every frame, so a
+pause means it ended.
+
+**Rejected:**
+- A wider unload margin — a long scroll crosses any margin; it only delays the stall.
+- Exact-height placeholders — unproven as the cause.
+- Scrolling an element inside `.view-content` — not needed once unloads wait (phone-tested).
+
 ## 2026-09-22 — The stream does not create notes
 
 **Decision:** no "create today's note" action in the view.

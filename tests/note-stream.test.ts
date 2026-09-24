@@ -22,6 +22,7 @@ vi.mock("../src/stream/note-window", () => ({
         remove = vi.fn();
         render = vi.fn();
         refreshMargins = vi.fn();
+        onScroll = vi.fn();
         refresh = vi.fn().mockResolvedValue(undefined);
         heightOf = vi.fn().mockReturnValue(undefined);
         layoutChanges = 0;
@@ -489,6 +490,11 @@ describe("the pane", () => {
     it("recomputes the window margins on resize", () => {
         stream.onResize();
         expect(noteWindow.refreshMargins).toHaveBeenCalled();
+    });
+
+    it("passes a scroll on to the window, which waits for it to stop before unloading", () => {
+        stream.onScroll();
+        expect(noteWindow.onScroll).toHaveBeenCalled();
     });
 
     it("stops observing on close", () => {
