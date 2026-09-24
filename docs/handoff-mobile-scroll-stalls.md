@@ -45,6 +45,35 @@ One `fix/` branch from `main`, test-first. Crib from `experiment/no-sideways-scr
 Replace, don't add to: the `:is(table, pre) { overflow-x: auto }` rule in `styles.css` and its TESTING.md check
 ("code blocks and tables scroll inside themselves").
 
+### Cards for other tables
+
+| Table | How |
+|---|---|
+| Markdown | The part above |
+| Dataview | Likely free: it draws a real `<table>` with a header row. Verify with Dataview in the harness |
+| Bases | Not by CSS. Backlog item in `docs/TODO.md`: render a copy with its view switched to native cards |
+| Other plugins' `div` grids | Safety net clips; tap to open (below) |
+
+### Other embeds that scroll
+
+Start with an **embed zoo**: a seeded e2e note holding one of each below (Dataview if installable), run
+through the acceptance census. It lists every remaining scroll box by element; handle each deliberately.
+Expected, unverified:
+
+| Content | Scrolls because | In the stream |
+|---|---|---|
+| Embedded note, heading, block | Capped height, scrolls vertically | Grow to full height (done in the experiment) |
+| Display math `$$…$$` | A wide formula scrolls sideways | Clip or scale to fit |
+| Mermaid, other diagrams | Wide SVG in a scrolling box | Scale to the width |
+| PDF `![[x.pdf]]` | A full viewer, scrolls both ways | Static first page; open on tap |
+| iframe: YouTube, web, HTML | Its own document, beyond the stream's CSS | Placeholder, load on tap |
+| Canvas `![[x.canvas]]` | Pans and zooms | Static preview; open on tap |
+| ```` ```query ````, Kanban, Excalidraw, charts, DataviewJS | Plugin-specific | Safety net clips; open on tap |
+
+The rule for all of them: what cannot fit without scrolling gets a static or clipped preview in the stream,
+and a tap opens it full size in a pop-up or its own tab. The pop-up is outside the stream, so it scrolls
+without ending glides.
+
 ## Traps
 
 - A catch-all `* { overflow: clip }` cuts list bullets, task checkboxes and heading fold arrows — they paint
@@ -61,6 +90,7 @@ Replace, don't add to: the `:is(table, pre) { overflow-x: auto }` rule in `style
 - e2e census: no element inside the stream computes `overflow` `auto`, `scroll` or `hidden` (SVG aside), on
   desktop and mobile, with the seeded notes plus wide, narrow and hand-resized Bases.
 - e2e: the stream never scrolls sideways; a too-wide table stacks on mobile and stays a grid on desktop.
+- The embed zoo passes the same census, each remaining box handled by the rule above.
 - Unit tests at 100% coverage; full e2e green.
 - By hand on an iPhone: scroll far, pause, flick both ways past notes with Bases and tables.
 
