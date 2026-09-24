@@ -3,10 +3,11 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
-## 2026-09-24 — A Base too wide for its note draws as cards
+## 2026-09-24 — A Base too wide for its note draws as cards, on mobile
 
-**Decision:** a Base follows the Markdown table rule: cards when its table is
-wider than the note, on any device, re-checked when the width changes. Each
+**Decision:** on mobile a Base follows the Markdown table rule: cards when its
+table is wider than the note, re-checked when the width changes. Desktop draws
+Bases as Obsidian does (ADR 0008). Each
 `base` block, and each `![[X.base]]` alone on its line, renders into its own
 placeholder, so one Base redraws alone. Cards come straight away when the
 headers alone overrun the note (Bases' header font and padding, measured once);
@@ -25,6 +26,7 @@ the common case: many columns on a narrow note.
 
 **Rejected:**
 - Cards on any phone (`Platform.isPhone`) — cards even where the table fits.
+- Cards on desktop too — desktop has no stall, and a scroll bar keeps the table.
 - Taller `rowHeight` rows — the table stays cramped.
 - Restyling the table as cards in CSS — Bases positions rows absolutely.
 - Re-rendering the whole note on a flip — redraws everything else in it too.

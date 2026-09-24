@@ -5,7 +5,7 @@ import { SCROLL_IDLE_MS } from "./note-window";
 const BASE = ".bases-embed, .block-language-base";
 
 /**
- * Keeps scroll containers out of the stream (ADR 0007): reports each Base as it
+ * Keeps scroll containers out of the stream (ADR 0008): reports each Base as it
  * lays out, for its owner to fit, and clips whatever else the stylesheet
  * missed once the scroll is still.
  */

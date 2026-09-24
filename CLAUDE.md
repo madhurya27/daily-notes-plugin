@@ -94,8 +94,9 @@ Traps that span files, so no single file's comments can hold them.
   listener per element — `CollapsibleManager.delegate()` and `NoteRenderer.delegate()` register one listener
   per gesture on the stream container, resolving the target through a `WeakMap` or the DOM. Binding per element would pile
   registrations on the view until it closes.
-- **No scroll containers inside a note** ([ADR 0007](docs/adr/0007-nothing-in-the-stream-scrolls.md)): one ends
-  iOS glides early. Clip with `overflow: clip`, never `hidden` or `auto`. `e2e/scroll-boxes.spec.ts` enforces it.
+- **No scroll containers inside a note on mobile** ([ADR 0008](docs/adr/0008-nothing-scrolls-on-mobile.md)): one
+  ends iOS glides early. Clip with `overflow: clip`, never `hidden` or `auto`, under `.is-mobile`.
+  `e2e/scroll-boxes.spec.ts` enforces it. Desktop keeps Obsidian's scroll bars.
 - **TS strictness**: `noUncheckedIndexedAccess` (indexing returns `T | undefined`) and `noImplicitReturns`.
   Lifecycle properties assigned in `onload()` need `!` assertions.
 

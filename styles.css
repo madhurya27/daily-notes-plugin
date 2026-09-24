@@ -293,11 +293,19 @@
     overflow-wrap: break-word;
 }
 
-/* Nothing in a note scrolls (ADR 0007): wide content wraps to the stream's
-   width, and what still does not fit is clipped. `clip`, never `hidden` or
-   `auto`: those make a scroll container, and one inside the stream ends an iOS
-   glide early. */
-.daily-note-content table {
+/* Desktop: wide content scrolls inside its own box, as in Obsidian's reading
+   view, rather than widen the stream. */
+body:not(.is-mobile) .daily-note-content :is(table, pre) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* Mobile: nothing in a note scrolls (ADR 0008). Wide content wraps to the
+   stream's width, and what still does not fit is clipped. `clip`, never
+   `hidden` or `auto`: those make a scroll container, and one inside the stream
+   ends an iOS glide early. */
+.is-mobile .daily-note-content table {
     width: 100%;
     /* Obsidian's floor on a column, which seven columns overrun on a phone. */
     --table-column-min-width: 0px;
@@ -306,13 +314,13 @@
 
 /* A column is never narrower than its longest word, and nothing is cut to an
    ellipsis: a table that cannot fit that way is stacked instead. */
-.daily-note-content :is(td, th) {
+.is-mobile .daily-note-content :is(td, th) {
     overflow-wrap: normal;
     word-break: normal;
 }
 
 /* Specific enough to outrank .markdown-rendered's `overflow: hidden` on cells. */
-.daily-note-content.markdown-rendered :is(thead > tr > th, tbody > tr > td) {
+.is-mobile .daily-note-content.markdown-rendered :is(thead > tr > th, tbody > tr > td) {
     overflow: clip;
     text-overflow: clip;
 }
@@ -351,12 +359,12 @@
     color: var(--text-muted);
 }
 
-.daily-note-content :is(pre, pre code) {
+.is-mobile .daily-note-content :is(pre, pre code) {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 
-.daily-note-content pre {
+.is-mobile .daily-note-content pre {
     overflow: clip;
 }
 
@@ -367,16 +375,16 @@
 }
 
 /* An embedded note grows instead of scrolling inside a capped height. */
-.daily-note-content .markdown-embed-content {
+.is-mobile .daily-note-content .markdown-embed-content {
     max-height: none;
 }
 
 /* A Base and everything in it, and whatever the scroll box guard found
    (src/stream/scroll-box-guard.ts). !important outranks Bases' own rules. */
-.daily-note-block :is(.bases-embed, .block-language-base),
-.daily-note-block :is(.bases-embed, .block-language-base) *,
-.daily-note-block .markdown-embed-content,
-.daily-note-block .is-scroll-clipped {
+.is-mobile .daily-note-block :is(.bases-embed, .block-language-base),
+.is-mobile .daily-note-block :is(.bases-embed, .block-language-base) *,
+.is-mobile .daily-note-block .markdown-embed-content,
+.is-mobile .daily-note-block .is-scroll-clipped {
     overflow: clip !important;
 }
 

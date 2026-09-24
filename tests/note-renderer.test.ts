@@ -3,7 +3,7 @@ import { SearchHighlighter } from "../src/render/search-highlights";
 import { NoteRenderer } from "../src/render/note-renderer";
 import { NoteBases } from "../src/render/note-bases";
 import { Component, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
-import { Menu } from "./mocks/obsidian";
+import { Menu, Platform } from "./mocks/obsidian";
 import { CollapsibleManager } from "../src/render/collapsible";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import type { DailyNotesStreamSettings } from "../src/settings";
@@ -731,6 +731,7 @@ describe("NoteRenderer internal links", () => {
 
 describe("NoteRenderer tables", () => {
     beforeEach(() => {
+        Platform.isMobile = true;
         vi.stubGlobal(
             "ResizeObserver",
             class {
@@ -738,11 +739,14 @@ describe("NoteRenderer tables", () => {
                 disconnect() {}
             }
         );
-        return () => vi.unstubAllGlobals();
+        return () => {
+            Platform.isMobile = false;
+            vi.unstubAllGlobals();
+        };
     });
 
-    // A table too wide for a phone stacks as cards, each cell under its column.
-    it("names each rendered cell after its column", async () => {
+    /** A note holding one table, rendered. */
+    async function renderTable(): Promise<HTMLElement> {
         vi.spyOn(MarkdownRenderer, "render").mockImplementationOnce((_app, _md, el) => {
             const table = el.createEl("table");
             table.createEl("thead").createEl("tr").createEl("th", { text: "Pace" });
@@ -756,8 +760,21 @@ describe("NoteRenderer tables", () => {
             makeSettings(),
             new SearchHighlighter()
         );
+        return mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+    }
 
-        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+    // A desktop table scrolls sideways, as Obsidian's do (ADR 0008).
+    it("leaves a table to Obsidian on desktop", async () => {
+        Platform.isMobile = false;
+
+        const el = await renderTable();
+
+        expect(el.querySelector("td")?.dataset.column).toBeUndefined();
+    });
+
+    // A table too wide for a phone stacks as cards, each cell under its column.
+    it("names each rendered cell after its column", async () => {
+        const el = await renderTable();
 
         expect(el.querySelector("td")?.dataset.column).toBe("Pace");
     });
@@ -768,6 +785,7 @@ describe("NoteRenderer Bases", () => {
     let renderer: NoteRenderer;
 
     beforeEach(() => {
+        Platform.isMobile = true;
         vi.stubGlobal(
             "ResizeObserver",
             class {
@@ -782,7 +800,20 @@ describe("NoteRenderer Bases", () => {
             makeSettings(),
             new SearchHighlighter()
         );
-        return () => vi.unstubAllGlobals();
+        return () => {
+            Platform.isMobile = false;
+            vi.unstubAllGlobals();
+        };
+    });
+
+    it("leaves a Base to Obsidian on desktop", async () => {
+        Platform.isMobile = false;
+        const render = vi.spyOn(MarkdownRenderer, "render").mockClear();
+
+        await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
+
+        expect(render).toHaveBeenCalledOnce();
+        expect(render.mock.calls[0]![1]).toBe(`Before\n${BASE}\nAfter`);
     });
 
     // Each Base draws into its own placeholder, so it can be redrawn alone.

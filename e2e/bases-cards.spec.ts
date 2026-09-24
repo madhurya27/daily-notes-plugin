@@ -12,7 +12,7 @@ const block = (...lines: string[]) => ["```base", ...lines, "```", ""];
 
 /** Its headers alone overrun a phone and a desktop note. */
 const HEADERS_WIDE = ["file.name", "file.path", "file.folder", "file.ext", "file.size", "file.ctime", "file.mtime"];
-/** Fits a desktop note, not a phone's: headers overrun only the phone. */
+/** Fits a tablet's note, not a phone's: headers overrun only the phone. */
 const MIDDLE = ["file.name", "file.path", "file.folder", "file.ext", "file.size"];
 
 /** Short headers, long values: only a drawn table shows it is too wide. */
@@ -48,17 +48,22 @@ const read = (page: Page, path: string) => page.evaluate((p) => window.app.vault
 /** Bases keeps a hidden card to measure with; the drawn ones drag. */
 const cards = (base: Locator) => base.locator(".bases-cards-item[draggable]");
 
+/** Wide enough that `MIDDLE` fits. */
+const TABLET_WIDTH = 900;
+
 async function resize(page: Page, width: number): Promise<void> {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Emulation.setDeviceMetricsOverride", {
         width,
-        height: LAYOUT_VIEWPORT.desktop.height,
+        height: LAYOUT_VIEWPORT.mobile.height,
         deviceScaleFactor: 1,
         mobile: false,
     });
 }
 
-test.describe("Bases in the stream", () => {
+// Mobile only: desktop draws Bases as Obsidian does (ADR 0008).
+test.describe("Bases on mobile", () => {
+    test.beforeEach(({ mobileLayout }) => test.skip(!mobileLayout, "desktop draws Bases as Obsidian does"));
     test.afterEach(async ({ obsidian }) => {
         await obsidian.page.evaluate(
             async (paths) => {
@@ -148,21 +153,21 @@ test.describe("Bases in the stream", () => {
         await expect.poll(() => cards(base).count()).toBeGreaterThan(1);
     });
 
-    test("redraws a Base when the note's width changes", async ({ obsidian, mobileLayout }) => {
-        test.skip(mobileLayout, "resizes the desktop window");
+    // A phone turned sideways, or a tablet's split view resized.
+    test("redraws a Base when the note's width changes", async ({ obsidian }) => {
         const { page } = obsidian;
         await seed(page, block("views:", ...table("Middle", MIDDLE)));
         const base = (await openStream(page)).locator(".daily-note-base").first();
-        await expect(base.locator(".bases-thead")).toBeVisible();
+        await expect(cards(base).first()).toBeVisible();
 
         try {
-            await resize(page, LAYOUT_VIEWPORT.mobile.width);
-            await expect(cards(base).first()).toBeVisible();
+            await resize(page, TABLET_WIDTH);
+            await expect(base.locator(".bases-thead")).toBeVisible();
+            await expect(cards(base)).toHaveCount(0);
         } finally {
-            await resize(page, LAYOUT_VIEWPORT.desktop.width);
+            await resize(page, LAYOUT_VIEWPORT.mobile.width);
         }
-        await expect(base.locator(".bases-thead")).toBeVisible();
-        await expect(cards(base)).toHaveCount(0);
+        await expect(cards(base).first()).toBeVisible();
     });
 
     test("leaves the note and the Base untouched", async ({ obsidian }) => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mocked } from "vitest";
-import { Notice, TAbstractFile, TFile, moment } from "./mocks/obsidian";
+import { Notice, Platform, TAbstractFile, TFile, moment } from "./mocks/obsidian";
 import { NoteStream } from "../src/stream/note-stream";
 import type { NoteRenderer } from "../src/render/note-renderer";
 import type { NoteWindowManager } from "../src/stream/note-window";
@@ -526,8 +526,19 @@ describe("the pane", () => {
         expect(guard.detach).toHaveBeenCalled();
     });
 
-    it("keeps scroll boxes out of the notes it holds", () => {
+    // iOS ends a glide early on a scroll box; Android is held to the same rule (ADR 0008).
+    it("keeps scroll boxes out of the notes it holds on mobile", () => {
+        Platform.isMobile = true;
+        try {
+            stream.open(pane, container);
+        } finally {
+            Platform.isMobile = false;
+        }
         expect(guard.attach).toHaveBeenCalledWith(container);
+    });
+
+    it("leaves desktop's scroll boxes alone", () => {
+        expect(guard.attach).not.toHaveBeenCalled();
     });
 
     // The renderer drew the Base, so it decides: cards, or fitted columns.

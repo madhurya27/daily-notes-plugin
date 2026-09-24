@@ -8,7 +8,7 @@ const caps = new WeakMap<HTMLElement, number>();
 
 /**
  * Shrinks the cap Bases puts on automatically sized columns until the table
- * fits its view, which must not scroll sideways (ADR 0007). Bases reads the cap
+ * fits its view, which must not scroll sideways (ADR 0008). Bases reads the cap
  * from a CSS variable when it lays out; a hand-resized column ignores it.
  */
 export function fitBaseToWidth(view: HTMLElement): void {

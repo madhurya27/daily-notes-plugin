@@ -1,4 +1,4 @@
-import { Debouncer, Notice, TFile, TAbstractFile, debounce } from "obsidian";
+import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce } from "obsidian";
 import type { DailyNoteService, Moment } from "../notes/daily-note-service";
 import type { CollapsibleStateStore } from "../render/collapse-store";
 import type { NoteRenderer } from "../render/note-renderer";
@@ -55,7 +55,8 @@ export class NoteStream {
         this.blocks.attach(container);
         this.state.reset();
         this.window.attach(scrollRoot);
-        this.scrollBoxes.attach(container);
+        // iOS ends a glide early on a scroll box; Android is held to the same rule (ADR 0008).
+        if (Platform.isMobile) this.scrollBoxes.attach(container);
         this.attachScroll();
     }
 

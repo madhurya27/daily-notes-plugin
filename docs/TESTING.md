@@ -61,6 +61,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled. **[e2e]** for the wait; the
   glide by hand.
 - Tall window, short notes → loading continues past the first batch.
+- A table or Base too wide for the note scrolls in its own box, as in reading view; the page never scrolls
+  sideways. **[e2e]** Each case is in **2026-08-30**.
 
 ### Jump to date
 
@@ -173,8 +175,8 @@ Then a real device:
 
 Checks:
 
-- No horizontal scroll: code and URLs wrap, wide tables stack, Bases draw as cards. **[e2e]** Each case is in
-  **2026-08-30**.
+- Nothing scrolls sideways: code and URLs wrap, wide tables stack, wide Bases draw as cards. **[e2e]** Each
+  case is in **2026-08-30**.
 - Rotate with a Base on screen: a wide one turns to cards or back to a table.
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides out.
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading

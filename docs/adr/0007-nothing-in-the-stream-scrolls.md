@@ -1,6 +1,6 @@
 # 0007. Nothing inside the stream scrolls
 
-- **Status:** Accepted
+- **Status:** Superseded by [0008](0008-nothing-scrolls-on-mobile.md), which limits the rule to mobile
 - **Date:** 2026-09-24
 
 ## Context

@@ -99,7 +99,7 @@ const SHAPES = [
         "const wide = { alpha: 1, beta: 2, gamma: 3, delta: 4, epsilon: 5, zeta: 6, eta: 7, theta: 8, iota: 9 };",
         "```",
         "",
-        "It wraps; nothing in the stream scrolls sideways.",
+        "It wraps, as in reading view.",
     ],
     (index) => [
         ...frontmatter(index),
@@ -151,7 +151,7 @@ const tableView = (name, columns, ...extra) => [
 
 /** Headers alone overrun a phone and a desktop note: straight to cards. */
 const WIDE = ["file.name", "file.path", "file.folder", "file.ext", "file.size", "file.ctime", "file.mtime"];
-/** Fits a desktop note, not a phone's: rotate or resize to flip it. */
+/** Fits a tablet's note, not a phone's: rotate to flip it. */
 const MIDDLE = ["file.name", "file.path", "file.folder", "file.ext", "file.size"];
 
 /** The Bases the notes embed, one of each case docs/TESTING.md checks. */
@@ -212,7 +212,8 @@ write(
     body(
         "## Bases",
         "",
-        "Each is a table while it fits the note, and cards once it does not.",
+        "On a phone or tablet each is a table while it fits the note, and cards once it does not.",
+        "On desktop each is a table, scrolling sideways when wide.",
         "",
         "```base",
         ...BASES["Wide.base"],
@@ -224,7 +225,7 @@ write(
         "",
         ...VALUES_WIDE,
         "",
-        "A table on a desktop, cards on a phone; rotate or resize to flip it:",
+        "On a tablet a table, on a phone cards; rotate to flip it:",
         "",
         "![[Middle.base]]",
         "",

@@ -4,6 +4,7 @@ import {
     Keymap,
     MarkdownRenderer,
     Menu,
+    Platform,
     TAbstractFile,
     TFile,
     parseLinktext,
@@ -151,11 +152,16 @@ export class NoteRenderer {
             if (frontmatterPos) {
                 markdown = markdown.slice(frontmatterPos.end.offset).trim();
             }
-            const { markdown: body, bases } = extractBases(markdown);
+            // On mobile nothing in the stream may scroll (ADR 0008); desktop
+            // draws wide content as Obsidian does, scrolling in its own box.
+            const mobile = Platform.isMobile;
+            const { markdown: body, bases } = mobile ? extractBases(markdown) : { markdown, bases: [] };
             await MarkdownRenderer.render(this.app, body, contentEl, file.path, noteComponent);
-            await this.bases.render(contentEl, file, noteComponent, bases);
             this.markUnresolvedLinks(contentEl);
-            stackWideTables(contentEl, noteComponent);
+            if (mobile) {
+                await this.bases.render(contentEl, file, noteComponent, bases);
+                stackWideTables(contentEl, noteComponent);
+            }
 
             const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);
             this.collapsible.forgetRemovedSections(file, sectionKeys);

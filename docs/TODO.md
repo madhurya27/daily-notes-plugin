@@ -21,7 +21,7 @@ Ordered by priority, from the 2026-09 comparison against
   frame rate; loading is not the cost, so preloading would not help.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
   - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**; includes the jump suggester's date
-        wheel, which the e2e mobile project cannot reach (desktop Chromium)
+        wheel, which the e2e mobile project cannot reach (desktop Chromium), and the scroll stall on Android
   - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**; review the history first
   - [x] Dry-run the release workflow — `0.1.0` ran green and its draft release holds the three assets, each downloading to a byte-identical copy of the local build. Publish that draft once the repo is public
   - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`
