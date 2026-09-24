@@ -1,17 +1,23 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mocked } from "vitest";
-import { Notice, TAbstractFile, TFile, moment } from "./mocks/obsidian";
+import { Notice, Platform, TAbstractFile, TFile, moment } from "./mocks/obsidian";
 import { NoteStream } from "../src/stream/note-stream";
 import type { NoteRenderer } from "../src/render/note-renderer";
 import type { NoteWindowManager } from "../src/stream/note-window";
 import type { InfiniteScrollController } from "../src/stream/infinite-scroll";
+import type { ScrollBoxGuard } from "../src/stream/scroll-box-guard";
 import type { DailyNoteService } from "../src/notes/daily-note-service";
 import type { CollapsibleStateStore } from "../src/render/collapse-store";
 import { flushPromises, makePlugin, makeService } from "./stream-view-fixture";
 
 type FakeWindow = Mocked<NoteWindowManager>;
 type FakeScroll = Mocked<InfiniteScrollController>;
+type FakeGuard = Mocked<ScrollBoxGuard>;
 
-const fakes = vi.hoisted(() => ({ windows: [] as FakeWindow[], scrolls: [] as FakeScroll[] }));
+const fakes = vi.hoisted(() => ({
+    windows: [] as FakeWindow[],
+    scrolls: [] as FakeScroll[],
+    guards: [] as FakeGuard[],
+}));
 
 // Both need a layout jsdom lacks, and have their own tests. The window
 // manager hands back placeholders keyed as the renderer keys them.
@@ -48,6 +54,18 @@ vi.mock("../src/stream/infinite-scroll", () => ({
     },
 }));
 
+// Reads computed styles and Bases' layout, and has its own tests.
+vi.mock("../src/stream/scroll-box-guard", () => ({
+    ScrollBoxGuard: class {
+        attach = vi.fn();
+        detach = vi.fn();
+        onScroll = vi.fn();
+        constructor(readonly onBaseLayout: (view: HTMLElement) => void) {
+            fakes.guards.push(this as unknown as FakeGuard);
+        }
+    },
+}));
+
 function placeholder(path: string): HTMLElement {
     const block = document.createElement("div");
     block.dataset.sourcePath = path;
@@ -69,14 +87,18 @@ let pane: HTMLElement;
 let container: HTMLElement;
 let noteWindow: FakeWindow;
 let infiniteScroll: FakeScroll;
+let guard: FakeGuard;
+let renderer: { onBaseLayout: ReturnType<typeof vi.fn> };
 
 beforeEach(() => {
     Notice.reset();
     service = vi.mocked(makeService());
     collapseStore = makePlugin().collapseStore;
-    stream = new NoteStream(service, collapseStore, {} as NoteRenderer);
+    renderer = { onBaseLayout: vi.fn() };
+    stream = new NoteStream(service, collapseStore, renderer as unknown as NoteRenderer);
     noteWindow = fakes.windows.at(-1)!;
     infiniteScroll = fakes.scrolls.at(-1)!;
+    guard = fakes.guards.at(-1)!;
     pane = document.createElement("div");
     container = pane.createDiv();
     stream.open(pane, container);
@@ -501,6 +523,37 @@ describe("the pane", () => {
         stream.close();
         expect(infiniteScroll.detach).toHaveBeenCalled();
         expect(noteWindow.detach).toHaveBeenCalled();
+        expect(guard.detach).toHaveBeenCalled();
+    });
+
+    // iOS ends a glide early on a scroll box; Android is held to the same rule (ADR 0008).
+    it("keeps scroll boxes out of the notes it holds on mobile", () => {
+        Platform.isMobile = true;
+        try {
+            stream.open(pane, container);
+        } finally {
+            Platform.isMobile = false;
+        }
+        expect(guard.attach).toHaveBeenCalledWith(container);
+    });
+
+    it("leaves desktop's scroll boxes alone", () => {
+        expect(guard.attach).not.toHaveBeenCalled();
+    });
+
+    // The renderer drew the Base, so it decides: cards, or fitted columns.
+    it("hands a Base's layout to the renderer", () => {
+        const view = document.createElement("div");
+
+        (guard as unknown as { onBaseLayout: (view: HTMLElement) => void }).onBaseLayout(view);
+
+        expect(renderer.onBaseLayout).toHaveBeenCalledWith(view);
+    });
+
+    // Its style reads wait for the scroll to stop, like unloads.
+    it("passes a scroll on to the scroll box guard", () => {
+        stream.onScroll();
+        expect(guard.onScroll).toHaveBeenCalled();
     });
 });
 

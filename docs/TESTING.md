@@ -10,11 +10,13 @@ pnpm run build && pnpm run seed    # write PluginTest/ and install the build int
 pnpm run open --help               # every option, with its default
 ```
 
-`seed` writes 122 daily notes in `Notes/` plus everything the checklist names: the two dated notes, nested
+`seed` writes 123 daily notes in `Notes/` plus everything the checklist names: the three dated notes, nested
 lists, repeated headings, a heading holding a link, `test-image.svg`, and a dated `.png` and out-of-folder
-dated note that must *not* appear. Filler notes cycle seven shapes — long notes, a wide code block, a wide
-table, tasks and a blockquote, H1–H6 nesting, and one with no frontmatter, so the properties panel is tested
-by its absence too. `--days N` changes the count (`400` for deep history, `12` for barely past one batch), and
+dated note that must *not* appear. The newest, **2026-08-30**, holds one of each embed the e2e tests cover:
+Bases wide, narrow, too wide only in their values, resized by hand, a named view and inline, plus embedded
+notes, display math, Mermaid and a wide table; the Bases live in `Bases/`. Filler notes cycle eight shapes —
+long notes, a wide code block, a wide table, tasks and a blockquote, H1–H6 nesting, one with no frontmatter,
+so the properties panel is tested by its absence too, and Bases, so they recur all the way down. `--days N` changes the count (`400` for deep history, `12` for barely past one batch), and
 a path argument seeds elsewhere. Re-seeding rewrites the notes but leaves `.obsidian` alone, so your layout
 survives.
 
@@ -59,6 +61,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled. **[e2e]** for the wait; the
   glide by hand.
 - Tall window, short notes → loading continues past the first batch.
+- A table or Base too wide for the note scrolls in its own box, as in reading view; the page never scrolls
+  sideways. **[e2e]** Each case is in **2026-08-30**.
 
 ### Jump to date
 
@@ -171,8 +175,10 @@ Then a real device:
 
 Checks:
 
-- Notes fill the width with no horizontal scroll; code blocks and tables scroll inside themselves, and a long
-  URL wraps. **[e2e]**
+- Nothing scrolls sideways: code and URLs wrap, wide tables stack, wide Bases draw as cards. **[e2e]** Each
+  case is in **2026-08-30**.
+- Rotate with a Base on screen: a wide one turns to cards or back to a table.
+- Scroll far, pause, flick both ways past Bases and tables: each flick glides out.
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading
   *text* still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall; repeated flicks keep loading.

@@ -22,10 +22,20 @@ describe("DailyNotesStreamView — vault events", () => {
 
     // vault 'modify' fires before metadataCache catches up, so re-rendering on
     // it strips frontmatter at a stale offset.
-    it("does not re-render on vault 'modify'", async () => {
-        const { vault } = await makeWiredView();
-        const events = vault.on.mock.calls.map(([event]) => event);
-        expect(events).not.toContain("modify");
+    it("does not re-render a note on vault 'modify'", async () => {
+        const { view, callbacks } = await makeWiredView();
+        const spy = vi.spyOn(view["stream"], "onFileModify");
+        callbacks["modify"]?.(new TFile("Notes/2025-01-01.md"));
+        expect(spy).not.toHaveBeenCalled();
+    });
+
+    // A Base has no metadata to wait for; its copies drawn as cards redraw.
+    it("vault 'modify' callback hands the file to the renderer's Bases", async () => {
+        const { view, callbacks } = await makeWiredView();
+        const spy = vi.spyOn(view["renderer"], "onBaseModified").mockResolvedValue();
+        const file = new TFile("Bases/Views.base");
+        callbacks["modify"]?.(file);
+        expect(spy).toHaveBeenCalledWith(file);
     });
 
     it("vault 'create' callback delegates to onFileCreate", async () => {

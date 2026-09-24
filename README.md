@@ -18,7 +18,7 @@ A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first
 - Nested folder support (e.g. `Notes/2025/03/2025-03-04.md`)
 - Full Markdown rendering: images, embeds, wikilinks, tasks
 - Matches your Obsidian theme via native CSS variables
-- Mobile friendly
+- Mobile friendly: on a phone or tablet, a table or Base too wide for the note becomes cards
 
 ## Installation
 

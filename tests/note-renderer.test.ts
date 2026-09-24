@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SearchHighlighter } from "../src/render/search-highlights";
 import { NoteRenderer } from "../src/render/note-renderer";
+import { NoteBases } from "../src/render/note-bases";
 import { Component, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
-import { Menu } from "./mocks/obsidian";
+import { Menu, Platform } from "./mocks/obsidian";
 import { CollapsibleManager } from "../src/render/collapsible";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import type { DailyNotesStreamSettings } from "../src/settings";
@@ -727,6 +728,132 @@ describe("NoteRenderer internal links", () => {
 // ---------------------------------------------------------------------------
 // renderProperties
 // ---------------------------------------------------------------------------
+
+describe("NoteRenderer tables", () => {
+    beforeEach(() => {
+        Platform.isMobile = true;
+        vi.stubGlobal(
+            "ResizeObserver",
+            class {
+                observe() {}
+                disconnect() {}
+            }
+        );
+        return () => {
+            Platform.isMobile = false;
+            vi.unstubAllGlobals();
+        };
+    });
+
+    /** A note holding one table, rendered. */
+    async function renderTable(): Promise<HTMLElement> {
+        vi.spyOn(MarkdownRenderer, "render").mockImplementationOnce((_app, _md, el) => {
+            const table = el.createEl("table");
+            table.createEl("thead").createEl("tr").createEl("th", { text: "Pace" });
+            table.createEl("tbody").createEl("tr").createEl("td", { text: "5:12" });
+            return Promise.resolve();
+        });
+        const renderer = new NoteRenderer(
+            asApp(makeApp()),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+        return mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+    }
+
+    // A desktop table scrolls sideways, as Obsidian's do (ADR 0008).
+    it("leaves a table to Obsidian on desktop", async () => {
+        Platform.isMobile = false;
+
+        const el = await renderTable();
+
+        expect(el.querySelector("td")?.dataset.column).toBeUndefined();
+    });
+
+    // A table too wide for a phone stacks as cards, each cell under its column.
+    it("names each rendered cell after its column", async () => {
+        const el = await renderTable();
+
+        expect(el.querySelector("td")?.dataset.column).toBe("Pace");
+    });
+});
+
+describe("NoteRenderer Bases", () => {
+    const BASE = "```base\nviews:\n  - type: table\n    name: T\n```";
+    let renderer: NoteRenderer;
+
+    beforeEach(() => {
+        Platform.isMobile = true;
+        vi.stubGlobal(
+            "ResizeObserver",
+            class {
+                observe() {}
+                disconnect() {}
+            }
+        );
+        renderer = new NoteRenderer(
+            asApp(makeApp({ readResult: `Before\n${BASE}\nAfter` })),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+        return () => {
+            Platform.isMobile = false;
+            vi.unstubAllGlobals();
+        };
+    });
+
+    it("leaves a Base to Obsidian on desktop", async () => {
+        Platform.isMobile = false;
+        const render = vi.spyOn(MarkdownRenderer, "render").mockClear();
+
+        await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
+
+        expect(render).toHaveBeenCalledOnce();
+        expect(render.mock.calls[0]![1]).toBe(`Before\n${BASE}\nAfter`);
+    });
+
+    // Each Base draws into its own placeholder, so it can be redrawn alone.
+    it("draws each Base into a placeholder of its own", async () => {
+        const render = vi.spyOn(MarkdownRenderer, "render").mockImplementationOnce((_app, markdown, el) => {
+            el.createDiv({ cls: "daily-note-base" });
+            expect(markdown).toBe('Before\n<div class="daily-note-base"></div>\n\nAfter');
+            return Promise.resolve();
+        });
+
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        expect(render).toHaveBeenLastCalledWith(
+            expect.anything(),
+            BASE,
+            el.querySelector(".daily-note-base"),
+            "Notes/2025-01-01.md",
+            expect.any(Component)
+        );
+    });
+
+    it("hands a changed Base file to the note's Bases", async () => {
+        const spy = vi.spyOn(NoteBases.prototype, "onBaseModified").mockResolvedValue();
+        const file = new TFile("Bases/Views.base");
+
+        await renderer.onBaseModified(file);
+
+        expect(spy).toHaveBeenCalledWith(file);
+    });
+
+    it("fits a Base it did not draw", () => {
+        const view = document.createElement("div");
+        Object.defineProperty(view, "clientWidth", { get: () => 300 });
+        view.createDiv({ cls: "bases-thead" }).setAttribute("style", "width: 600px");
+
+        renderer.onBaseLayout(view);
+
+        expect(view.style.getPropertyValue("--bases-table-column-max-width")).toBe("150px");
+    });
+});
 
 describe("NoteRenderer unresolved links", () => {
     /** MarkdownRenderer's output for `[[Reading list]] [[Someday]]`, as the real one renders it. */

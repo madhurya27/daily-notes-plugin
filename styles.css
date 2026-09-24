@@ -1,10 +1,15 @@
 /* Daily Notes Stream Styles - Fully Variable-Based */
 
+/* Laid out as reading view lays out a note: the theme's margins around a
+   column capped at the line width, with no margin of the stream's own. */
+.workspace-leaf-content[data-type="daily-notes-stream-view"] > .view-content {
+    padding: var(--file-margins);
+}
+
 .daily-notes-stream-container {
     display: flex;
     flex-direction: column;
     gap: var(--size-4-16, 4rem);
-    padding: var(--size-4-4, 1rem);
     user-select: text;
     cursor: auto;
 }
@@ -23,7 +28,7 @@
 /* An unloaded note: no content, but the height it had, so nothing shifts. */
 .daily-note-block.is-unloaded {
     height: var(--daily-note-placeholder-height);
-    overflow: hidden;
+    overflow: clip;
 }
 
 .daily-note-header {
@@ -168,7 +173,6 @@
 /* Mobile specific tweaks */
 @media (max-width: 480px) {
     .daily-notes-stream-container {
-        padding: var(--size-4-2);
         gap: var(--size-4-8);
     }
 
@@ -247,8 +251,6 @@
 
 /* Header Collapse Alignment */
 .daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible {
-    display: flex;
-    align-items: center;
     margin-left: calc(-1 * var(--size-4-4));
     padding-left: var(--size-4-4);
     margin-block-start: 0;
@@ -261,9 +263,13 @@
     margin-block-end: calc(var(--p-spacing) * 0.25);
 }
 
+/* Centred on the first line by offset, so a heading stays one run of text: a
+   flex heading lays a link and the words after it out as columns. The box
+   stays square, as the chevron turns in it. */
 .daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible > .collapse-indicator {
     position: absolute;
     left: 0;
+    top: calc((1lh - var(--size-4-4)) / 2);
 }
 
 .daily-note-content .is-collapsible:is(:hover, :active) > .collapse-indicator {
@@ -293,13 +299,112 @@
     overflow-wrap: break-word;
 }
 
-/* Wide content scrolls inside its own box. Without this a table or a long code
-   line widens the whole stream, dragging every other note sideways with it —
-   worst on a phone, where the page ends up narrower than the table. */
-.daily-note-content :is(table, pre) {
+/* Desktop: wide content scrolls inside its own box, as in Obsidian's reading
+   view, rather than widen the stream. */
+body:not(.is-mobile) .daily-note-content :is(table, pre) {
     display: block;
     max-width: 100%;
     overflow-x: auto;
+}
+
+/* Mobile: nothing in a note scrolls (ADR 0008). Wide content wraps to the
+   stream's width, and what still does not fit is clipped. `clip`, never
+   `hidden` or `auto`: those make a scroll container, and one inside the stream
+   ends an iOS glide early. */
+.is-mobile .daily-note-content table {
+    width: 100%;
+    /* Obsidian's floor on a column, which seven columns overrun on a phone. */
+    --table-column-min-width: 0px;
+    --table-white-space: normal;
+}
+
+/* A column is never narrower than its longest word, and nothing is cut to an
+   ellipsis: a table that cannot fit that way is stacked instead. */
+.is-mobile .daily-note-content :is(td, th) {
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+/* Specific enough to outrank .markdown-rendered's `overflow: hidden` on cells. */
+.is-mobile .daily-note-content.markdown-rendered :is(thead > tr > th, tbody > tr > td) {
+    overflow: clip;
+    text-overflow: clip;
+}
+
+/* A table too wide for the note: each row a card, each cell under its column's
+   name (src/render/wide-tables.ts). */
+.daily-note-content table.is-stacked,
+.daily-note-content table.is-stacked :is(tbody, tr, td) {
+    display: block;
+    width: auto;
+}
+
+.daily-note-content table.is-stacked thead {
+    display: none;
+}
+
+.daily-note-content table.is-stacked tr {
+    border: var(--table-border-width) solid var(--table-border-color);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2) var(--size-4-3);
+    margin-block-end: var(--size-4-3);
+}
+
+.daily-note-content.markdown-rendered table.is-stacked tbody > tr > td {
+    border: none;
+    padding: var(--size-2-2) 0;
+    max-width: none;
+    min-width: 0;
+}
+
+.daily-note-content table.is-stacked td::before {
+    content: attr(data-column);
+    display: block;
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+}
+
+.is-mobile .daily-note-content :is(pre, pre code) {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.is-mobile .daily-note-content pre {
+    overflow: clip;
+}
+
+/* A diagram scales down to the note rather than widen it. */
+.daily-note-content .mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* An embedded note grows instead of scrolling inside a capped height. */
+.is-mobile .daily-note-content .markdown-embed-content {
+    max-height: none;
+}
+
+/* A Base and everything in it, and whatever the scroll box guard found
+   (src/stream/scroll-box-guard.ts). !important outranks Bases' own rules. */
+.is-mobile .daily-note-block :is(.bases-embed, .block-language-base),
+.is-mobile .daily-note-block :is(.bases-embed, .block-language-base) *,
+.is-mobile .daily-note-block .markdown-embed-content,
+.is-mobile .daily-note-block .is-scroll-clipped {
+    overflow: clip !important;
+}
+
+/* A card's border is a ring Bases draws just outside it, which the grid ends
+   on; the view around the grid still clips, in its padding. */
+.is-mobile .daily-note-block :is(.bases-cards-container, .bases-cards-group) {
+    overflow: visible !important;
+}
+
+/* Bases fixes a card's line at 24px, which a tag pill outgrows at a larger
+   font. Its ratio to the default font, kept at every size; Bases lays cards
+   out from this. */
+.is-mobile .daily-note-block {
+    --bases-cards-line-height: calc(var(--font-text-size) * 1.5);
 }
 
 /* Obsidian pins the copy button to a code block's top-right corner and wraps
@@ -407,4 +512,18 @@
 
 .is-phone .mod-root .daily-notes-search:not(.is-closed) + .view-content {
     margin-top: 0;
+}
+
+/* The height a redrawn Base last laid out at, held until Bases refills it
+   (src/render/note-bases.ts). */
+.daily-note-base {
+    min-height: var(--daily-note-base-held-height, 0);
+}
+
+/* The hidden header src/render/note-bases.ts reads Bases' header font and
+   padding from, once. */
+.daily-note-bases-probe {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
 }

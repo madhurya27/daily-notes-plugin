@@ -74,8 +74,8 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(table).toBeVisible();
         await heading.locator(".collapse-indicator").click();
 
-        // Both carry their own display rule so they scroll rather than widen the
-        // page; hidden has to outrank that or a collapsed section keeps showing.
+        // A stacked table carries its own display rule; hidden has to outrank it
+        // or a collapsed section keeps showing.
         await expect(table).toBeHidden();
         await expect(code).toBeHidden();
 
@@ -183,6 +183,53 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(step.padding).toBe("0px");
         // --list-indent: 0.5625em * 4 = 2.25em, 36px at the default 16px root.
         expect(step.nested).toBeCloseTo(36, 0);
+    });
+
+    test.describe("a heading holding a link", () => {
+        const NOTE = "Notes/2026-03-20.md";
+        const HEADING =
+            "## [An episode on anxiety, long enough to wrap on a phone and a desktop note alike, and then some more](https://example.com) - a podcast";
+
+        test.beforeEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate(
+                async ({ note, heading }) => {
+                    await window.app.vault.create(note, `${heading}\n\nText.\n`);
+                },
+                { note: NOTE, heading: HEADING }
+            );
+        });
+        test.afterEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate(async (note) => {
+                await window.app.vault.delete(window.app.vault.getFileByPath(note)!);
+            }, NOTE);
+        });
+
+        // Link and words run on as one line of text, not side-by-side columns.
+        test("wraps as reading view wraps it", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const height = (h: Element) => Math.round(h.getBoundingClientRect().height);
+            const heading = (await openStream(page)).locator(".daily-note-block").first().locator("h2");
+            const stream = await heading.evaluate(height);
+
+            await page.evaluate(async (note) => {
+                const file = window.app.vault.getFileByPath(note);
+                await window.app.workspace.getLeaf("tab").openFile(file!, { state: { mode: "preview" } });
+            }, NOTE);
+            const reading = page.locator(".workspace-leaf.mod-active .markdown-reading-view h2").first();
+            await expect(reading).toBeVisible();
+
+            expect(stream).toBe(await reading.evaluate(height));
+        });
+
+        test("centres its chevron on the first line", async ({ obsidian }) => {
+            const heading = (await openStream(obsidian.page)).locator(".daily-note-block").first().locator("h2");
+            const [chevron, line] = await heading.evaluate((h) => {
+                const centre = (r: DOMRect) => r.top + r.height / 2;
+                const svg = h.querySelector(".collapse-indicator svg")!.getBoundingClientRect();
+                return [centre(svg), centre(h.querySelector("a")!.getClientRects()[0]!)];
+            });
+            expect(Math.abs(chevron - line)).toBeLessThanOrEqual(1);
+        });
     });
 
     test("toggles a heading from the keyboard", async ({ obsidian }) => {
@@ -349,6 +396,28 @@ test.describe("daily notes stream in real Obsidian", () => {
                 if (file) await window.app.vault.delete(file);
             }
         });
+    });
+
+    // The stream is a column of notes, so it takes a note's margins: the
+    // theme's, with nothing of its own added.
+    test("lays a note's text out as wide as reading view does", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const edges = (p: Element) => {
+            const { left, right } = p.getBoundingClientRect();
+            return { left: Math.round(left), right: Math.round(right) };
+        };
+        const block = (await openStream(page)).locator(".daily-note-block").first();
+        const path = await block.getAttribute("data-source-path");
+        const stream = await block.locator(".daily-note-content p").first().evaluate(edges);
+
+        await page.evaluate(async (path) => {
+            const file = window.app.vault.getFileByPath(path);
+            await window.app.workspace.getLeaf("tab").openFile(file!, { state: { mode: "preview" } });
+        }, path!);
+        const reading = page.locator(".workspace-leaf.mod-active .markdown-reading-view p").first();
+        await expect(reading).toBeVisible();
+
+        expect(stream).toEqual(await reading.evaluate(edges));
     });
 
     test("keeps wide content inside the stream instead of scrolling the page", async ({ obsidian }) => {

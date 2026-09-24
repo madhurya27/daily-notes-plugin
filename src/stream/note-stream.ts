@@ -1,4 +1,4 @@
-import { Debouncer, Notice, TFile, TAbstractFile, debounce } from "obsidian";
+import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce } from "obsidian";
 import type { DailyNoteService, Moment } from "../notes/daily-note-service";
 import type { CollapsibleStateStore } from "../render/collapse-store";
 import type { NoteRenderer } from "../render/note-renderer";
@@ -6,6 +6,7 @@ import { StreamState } from "./stream-state";
 import { StreamBlocks } from "./stream-blocks";
 import { InfiniteScrollController } from "./infinite-scroll";
 import { NoteWindowManager } from "./note-window";
+import { ScrollBoxGuard } from "./scroll-box-guard";
 import { captureAnchor, restoreAnchor, scrollIntoPlace, type StreamLayout, type StreamPlace } from "./scroll-position";
 
 /** Obsidian autosaves as you type; one render per save is wasted work. */
@@ -29,6 +30,7 @@ export class NoteStream {
     private window: NoteWindowManager;
     private scrollRoot!: HTMLElement;
     private blocks = new StreamBlocks(() => this.scroll.getSentinel());
+    private scrollBoxes: ScrollBoxGuard;
 
     // Serialized: an event interleaving with an in-flight batch would leave
     // state and the service cache disagreeing.
@@ -44,6 +46,7 @@ export class NoteStream {
         renderer: NoteRenderer
     ) {
         this.window = new NoteWindowManager(renderer, this.enqueue.bind(this));
+        this.scrollBoxes = new ScrollBoxGuard((view) => renderer.onBaseLayout(view));
     }
 
     /** Starts watching `container`, inside the pane `scrollRoot`, for the first batch. */
@@ -52,6 +55,8 @@ export class NoteStream {
         this.blocks.attach(container);
         this.state.reset();
         this.window.attach(scrollRoot);
+        // iOS ends a glide early on a scroll box; Android is held to the same rule (ADR 0008).
+        if (Platform.isMobile) this.scrollBoxes.attach(container);
         this.attachScroll();
     }
 
@@ -60,6 +65,7 @@ export class NoteStream {
         this.flushModified.cancel();
         this.scroll.detach();
         this.window.detach();
+        this.scrollBoxes.detach();
         this.blocks.clear();
     }
 
@@ -68,9 +74,10 @@ export class NoteStream {
         this.window.refreshMargins();
     }
 
-    /** Unloads wait for the scroll to stop. */
+    /** Unloads and style reads wait for the scroll to stop. */
     onScroll(): void {
         this.window.onScroll();
+        this.scrollBoxes.onScroll();
     }
 
     onFileModify(file: TAbstractFile) {

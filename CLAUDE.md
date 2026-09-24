@@ -53,9 +53,11 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   empty state.
 - `stream/note-window.ts` — renders a block near the viewport, empties it well past; owns each note's
   `Component`.
+- `stream/scroll-box-guard.ts` — reports Base layouts to the renderer; clips stray scroll boxes once still.
 - `stream/` also holds the loaded range (`stream-state.ts`), the sentinel (`infinite-scroll.ts`) and scroll
   anchoring (`scroll-position.ts`).
-- `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`),
+- `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`), wide
+  tables as cards (`wide-tables.ts`), each Base in its own placeholder, as cards when too wide (`note-bases.ts`),
   collapsible sections (`collapsible.ts`) and their persisted state (`collapse-store.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
@@ -82,8 +84,8 @@ Traps that span files, so no single file's comments can hold them.
   view's `insertSorted` a -1.
 - **`rename` gets `(file, oldPath)`.** Obsidian mutates `TFile` in place, so the DOM's `data-source-path` is the
   *old* path: look the element up by `oldPath`, remove from cache and state by `file.path`.
-- **Re-render is driven by `metadataCache.on("changed")`, not `vault.on("modify")`** — the cache lags the write,
-  and the renderer reads the cache.
+- **A note re-renders on `metadataCache.on("changed")`, not `vault.on("modify")`** — the cache lags the write,
+  and the renderer reads the cache. `modify` only redraws cards copied from a `.base` file, which has no metadata.
 - **A block may hold no content.** Only notes near the viewport are rendered ([ADR 0006](docs/adr/0006-unload-off-screen-notes.md));
   everything else is an empty `.daily-note-block` reserving its height. Never assume a block's children exist,
   and never key anything off them — `data-source-path` is on the block, and `StreamBlocks`' path→block index is the
@@ -92,6 +94,9 @@ Traps that span files, so no single file's comments can hold them.
   listener per element — `CollapsibleManager.delegate()` and `NoteRenderer.delegate()` register one listener
   per gesture on the stream container, resolving the target through a `WeakMap` or the DOM. Binding per element would pile
   registrations on the view until it closes.
+- **No scroll containers inside a note on mobile** ([ADR 0008](docs/adr/0008-nothing-scrolls-on-mobile.md)): one
+  ends iOS glides early. Clip with `overflow: clip`, never `hidden` or `auto`, under `.is-mobile`.
+  `e2e/scroll-boxes.spec.ts` enforces it. Desktop keeps Obsidian's scroll bars.
 - **TS strictness**: `noUncheckedIndexedAccess` (indexing returns `T | undefined`) and `noImplicitReturns`.
   Lifecycle properties assigned in `onload()` need `!` assertions.
 

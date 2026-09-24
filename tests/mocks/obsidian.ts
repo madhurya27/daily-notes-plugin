@@ -4,6 +4,7 @@
  * understood ISO would pass every test a `DD-MM-YYYY` vault fails.
  */
 export { default as moment } from "moment";
+import { parse, stringify } from "yaml";
 
 // The real declarations, reached past the `obsidian` alias: the mock's
 // signatures borrow them, so src typechecks against the mock as it would
@@ -538,4 +539,13 @@ export class Plugin {
 }
 
 /** Mutable, so a test can stand in for either platform. */
-export const Platform = { isMacOS: true, isMobile: false };
+export const Platform = { isMacOS: true, isMobile: false, isPhone: false };
+
+/** Obsidian's own YAML, as the real one parses and prints it. */
+export function parseYaml(text: string): unknown {
+    return parse(text);
+}
+
+export function stringifyYaml(obj: unknown): string {
+    return stringify(obj);
+}

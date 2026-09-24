@@ -4,6 +4,8 @@ import {
     Keymap,
     MarkdownRenderer,
     Menu,
+    Platform,
+    TAbstractFile,
     TFile,
     parseLinktext,
     setIcon,
@@ -13,6 +15,9 @@ import {
 } from "obsidian";
 import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
+import { stackWideTables } from "./wide-tables";
+import { extractBases } from "./bases-as-cards";
+import { NoteBases } from "./note-bases";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
 import type { DailyNotesStreamSettings } from "../settings";
 
@@ -88,13 +93,18 @@ function displayValue(value: unknown): string {
 }
 
 export class NoteRenderer {
+    /** Each view's own: what it measured is per pane. */
+    private readonly bases: NoteBases;
+
     constructor(
         private readonly app: App,
         private readonly component: Component,
         private readonly collapsible: CollapsibleManager,
         private readonly getSettings: () => DailyNotesStreamSettings,
         private readonly highlighter: SearchHighlighter
-    ) {}
+    ) {
+        this.bases = new NoteBases(app);
+    }
 
     /**
      * The block a note always has, rendered or not: `renderInto` fills it and
@@ -142,9 +152,16 @@ export class NoteRenderer {
             if (frontmatterPos) {
                 markdown = markdown.slice(frontmatterPos.end.offset).trim();
             }
-
-            await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, noteComponent);
+            // On mobile nothing in the stream may scroll (ADR 0008); desktop
+            // draws wide content as Obsidian does, scrolling in its own box.
+            const mobile = Platform.isMobile;
+            const { markdown: body, bases } = mobile ? extractBases(markdown) : { markdown, bases: [] };
+            await MarkdownRenderer.render(this.app, body, contentEl, file.path, noteComponent);
             this.markUnresolvedLinks(contentEl);
+            if (mobile) {
+                await this.bases.render(contentEl, file, noteComponent, bases);
+                stackWideTables(contentEl, noteComponent);
+            }
 
             const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);
             this.collapsible.forgetRemovedSections(file, sectionKeys);
@@ -155,6 +172,16 @@ export class NoteRenderer {
 
         this.highlighter.track(block, noteComponent);
         return noteComponent;
+    }
+
+    /** A Base file changed: the copies of it drawn as cards redraw. */
+    onBaseModified(file: TAbstractFile): Promise<void> {
+        return this.bases.onBaseModified(file);
+    }
+
+    /** Bases laid a table out: cards if it is too wide for its note, else fitted columns. */
+    onBaseLayout(view: HTMLElement): void {
+        this.bases.onLayout(view);
     }
 
     /** Frees everything the note registered while it was rendered. */

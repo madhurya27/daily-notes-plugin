@@ -3,6 +3,60 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-24 — A redrawn Base holds its last height until Bases refills it
+
+**Decision:** `NoteBases` keeps the height each Base last laid out at, per note,
+width and definition, and a redraw holds it as `min-height` until the drawn view
+reaches it, or for 2s.
+
+**Why:** Bases fills a view after it is drawn. A note coming back into view, or
+a table redrawn as cards, dropped by the Bases' height for a few frames and
+grew back; iOS has no scroll anchoring, so the text jumped and returned.
+
+**Rejected:** holding the whole block until it settles — no signal says when a
+note is done, and only Bases was measured dipping.
+
+## 2026-09-24 — The stream takes a note's margins from the theme
+
+**Decision:** the pane is padded with `--file-margins`, and the stream is a
+column capped at the line width inside it, as reading view lays out a note.
+
+**Why:** the stream added 20px a side of its own on top of the theme's width,
+so under Minimal (88% line width) a phone lost ~43pt a side against ~24pt in
+reading view.
+
+**Rejected:** full width on phones — wider than every other note.
+
+## 2026-09-24 — A Base too wide for its note draws as cards, on mobile
+
+**Decision:** on mobile a Base follows the Markdown table rule: cards when its
+table is wider than the note, re-checked when the width changes. Desktop draws
+Bases as Obsidian does (ADR 0008). Each
+`base` block, and each `![[X.base]]` alone on its line, renders into its own
+placeholder, so one Base redraws alone. Cards come straight away when the
+headers alone overrun the note (Bases' header font and padding, measured once);
+otherwise the table draws and is measured on its first layout. A measured
+answer is kept per note and width.
+
+Cards are a view-only copy: Bases saves a block only through an editor, and a
+save would write `type: cards` into the file. A copy of an embedded Base
+redraws when its file changes. A table-drawn embed stays the real embed, and
+its toolbar edits save to the `.base` file, as in reading view.
+
+**Why:** consistency with Markdown tables. Measured cost of a redraw, 7 columns
+over a 3–10 year vault: table 100 ms (205–235 at 4× CPU), cards 62–64 ms
+(84–104); vault size adds under 30 ms. The estimate skips the table draw in
+the common case: many columns on a narrow note.
+
+**Rejected:**
+- Cards on any phone (`Platform.isPhone`) — cards even where the table fits.
+- Cards on desktop too — desktop has no stall, and a scroll bar keeps the table.
+- Taller `rowHeight` rows — the table stays cramped.
+- Restyling the table as cards in CSS — Bases positions rows absolutely.
+- Re-rendering the whole note on a flip — redraws everything else in it too.
+- Drawing every embed as a copy, so no edit saves — inline embeds and Bases in
+  callouts would still save, and every copy would need redrawing on change.
+
 ## 2026-09-23 — Unloading waits for the scroll to stop
 
 **Decision:** a rendered block that leaves the unload margin waits until the

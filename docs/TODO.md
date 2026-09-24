@@ -4,11 +4,24 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
+- [ ] iOS still stalls on inline math in a table. Lead: MathJax fonts dropped on unload (`experiment/warm-math-fonts`,
+  `5da0863`); keep that branch when deleting the other experiments.
+- [ ] PDF, iframe, canvas, Dataview: check for scroll boxes; give what cannot fit a preview that opens on tap.
+- [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on `post-processor-change`.
+- [ ] Mobile: the jump suggester's calendar button does nothing — no date wheel opens.
+- [ ] Mobile: search does not highlight the matches.
+- [ ] Opening the stream opens a new tab instead of using the current one.
+- [ ] Command palette shows "Daily Notes Stream: …"; sentence case wants "Daily notes stream". The prefix is
+  `manifest.json`'s `name`.
+- [ ] Ribbon icon `calendar-days` is easily confused with core Daily notes' calendar; pick a distinct one.
+- [ ] Rotation: unloaded notes keep heights measured at the old width, and nothing restores the reader's place.
+  Save `place()` when the scroll stops and restore it on a width change; mark unloaded heights unmeasured so a
+  held note (`fix/lock-rerender-height`) is not clipped at a stale one. Reproduce in e2e by resizing first.
 - [ ] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
   frame rate; loading is not the cost, so preloading would not help.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
   - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**; includes the jump suggester's date
-        wheel, which the e2e mobile project cannot reach (desktop Chromium)
+        wheel, which the e2e mobile project cannot reach (desktop Chromium), and the scroll stall on Android
   - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**; review the history first
   - [x] Dry-run the release workflow — `0.1.0` ran green and its draft release holds the three assets, each downloading to a byte-identical copy of the local build. Publish that draft once the repo is public
   - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`
@@ -42,8 +55,13 @@ folder/tag modes (dilutes what the plugin is), a tag/header filter (search does 
 sticky date header (`docs/decisions.md`, 2026-09-21).
 
 ## Deferred, contingent on how unloading behaves in real use
-Only worth doing if the placeholder estimate proves visibly wrong; Chromium's
-own scroll anchoring absorbs most of it today
-([ADR 0006](adr/0006-unload-off-screen-notes.md)).
-- [ ] Correct `scrollTop` by the delta when a block **above** the viewport renders and changes height — removes the jump whatever the estimate. Needs `overflow-anchor: none` on the container, which means owning behaviour Chromium currently handles.
+Only worth doing if jumps show up on a phone. Chromium's scroll anchoring
+absorbs them on desktop; iOS WebKit has none
+([ADR 0006](adr/0006-unload-off-screen-notes.md)). A flick past unrendered
+placeholders, anchoring off in e2e mobile, jumped 891–2673px as they rendered
+above the viewport (400px estimate → 1291px notes).
+- [ ] Correct `scrollTop` by the delta when a block **above** the viewport changes height, only where
+  `CSS.supports("overflow-anchor", "auto")` is false. Check on a phone that it does not end a glide
+  (ADR 0008); if it does, correct once the scroll stops.
+- [ ] Learn the estimate on render, not only on unload: until a note unloads, a fresh stream reserves 400px.
 - [ ] Estimate per note from `TFile.stat.size` — only if the median proves too coarse for a vault of uneven notes.
