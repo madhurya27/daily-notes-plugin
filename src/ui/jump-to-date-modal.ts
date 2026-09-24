@@ -109,9 +109,10 @@ export class JumpToDateModal extends SuggestModal<JumpChoice> {
             if (!picked.isValid()) return;
             // Through the query, not straight to the jump: the reader sees what
             // they picked, and can correct it without reopening the wheel.
+            // Focus stays: iOS fires this as its wheel opens, and moving focus
+            // would close it. Enter still reaches the modal from the picker.
             this.inputEl.value = this.service.formatDate(picked);
             this.inputEl.dispatchEvent(new Event("input"));
-            this.inputEl.focus();
         };
     }
 }

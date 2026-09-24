@@ -459,9 +459,12 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
 /* The jump suggester's calendar button, in the prompt beside the query. The
    offset clears the prompt's own clear button, which is absolutely positioned
    over the rightmost 48px on phone and desktop alike. The date input covers
-   the icon, unseen, so a tap lands on it: iOS opens its wheel for nothing else. */
+   the icon, unseen, so a tap lands on it: iOS opens its wheel for nothing else.
+   The clip holds it there: iOS draws a date input at its own width, and one
+   spilling over the clear button takes its taps. */
 .prompt-input-container .daily-notes-jump-calendar {
     position: absolute;
+    overflow: clip;
     right: var(--size-4-12);
     top: 50%;
     transform: translateY(-50%);
