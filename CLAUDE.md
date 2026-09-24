@@ -53,9 +53,11 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   empty state.
 - `stream/note-window.ts` — renders a block near the viewport, empties it well past; owns each note's
   `Component`.
+- `stream/scroll-box-guard.ts` — fits Bases (`render/bases-fit.ts`); clips stray scroll boxes once still.
 - `stream/` also holds the loaded range (`stream-state.ts`), the sentinel (`infinite-scroll.ts`) and scroll
   anchoring (`scroll-position.ts`).
-- `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`),
+- `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`), wide
+  tables as cards (`wide-tables.ts`),
   collapsible sections (`collapsible.ts`) and their persisted state (`collapse-store.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
@@ -92,6 +94,8 @@ Traps that span files, so no single file's comments can hold them.
   listener per element — `CollapsibleManager.delegate()` and `NoteRenderer.delegate()` register one listener
   per gesture on the stream container, resolving the target through a `WeakMap` or the DOM. Binding per element would pile
   registrations on the view until it closes.
+- **No scroll containers inside a note** ([ADR 0007](docs/adr/0007-nothing-in-the-stream-scrolls.md)): one ends
+  iOS glides early. Clip with `overflow: clip`, never `hidden` or `auto`. `e2e/scroll-boxes.spec.ts` enforces it.
 - **TS strictness**: `noUncheckedIndexedAccess` (indexing returns `T | undefined`) and `noImplicitReturns`.
   Lifecycle properties assigned in `onload()` need `!` assertions.
 

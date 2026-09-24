@@ -171,8 +171,8 @@ Then a real device:
 
 Checks:
 
-- Notes fill the width with no horizontal scroll; code blocks and tables scroll inside themselves, and a long
-  URL wraps. **[e2e]**
+- No horizontal scroll: code and URLs wrap, wide tables stack, Bases fit. **[e2e]**
+- Scroll far, pause, flick both ways past Bases and tables: each flick glides out.
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading
   *text* still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall; repeated flicks keep loading.

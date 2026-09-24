@@ -4,7 +4,10 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
-- [ ] **Mobile scroll stalls** — implement [`handoff-mobile-scroll-stalls.md`](handoff-mobile-scroll-stalls.md).
+- [ ] iOS still stalls on inline math in a table. Lead: MathJax fonts dropped on unload (`experiment/warm-math-fonts`,
+  `5da0863`); keep that branch when deleting the other experiments.
+- [ ] PDF, iframe, canvas, Dataview: check for scroll boxes; give what cannot fit a preview that opens on tap.
+- [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on `post-processor-change`.
 - [ ] Mobile: the jump suggester's calendar button does nothing — no date wheel opens.
 - [ ] Mobile: search does not highlight the matches.
 - [ ] Opening the stream opens a new tab instead of using the current one.
