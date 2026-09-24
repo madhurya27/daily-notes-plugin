@@ -13,6 +13,7 @@ import {
 } from "obsidian";
 import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
+import { stackWideTables } from "./wide-tables";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
 import type { DailyNotesStreamSettings } from "../settings";
 
@@ -145,6 +146,7 @@ export class NoteRenderer {
 
             await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, noteComponent);
             this.markUnresolvedLinks(contentEl);
+            stackWideTables(contentEl, noteComponent);
 
             const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);
             this.collapsible.forgetRemovedSections(file, sectionKeys);

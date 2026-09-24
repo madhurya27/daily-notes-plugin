@@ -728,6 +728,40 @@ describe("NoteRenderer internal links", () => {
 // renderProperties
 // ---------------------------------------------------------------------------
 
+describe("NoteRenderer tables", () => {
+    beforeEach(() => {
+        vi.stubGlobal(
+            "ResizeObserver",
+            class {
+                observe() {}
+                disconnect() {}
+            }
+        );
+        return () => vi.unstubAllGlobals();
+    });
+
+    // A table too wide for a phone stacks as cards, each cell under its column.
+    it("names each rendered cell after its column", async () => {
+        vi.spyOn(MarkdownRenderer, "render").mockImplementationOnce((_app, _md, el) => {
+            const table = el.createEl("table");
+            table.createEl("thead").createEl("tr").createEl("th", { text: "Pace" });
+            table.createEl("tbody").createEl("tr").createEl("td", { text: "5:12" });
+            return Promise.resolve();
+        });
+        const renderer = new NoteRenderer(
+            asApp(makeApp()),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter()
+        );
+
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        expect(el.querySelector("td")?.dataset.column).toBe("Pace");
+    });
+});
+
 describe("NoteRenderer unresolved links", () => {
     /** MarkdownRenderer's output for `[[Reading list]] [[Someday]]`, as the real one renders it. */
     async function renderLinks(app: ReturnType<typeof makeApp>) {

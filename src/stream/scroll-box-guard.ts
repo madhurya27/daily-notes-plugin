@@ -1,0 +1,85 @@
+import { debounce } from "obsidian";
+import { fitBaseToWidth } from "../render/bases-fit";
+import { SCROLL_IDLE_MS } from "./note-window";
+
+/** Clipped by the stylesheet already, Bases and all. */
+const BASE = ".bases-embed, .block-language-base";
+
+/**
+ * Keeps scroll containers out of the stream (ADR 0007): fits each Base to its
+ * width as it lays out, and clips whatever else the stylesheet missed once the
+ * scroll is still.
+ */
+export class ScrollBoxGuard {
+    private observer: MutationObserver | null = null;
+    /** Roots added since the last check. */
+    private readonly unchecked = new Set<HTMLElement>();
+    // Reading computed styles mid-glide forces a page-wide recalc.
+    private readonly checkOnceStill = debounce(() => this.clipScrollBoxes(), SCROLL_IDLE_MS, true);
+
+    attach(container: HTMLElement): void {
+        this.detach();
+        this.observer = new MutationObserver((records) => this.onMutations(records));
+        this.observer.observe(container, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["style"],
+        });
+    }
+
+    detach(): void {
+        this.observer?.disconnect();
+        this.observer = null;
+        this.checkOnceStill.cancel();
+        this.unchecked.clear();
+    }
+
+    /** Postpones the check until the scroll stops. */
+    onScroll(): void {
+        if (this.unchecked.size > 0) this.checkOnceStill();
+    }
+
+    private onMutations(records: MutationRecord[]): void {
+        const views = new Set<HTMLElement>();
+        for (const record of records) {
+            const view = baseViewChangedBy(record);
+            if (view) views.add(view);
+            for (const node of Array.from(record.addedNodes)) {
+                if (!(node instanceof HTMLElement)) continue;
+                if (node.closest(BASE)) node.querySelectorAll<HTMLElement>(".bases-view").forEach((v) => views.add(v));
+                else this.unchecked.add(node);
+            }
+        }
+        views.forEach(fitBaseToWidth);
+        if (this.unchecked.size > 0) this.checkOnceStill();
+    }
+
+    private clipScrollBoxes(): void {
+        for (const root of this.unchecked) {
+            if (!root.isConnected) continue;
+            for (const el of [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))]) {
+                if (el instanceof HTMLElement && isScrollBox(el)) el.addClass("is-scroll-clipped");
+            }
+        }
+        this.unchecked.clear();
+    }
+}
+
+/**
+ * The Base whose layout a mutation may have changed: rows added or removed, or
+ * a new table width on its header row. Its own style writes, the fitted cap
+ * among them, are not layout.
+ */
+function baseViewChangedBy(record: MutationRecord): HTMLElement | null {
+    // Both record types observed here, childList and attributes, target an element.
+    const target = record.target as Element;
+    if (record.type === "attributes" && !target.classList.contains("bases-thead")) return null;
+    return target.closest<HTMLElement>(".bases-view");
+}
+
+/** `hidden` too: no finger scrolls it, but it is a scroll container. */
+function isScrollBox(el: HTMLElement): boolean {
+    const style = getComputedStyle(el);
+    return /auto|scroll|hidden/.test(`${style.overflowX} ${style.overflowY}`);
+}

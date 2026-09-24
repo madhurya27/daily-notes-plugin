@@ -50,6 +50,8 @@ export default tseslint.config(
             "@microsoft/sdl/no-inner-html": "off",
             "no-restricted-imports": "off",
             "@typescript-eslint/unbound-method": "off",
+            // Tests stand in for Obsidian and Bases, which style inline.
+            "obsidianmd/no-static-styles-assignment": "off",
         },
     },
     // Last: turns off stylistic rules that would fight Prettier.

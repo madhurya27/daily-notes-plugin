@@ -23,7 +23,7 @@
 /* An unloaded note: no content, but the height it had, so nothing shifts. */
 .daily-note-block.is-unloaded {
     height: var(--daily-note-placeholder-height);
-    overflow: hidden;
+    overflow: clip;
 }
 
 .daily-note-header {
@@ -293,13 +293,91 @@
     overflow-wrap: break-word;
 }
 
-/* Wide content scrolls inside its own box. Without this a table or a long code
-   line widens the whole stream, dragging every other note sideways with it —
-   worst on a phone, where the page ends up narrower than the table. */
-.daily-note-content :is(table, pre) {
+/* Nothing in a note scrolls (ADR 0007): wide content wraps to the stream's
+   width, and what still does not fit is clipped. `clip`, never `hidden` or
+   `auto`: those make a scroll container, and one inside the stream ends an iOS
+   glide early. */
+.daily-note-content table {
+    width: 100%;
+    /* Obsidian's floor on a column, which seven columns overrun on a phone. */
+    --table-column-min-width: 0px;
+    --table-white-space: normal;
+}
+
+/* A column is never narrower than its longest word, and nothing is cut to an
+   ellipsis: a table that cannot fit that way is stacked instead. */
+.daily-note-content :is(td, th) {
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+/* Specific enough to outrank .markdown-rendered's `overflow: hidden` on cells. */
+.daily-note-content.markdown-rendered :is(thead > tr > th, tbody > tr > td) {
+    overflow: clip;
+    text-overflow: clip;
+}
+
+/* A table too wide for the note: each row a card, each cell under its column's
+   name (src/render/wide-tables.ts). */
+.daily-note-content table.is-stacked,
+.daily-note-content table.is-stacked :is(tbody, tr, td) {
     display: block;
+    width: auto;
+}
+
+.daily-note-content table.is-stacked thead {
+    display: none;
+}
+
+.daily-note-content table.is-stacked tr {
+    border: var(--table-border-width) solid var(--table-border-color);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2) var(--size-4-3);
+    margin-block-end: var(--size-4-3);
+}
+
+.daily-note-content.markdown-rendered table.is-stacked tbody > tr > td {
+    border: none;
+    padding: var(--size-2-2) 0;
+    max-width: none;
+    min-width: 0;
+}
+
+.daily-note-content table.is-stacked td::before {
+    content: attr(data-column);
+    display: block;
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+}
+
+.daily-note-content :is(pre, pre code) {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.daily-note-content pre {
+    overflow: clip;
+}
+
+/* A diagram scales down to the note rather than widen it. */
+.daily-note-content .mermaid svg {
     max-width: 100%;
-    overflow-x: auto;
+    height: auto;
+}
+
+/* An embedded note grows instead of scrolling inside a capped height. */
+.daily-note-content .markdown-embed-content {
+    max-height: none;
+}
+
+/* A Base and everything in it, and whatever the scroll box guard found
+   (src/stream/scroll-box-guard.ts). !important outranks Bases' own rules. */
+.daily-note-block :is(.bases-embed, .block-language-base),
+.daily-note-block :is(.bases-embed, .block-language-base) *,
+.daily-note-block .markdown-embed-content,
+.daily-note-block .is-scroll-clipped {
+    overflow: clip !important;
 }
 
 /* Obsidian pins the copy button to a code block's top-right corner and wraps

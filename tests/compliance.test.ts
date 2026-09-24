@@ -48,11 +48,13 @@ describe("plugin submission compliance", () => {
 
     // A placeholder's height is measured at runtime, so it cannot live in a
     // class. Custom properties are the exception: styles.css still owns which
-    // declaration uses the value. See docs/decisions.md (2026-09-20).
+    // declaration uses the value. See docs/decisions.md (2026-09-20). Reading
+    // a style styles nothing: Bases' table width is on its header row.
     it("styles through CSS classes, never from JavaScript", () => {
         const customProperty = /\.style\.(set|remove)Property\("--[\w-]+"/g;
+        const write = /\.style\.\w+\s*=[^=]|\.style\.(set|remove)Property|cssText|setCssStyles/;
         for (const { name, text } of sources) {
-            expect(text.replace(customProperty, ""), name).not.toMatch(/\.style\.|cssText|setCssStyles/);
+            expect(text.replace(customProperty, ""), name).not.toMatch(write);
         }
     });
 

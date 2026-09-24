@@ -74,8 +74,8 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(table).toBeVisible();
         await heading.locator(".collapse-indicator").click();
 
-        // Both carry their own display rule so they scroll rather than widen the
-        // page; hidden has to outrank that or a collapsed section keeps showing.
+        // A stacked table carries its own display rule; hidden has to outrank it
+        // or a collapsed section keeps showing.
         await expect(table).toBeHidden();
         await expect(code).toBeHidden();
 
