@@ -130,6 +130,24 @@ test.describe("Bases in the stream", () => {
         await expect(cards(base)).toContainText("2026-03-15");
     });
 
+    // Cards are a copy, so they would not follow the file on their own.
+    test("redraws an embed drawn as cards when its file changes", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await seed(page, ["![[Two.base#This note]]", ""]);
+        const base = (await openStream(page)).locator(".daily-note-base").first();
+        await base.scrollIntoViewIfNeeded();
+        await expect(cards(base)).toHaveCount(1);
+
+        await page.evaluate(
+            async (text) => {
+                await window.app.vault.modify(window.app.vault.getFileByPath("Two.base")!, text);
+            },
+            TWO_VIEWS.replace("    filters: file.path == this.file.path\n", "")
+        );
+
+        await expect.poll(() => cards(base).count()).toBeGreaterThan(1);
+    });
+
     test("redraws a Base when the note's width changes", async ({ obsidian, mobileLayout }) => {
         test.skip(mobileLayout, "resizes the desktop window");
         const { page } = obsidian;

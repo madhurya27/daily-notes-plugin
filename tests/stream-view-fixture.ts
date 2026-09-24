@@ -90,6 +90,7 @@ export function makeStubbedView(app: object = makeApp()) {
         renderInto: vi.fn().mockResolvedValue(new Component()),
         discard: vi.fn(),
         delegate: vi.fn(),
+        onBaseModified: vi.fn().mockResolvedValue(undefined),
     });
     // The window manager hands back placeholders; rendering is its business.
     view["stream"]["window"] = fake<NoteWindowManager>({

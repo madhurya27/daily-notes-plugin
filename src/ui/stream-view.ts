@@ -122,6 +122,8 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.registerEvent(vault.on("create", (f) => this.applyChange(() => this.stream.onFileCreate(f))));
         this.registerEvent(vault.on("delete", (f) => this.applyChange(() => this.stream.onFileDelete(f))));
         this.registerEvent(vault.on("rename", (f, old) => this.applyChange(() => this.stream.onFileRename(f, old))));
+        // A Base has no metadata to wait for.
+        this.registerEvent(vault.on("modify", (f) => void this.renderer.onBaseModified(f)));
 
         this.addAction("calendar-1", "Jump to date", () => this.promptJumpToDate());
         this.addAction("search", "Search", () => this.searchBar.open());

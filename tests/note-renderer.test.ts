@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SearchHighlighter } from "../src/render/search-highlights";
 import { NoteRenderer } from "../src/render/note-renderer";
+import { NoteBases } from "../src/render/note-bases";
 import { Component, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
 import { Menu } from "./mocks/obsidian";
 import { CollapsibleManager } from "../src/render/collapsible";
@@ -801,6 +802,15 @@ describe("NoteRenderer Bases", () => {
             "Notes/2025-01-01.md",
             expect.any(Component)
         );
+    });
+
+    it("hands a changed Base file to the note's Bases", async () => {
+        const spy = vi.spyOn(NoteBases.prototype, "onBaseModified").mockResolvedValue();
+        const file = new TFile("Bases/Views.base");
+
+        await renderer.onBaseModified(file);
+
+        expect(spy).toHaveBeenCalledWith(file);
     });
 
     it("fits a Base it did not draw", () => {

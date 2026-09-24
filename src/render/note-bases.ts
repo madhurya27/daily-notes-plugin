@@ -1,4 +1,4 @@
-import { App, Component, MarkdownRenderer, TFile, setIcon } from "obsidian";
+import { App, Component, MarkdownRenderer, TAbstractFile, TFile, setIcon } from "obsidian";
 import { asCards, BASE_SLOT_CLASS, type BaseSource } from "./bases-as-cards";
 import { fitBaseToWidth, tableWidth } from "./bases-fit";
 import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
@@ -17,6 +17,8 @@ export class NoteBases {
     /** Bases measured too wide, keyed by note, width and source. */
     private readonly tooWide = new Set<string>();
     private readonly slots = new WeakMap<Element, BaseSlot>();
+    /** Embedded Bases in rendered notes, by the path of the file they copy. */
+    private readonly copies = new Map<string, Set<BaseSlot>>();
 
     constructor(
         private readonly app: App,
@@ -34,9 +36,15 @@ export class NoteBases {
         let width = contentEl.clientWidth;
         for (const [i, placeholder] of placeholders.entries()) {
             const source = sources[i]!;
-            const definition = source.kind === "block" ? source.definition : await this.readBase(source.link, file);
+            const base = source.kind === "embed" ? this.resolveBase(source.link, file) : null;
+            const definition = base
+                ? await this.app.vault.cachedRead(base)
+                : source.kind === "block"
+                  ? source.definition
+                  : null;
             const slot = new BaseSlot(this.app, contentEl, placeholder, file, noteComponent, source, definition);
             this.slots.set(placeholder, slot);
+            if (base) this.track(base.path, slot, noteComponent);
             slots.push(slot);
             await slot.draw(this.wantsCards(slot, width) ? "cards" : "table");
         }
@@ -84,10 +92,33 @@ export class NoteBases {
         return this.headers ? narrowestTableWidth(slot.definition!, slot.view, this.headers) > width : false;
     }
 
-    /** The definition an embed in `note` links to, or null when it is not a Base. */
-    private async readBase(linkpath: string, note: TFile): Promise<string | null> {
+    /**
+     * A Base file changed. A copy drawn as cards cannot save, and nothing else
+     * redraws it (docs/decisions.md, 2026-09-24); a real embed redraws itself.
+     */
+    async onBaseModified(file: TAbstractFile): Promise<void> {
+        const slots = this.copies.get(file.path);
+        if (!slots || !(file instanceof TFile)) return;
+        const definition = await this.app.vault.cachedRead(file);
+        for (const slot of slots) {
+            slot.redefine(definition);
+            if (slot.mode === "cards") await slot.draw(this.wantsCards(slot, slot.contentWidth) ? "cards" : "table");
+        }
+    }
+
+    private track(path: string, slot: BaseSlot, noteComponent: Component): void {
+        const slots = this.copies.get(path) ?? new Set<BaseSlot>();
+        this.copies.set(path, slots.add(slot));
+        noteComponent.register(() => {
+            slots.delete(slot);
+            if (slots.size === 0) this.copies.delete(path);
+        });
+    }
+
+    /** The Base file an embed in `note` links to, or null when it is not one. */
+    private resolveBase(linkpath: string, note: TFile): TFile | null {
         const base = this.app.metadataCache.getFirstLinkpathDest(linkpath, note.path);
-        return base?.extension === "base" ? this.app.vault.cachedRead(base) : null;
+        return base?.extension === "base" ? base : null;
     }
 }
 
@@ -95,7 +126,7 @@ export class NoteBases {
 class BaseSlot {
     mode: "table" | "cards" = "table";
     /** The Base drawn as cards, or null when it has no table to convert. */
-    readonly cards: string | null;
+    cards: string | null = null;
     readonly view: string | undefined;
     private component: Component | null = null;
 
@@ -106,9 +137,15 @@ class BaseSlot {
         private readonly file: TFile,
         private readonly noteComponent: Component,
         private readonly source: BaseSource,
-        readonly definition: string | null
+        public definition: string | null
     ) {
         this.view = source.kind === "embed" ? source.view : undefined;
+        this.redefine(definition);
+    }
+
+    /** Takes the Base as its file now defines it. */
+    redefine(definition: string | null): void {
+        this.definition = definition;
         const cards = definition === null ? null : asCards(definition, this.view);
         this.cards = cards === null ? null : ["```base", cards, "```"].join("\n");
     }
@@ -119,7 +156,7 @@ class BaseSlot {
     }
 
     key(width: number): string {
-        return [this.file.path, width, this.source.markdown].join("\n");
+        return [this.file.path, width, this.source.markdown, this.definition].join("\n");
     }
 
     /** Replaces what the Base drew with `mode`, freeing what the last draw registered. */

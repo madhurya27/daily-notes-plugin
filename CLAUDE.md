@@ -84,8 +84,8 @@ Traps that span files, so no single file's comments can hold them.
   view's `insertSorted` a -1.
 - **`rename` gets `(file, oldPath)`.** Obsidian mutates `TFile` in place, so the DOM's `data-source-path` is the
   *old* path: look the element up by `oldPath`, remove from cache and state by `file.path`.
-- **Re-render is driven by `metadataCache.on("changed")`, not `vault.on("modify")`** — the cache lags the write,
-  and the renderer reads the cache.
+- **A note re-renders on `metadataCache.on("changed")`, not `vault.on("modify")`** — the cache lags the write,
+  and the renderer reads the cache. `modify` only redraws cards copied from a `.base` file, which has no metadata.
 - **A block may hold no content.** Only notes near the viewport are rendered ([ADR 0006](docs/adr/0006-unload-off-screen-notes.md));
   everything else is an empty `.daily-note-block` reserving its height. Never assume a block's children exist,
   and never key anything off them — `data-source-path` is on the block, and `StreamBlocks`' path→block index is the

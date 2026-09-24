@@ -13,6 +13,11 @@ headers alone overrun the note (Bases' header font and padding, measured once);
 otherwise the table draws and is measured on its first layout. A measured
 answer is kept per note and width.
 
+Cards are a view-only copy: Bases saves a block only through an editor, and a
+save would write `type: cards` into the file. A copy of an embedded Base
+redraws when its file changes. A table-drawn embed stays the real embed, and
+its toolbar edits save to the `.base` file, as in reading view.
+
 **Why:** consistency with Markdown tables. Measured cost of a redraw, 7 columns
 over a 3–10 year vault: table 100 ms (205–235 at 4× CPU), cards 62–64 ms
 (84–104); vault size adds under 30 ms. The estimate skips the table draw in
@@ -23,6 +28,8 @@ the common case: many columns on a narrow note.
 - Taller `rowHeight` rows — the table stays cramped.
 - Restyling the table as cards in CSS — Bases positions rows absolutely.
 - Re-rendering the whole note on a flip — redraws everything else in it too.
+- Drawing every embed as a copy, so no edit saves — inline embeds and Bases in
+  callouts would still save, and every copy would need redrawing on change.
 
 ## 2026-09-23 — Unloading waits for the scroll to stop
 

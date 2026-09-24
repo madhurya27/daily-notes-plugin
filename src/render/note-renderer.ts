@@ -4,6 +4,7 @@ import {
     Keymap,
     MarkdownRenderer,
     Menu,
+    TAbstractFile,
     TFile,
     parseLinktext,
     setIcon,
@@ -165,6 +166,11 @@ export class NoteRenderer {
 
         this.highlighter.track(block, noteComponent);
         return noteComponent;
+    }
+
+    /** A Base file changed: the copies of it drawn as cards redraw. */
+    onBaseModified(file: TAbstractFile): Promise<void> {
+        return this.bases.onBaseModified(file);
     }
 
     /** Bases laid a table out: cards if it is too wide for its note, else fitted columns. */

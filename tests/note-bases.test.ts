@@ -327,6 +327,80 @@ describe("NoteBases when the note's width changes", () => {
     });
 });
 
+describe("NoteBases when an embedded Base's file changes", () => {
+    const base = new TFile("Bases/Views.base");
+    const oneColumn = lines("views:", "  - type: table", "    name: One", "    order:", "      - aaa");
+
+    beforeEach(() => app.metadataCache.getFirstLinkpathDest.mockReturnValue(base));
+
+    // A cards copy cannot save, so nothing else would bring it up to date.
+    it("redraws a cards copy from the file as it now is", async () => {
+        noteWidth = 200;
+        const content = await renderNote("![[Views.base]]");
+        app.vault.cachedRead.mockResolvedValue(TABLE.replace("name: T", "name: Changed"));
+
+        await bases.onBaseModified(base);
+
+        expect(drawn(slotOf(content))).toMatch(/type: cards\n {4}name: Changed/);
+    });
+
+    it("redraws a copy that now fits as the embed it is", async () => {
+        noteWidth = 200;
+        const content = await renderNote("![[Views.base]]");
+        app.vault.cachedRead.mockResolvedValue(oneColumn);
+
+        await bases.onBaseModified(base);
+
+        expect(drawn(slotOf(content))).toBe("![[Views.base]]");
+    });
+
+    // Obsidian redraws a real embed when its file changes.
+    it("leaves an embed drawn as a table to redraw itself", async () => {
+        await renderNote("![[Views.base]]");
+
+        await bases.onBaseModified(base);
+
+        expect(render).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        ["another Base", new TFile("Bases/Other.base")],
+        ["a note", new TFile("Bases/Views.md")],
+    ])("ignores %s changing", async (_case, file) => {
+        noteWidth = 200;
+        await renderNote("![[Views.base]]");
+
+        await bases.onBaseModified(file);
+
+        expect(render).toHaveBeenCalledOnce();
+    });
+
+    it("keeps redrawing the copies in notes still rendered", async () => {
+        noteWidth = 200;
+        const gone = loaded();
+        await renderNote("![[Views.base]]", gone);
+        const content = await renderNote("![[Views.base]]");
+        gone.unload();
+        const draws = render.mock.calls.length;
+
+        await bases.onBaseModified(base);
+
+        expect(render).toHaveBeenCalledTimes(draws + 1);
+        expect(render.mock.calls.at(-1)![2]).toBe(slotOf(content));
+    });
+
+    it("forgets a copy once its note unloads", async () => {
+        noteWidth = 200;
+        const component = loaded();
+        await renderNote("![[Views.base]]", component);
+        component.unload();
+
+        await bases.onBaseModified(base);
+
+        expect(render).toHaveBeenCalledOnce();
+    });
+});
+
 describe("measureHeaderMetrics", () => {
     it("measures nothing where nothing is laid out", () => {
         expect(measureHeaderMetrics(document.createElement("div"))).toBeNull();
