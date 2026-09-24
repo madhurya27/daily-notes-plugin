@@ -23,7 +23,7 @@ describe("JumpToDateModal", () => {
 
     const listed = () => [...modal.resultContainerEl.children].map((el) => el.textContent);
     const picker = () => modal.contentEl.querySelector<HTMLInputElement>('input[type="date"]');
-    const calendarButton = () => modal.contentEl.querySelector("button");
+    const calendarIcon = () => modal.contentEl.querySelector(".daily-notes-jump-calendar");
 
     beforeEach(() => {
         onSubmit = vi.fn();
@@ -115,20 +115,34 @@ describe("JumpToDateModal", () => {
             delete (HTMLInputElement.prototype as { showPicker?: () => void }).showPicker;
         });
 
-        it("is left out where the platform has no picker to show", () => {
+        // iOS has showPicker() but opens nothing from it: its wheel opens only
+        // for a tap on the date input itself, so the input is the control.
+        it("is the date input itself, under the calendar icon", () => {
             open("YYYY-MM-DD", ["2025-01-01"]);
 
-            expect(calendarButton()).toBeNull();
-            expect(picker()).toBeNull();
+            expect(calendarIcon()!.getAttribute("data-icon")).toBe("calendar");
+            expect(picker()!.parentElement).toBe(calendarIcon());
+            expect(picker()!.getAttribute("aria-label")).toBe("Pick a date");
+        });
+
+        it("asks for the wheel on a click, where the platform can show it", () => {
+            const showPicker = vi.fn();
+            (HTMLInputElement.prototype as { showPicker?: () => void }).showPicker = showPicker;
+            open("YYYY-MM-DD", ["2025-01-01"]);
+
+            picker()!.click();
+
+            expect(showPicker).toHaveBeenCalledOnce();
+        });
+
+        it("leaves a click to the platform where it has no showPicker", () => {
+            open("YYYY-MM-DD", ["2025-01-01"]);
+
+            expect(() => picker()!.click()).not.toThrow();
         });
 
         it("writes the picked date into the query, in this vault's format", () => {
-            const showPicker = vi.fn();
-            (HTMLInputElement.prototype as { showPicker?: () => void }).showPicker = showPicker;
             open("DD-MM-YYYY", ["01-01-2025", "03-01-2025"]);
-
-            calendarButton()!.click();
-            expect(showPicker).toHaveBeenCalledOnce();
 
             picker()!.value = "2025-01-03";
             picker()!.dispatchEvent(new Event("change"));
@@ -138,7 +152,6 @@ describe("JumpToDateModal", () => {
         });
 
         it("ignores a picker cleared rather than set", () => {
-            (HTMLInputElement.prototype as { showPicker?: () => void }).showPicker = vi.fn();
             open("DD-MM-YYYY", ["01-01-2025"]);
 
             picker()!.value = "";

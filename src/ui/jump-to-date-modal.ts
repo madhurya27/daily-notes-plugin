@@ -1,4 +1,4 @@
-import { App, ButtonComponent, SuggestModal, moment } from "obsidian";
+import { App, SuggestModal, moment, setIcon } from "obsidian";
 import type { DailyNoteService, Moment } from "../notes/daily-note-service";
 
 /** The one format every reader can fall back on, whatever their vault uses. */
@@ -82,25 +82,26 @@ export class JumpToDateModal extends SuggestModal<JumpChoice> {
     /**
      * The platform's own date wheel, beside the query rather than instead of
      * it: typing is faster for a date the reader knows, and picking is easier
-     * for one they are looking for. Left out where `showPicker` is unavailable,
-     * which would leave a button that does nothing.
+     * for one they are looking for. The icon's tap target is the date input
+     * itself, invisible over it: iOS has `showPicker()` but opens nothing from
+     * it, only for a tap on the input. Desktop needs `showPicker()`, since a
+     * click on a date input's text only focuses it.
      */
     private addCalendarButton(): void {
         // SuggestModal always wraps its input in the prompt's container; the
         // cast states that contract rather than branch on it.
         const container = this.inputEl.parentElement as HTMLElement;
-        const picker = container.createEl("input", { type: "date", cls: "daily-notes-jump-picker" });
-        if (typeof picker.showPicker !== "function") {
-            picker.remove();
-            return;
-        }
+        const icon = container.createDiv({ cls: "clickable-icon daily-notes-jump-calendar" });
+        setIcon(icon, "calendar");
+        const picker = icon.createEl("input", {
+            type: "date",
+            cls: "daily-notes-jump-picker",
+            attr: { "aria-label": "Pick a date" },
+        });
 
-        new ButtonComponent(container)
-            .setIcon("calendar")
-            .setTooltip("Pick a date")
-            .onClick(() => picker.showPicker())
-            .buttonEl.addClass("clickable-icon", "daily-notes-jump-calendar");
-
+        picker.onclick = () => {
+            if (typeof picker.showPicker === "function") picker.showPicker();
+        };
         // A property, not a registration: the picker dies with the modal, and
         // one handler is all a single element can hold.
         picker.onchange = () => {

@@ -101,9 +101,10 @@ code that calls moment.
 **Decision:** a `SuggestModal` over every note's date, written and matched in
 the vault's own daily-note format, with `YYYY-MM-DD` as a second haystack. A
 query that parses as a date no note carries is offered as one entry that says
-it will land on the nearest older note. A calendar button hands the query to
-the platform's date wheel through `showPicker()`, and is left out where that is
-unavailable.
+it will land on the nearest older note. A calendar icon opens the platform's
+date wheel: the date input itself lies unseen over it, since iOS opens its wheel
+only for a tap on the input and does nothing on `showPicker()`; a click also
+calls `showPicker()`, which desktop needs.
 
 **Why:** a date field accepts days the vault has nothing for, so the nearest-
 older fallback happened silently and the reader could not tell a jump from a

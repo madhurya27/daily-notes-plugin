@@ -73,7 +73,8 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 - A date with no note is offered as one entry saying so; choosing it lands on the nearest older. **[e2e]**
 - Nothing that old raises a notice and moves nothing. **[e2e]**
 - The calendar button opens the platform's date wheel, and what is picked fills the query. **[e2e]**
-  Drive the wheel itself by hand on iOS and Android: the e2e mobile project is desktop Chromium.
+  Drive the wheel itself by hand on iOS and Android: the e2e mobile project is desktop Chromium, which
+  opens a picker iOS never would. e2e checks only that a tap on the icon lands on the date input.
 - Set the daily-notes format to `DD-MM-YYYY`, then to `MMMM D, YYYY`: the list follows it.
 
 ### Search

@@ -458,8 +458,8 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
 
 /* The jump suggester's calendar button, in the prompt beside the query. The
    offset clears the prompt's own clear button, which is absolutely positioned
-   over the rightmost 48px on phone and desktop alike. The picker behind it is
-   never seen: it exists only for showPicker() to hang the date wheel off. */
+   over the rightmost 48px on phone and desktop alike. The date input covers
+   the icon, unseen, so a tap lands on it: iOS opens its wheel for nothing else. */
 .prompt-input-container .daily-notes-jump-calendar {
     position: absolute;
     right: var(--size-4-12);
@@ -471,12 +471,13 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
    would keep the picker in the row and push the clear button out of the box. */
 .prompt-input-container .daily-notes-jump-picker {
     position: absolute;
-    width: 0;
-    height: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     padding: 0;
     border: 0;
     opacity: 0;
-    pointer-events: none;
+    cursor: var(--cursor);
 }
 
 /* The line under a date no note carries, saying where the jump will land. */

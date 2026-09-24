@@ -102,6 +102,27 @@ test.describe("jump to date", () => {
         expect(clear.x + clear.width).toBeLessThanOrEqual(input.x + input.width);
     });
 
+    // iOS opens its wheel only for a tap on the date input itself, never
+    // through showPicker(): so a tap on the icon must land on the input.
+    test("puts the date input under the calendar icon, where a tap lands", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+        const prompt = await openSuggester(page);
+
+        const icon = prompt.locator(".daily-notes-jump-calendar");
+
+        // Polled: on mobile the prompt slides up from below the screen.
+        await expect
+            .poll(async () => {
+                const box = (await icon.boundingBox())!;
+                return page.evaluate(
+                    ({ x, y }) => document.elementFromPoint(x, y)?.matches('input[type="date"]') ?? false,
+                    { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+                );
+            })
+            .toBe(true);
+    });
+
     test("fills the query from the platform's own date picker", async ({ obsidian }) => {
         const { page } = obsidian;
         await openStream(page);

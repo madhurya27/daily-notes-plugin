@@ -8,7 +8,6 @@ Ordered by priority, from the 2026-09 comparison against
   `5da0863`); keep that branch when deleting the other experiments.
 - [ ] PDF, iframe, canvas, Dataview: check for scroll boxes; give what cannot fit a preview that opens on tap.
 - [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on `post-processor-change`.
-- [ ] Mobile: the jump suggester's calendar button does nothing — no date wheel opens.
 - [ ] Mobile: search does not highlight the matches.
 - [ ] Opening the stream opens a new tab instead of using the current one.
 - [ ] Command palette shows "Daily Notes Stream: …"; sentence case wants "Daily notes stream". The prefix is
