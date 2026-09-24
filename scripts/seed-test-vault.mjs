@@ -60,8 +60,8 @@ const frontmatter = (index) => ["---", `mood: day-${index + 1}`, "tags:", "  - d
 /**
  * Notes of different shapes, cycled through the filler run: a stream of one
  * repeated note tests scrolling and nothing else. Each shape carries something
- * the checklist asks about — wide content that must scroll inside itself, deep
- * heading nesting, a note with no frontmatter (so no properties panel).
+ * the checklist asks about — wide content that must fit without scrolling, deep
+ * heading nesting, a note with no frontmatter (so no properties panel), Bases.
  */
 const SHAPES = [
     (index) => [
@@ -99,7 +99,7 @@ const SHAPES = [
         "const wide = { alpha: 1, beta: 2, gamma: 3, delta: 4, epsilon: 5, zeta: 6, eta: 7, theta: 8, iota: 9 };",
         "```",
         "",
-        "It must scroll inside its own box, never the page.",
+        "It wraps; nothing in the stream scrolls sideways.",
     ],
     (index) => [
         ...frontmatter(index),
@@ -140,14 +140,128 @@ const SHAPES = [
     () => ["A single line, no properties."],
 ];
 
+/** A table view of `columns`, as a Base's YAML lists it. */
+const tableView = (name, columns, ...extra) => [
+    "  - type: table",
+    `    name: ${name}`,
+    ...extra,
+    "    order:",
+    ...columns.map((column) => `      - ${column}`),
+];
+
+/** Headers alone overrun a phone and a desktop note: straight to cards. */
+const WIDE = ["file.name", "file.path", "file.folder", "file.ext", "file.size", "file.ctime", "file.mtime"];
+/** Fits a desktop note, not a phone's: rotate or resize to flip it. */
+const MIDDLE = ["file.name", "file.path", "file.folder", "file.ext", "file.size"];
+
+/** The Bases the notes embed, one of each case docs/TESTING.md checks. */
+const BASES = {
+    "Wide.base": ["views:", ...tableView("Wide", WIDE)],
+    "Middle.base": ["views:", ...tableView("Middle", MIDDLE)],
+    "Narrow.base": ["views:", ...tableView("Narrow", ["file.name"])],
+    // A hand-sized column: drawn as a table, it is cut at the note's edge.
+    "Resized.base": [
+        "views:",
+        ...tableView("Resized", ["file.name", "file.path"], "    columnSize:", "      file.path: 900"),
+    ],
+    // An embed names the second view; `this` is the embedding note.
+    "Two.base": [
+        "views:",
+        ...tableView("First", ["file.name"]),
+        ...tableView("This note", WIDE, "    filters: file.path == this.file.path"),
+    ],
+};
+
+/** Short headers, long values: only a drawn table shows it is too wide. */
+const VALUES_WIDE = [
+    "```base",
+    "formulas:",
+    ...["a", "b", "c", "d"].map((formula) => `  ${formula}: file.path + " " + file.path`),
+    "views:",
+    ...tableView("Values", ["formula.a", "formula.b", "formula.c", "formula.d"]),
+    "```",
+];
+
+/** Bases recur all the way down, for the scroll-stall check. */
+SHAPES.push((index) => [
+    ...frontmatter(index),
+    "## Bases",
+    "",
+    "![[Wide.base]]",
+    "",
+    "![[Narrow.base]]",
+    "",
+    ...VALUES_WIDE,
+]);
+
 const filler = (index) => body(...SHAPES[index % SHAPES.length](index));
 
 rmSync(join(vault, NOTES), { recursive: true, force: true });
 rmSync(join(vault, "Elsewhere"), { recursive: true, force: true });
+rmSync(join(vault, "Bases"), { recursive: true, force: true });
 
 for (let index = 0; index < days; index++) {
     write(join(NOTES, `${fillerDate(index)}.md`), filler(index));
 }
+
+for (const [name, lines] of Object.entries(BASES)) write(join("Bases", name), body(...lines));
+
+// The newest note: one of each embed, each drawn so that nothing scrolls.
+write(
+    join(NOTES, "2026-08-30.md"),
+    body(
+        "## Bases",
+        "",
+        "Each is a table while it fits the note, and cards once it does not.",
+        "",
+        "```base",
+        ...BASES["Wide.base"],
+        "```",
+        "",
+        "```base",
+        ...BASES["Narrow.base"],
+        "```",
+        "",
+        ...VALUES_WIDE,
+        "",
+        "A table on a desktop, cards on a phone; rotate or resize to flip it:",
+        "",
+        "![[Middle.base]]",
+        "",
+        "![[Resized.base]]",
+        "",
+        "The embed's named view, filtered to this note:",
+        "",
+        "![[Two.base#This note]]",
+        "",
+        "Inline, so always a table, its columns fitted: ![[Wide.base]]",
+        "",
+        "## Embedded notes",
+        "",
+        "![[Reading list]]",
+        "",
+        "![[Reading list#Later]]",
+        "",
+        "## Math",
+        "",
+        "$$\\sum_{i=1}^{n} x_i + \\sum_{j=1}^{m} y_j + \\sum_{k=1}^{p} z_k + \\sum_{l=1}^{q} w_l + \\int_0^1 f(t)\\,dt$$",
+        "",
+        "## Diagram",
+        "",
+        "Obsidian asks once before drawing Mermaid: Allow, then reopen the stream.",
+        "",
+        "```mermaid",
+        "flowchart LR",
+        "  A[Alpha step] --> B[Beta step] --> C[Gamma step] --> D[Delta step] --> E[Epsilon step] --> F[Zeta step]",
+        "```",
+        "",
+        "## Wide table",
+        "",
+        "| Column one | Column two | Column three | Column four | Column five | Column six | Column seven |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| a | b | c | d | e | f | g |"
+    )
+);
 
 // The two notes docs/TESTING.md names by date, with the frontmatter it lists.
 write(
@@ -258,6 +372,6 @@ for (const asset of ASSETS) {
 }
 
 console.log(
-    `Seeded ${days + 2} daily notes (${fillerDate(days - 1)} to ${fillerDate(0)}, plus the two the docs name).`
+    `Seeded ${days + 3} daily notes (${fillerDate(days - 1)} to ${fillerDate(0)}, plus the three the docs name).`
 );
 console.log(`Installed the plugin into ${vault}`);
