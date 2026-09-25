@@ -1,50 +1,14 @@
 import type { Page } from "@playwright/test";
 import { test, expect, openStream, restoreScrollAnchoring, seededDate, withoutScrollAnchoring } from "./obsidian";
 
-/** The first note reaching into the pane, and how far its top sits from the pane's. */
-function place(page: Page) {
+/**
+ * Defines `window.streamPlace` in the page: the first note reaching into the
+ * pane and how far its top sits from the pane's, as the stream keeps its place;
+ * undefined while no stream is open.
+ */
+function measurePlaces(page: Page) {
     return page.evaluate(() => {
-        const pane = document.querySelector(".daily-notes-stream-container")?.parentElement;
-        if (!pane) return null;
-        const paneTop = pane.getBoundingClientRect().top;
-        for (const block of pane.querySelectorAll<HTMLElement>(".daily-note-block")) {
-            const { top, bottom } = block.getBoundingClientRect();
-            if (bottom > paneTop) return { path: block.dataset.sourcePath, offset: Math.round(top - paneTop) };
-        }
-        return null;
-    });
-}
-
-/** Scrolls the stream past the top of the note `daysBack`, and waits for the notes around it to settle. */
-async function scrollPast(page: Page, daysBack: number) {
-    const container = await openStream(page);
-    const target = container.locator(`.daily-note-block[data-source-path="Notes/${seededDate(daysBack)}.md"]`);
-    await target.evaluate((el) => {
-        const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
-        pane.scrollTop += el.getBoundingClientRect().top - pane.getBoundingClientRect().top + 150;
-    });
-    // The notes around it render once scrolled to, and push it about.
-    let before = await place(page);
-    await expect
-        .poll(async () => {
-            const now = await place(page);
-            const settled = JSON.stringify(now) === JSON.stringify(before);
-            before = now;
-            return settled;
-        })
-        .toBe(true);
-    return { container, target, before };
-}
-
-/** Leaves the stream for a note and comes Back; every place the stream showed on the way, and the one it left. */
-async function goBack(page: Page) {
-    const { target } = await scrollPast(page, 3);
-    const title = await target.locator(".daily-note-title").elementHandle();
-
-    // In one task: on a phone the notes around it may still be rendering,
-    // so the place is taken the instant it is left.
-    const { left, frames } = await page.evaluate(async (title) => {
-        const placeNow = () => {
+        window.streamPlace = () => {
             const pane = document.querySelector(".daily-notes-stream-container")?.parentElement;
             if (!pane) return undefined;
             const paneTop = pane.getBoundingClientRect().top;
@@ -58,6 +22,45 @@ async function goBack(page: Page) {
                 }
             );
         };
+    });
+}
+
+const place = (page: Page) => page.evaluate(() => window.streamPlace!());
+
+/** Scrolls the stream `past` the top of the note `daysBack`, and waits for the notes around it to settle. */
+async function scrollPast(page: Page, daysBack: number, past = 150) {
+    const container = await openStream(page);
+    const target = container.locator(`.daily-note-block[data-source-path="Notes/${seededDate(daysBack)}.md"]`);
+    await target.evaluate((el, past) => {
+        const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+        pane.scrollTop += el.getBoundingClientRect().top - pane.getBoundingClientRect().top + past;
+    }, past);
+    // The notes around it render once scrolled to, and push it about; a Base
+    // fills in later still, and the phone window draws a frame a second.
+    let before = await place(page);
+    let stillSince = Date.now();
+    await expect
+        .poll(
+            async () => {
+                const now = await place(page);
+                if (now !== before) stillSince = Date.now();
+                before = now;
+                return Date.now() - stillSince;
+            },
+            { intervals: [250], timeout: 20_000 }
+        )
+        .toBeGreaterThan(1500);
+    return { container, target, before };
+}
+
+/** Leaves the stream for a note and comes Back; every place the stream showed on the way, and the one it left. */
+async function goBack(page: Page) {
+    const { target } = await scrollPast(page, 3);
+    const title = await target.locator(".daily-note-title").elementHandle();
+
+    // In one task: on a phone the notes around it may still be rendering,
+    // so the place is taken the instant it is left.
+    const { left, frames } = await page.evaluate(async (title) => {
         const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 
         // Back does nothing until the stream is in the leaf's history.
@@ -65,7 +68,7 @@ async function goBack(page: Page) {
         const behind = history();
         const deadline = performance.now() + 15_000;
 
-        const left = placeNow();
+        const left = window.streamPlace!();
         // Playwright's click() would scroll the title into view first, and move the place.
         title!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
         while (history() === behind) {
@@ -78,7 +81,7 @@ async function goBack(page: Page) {
         window.app.commands.executeCommandById("app:go-back");
         for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
             await nextFrame();
-            const frame = placeNow();
+            const frame = window.streamPlace!();
             if (frame === undefined) continue;
             quiet = frame === seen.at(-1) ? quiet + 1 : 0;
             seen.push(frame);
@@ -93,17 +96,11 @@ async function goBack(page: Page) {
  * Reopens the stream and hands it the place it left once it has drawn a frame,
  * as iOS does; every place it showed from then on, and the one it left.
  */
-async function returnAfterAFrame(page: Page) {
-    const { target } = await scrollPast(page, 3);
-    const { left, eState } = await target.evaluate((block) => {
-        const pane = block.closest(".daily-notes-stream-container")!.parentElement!;
-        const top = block.getBoundingClientRect().top - pane.getBoundingClientRect().top;
-        const view = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view;
-        return {
-            left: JSON.stringify({ path: block.dataset.sourcePath, offset: Math.round(top) }),
-            eState: view.getEphemeralState(),
-        };
-    });
+async function returnAfterAFrame(page: Page, past?: number) {
+    const { before: left } = await scrollPast(page, 3, past);
+    const eState = await page.evaluate(() =>
+        window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view.getEphemeralState()
+    );
     await openStream(page);
 
     const frames = await page.evaluate(async (eState) => {
@@ -116,15 +113,7 @@ async function returnAfterAFrame(page: Page) {
         const deadline = performance.now() + 15_000;
         for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
             await nextFrame();
-            const pane = document.querySelector(".daily-notes-stream-container")!.parentElement!;
-            const paneTop = pane.getBoundingClientRect().top;
-            const first = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")].find(
-                (block) => block.getBoundingClientRect().bottom > paneTop
-            )!;
-            const frame = JSON.stringify({
-                path: first.dataset.sourcePath,
-                offset: Math.round(first.getBoundingClientRect().top - paneTop),
-            });
+            const frame = window.streamPlace!()!;
             quiet = frame === seen.at(-1) ? quiet + 1 : 0;
             seen.push(frame);
         }
@@ -134,6 +123,8 @@ async function returnAfterAFrame(page: Page) {
 }
 
 test.describe("history", () => {
+    test.beforeEach(({ obsidian }) => measurePlaces(obsidian.page));
+
     test.afterEach(async ({ obsidian }) => {
         await obsidian.page.evaluate(() => window.app.workspace.detachLeavesOfType("markdown"));
     });
@@ -175,6 +166,34 @@ test.describe("history", () => {
         test("returns to the place it left when handed it after drawing a frame", async ({ obsidian }) => {
             const { left, frames } = await returnAfterAFrame(obsidian.page);
             expect(frames).toEqual([left]);
+        });
+
+        test.describe("past a Base at the top of the note it left", () => {
+            const NOTE = `Notes/${seededDate(3)}.md`;
+            let original = "";
+
+            test.beforeEach(async ({ obsidian }) => {
+                original = await obsidian.page.evaluate(async (path) => {
+                    const file = window.app.vault.getFileByPath(path)!;
+                    const text = await window.app.vault.read(file);
+                    const base = ["```base", "views:", "  - type: table", "    name: Files", "```", ""].join("\n");
+                    await window.app.vault.modify(file, base + text);
+                    return text;
+                }, NOTE);
+            });
+
+            test.afterEach(async ({ obsidian }) => {
+                await obsidian.page.evaluate(
+                    ([path, text]) => window.app.vault.modify(window.app.vault.getFileByPath(path)!, text),
+                    [NOTE, original] as const
+                );
+            });
+
+            // Bases fills a view after it is drawn: the note shrinks, then grows back.
+            test("returns to the place it left", async ({ obsidian }) => {
+                const { left, frames } = await returnAfterAFrame(obsidian.page, 900);
+                expect(frames).toEqual([left]);
+            });
         });
     });
 });

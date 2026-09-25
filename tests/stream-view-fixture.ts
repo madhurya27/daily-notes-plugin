@@ -9,6 +9,7 @@ import type { InfiniteScrollController } from "../src/stream/infinite-scroll";
 import { Component, WorkspaceLeaf, type App, type EventRef, type TFile } from "./mocks/obsidian";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
+import { BaseMeasurements } from "../src/render/bases/base-measurements";
 
 /** A stand-in for `T`, holding only the members a test reaches. */
 export function fake<T>(members: Partial<T>): T {
@@ -42,6 +43,7 @@ export function makePlugin(): DailyNotesStreamPlugin {
     return fake<DailyNotesStreamPlugin>({
         settings: { showProperties: false, propertiesCollapsed: false },
         collapseStore: new CollapsibleStateStore(asApp(app)),
+        baseMeasurements: new BaseMeasurements(),
     });
 }
 

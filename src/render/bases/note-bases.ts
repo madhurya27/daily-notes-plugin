@@ -1,4 +1,5 @@
 import { App, Component, MarkdownRenderer, TAbstractFile, TFile, setIcon } from "obsidian";
+import type { BaseMeasurements } from "./base-measurements";
 import { asCards, BASE_SLOT_CLASS, type BaseSource } from "./bases-as-cards";
 import { fitBaseToWidth, tableWidth } from "./bases-fit";
 import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
@@ -24,16 +25,13 @@ const HOLD_MS = 2000;
 export class NoteBases {
     /** Undefined until the first Base; null when nothing could be measured. */
     private headers: HeaderMetrics | null | undefined;
-    /** Bases measured too wide, keyed by note, width and source. */
-    private readonly tooWide = new Set<string>();
-    /** The height each Base last laid out at, keyed as `tooWide` is. */
-    private readonly heights = new Map<string, number>();
     private readonly slots = new WeakMap<Element, BaseSlot>();
     /** Embedded Bases in rendered notes, by the path of the file they copy. */
     private readonly copies = new Map<string, Set<BaseSlot>>();
 
     constructor(
         private readonly app: App,
+        private readonly measured: BaseMeasurements,
         /** jsdom lays nothing out, so measuring is the one seam tests replace. */
         private readonly measureHeaders: (host: HTMLElement) => HeaderMetrics | null = measureHeaderMetrics
     ) {}
@@ -95,24 +93,24 @@ export class NoteBases {
     }
 
     private showCards(slot: BaseSlot, width: number): Promise<void> {
-        this.tooWide.add(slot.key(width));
+        this.measured.tooWide.add(slot.key(width));
         return this.draw(slot, "cards");
     }
 
     private async draw(slot: BaseSlot, mode: "table" | "cards"): Promise<void> {
         this.remember(slot);
-        await slot.draw(mode, this.heights.get(slot.key(slot.contentWidth)));
+        await slot.draw(mode, this.measured.heights.get(slot.key(slot.contentWidth)));
     }
 
     /** Keeps the height `slot` is laid out at now, unless held to an older one. */
     private remember(slot: BaseSlot): void {
         const height = slot.placeholder.getBoundingClientRect().height;
-        if (height > 0 && !slot.held) this.heights.set(slot.key(slot.contentWidth), height);
+        if (height > 0 && !slot.held) this.measured.heights.set(slot.key(slot.contentWidth), height);
     }
 
     private wantsCards(slot: BaseSlot, width: number): boolean {
         if (!slot.cards) return false;
-        if (this.tooWide.has(slot.key(width))) return true;
+        if (this.measured.tooWide.has(slot.key(width))) return true;
         return this.headers ? narrowestTableWidth(slot.definition!, slot.view, this.headers) > width : false;
     }
 

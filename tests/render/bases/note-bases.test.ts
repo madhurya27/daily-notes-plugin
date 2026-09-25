@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import { Component, MarkdownRenderer, TFile } from "obsidian";
+import { BaseMeasurements } from "../../../src/render/bases/base-measurements";
 import { NoteBases, measureHeaderMetrics } from "../../../src/render/bases/note-bases";
 import { extractBases } from "../../../src/render/bases/bases-as-cards";
 import type { HeaderMetrics } from "../../../src/render/bases/bases-width";
@@ -93,7 +94,7 @@ beforeEach(() => {
     };
     render = vi.spyOn(MarkdownRenderer, "render").mockResolvedValue();
     measure = vi.fn().mockReturnValue(metrics);
-    bases = new NoteBases(asApp(app), measure);
+    bases = new NoteBases(asApp(app), new BaseMeasurements(), measure);
     noteWidth = 400;
 });
 
@@ -217,6 +218,18 @@ describe("NoteBases measuring a drawn table", () => {
     // A note comes back after unloading; the double draw happens once.
     it("draws it straight as cards next time, at that width", async () => {
         bases.onLayout(layOut(slotOf(await renderNote(BLOCK)), 900));
+
+        const again = await renderNote(BLOCK);
+
+        expect(drawn(slotOf(again))).toContain("type: cards");
+    });
+
+    // Back rebuilds the stream's view, and its NoteBases with it.
+    it("draws it straight as cards in a view sharing what this one measured", async () => {
+        const measured = new BaseMeasurements();
+        bases = new NoteBases(asApp(app), measured, measure);
+        bases.onLayout(layOut(slotOf(await renderNote(BLOCK)), 900));
+        bases = new NoteBases(asApp(app), measured, measure);
 
         const again = await renderNote(BLOCK);
 
@@ -440,6 +453,19 @@ describe("NoteBases holding a redrawn Base's height", () => {
         const component = loaded();
         tall(slotOf(await renderNote(BLOCK, component)), 300);
         component.unload();
+
+        const again = await renderNote(BLOCK);
+
+        expect(held(slotOf(again))).toBe("300px");
+    });
+
+    it("holds a note's Base, drawn by a view sharing what this one measured, at the height it left at", async () => {
+        const measured = new BaseMeasurements();
+        bases = new NoteBases(asApp(app), measured, measure);
+        const component = loaded();
+        tall(slotOf(await renderNote(BLOCK, component)), 300);
+        component.unload();
+        bases = new NoteBases(asApp(app), measured, measure);
 
         const again = await renderNote(BLOCK);
 

@@ -138,7 +138,8 @@ correction.
 
 **Decision:** `NoteBases` keeps the height each Base last laid out at, per note,
 width and definition, and a redraw holds it as `min-height` until the drawn view
-reaches it, or for 2s.
+reaches it, or for 2s. The heights, and which Bases were too wide, live on the
+plugin (`BaseMeasurements`): Back rebuilds the view, which forgot them.
 
 **Why:** Bases fills a view after it is drawn. A note coming back into view, or
 a table redrawn as cards, dropped by the Bases' height for a few frames and

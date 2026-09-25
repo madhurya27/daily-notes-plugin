@@ -58,7 +58,8 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
             this.collapsible,
             // A closure, not the object: loadSettings() reassigns plugin.settings.
             () => plugin.settings,
-            highlighter
+            highlighter,
+            plugin.baseMeasurements
         );
         this.stream = new NoteStream(this.service, plugin.collapseStore, this.renderer);
 

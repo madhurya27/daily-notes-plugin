@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { BaseMeasurements } from "../../src/render/bases/base-measurements";
 import { SearchHighlighter } from "../../src/render/search-highlights";
 import { NoteRenderer } from "../../src/render/note-renderer";
 import { NoteBases } from "../../src/render/bases/note-bases";
@@ -113,7 +114,8 @@ async function renderWithProperties(app: ReturnType<typeof makeApp>) {
         new Component(),
         makeCollapsible(),
         makeSettings({ showProperties: true }),
-        new SearchHighlighter()
+        new SearchHighlighter(),
+        new BaseMeasurements()
     );
     return mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 }
@@ -129,7 +131,8 @@ describe("NoteRenderer.renderInto", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
     });
 
@@ -172,7 +175,8 @@ describe("NoteRenderer.renderInto", () => {
             new Component(),
             makeCollapsible(),
             () => settings,
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
 
         settings = { showProperties: true, propertiesCollapsed: false }; // as loadSettings() would
@@ -192,7 +196,14 @@ describe("NoteRenderer.renderInto", () => {
             wrappedFirst = el.querySelector(".daily-note-text-run")?.textContent === "Standing pancake";
             return [];
         });
-        renderer = new NoteRenderer(asApp(app), new Component(), collapsible, makeSettings(), new SearchHighlighter());
+        renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            collapsible,
+            makeSettings(),
+            new SearchHighlighter(),
+            new BaseMeasurements()
+        );
 
         await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
 
@@ -201,7 +212,14 @@ describe("NoteRenderer.renderInto", () => {
 
     it("calls makeCollapsible after rendering content", async () => {
         const collapsible = makeCollapsible();
-        renderer = new NoteRenderer(asApp(app), new Component(), collapsible, makeSettings(), new SearchHighlighter());
+        renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            collapsible,
+            makeSettings(),
+            new SearchHighlighter(),
+            new BaseMeasurements()
+        );
         await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
         expect(collapsible.makeCollapsible).toHaveBeenCalledOnce();
     });
@@ -210,7 +228,14 @@ describe("NoteRenderer.renderInto", () => {
         const collapsible = makeCollapsible();
         vi.mocked(collapsible.makeCollapsible).mockReturnValue(["meeting"]);
         const forget = vi.spyOn(collapsible, "forgetRemovedSections").mockImplementation(() => {});
-        renderer = new NoteRenderer(asApp(app), new Component(), collapsible, makeSettings(), new SearchHighlighter());
+        renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            collapsible,
+            makeSettings(),
+            new SearchHighlighter(),
+            new BaseMeasurements()
+        );
         const file = new TFile("Notes/2025-01-01.md");
 
         await renderNote(renderer, file);
@@ -223,7 +248,14 @@ describe("NoteRenderer.renderInto", () => {
         vi.spyOn(console, "error").mockImplementation(() => {});
         const collapsible = makeCollapsible();
         const forget = vi.spyOn(collapsible, "forgetRemovedSections");
-        renderer = new NoteRenderer(asApp(app), new Component(), collapsible, makeSettings(), new SearchHighlighter());
+        renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            collapsible,
+            makeSettings(),
+            new SearchHighlighter(),
+            new BaseMeasurements()
+        );
 
         await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
 
@@ -249,7 +281,8 @@ describe("NoteRenderer component lifetime", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const block = renderer.createBlock(new TFile("Notes/2025-01-01.md"));
         expect(block.classList.contains("daily-note-block")).toBe(true);
@@ -263,7 +296,8 @@ describe("NoteRenderer component lifetime", () => {
             owner,
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const file = new TFile("Notes/2025-01-01.md");
 
@@ -282,7 +316,8 @@ describe("NoteRenderer component lifetime", () => {
             owner,
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const file = new TFile("Notes/2025-01-01.md");
         const child = await renderer.renderInto(renderer.createBlock(file), file);
@@ -300,7 +335,14 @@ describe("NoteRenderer component lifetime", () => {
         app.vault.cachedRead = vi.fn().mockResolvedValue("body");
         const highlighter = new SearchHighlighter();
         highlighter.setQuery("2025");
-        const renderer = new NoteRenderer(asApp(app), new Component(), makeCollapsible(), makeSettings(), highlighter);
+        const renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            highlighter,
+            new BaseMeasurements()
+        );
         const file = new TFile("Notes/2025-01-01.md");
         const block = renderer.createBlock(file);
 
@@ -321,7 +363,8 @@ describe("NoteRenderer component lifetime", () => {
             owner,
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const file = new TFile("Notes/2025-01-01.md");
 
@@ -344,7 +387,8 @@ describe("NoteRenderer title link", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const link = el.querySelector(".daily-note-title") as HTMLAnchorElement;
@@ -366,7 +410,8 @@ describe("NoteRenderer title click", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, file));
 
@@ -384,7 +429,8 @@ describe("NoteRenderer title click", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, file));
 
@@ -405,7 +451,8 @@ describe("NoteRenderer title click", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, file));
         (el.querySelector(".daily-note-title") as HTMLElement).click();
@@ -422,7 +469,8 @@ describe("NoteRenderer title open targets", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const file = new TFile("Notes/2025-01-01.md");
         const el = mount(renderer, await renderNote(renderer, file));
@@ -488,7 +536,8 @@ describe("NoteRenderer title menu", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const file = new TFile("Notes/2025-01-01.md");
         const el = mount(renderer, await renderNote(renderer, file));
@@ -536,7 +585,8 @@ describe("NoteRenderer title menu", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
@@ -556,7 +606,8 @@ describe("NoteRenderer internal links", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const link = el.querySelector(".daily-note-content")!.createEl("a", { cls: "internal-link" });
@@ -776,7 +827,8 @@ describe("NoteRenderer tables", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         return mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
     }
@@ -816,7 +868,8 @@ describe("NoteRenderer Bases", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         return () => {
             Platform.isMobile = false;
@@ -888,7 +941,8 @@ describe("NoteRenderer unresolved links", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const [existing, missing, hrefless] = [...el.querySelectorAll(".internal-link")];
@@ -944,7 +998,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: false }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".metadata-container")).toBeNull();
@@ -957,7 +1012,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".metadata-container")).toBeNull();
@@ -970,7 +1026,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".metadata-container")).toBeNull();
@@ -983,7 +1040,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".metadata-container")).toBeNull();
@@ -996,7 +1054,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".metadata-container")).not.toBeNull();
@@ -1009,7 +1068,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const pills = el.querySelectorAll(".metadata-property-value .multi-select-container .multi-select-pill");
@@ -1025,7 +1085,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const values = el.querySelectorAll<HTMLElement>(".metadata-property-value");
@@ -1079,7 +1140,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe('{"key":"val"}');
@@ -1092,7 +1154,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("true");
@@ -1105,7 +1168,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("3");
@@ -1118,7 +1182,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true, propertiesCollapsed: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".metadata-container")!.classList.contains("is-collapsed")).toBe(true);
@@ -1132,7 +1197,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             collapsible,
             makeSettings({ showProperties: true, propertiesCollapsed: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const value = el.querySelector(".metadata-property-value-text")!.firstChild!;
@@ -1152,7 +1218,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             collapsible,
             makeSettings({ showProperties: true, propertiesCollapsed: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const file = new TFile("Notes/2025-01-01.md");
 
@@ -1170,7 +1237,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 
@@ -1186,7 +1254,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const container = el.querySelector(".metadata-container")!;
@@ -1205,7 +1274,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const heading = el.querySelector(".metadata-properties-heading")!;
@@ -1222,7 +1292,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 
@@ -1245,7 +1316,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         return Array.from(el.querySelectorAll<HTMLElement>(".metadata-property-icon")).map((i) => i.dataset.icon);
@@ -1306,7 +1378,8 @@ describe("NoteRenderer renderProperties", () => {
             new Component(),
             makeCollapsible(),
             makeSettings({ showProperties: true }),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("");
@@ -1320,7 +1393,8 @@ describe("NoteRenderer — delegated listeners", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const root = document.createElement("div");
         document.body.appendChild(root);
@@ -1370,7 +1444,8 @@ describe("NoteRenderer tag click", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 
@@ -1386,7 +1461,8 @@ describe("NoteRenderer tag click", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 
@@ -1430,7 +1506,8 @@ describe("NoteRenderer tag click", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 
@@ -1449,7 +1526,8 @@ describe("NoteRenderer tag click", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 
@@ -1467,7 +1545,8 @@ describe("NoteRenderer tag click", () => {
             new Component(),
             makeCollapsible(),
             makeSettings(),
-            new SearchHighlighter()
+            new SearchHighlighter(),
+            new BaseMeasurements()
         );
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 

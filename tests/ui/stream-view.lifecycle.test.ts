@@ -76,6 +76,14 @@ describe("DailyNotesStreamView — view API", () => {
         expect(view.getIcon()).toBe("gallery-vertical-end");
     });
 
+    // Back rebuilds the view: what its Bases measured must outlive it.
+    it("draws Bases from the measurements the plugin keeps for every view", () => {
+        const plugin = makePlugin();
+        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(asApp(makeApp())), plugin, makeService());
+
+        expect(freshView["renderer"]["bases"]["measured"]).toBe(plugin.baseMeasurements);
+    });
+
     it("gives the renderer a live view of the plugin settings", async () => {
         const plugin = makePlugin();
         const app = makeApp();
