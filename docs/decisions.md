@@ -147,7 +147,7 @@ correction.
 
 **Decision:** `NoteBases` keeps the height each Base last laid out at, per note,
 width and definition, and a redraw holds it as `min-height` until the drawn view
-reaches it, or for 2s. A height is kept once the Base has not resized for
+reaches it, or for 2s. A height is kept once nothing in its note has resized for
 300ms while unheld, never at unload or before a redraw: a closing view is not
 laid out, and a Base left mid-fill keeps the height it had. The
 heights, and which Bases were too wide, live on the plugin (`BaseMeasurements`):
@@ -158,8 +158,11 @@ every pane width is a key of its own.
 a table redrawn as cards, dropped by the Bases' height for a few frames and
 grew back; iOS has no scroll anchoring, so the text jumped and returned.
 
-**Rejected:** holding the whole block until it settles — no signal says when a
-note is done, and only Bases was measured dipping.
+**Rejected:**
+- Holding the whole block until it settles — no signal says when a note is
+  done, and only Bases was measured dipping.
+- Each Base waiting only on its own resizes — tried: on a phone, notes
+  flickered as they scrolled back in.
 
 ## 2026-09-24 — The stream takes a note's margins from the theme
 

@@ -64,9 +64,10 @@ export class NoteBases {
             await this.draw(slot, this.wantsCards(slot, width) ? "cards" : "table");
         }
         // A Base resizes as Bases fills it, or its rows change: its height is
-        // kept once it holds still, never mid-fill or at unload.
-        const observer = new ResizeObserver((entries) => {
-            for (const { target } of entries) this.slots.get(target)?.keepOnceStill();
+        // kept once the whole note holds still, never mid-fill or at unload. A
+        // Base alone can sit still, empty, while Bases fetches its rows.
+        const observer = new ResizeObserver(() => {
+            for (const slot of slots) slot.keepOnceStill();
             if (contentEl.clientWidth === width) return;
             width = contentEl.clientWidth;
             for (const slot of slots) void this.recheck(slot, width);

@@ -507,22 +507,23 @@ describe("NoteBases holding a redrawn Base's height", () => {
         expect(held(slotOf(again))).toBe("");
     });
 
-    it("keeps the height a Base held still at while another in its note still fills", async () => {
+    // A Base can sit still, empty, while Bases fetches its rows: on a phone,
+    // keeping that height made notes jump as they scrolled back in.
+    it("keeps no height while anything else in its note still moves", async () => {
         const component = loaded();
-        const content = await renderNote(lines(BLOCK, "", BLOCK.replace("name: T", "name: U")), component);
-        const resizedOnly = (slot: Element) =>
-            FakeResizeObserver.instances.forEach((observer) => observer.resizedOnly(slot));
-        tall(slotOf(content, 0), 300);
-        resizedOnly(slotOf(content, 0));
+        const content = await renderNote(BLOCK, component);
+        const resizedOnly = (el: Element) =>
+            FakeResizeObserver.instances.forEach((observer) => observer.resizedOnly(el));
+        tall(slotOf(content), 300);
+        resizedOnly(slotOf(content));
         vi.advanceTimersByTime(BASE_SETTLE_MS - 100);
-        tall(slotOf(content, 1), 200);
-        resizedOnly(slotOf(content, 1));
+        resizedOnly(content);
         vi.advanceTimersByTime(100);
-        close(slotOf(content, 0), component);
+        close(slotOf(content), component);
 
         const again = await renderNote(BLOCK);
 
-        expect(held(slotOf(again))).toBe("300px");
+        expect(held(slotOf(again))).toBe("");
     });
 
     it("keeps the height a Base held still at, not one it passed through", async () => {
