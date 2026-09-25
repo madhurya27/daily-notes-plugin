@@ -6,7 +6,9 @@ rewriting across layers belongs in [`adr/`](adr/) instead.
 ## 2026-09-25 — Back lays the stream out at the heights it left
 
 **Decision:** the place kept in Obsidian's history carries the heights of the
-notes down to it, by path, and the pane width. At the same width, Back
+rendered notes down to it, by path, and the pane width. Only they render
+again at the place; the rest stay empty, and the place is measured from its
+own note. At the same width, Back
 reserves those heights and scrolls once, before the first frame. The iOS
 scroll anchor is then told the place is set, so growth the scroll already
 holds, reported a frame late, is not added again. It loads past the place
@@ -21,6 +23,10 @@ flashed on desktop, older ones on a phone.
 - Hiding the stream until it settles — up to a second blank on a phone.
 - Opening titles in a new tab so the stream survives — Back stops returning
   to it.
+- Every loaded note's height — thousands of entries per history step, scrolled
+  a few years back, for notes that never render there.
+- These heights alone, without `BaseMeasurements` — a Base inside a note
+  still draws empty and refills, whatever height its note reserved.
 
 ## 2026-09-25 — Scroll to top is offered only in the stream
 

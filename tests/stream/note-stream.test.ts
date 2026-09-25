@@ -31,6 +31,7 @@ vi.mock("../../src/stream/note-window", () => ({
         onScroll = vi.fn();
         refresh = vi.fn().mockResolvedValue(undefined);
         heightOf = vi.fn().mockReturnValue(undefined);
+        renderedHeightOf = vi.fn().mockReturnValue(undefined);
         reserve = vi.fn();
         placed = vi.fn();
         layoutChanges = 0;
@@ -812,10 +813,13 @@ describe("the stream's place", () => {
         expect(stream.place()).toMatchObject({ path: notes[1]!.path, offset: -150 });
     });
 
-    it("keeps the heights of the notes down to it, and the width they were laid out at", async () => {
+    // Only a rendered note renders again at the place, into a height of its own.
+    it("keeps the heights of the rendered notes down to it, and the width they were laid out at", async () => {
         await stream.loadMoreNotes();
         Object.defineProperty(pane, "clientWidth", { value: 700, configurable: true });
-        noteWindow.heightOf.mockImplementation((block) => (block.dataset.sourcePath === notes[0]!.path ? 890 : 540));
+        noteWindow.renderedHeightOf.mockImplementation((block) =>
+            block.dataset.sourcePath === notes[0]!.path ? 890 : 540
+        );
         stream.blockOf(notes[0]!)!.getBoundingClientRect = () => ({ top: -900, bottom: -10 }) as DOMRect;
         stream.blockOf(notes[1]!)!.getBoundingClientRect = () => ({ top: -150, bottom: 390 }) as DOMRect;
 

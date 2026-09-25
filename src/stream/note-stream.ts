@@ -261,12 +261,16 @@ export class NoteStream {
         return { path: anchor.file.path, offset: anchor.relativeTopPx, layout: this.layoutThrough(anchor.file) };
     }
 
-    /** The heights of the notes from the newest down to `last`, at the pane's width. */
+    /**
+     * The heights of the rendered notes from the newest down to `last`, at the
+     * pane's width. Only they render again at the place; the rest stay empty,
+     * and the place is measured from its own note, wherever that lands.
+     */
     private layoutThrough(last: TFile): PlaceLayout {
         const heights: Record<string, number> = {};
         for (const file of this.state.notes) {
             // Every loaded note has a block: the index is kept with the state.
-            const height = this.window.heightOf(this.blocks.get(file.path)!);
+            const height = this.window.renderedHeightOf(this.blocks.get(file.path)!);
             if (height !== undefined) heights[file.path] = height;
             if (file === last) break;
         }
