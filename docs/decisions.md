@@ -705,3 +705,17 @@ writer stores whole frames — typing a sentence cost 8 MB, changed rectangles 2
 - GIF — 256 colours rough up anti-aliased text.
 - MP4 — GitHub plays only videos uploaded by hand, not ones in the repo.
 - ffmpeg or gifski — an install for what the OS already does.
+
+## 2026-09-25 — A note redraws on every save, typing or not
+
+**Decision:** the stream redraws a note on each metadataCache `changed`, even
+while someone is typing in it; it catches up save by save, about two seconds
+behind the editor.
+
+**Why:** the README promises live updates, and Obsidian's own panes update as
+you type. The cost of the extra redraws is unmeasured.
+
+**Rejected:**
+- Holding the redraw until typing goes quiet (`editor-change` plus a 2.5 s
+  timer) — a minute of steady typing would leave the stream stale for the
+  minute. Revisit if redraws are seen to jolt the stream beside an editor.
