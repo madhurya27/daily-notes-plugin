@@ -184,6 +184,8 @@ Checks:
   the glide is not cut short.
 - Jump to an old date, then tap "Daily notes stream" in the header: it glides to the newest note and stays
   at the very top. Tapping the search or jump action does not scroll. **[e2e]**
+- Search a word: every match on screen is highlighted, the current one in the selection colour. A long-press
+  selects text in a note.
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading
   *text* still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall; repeated flicks keep loading.
