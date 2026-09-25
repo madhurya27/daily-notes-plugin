@@ -114,24 +114,24 @@ export class NoteBases {
     }
 
     private showCards(slot: BaseSlot, width: number): Promise<void> {
-        this.measured.tooWide.add(slot.key(width));
+        this.measured.markTooWide(slot.key(width));
         return this.draw(slot, "cards");
     }
 
     /** Redraws `slot`, held at the height it shows now, or else the one it last held still at. */
     private async draw(slot: BaseSlot, mode: "table" | "cards"): Promise<void> {
-        await slot.draw(mode, slot.shownHeight ?? this.measured.heights.get(slot.key(slot.contentWidth)));
+        await slot.draw(mode, slot.shownHeight ?? this.measured.heightOf(slot.key(slot.contentWidth)));
     }
 
     /** Keeps the height `slot` is laid out at now, unless held to an older one. */
     private remember(slot: BaseSlot): void {
         const height = slot.placeholder.getBoundingClientRect().height;
-        if (height > 0 && !slot.held) this.measured.heights.set(slot.key(slot.contentWidth), height);
+        if (height > 0 && !slot.held) this.measured.keepHeight(slot.key(slot.contentWidth), height);
     }
 
     private wantsCards(slot: BaseSlot, width: number): boolean {
         if (!slot.cards) return false;
-        if (this.measured.tooWide.has(slot.key(width))) return true;
+        if (this.measured.isTooWide(slot.key(width))) return true;
         return this.headers ? narrowestTableWidth(slot.definition!, slot.view, this.headers) > width : false;
     }
 

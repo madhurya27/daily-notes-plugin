@@ -144,7 +144,8 @@ reaches it, or for 2s. A height is kept once the Base has not resized for
 300ms while unheld, never at unload or before a redraw: a closing view is not
 laid out, and a Base left mid-fill keeps the height it had. The
 heights, and which Bases were too wide, live on the plugin (`BaseMeasurements`):
-Back rebuilds the view, which forgot them.
+Back rebuilds the view, which forgot them. It keeps the 500 used most recently:
+every pane width is a key of its own.
 
 **Why:** Bases fills a view after it is drawn. A note coming back into view, or
 a table redrawn as cards, dropped by the Bases' height for a few frames and
