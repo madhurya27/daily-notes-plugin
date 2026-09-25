@@ -34,6 +34,15 @@ async function seedDemo(page: Page): Promise<void> {
     }, files);
 }
 
+/** Opens the stream with a note boundary mid-screen: that is what makes it read as a stream. */
+async function showStream(page: Page): Promise<void> {
+    const container = await openStream(page);
+    await container
+        .locator(".daily-note-block")
+        .nth(1)
+        .evaluate((block) => block.firstElementChild?.scrollIntoView({ block: "center" }));
+}
+
 async function capture(page: Page, name: string, testInfo: TestInfo): Promise<void> {
     await page.waitForTimeout(1000);
     const layout = testInfo.project.name === "mobile" ? "phone" : "desktop";
@@ -58,13 +67,21 @@ test.describe("README screenshots", () => {
     });
 
     test("the stream", async ({ obsidian }, testInfo) => {
-        const container = await openStream(obsidian.page);
-        // A note boundary mid-screen is what makes it read as a stream.
-        await container
-            .locator(".daily-note-block")
-            .nth(1)
-            .evaluate((block) => block.firstElementChild?.scrollIntoView({ block: "center" }));
+        await showStream(obsidian.page);
         await capture(obsidian.page, "stream", testInfo);
+    });
+
+    // The vault follows the system theme, so emulating a dark system turns Obsidian dark.
+    test("the stream in dark mode", async ({ obsidian }, testInfo) => {
+        const { page } = obsidian;
+        await page.emulateMedia({ colorScheme: "dark" });
+        try {
+            await expect(page.locator("body")).toHaveClass(/theme-dark/);
+            await showStream(page);
+            await capture(page, "stream-dark", testInfo);
+        } finally {
+            await page.emulateMedia({ colorScheme: null });
+        }
     });
 
     test("search", async ({ obsidian }, testInfo) => {
