@@ -31,8 +31,8 @@ describe("manifest.json — marketplace submission requirements", () => {
         expect(repoSlug()).toBe("madhurya27/daily-notes-plugin");
     });
 
-    it("names the plugin without the word 'plugin'", () => {
-        expect(manifest.name).toBe("Daily Notes Stream");
+    it("names the plugin in sentence case, without the word 'plugin'", () => {
+        expect(manifest.name).toBe("Daily notes stream");
     });
 
     it("records this version's minAppVersion in versions.json", () => {
