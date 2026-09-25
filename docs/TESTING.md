@@ -35,6 +35,11 @@ pnpm run reload      # that reload, once, by hand
 
 Re-seeding copies over the links; `dev:vault` puts them back.
 
+For screenshots and recordings, `pnpm run seed:demo` writes `.dev/demo-vault/` instead: 60 days of a journal
+that reads like a real one — properties, links to people and projects, tasks, callouts, run logs, a sketch, and
+a reading-list Base every Sunday. Each note is seeded by its date, so a retake shows the same content;
+`--days N` and `--until YYYY-MM-DD` change the range. Open it with `pnpm run open .dev/demo-vault`.
+
 ## Verification
 
 **[e2e]** items are covered by `pnpm run test:e2e`; the rest need a human.

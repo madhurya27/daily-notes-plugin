@@ -4,9 +4,14 @@ A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first
 
 ## Screenshots
 
-| Desktop | Phone |
-| --- | --- |
-| <img src="docs/images/stream-desktop.png" alt="The stream on desktop: three dated notes flowing one after another" width="520"> | <img src="docs/images/stream-phone.png" alt="The same stream in Obsidian's phone layout" width="200"> |
+| | Desktop | Phone |
+| --- | --- | --- |
+| Every daily note, newest first | <img src="docs/images/stream-desktop.png" alt="One day ending and the day before starting beneath it, on desktop" width="520"> | <img src="docs/images/stream-phone.png" alt="One day ending and the day before starting beneath it, in the phone layout" width="200"> |
+| Follows your theme, dark included | <img src="docs/images/stream-dark-desktop.png" alt="The same stream in Obsidian's dark theme, on desktop" width="520"> | <img src="docs/images/stream-dark-phone.png" alt="The same stream in Obsidian's dark theme, in the phone layout" width="200"> |
+| Search the whole stream | <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Priya, on desktop" width="520"> | <img src="docs/images/search-phone.png" alt="The search bar stepping through notes that mention Priya, in the phone layout" width="200"> |
+| Jump to a date | <img src="docs/images/jump-desktop.png" alt="The jump-to-date prompt listing the vault's dates, on desktop" width="520"> | <img src="docs/images/jump-phone.png" alt="The jump-to-date prompt listing the vault's dates, in the phone layout" width="200"> |
+| Collapse sections | <img src="docs/images/collapse-desktop.png" alt="A note with every section folded to its heading, on desktop" width="520"> | <img src="docs/images/collapse-phone.png" alt="A note with every section folded to its heading, in the phone layout" width="200"> |
+| Bases render in place | <img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base, on desktop" width="520"> | <img src="docs/images/bases-phone.png" alt="A weekly review embedding a reading-list Base, in the phone layout" width="200"> |
 
 ## Features
 

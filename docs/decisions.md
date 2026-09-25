@@ -678,3 +678,15 @@ stale and nothing needs to watch the vault. A later open at 6× CPU builds in
   pagination breaks (CLAUDE.md, Invariants).
 - A plugin-wide list kept current by vault listeners, copied per view — work
   while no stream is open, and state nothing displays.
+
+## 2026-09-25 — A separate demo vault for screenshots
+
+**Decision:** `seed:demo` writes `.dev/demo-vault/`, a realistic journal whose
+notes are seeded by their date; `seed` stays the test vault.
+
+**Why:** `seed`'s notes are shaped around edge cases the checklist names, and
+photograph as scaffolding. Seeding by date lets a recording be retaken.
+
+**Rejected:**
+- Realistic content in `seed` — docs/TESTING.md depends on its shapes.
+- Random content per run — every retake would differ.
