@@ -181,6 +181,24 @@ describe("NoteRenderer.renderInto", () => {
         expect(el.querySelector(".metadata-container")).not.toBeNull();
     });
 
+    // Before collapsing, which reads a list item's own text for its key.
+    it("wraps text beside a block before making sections collapsible", async () => {
+        vi.spyOn(MarkdownRenderer, "render").mockImplementation(async (_app, _md, el) => {
+            el.innerHTML = "<ul><li>Standing pancake<ul><li>Head to floor</li></ul></li></ul>";
+        });
+        const collapsible = makeCollapsible();
+        let wrappedFirst = false;
+        vi.mocked(collapsible.makeCollapsible).mockImplementation((el) => {
+            wrappedFirst = el.querySelector(".daily-note-text-run")?.textContent === "Standing pancake";
+            return [];
+        });
+        renderer = new NoteRenderer(asApp(app), new Component(), collapsible, makeSettings(), new SearchHighlighter());
+
+        await renderNote(renderer, new TFile("Notes/2025-01-01.md"));
+
+        expect(wrappedFirst).toBe(true);
+    });
+
     it("calls makeCollapsible after rendering content", async () => {
         const collapsible = makeCollapsible();
         renderer = new NoteRenderer(asApp(app), new Component(), collapsible, makeSettings(), new SearchHighlighter());

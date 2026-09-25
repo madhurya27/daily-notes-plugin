@@ -3,6 +3,23 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — Text beside a block is wrapped in a span
+
+**Decision:** after a note renders, each bare text node sharing its parent with
+a block — a list item's words above its sub-list — is wrapped in
+`span.daily-note-text-run`, before sections are made collapsible.
+
+**Why:** WebKit paints no CSS highlight on such text, and no layout of the
+parent changes that; iOS search marked nothing on list items with children. The
+wrap happens once per render, so collapsing, keys (`textContent`) and search
+see one DOM from the start — unlike the per-search `<mark>` wrappers rejected
+above.
+
+**Rejected:**
+- A CSS layout for the item — flow-root, flex, grid, block: WebKit paints none.
+- Wrapping on WebKit only — two DOM shapes, and desktop e2e would test the other.
+- Wrapping inline elements too — WebKit paints inside them already.
+
 ## 2026-09-24 — A tap on the header title glides to the top, on mobile
 
 **Decision:** on mobile, a tap on the view header's title smooth-scrolls the

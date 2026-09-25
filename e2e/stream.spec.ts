@@ -111,9 +111,9 @@ test.describe("daily notes stream in real Obsidian", () => {
 
             const offset = await item.evaluate((li) => {
                 const chevron = li.querySelector(":scope > .collapse-indicator")!;
-                const text = Array.from(li.childNodes).find((n) => n.nodeType === 3 && n.textContent!.trim())!;
+                // The item's own words, wrapped for WebKit beside the sub-list.
                 const range = document.createRange();
-                range.selectNodeContents(text);
+                range.selectNodeContents(li.querySelector(":scope > .daily-note-text-run")!);
                 const words = range.getBoundingClientRect();
                 const box = chevron.getBoundingClientRect();
                 return box.top + box.height / 2 - (words.top + words.height / 2);
@@ -134,9 +134,8 @@ test.describe("daily notes stream in real Obsidian", () => {
         // rides visibly above the words beside it.
         const offset = await task.evaluate((li) => {
             const box = li.querySelector(":scope > input.task-list-item-checkbox")!;
-            const label = Array.from(li.childNodes).find((n) => n.nodeType === 3 && n.textContent!.trim())!;
             const range = document.createRange();
-            range.selectNodeContents(label);
+            range.selectNodeContents(li.querySelector(":scope > .daily-note-text-run")!);
             const text = range.getBoundingClientRect();
             const check = box.getBoundingClientRect();
             return check.top + check.height / 2 - (text.top + text.height / 2);

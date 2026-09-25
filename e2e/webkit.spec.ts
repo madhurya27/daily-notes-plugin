@@ -38,6 +38,14 @@ test.describe("in iOS's engine", () => {
         expect(await paints(await inWebKit(), "daily-notes-search-match")).toBe(true);
     });
 
+    // Nor on text sharing its parent with a block: a list item's own words
+    // above its sub-list.
+    test("paints a match in a list item holding a sub-list", async ({ obsidian, inWebKit }) => {
+        await search(obsidian.page, "groceries");
+
+        expect(await paints(await inWebKit(), "daily-notes-search-match")).toBe(true);
+    });
+
     test("lets the reader select a note's text and title", async ({ obsidian, inWebKit }) => {
         const container = await openStream(obsidian.page);
         await expect(container.locator(".daily-note-content p").first()).toBeAttached();
