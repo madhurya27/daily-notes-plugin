@@ -107,7 +107,7 @@ Traps that span files, so no single file's comments can hold them.
 
 Tag must equal the manifest version exactly, no leading `v`; `pnpm version` writes every file through
 `scripts/version-bump.mjs`. From `1.0.0`, tags are annotated (docs/decisions.md, 2026-09-25). The workflow gates on
-format, lint and coverage before drafting the release. `tests/release-workflow.test.ts` guards its shape.
+format, lint and coverage before drafting the release. `tests/repo/release-workflow.test.ts` guards its shape.
 
 ## Documentation
 
