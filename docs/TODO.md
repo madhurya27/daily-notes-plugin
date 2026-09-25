@@ -21,8 +21,11 @@ Ordered by priority, from the 2026-09 comparison against
   - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`
   - [x] GitHub repo description (mirrors the manifest's) and topics (`obsidian`, `obsidian-plugin`, `obsidian-md`, `daily-notes`, `typescript`)
 - [ ] Position the README against Daily Notes Editor — a live-updating reading feed, not an inline editor.
-- [ ] A screen recording of the stream in use, the stream updating live included. The stills are done:
-  `e2e/screenshots.spec.ts` captures stream, search, jump, collapse and Bases from the demo vault.
+- [ ] A phone recording for the README. Desktop Chromium can't fake a phone convincingly: a touch swipe
+  lacks a thumb's feel, there is no on-screen keyboard to type with, and the phone's own chrome (tapping the
+  title bar to scroll to the top) can't be tapped. The touch-driven attempt is on branch `spike/phone-recording`.
+- [x] Show the features in the README: `e2e/screenshots.spec.ts` captures a still per feature and a recording
+  of the stream updating live, scrolling and searching, from the demo vault.
 
 ## Features
 New capability, as opposed to the fixes above. Embedded editors are ruled out by `docs/decisions.md`.

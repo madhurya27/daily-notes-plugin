@@ -1,0 +1,88 @@
+import { test, expect, openStream } from "./obsidian";
+import { join } from "path";
+import { OUT, prepareDemo } from "./demo";
+import { clickAt, clickLikeAPerson, driftOff, flick, record, restAt, typeLikeAPerson } from "./screencast";
+
+/**
+ * Records the README's animated PNG of the stream in use: a note edited live,
+ * scrolling by hand, search. Opt-in,
+ * through `pnpm run capture:recording`, and apart from the stills so either can
+ * be retaken alone.
+ */
+test.describe("README recording", () => {
+    test.skip(process.env.CAPTURE_RECORDING !== "1", "set CAPTURE_RECORDING=1 to record");
+
+    test.beforeAll(async ({ obsidian }) => {
+        await prepareDemo(obsidian.page);
+    });
+
+    test("the stream in use", async ({ obsidian }, testInfo) => {
+        // Desktop only for now: docs/TODO.md lists what a phone recording lacks.
+        test.skip(testInfo.project.name === "mobile", "no phone recording yet");
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const pause = (ms: number) => page.waitForTimeout(ms);
+        const addition = " Bought an extra loaf for Mara.";
+
+        // The hand already on the mouse, resting over the stream, from the first frame.
+        // The stream is as tall as its notes; the pane scrolling it is what shows.
+        const pane = container.locator("xpath=..");
+        const area = (await pane.boundingBox())!;
+        await restAt(page, area.x + area.width * 0.7, area.y + area.height * 0.72);
+
+        await record(page, join(OUT, "demo-desktop.png"), async () => {
+            await pause(1200);
+
+            // Live: the newest note, opened in a split beside the stream and
+            // edited by hand; the stream redraws as the edit saves.
+            await clickLikeAPerson(page, container.locator(".daily-note-title").first(), ["Meta", "Alt"]);
+            const editor = page.locator(".workspace-leaf.mod-active .cm-content");
+            await expect(editor).toBeVisible();
+            await pause(1500);
+            // Just past the full stop, where a person clicks to add to the sentence.
+            const end = await editor.locator(".cm-line", { hasText: "which made my week." }).evaluate((line) => {
+                const range = document.createRange();
+                range.selectNodeContents(line);
+                const rects = range.getClientRects();
+                const last = rects[rects.length - 1]!;
+                return { x: last.right, y: last.top + last.height / 2 };
+            });
+            await clickAt(page, end.x + 7, end.y);
+            await pause(700);
+            await typeLikeAPerson(page, addition);
+            // The stream redraws once Obsidian saves, about two seconds after the last key.
+            await expect(container.getByText(`which made my week.${addition}`)).toBeVisible({ timeout: 10_000 });
+            await pause(2000);
+            const tab = page.locator(".workspace-tab-header", { hasText: "2026-09-25" });
+            await clickLikeAPerson(page, tab.locator(".workspace-tab-header-inner-close-button"));
+            await expect(tab).toHaveCount(0);
+            await pause(700);
+
+            // Reading down through a few days, a flick at a time.
+            for (const distance of [520, 680, 600]) {
+                await flick(page, distance, pane);
+                await pause(900);
+            }
+
+            // Search steps note to note, across days not yet loaded.
+            await clickLikeAPerson(page, page.locator('.view-action[aria-label="Search"]'));
+            // The hand leaves the mouse for the keyboard.
+            await pause(1000);
+            await typeLikeAPerson(page, "Priya");
+            await pause(700);
+            for (let step = 0; step < 2; step++) {
+                await page.keyboard.press("Enter");
+                await pause(1100);
+            }
+            await clickLikeAPerson(page, page.locator(".daily-notes-search .document-search-close-button"));
+            await pause(300);
+            // Easing off the button, so it keeps no hover highlight.
+            await driftOff(page);
+            await pause(500);
+
+            // Back to the newest, so the loop restarts where it began.
+            await page.evaluate(() => window.app.commands.executeCommandById("daily-notes-stream:scroll-to-top"));
+            await pause(1500);
+        });
+    });
+});

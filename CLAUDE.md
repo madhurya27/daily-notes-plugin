@@ -21,11 +21,12 @@ pnpm run open                     # launch Obsidian on it; --help lists the flag
 pnpm run dev:vault                # link the build into .dev/vault/, watch it, reload the plugin on save
 pnpm run reload                   # reload the plugin in the open window, once
 
-CAPTURE_SCREENSHOTS=1 E2E_SHOW_WINDOW=1 pnpm run test:e2e screenshots.spec.ts  # rewrite docs/images/
+pnpm run capture:screenshots   # rewrite the README's stills in docs/images/, from the demo vault
+pnpm run capture:recording     # rewrite only docs/images/demo-desktop.png, the README's recording
 ```
 
-Screenshots need both variables: without `E2E_SHOW_WINDOW` the window is hidden, produces no frames, and
-`page.screenshot()` waits until the test times out.
+Both show the window: hidden, it produces no frames. The recording is an animated PNG assembled by
+`scripts/frames-to-apng.swift`, so it needs `swift` (Xcode Command Line Tools).
 
 ## Architecture
 

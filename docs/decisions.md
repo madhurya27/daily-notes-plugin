@@ -690,3 +690,18 @@ photograph as scaffolding. Seeding by date lets a recording be retaken.
 **Rejected:**
 - Realistic content in `seed` — docs/TESTING.md depends on its shapes.
 - Random content per run — every retake would differ.
+
+## 2026-09-25 — The README recording is an animated PNG, built with ImageIO
+
+**Decision:** the e2e harness screencasts the scene; `scripts/frames-to-apng.swift`
+encodes the frames with macOS's ImageIO and writes the APNG chunks itself, each
+frame only the rectangle that changed.
+
+**Why:** an animated PNG keeps every colour, so text stays crisp, and plays in
+GitHub's image tags. ImageIO ships with macOS: nothing to install. Its own APNG
+writer stores whole frames — typing a sentence cost 8 MB, changed rectangles 2.5.
+
+**Rejected:**
+- GIF — 256 colours rough up anti-aliased text.
+- MP4 — GitHub plays only videos uploaded by hand, not ones in the repo.
+- ffmpeg or gifski — an install for what the OS already does.

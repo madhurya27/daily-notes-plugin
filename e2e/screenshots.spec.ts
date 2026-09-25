@@ -1,38 +1,14 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { test, expect, openStream } from "./obsidian";
-import { mkdirSync } from "fs";
-import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
-import { demoVault } from "../scripts/demo-vault.mjs";
+import { join } from "path";
+import { OUT, prepareDemo } from "./demo";
 
 /**
- * Captures the README's images from the real app rather than a mockup, one per
- * Playwright project so both layouts come from the same run. Opt-in: an
- * ordinary `pnpm run test:e2e` must not rewrite files in docs/.
+ * Captures the README's stills from the real app rather than a mockup, one per
+ * Playwright project so both layouts come from the same run. Opt-in, through
+ * `pnpm run capture:screenshots`: an ordinary `pnpm run test:e2e` must not
+ * rewrite files in docs/.
  */
-const OUT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "docs", "images");
-
-/** Fixed, so a retake shows the same days. */
-const DEMO = demoVault({ until: new Date(Date.UTC(2026, 8, 25)), days: 21 });
-
-/** Swaps the fixture's test notes for the demo journal, in the folder the fixture's daily notes use. */
-async function seedDemo(page: Page): Promise<void> {
-    const files = Object.entries(DEMO).map(([path, text]): [string, string] => [
-        path.replace(/^Journal\//, "Notes/"),
-        text,
-    ]);
-    await page.evaluate(async (files) => {
-        const { vault } = window.app;
-        for (const file of vault.getFiles()) await vault.delete(file);
-        for (const [path, text] of files) {
-            const folder = path.split("/").slice(0, -1).join("/");
-            if (folder && !vault.getAbstractFileByPath(folder)) await vault.createFolder(folder);
-            await vault.create(path, text);
-        }
-        // The stream renders from metadataCache, which lags the write.
-        await new Promise((r) => setTimeout(r, 1000));
-    }, files);
-}
 
 /** Opens the stream with a note boundary mid-screen: that is what makes it read as a stream. */
 async function showStream(page: Page): Promise<void> {
@@ -54,12 +30,7 @@ test.describe("README screenshots", () => {
     test.describe.configure({ mode: "serial" });
 
     test.beforeAll(async ({ obsidian }) => {
-        await seedDemo(obsidian.page);
-        // The sidebar carries the throwaway vault's generated name; collapsed it
-        // also gives the stream the width a reader cares about. Phone layout
-        // hides it already.
-        await obsidian.page.evaluate(() => window.app.workspace.leftSplit?.collapse?.());
-        mkdirSync(OUT, { recursive: true });
+        await prepareDemo(obsidian.page);
     });
 
     test.afterEach(async ({ obsidian }) => {
@@ -67,6 +38,7 @@ test.describe("README screenshots", () => {
     });
 
     test("the stream", async ({ obsidian }, testInfo) => {
+        test.skip(testInfo.project.name === "desktop", "on desktop the recording leads the README instead");
         await showStream(obsidian.page);
         await capture(obsidian.page, "stream", testInfo);
     });

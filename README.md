@@ -2,7 +2,7 @@
 
 A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first.
 
-<p><img src="docs/images/stream-desktop.png" alt="The stream on desktop: one day ending and the day before starting beneath it" width="520"> <img src="docs/images/stream-phone.png" alt="The same stream in Obsidian's phone layout" width="213"></p>
+<p><img src="docs/images/demo-desktop.png" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Priya, and it glides back to the top" width="520"> <img src="docs/images/stream-phone.png" alt="The stream in Obsidian's phone layout" width="213"></p>
 
 ## Features
 
