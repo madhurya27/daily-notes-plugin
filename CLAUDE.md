@@ -28,6 +28,13 @@ pnpm run capture:recording     # rewrite only docs/images/demo-desktop.png, the 
 Both show the window: hidden, it produces no frames. The recording is an animated PNG assembled by
 `scripts/frames-to-apng.swift`, so it needs `swift` (Xcode Command Line Tools).
 
+## Quality gates
+
+`pnpm run test:e2e` runs in full only when what ships or what every spec shares changes: `src/`, `styles.css`,
+`manifest.json`, the build (`esbuild.config.mjs`, `tsconfig.json`, dependencies), `e2e/obsidian.ts`,
+`e2e/global-setup.ts`, `playwright.config.ts`. Other e2e code runs the specs that use it. Anything else needs the
+other gates, plus a run of whatever the change touches.
+
 ## Architecture
 
 Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
