@@ -4,7 +4,7 @@ import { BaseMeasurements } from "../../../src/render/bases/base-measurements";
 import { NoteBases, measureHeaderMetrics } from "../../../src/render/bases/note-bases";
 import { extractBases } from "../../../src/render/bases/bases-as-cards";
 import type { HeaderMetrics } from "../../../src/render/bases/bases-width";
-import { asApp } from "../../stream-view-fixture";
+import { asApp, flushPromises } from "../../stream-view-fixture";
 
 const lines = (...l: string[]) => l.join("\n");
 
@@ -470,6 +470,50 @@ describe("NoteBases holding a redrawn Base's height", () => {
         const again = await renderNote(BLOCK);
 
         expect(held(slotOf(again))).toBe("300px");
+    });
+
+    // Back closes the view while its notes are no longer laid out: they
+    // measure nothing then, so what the cards filled to is kept as it is.
+    it("holds cards, back after the view closed, at the height they filled to", async () => {
+        const component = loaded();
+        const content = await renderNote(BLOCK, component);
+        tall(slotOf(content), 262);
+        bases.onLayout(layOut(slotOf(content), 900));
+        await flushPromises();
+        tall(slotOf(content), 1384);
+        refill(slotOf(content), 1384);
+        tall(slotOf(content), 0);
+        component.unload();
+
+        const again = await renderNote(BLOCK);
+
+        expect(held(slotOf(again))).toBe("1384px");
+    });
+
+    it("holds a Base, back after the view closed, at the height it grew to on its own", async () => {
+        const component = loaded();
+        const content = await renderNote(BLOCK, component);
+        tall(slotOf(content), 300);
+        for (const observer of FakeResizeObserver.instances) observer.resized();
+        tall(slotOf(content), 0);
+        component.unload();
+
+        const again = await renderNote(BLOCK);
+
+        expect(held(slotOf(again))).toBe("300px");
+    });
+
+    it("keeps nothing a Base measured while held at an older height", async () => {
+        const component = loaded();
+        tall(slotOf(await renderNote(BLOCK, component)), 300);
+        component.unload();
+        const content = await renderNote(BLOCK, loaded());
+        tall(slotOf(content), 120);
+        for (const observer of FakeResizeObserver.instances) observer.resized();
+
+        const third = await renderNote(BLOCK);
+
+        expect(held(slotOf(third))).toBe("300px");
     });
 
     it("lets go once the Base refills that height", async () => {

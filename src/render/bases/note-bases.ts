@@ -52,7 +52,16 @@ export class NoteBases {
                 : source.kind === "block"
                   ? source.definition
                   : null;
-            const slot = new BaseSlot(this.app, contentEl, placeholder, file, noteComponent, source, definition);
+            const slot: BaseSlot = new BaseSlot(
+                this.app,
+                contentEl,
+                placeholder,
+                file,
+                noteComponent,
+                source,
+                definition,
+                () => this.remember(slot)
+            );
             this.slots.set(placeholder, slot);
             if (base) this.track(base.path, slot, noteComponent);
             slots.push(slot);
@@ -60,12 +69,16 @@ export class NoteBases {
         }
         noteComponent.register(() => slots.forEach((slot) => this.remember(slot)));
 
+        // A Base resizes as Bases fills it, or its rows change; a note is not
+        // laid out when its view closes, so its height is kept as it changes.
         const observer = new ResizeObserver(() => {
+            for (const slot of slots) this.remember(slot);
             if (contentEl.clientWidth === width) return;
             width = contentEl.clientWidth;
             for (const slot of slots) void this.recheck(slot, width);
         });
         observer.observe(contentEl);
+        for (const slot of slots) observer.observe(slot.placeholder);
         noteComponent.register(() => observer.disconnect());
     }
 
@@ -160,7 +173,9 @@ class BaseSlot {
         private readonly file: TFile,
         private readonly noteComponent: Component,
         private readonly source: BaseSource,
-        public definition: string | null
+        public definition: string | null,
+        /** A hold let go: the Base is at the height it fills to. */
+        private readonly settled: () => void
     ) {
         this.view = source.kind === "embed" ? source.view : undefined;
         this.redefine(definition);
@@ -209,14 +224,19 @@ class BaseSlot {
         const placeholder = this.placeholder;
         placeholder.style.setProperty("--daily-note-base-held-height", `${height}px`);
         const observer = new ResizeObserver((entries) => {
-            if (entries.some((entry) => entry.target.getBoundingClientRect().height >= height - 1)) release();
+            if (entries.some((entry) => entry.target.getBoundingClientRect().height >= height - 1)) settle();
         });
-        const timer = window.setTimeout(() => release(), HOLD_MS);
+        const timer = window.setTimeout(() => settle(), HOLD_MS);
         const release = () => {
             placeholder.style.removeProperty("--daily-note-base-held-height");
             observer.disconnect();
             window.clearTimeout(timer);
         };
+        const settle = () => {
+            release();
+            this.settled();
+        };
+        // Unloaded mid-hold, it is not done filling: nothing to keep.
         component.register(release);
         return observer;
     }
