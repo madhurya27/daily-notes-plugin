@@ -55,3 +55,4 @@
 - [x] A later open reuses the dates earlier opens parsed: the list builds in 4 ms, from 52 ms at 6× CPU (10-year vault, 5,000 other notes)
 - [x] The plugin is named "Daily notes stream" in sentence case, so the command palette reads "Daily notes stream: …"
 - [x] The ribbon icon and command open the stream in the current tab, as the graph does; mod-click the icon for a new tab
+- [x] The ribbon icon and tab draw `gallery-vertical-end`, a stack of cards, distinct from core Daily notes' calendar

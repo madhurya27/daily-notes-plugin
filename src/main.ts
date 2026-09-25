@@ -32,7 +32,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
             defaultMod: true,
         });
 
-        this.addRibbonIcon("calendar-days", "Open daily notes stream", (evt) =>
+        this.addRibbonIcon("gallery-vertical-end", "Open daily notes stream", (evt) =>
             logActivationFailure(this.activateView(Keymap.isModEvent(evt)))
         );
 

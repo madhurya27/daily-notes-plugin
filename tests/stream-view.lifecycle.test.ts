@@ -55,8 +55,8 @@ describe("DailyNotesStreamView — view API", () => {
         }
     );
 
-    it("getIcon returns 'calendar-days'", () => {
-        expect(view.getIcon()).toBe("calendar-days");
+    it("getIcon returns 'gallery-vertical-end'", () => {
+        expect(view.getIcon()).toBe("gallery-vertical-end");
     });
 
     it("gives the renderer a live view of the plugin settings", async () => {

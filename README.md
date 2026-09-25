@@ -29,8 +29,8 @@ Reload Obsidian and enable **Daily notes stream** in **Settings → Community Pl
 
 ## Usage
 
-Open via the ribbon icon (calendar-days) or command palette (`Daily notes stream: Open stream`). Like the graph, it
-opens in the current tab; mod-click the ribbon icon for a new one.
+Open via the ribbon icon (a stack of cards) or command palette (`Daily notes stream: Open stream`). Like the
+graph, it opens in the current tab; mod-click the ribbon icon for a new one.
 
 - Scroll down to load older notes. On mobile, tap the title in the view header to glide back to the newest.
 - Jump to a date from the calendar action in the view header, or `Daily notes stream: Jump to date`. The

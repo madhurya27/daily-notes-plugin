@@ -50,6 +50,17 @@ test.describe("opening the stream", () => {
         await expect.poll(() => openViews(page)).toEqual({ streams: 1, notes: 1 });
     });
 
+    test("the ribbon icon and tab draw a stack of cards, not core Daily notes' calendar", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+
+        // A name missing from Obsidian's icon set draws nothing, silently.
+        const ribbon = page.locator('.side-dock-ribbon-action[aria-label="Open daily notes stream"] svg');
+        const tab = page.locator(".mod-root .workspace-tab-header.is-active .workspace-tab-header-inner-icon svg");
+        await expect(ribbon).toHaveClass(/lucide-gallery-vertical-end/);
+        await expect(tab).toHaveClass(/lucide-gallery-vertical-end/);
+    });
+
     test("the command run from a stream keeps the reader's place", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);

@@ -3,6 +3,18 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — The stream's icon is a stack of cards
+
+**Decision:** the ribbon icon and the view's tab draw `gallery-vertical-end`.
+
+**Why:** `calendar-days` sat in the ribbon beside core Daily notes' `calendar`
+and read as the same action. A stack of cards reads as a feed, and nothing in
+the core ribbon resembles it.
+
+**Rejected:**
+- `rows-3` — close to Bases' `layout-list`.
+- `scroll-text`, `notebook-text`, `book-open-text` — read as one document.
+
 ## 2026-09-25 — The stream opens in the current tab
 
 **Decision:** the ribbon icon and `Open stream` open the stream in the current

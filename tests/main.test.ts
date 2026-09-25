@@ -110,7 +110,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
         const { plugin } = await loadPlugin();
 
         expect(plugin.ribbonIcons.map(({ icon, title }) => ({ icon, title }))).toEqual([
-            { icon: "calendar-days", title: "Open daily notes stream" },
+            { icon: "gallery-vertical-end", title: "Open daily notes stream" },
         ]);
         expect(plugin.commands.map((c) => c.id)).toEqual(["open-stream", "jump-to-date"]);
         expect(plugin.settingTabs).toHaveLength(1);
