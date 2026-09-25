@@ -14,6 +14,7 @@
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
         "version": "node scripts/version-bump.mjs && git add manifest.json versions.json",
         "seed": "node scripts/seed-test-vault.mjs",
+        "seed:demo": "node scripts/demo-vault.mjs",
         "dev:vault": "node scripts/dev-vault.mjs",
         "reload": "node scripts/reload-plugin.mjs",
         "open": "node scripts/open-test-vault.mjs",
