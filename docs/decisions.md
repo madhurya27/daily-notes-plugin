@@ -3,6 +3,20 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — Release tags are annotated from 1.0.0
+
+**Decision:** from `1.0.0` on, each release is tagged `git tag -a <version> -m
+"<version>"`. `0.1.0` and `0.2.0` stay lightweight.
+
+**Why:** annotated tags are the common convention for releases: they record who
+tagged and when, and `git describe` and `git push --follow-tags` act on them
+alone.
+
+**Rejected:**
+- Recreating `0.1.0` and `0.2.0` as annotated — force-pushes tags already
+  released.
+- Signed tags (`-s`) — no signing key is set up.
+
 ## 2026-09-25 — Text beside a block is wrapped in a span
 
 **Decision:** after a note renders, each bare text node sharing its parent with
