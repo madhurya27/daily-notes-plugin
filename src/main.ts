@@ -48,6 +48,17 @@ export default class DailyNotesStreamPlugin extends Plugin {
             callback: () => logActivationFailure(this.promptJumpToDate()),
         });
 
+        this.addCommand({
+            id: "scroll-to-top",
+            name: "Scroll to top",
+            checkCallback: (checking) => {
+                const view = this.app.workspace.getMostRecentLeaf()?.view;
+                if (!(view instanceof DailyNotesStreamView)) return false;
+                if (!checking) view.scrollToTop();
+                return true;
+            },
+        });
+
         this.addSettingTab(new DailyNotesStreamSettingTab(this.app, this));
     }
 

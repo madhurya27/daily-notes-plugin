@@ -138,7 +138,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.addAction("search", "Search", () => this.searchBar.open());
         // iOS apps scroll to the top on a tap of the title bar.
         const title = getViewTitle(this);
-        if (Platform.isMobile && title) this.registerDomEvent(title, "click", () => this.stream.scrollToTop());
+        if (Platform.isMobile && title) this.registerDomEvent(title, "click", () => this.scrollToTop());
 
         this.registerDomEvent(this.contentEl, "scroll", () => this.stream.onScroll());
         this.stream.open(this.contentEl, streamContainerEl);
@@ -187,6 +187,10 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
     /** Asks for a date, then jumps to it. */
     promptJumpToDate(): void {
         new JumpToDateModal(this.app, this.service, (target) => void this.stream.jumpToDate(target)).open();
+    }
+
+    scrollToTop(): void {
+        this.stream.scrollToTop();
     }
 
     refresh(): Promise<void> {

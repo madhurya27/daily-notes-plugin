@@ -18,6 +18,7 @@ function makeApp() {
             on: vi.fn().mockReturnValue({}),
             getLeavesOfType: vi.fn().mockReturnValue([]),
             getLeaf: vi.fn(),
+            getMostRecentLeaf: vi.fn().mockReturnValue(null),
             revealLeaf: vi.fn().mockResolvedValue(undefined),
         },
         metadataCache: { on: vi.fn().mockReturnValue({}), getFileCache: vi.fn().mockReturnValue(null) },
@@ -112,7 +113,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
         expect(plugin.ribbonIcons.map(({ icon, title }) => ({ icon, title }))).toEqual([
             { icon: "gallery-vertical-end", title: "Open daily notes stream" },
         ]);
-        expect(plugin.commands.map((c) => c.id)).toEqual(["open-stream", "jump-to-date"]);
+        expect(plugin.commands.map((c) => c.id)).toEqual(["open-stream", "jump-to-date", "scroll-to-top"]);
         expect(plugin.settingTabs).toHaveLength(1);
     });
 
@@ -138,7 +139,7 @@ describe("DailyNotesStreamPlugin — ribbon icon", () => {
 
 describe.each([
     ["ribbon icon", (p: DailyNotesStreamPlugin) => p.ribbonIcons[0]!.callback(new MouseEvent("click"))],
-    ["command", (p: DailyNotesStreamPlugin) => p.commands[0]!.callback()],
+    ["command", (p: DailyNotesStreamPlugin) => void p.commands[0]!.callback!()],
 ])("DailyNotesStreamPlugin — %s", (_label, trigger) => {
     it("activates the view", async () => {
         const { plugin } = await loadPlugin();
@@ -161,7 +162,7 @@ describe.each([
 });
 
 describe("DailyNotesStreamPlugin — jump-to-date command", () => {
-    const trigger = (p: DailyNotesStreamPlugin) => p.commands.find((c) => c.id === "jump-to-date")!.callback();
+    const trigger = (p: DailyNotesStreamPlugin) => void p.commands.find((c) => c.id === "jump-to-date")!.callback!();
 
     /** A leaf holding a stream view, without standing up the real one. */
     function makeViewLeaf() {
@@ -347,5 +348,33 @@ describe("DailyNotesStreamPlugin — two open streams", () => {
             ["Notes/2026-08-27.md"],
             ["Notes/2026-08-27.md"],
         ]);
+    });
+});
+
+describe("DailyNotesStreamPlugin — scroll-to-top command", () => {
+    const check = (p: DailyNotesStreamPlugin, checking: boolean) =>
+        p.commands.find((c) => c.id === "scroll-to-top")!.checkCallback!(checking);
+
+    it.each([
+        ["no leaf", null],
+        ["a leaf holding another view", leafWithoutStream],
+    ])("is not offered with %s", async (_label, leaf) => {
+        const { plugin, app } = await loadPlugin();
+        app.workspace.getMostRecentLeaf.mockReturnValue(leaf);
+
+        expect(check(plugin, true)).toBe(false);
+    });
+
+    it("scrolls the stream in the most recent leaf to the top", async () => {
+        const { plugin, app } = await loadPlugin();
+        const view = Object.create(DailyNotesStreamView.prototype) as DailyNotesStreamView;
+        view.scrollToTop = vi.fn();
+        app.workspace.getMostRecentLeaf.mockReturnValue({ view });
+
+        expect(check(plugin, true)).toBe(true);
+        expect(view.scrollToTop).not.toHaveBeenCalled();
+
+        check(plugin, false);
+        expect(view.scrollToTop).toHaveBeenCalledTimes(1);
     });
 });

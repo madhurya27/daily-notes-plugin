@@ -3,6 +3,18 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — Scroll to top is offered only in the stream
+
+**Decision:** the command is in the palette only while the most recent leaf
+holds a stream, and scrolls that stream.
+
+**Why:** a freshly opened stream is already at its top, so opening one first,
+as Jump to date does, would do nothing useful.
+
+**Rejected:**
+- `getActiveViewOfType` — the tests' mock `ItemView` cannot pass as a `View`,
+  whose protected `onOpen` makes the type nominal.
+
 ## 2026-09-25 — Tests mirror the folders they test
 
 **Decision:** `tests/` repeats `src/`'s folders; tests of `scripts/` sit in

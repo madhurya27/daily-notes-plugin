@@ -118,6 +118,14 @@ describe("DailyNotesStreamView — header title", () => {
         expect(view["stream"]["window"].scrollToTop).toHaveBeenCalledOnce();
     });
 
+    it("scrolls the stream to its top on the command's call", async () => {
+        const { view } = await withTitle();
+
+        view.scrollToTop();
+
+        expect(view["stream"]["window"].scrollToTop).toHaveBeenCalledOnce();
+    });
+
     it("leaves the title alone on desktop", async () => {
         const { view, titleEl } = await withTitle();
 

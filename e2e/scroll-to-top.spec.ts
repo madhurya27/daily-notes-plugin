@@ -133,3 +133,20 @@ test.describe("tapping the header title", () => {
         expect(await pane(container).evaluate((el) => el.scrollTop)).toBe(before);
     });
 });
+
+test("the Scroll to top command glides back to the newest note", async ({ obsidian, mobileLayout }) => {
+    test.skip(
+        mobileLayout && process.env.E2E_SHOW_WINDOW !== "1",
+        "the hidden phone window draws a frame a second, too slow to glide"
+    );
+    const { page } = obsidian;
+    const container = await openStream(page);
+    await scrollToOldest(page, container);
+
+    await page.evaluate(() => window.app.commands.executeCommandById("command-palette:open"));
+    await page.locator(".prompt input.prompt-input").fill("Daily notes stream: Scroll to top");
+    await page.keyboard.press("Enter");
+
+    await expect.poll(() => pane(container).evaluate((el) => el.scrollTop)).toBe(0);
+    expect(await newestOffset(container)).toBeGreaterThanOrEqual(0);
+});

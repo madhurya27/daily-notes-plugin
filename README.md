@@ -32,7 +32,8 @@ Reload Obsidian and enable **Daily notes stream** in **Settings → Community Pl
 Open via the ribbon icon (a stack of cards) or command palette (`Daily notes stream: Open stream`). Like the
 graph, it opens in the current tab; mod-click the ribbon icon for a new one.
 
-- Scroll down to load older notes. On mobile, tap the title in the view header to glide back to the newest.
+- Scroll down to load older notes. `Daily notes stream: Scroll to top` glides back to the newest; on mobile,
+  so does a tap on the title in the view header.
 - Jump to a date from the calendar action in the view header, or `Daily notes stream: Jump to date`. The
   prompt lists the days your vault has a note for, spelled the way your daily-note format spells them, and
   narrows as you type — in that format or in `YYYY-MM-DD`. The calendar button opens your platform's own date

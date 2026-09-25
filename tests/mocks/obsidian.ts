@@ -11,6 +11,7 @@ import { parse, stringify } from "yaml";
 // against the app.
 import type {
     App,
+    Command,
     EventRef,
     FileStats,
     HoverLinkSource,
@@ -493,8 +494,6 @@ export class Setting {
         return this;
     }
 }
-
-type Command = { id: string; name: string; callback: () => unknown };
 
 export class Plugin {
     app: App;
