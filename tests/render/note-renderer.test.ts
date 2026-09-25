@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SearchHighlighter } from "../../src/render/search-highlights";
 import { NoteRenderer } from "../../src/render/note-renderer";
-import { NoteBases } from "../../src/render/note-bases";
+import { NoteBases } from "../../src/render/bases/note-bases";
 import { Component, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
 import { Menu, Platform } from "../mocks/obsidian";
 import { CollapsibleManager } from "../../src/render/collapsible";

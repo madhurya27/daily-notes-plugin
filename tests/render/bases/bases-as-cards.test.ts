@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseYaml } from "obsidian";
-import { asCards, extractBases } from "../../src/render/bases-as-cards";
+import { asCards, extractBases } from "../../../src/render/bases/bases-as-cards";
 
 const lines = (...l: string[]) => l.join("\n");
 

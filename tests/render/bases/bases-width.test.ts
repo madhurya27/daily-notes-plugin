@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { narrowestTableWidth } from "../../src/render/bases-width";
+import { narrowestTableWidth } from "../../../src/render/bases/bases-width";
 
 const lines = (...l: string[]) => l.join("\n");
 

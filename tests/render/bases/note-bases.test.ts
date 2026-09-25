@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import { Component, MarkdownRenderer, TFile } from "obsidian";
-import { NoteBases, measureHeaderMetrics } from "../../src/render/note-bases";
-import { extractBases } from "../../src/render/bases-as-cards";
-import type { HeaderMetrics } from "../../src/render/bases-width";
-import { asApp } from "../stream-view-fixture";
+import { NoteBases, measureHeaderMetrics } from "../../../src/render/bases/note-bases";
+import { extractBases } from "../../../src/render/bases/bases-as-cards";
+import type { HeaderMetrics } from "../../../src/render/bases/bases-width";
+import { asApp } from "../../stream-view-fixture";
 
 const lines = (...l: string[]) => l.join("\n");
 

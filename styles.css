@@ -532,12 +532,12 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
 }
 
 /* The height a redrawn Base last laid out at, held until Bases refills it
-   (src/render/note-bases.ts). */
+   (src/render/bases/note-bases.ts). */
 .daily-note-base {
     min-height: var(--daily-note-base-held-height, 0);
 }
 
-/* The hidden header src/render/note-bases.ts reads Bases' header font and
+/* The hidden header src/render/bases/note-bases.ts reads Bases' header font and
    padding from, once. */
 .daily-note-bases-probe {
     position: absolute;

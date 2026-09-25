@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { fitBaseToWidth } from "../../src/render/bases-fit";
+import { fitBaseToWidth } from "../../../src/render/bases/bases-fit";
 
 const MAX = "--bases-table-column-max-width";
 const MIN = "--bases-table-column-min-width";
