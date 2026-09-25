@@ -7,7 +7,7 @@ pnpm test                          # unit
 pnpm run test:e2e                  # every spec twice, desktop and mobile
 pnpm run test:e2e --project=mobile      # just one project
 pnpm run test:e2e webkit.spec.ts   # the phone layout in iOS's engine (ADR 0009)
-pnpm run build && pnpm run seed    # write PluginTest/ and install the build into it
+pnpm run build && pnpm run seed    # write .dev/vault/ and install the build into it
 pnpm run open --help               # every option, with its default
 ```
 

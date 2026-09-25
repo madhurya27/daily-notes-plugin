@@ -14,9 +14,9 @@ pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
 pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
 pnpm run test:memory    # e2e/memory.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
 
-pnpm run build && pnpm run seed   # write PluginTest/ (gitignored) and install the build into it
+pnpm run build && pnpm run seed   # write .dev/vault/ (gitignored) and install the build into it
 pnpm run open                     # launch Obsidian on it; --help lists the flags
-pnpm run dev:vault                # link the build into PluginTest/, watch it, reload the plugin on save
+pnpm run dev:vault                # link the build into .dev/vault/, watch it, reload the plugin on save
 pnpm run reload                   # reload the plugin in the open window, once
 
 CAPTURE_SCREENSHOTS=1 E2E_SHOW_WINDOW=1 pnpm run test:e2e screenshots.spec.ts  # rewrite docs/images/
@@ -106,7 +106,7 @@ Traps that span files, so no single file's comments can hold them.
 ## Release
 
 Tag must equal the manifest version exactly, no leading `v`; `pnpm version` writes every file through
-`version-bump.mjs`. From `1.0.0`, tags are annotated (docs/decisions.md, 2026-09-25). The workflow gates on
+`scripts/version-bump.mjs`. From `1.0.0`, tags are annotated (docs/decisions.md, 2026-09-25). The workflow gates on
 format, lint and coverage before drafting the release. `tests/release-workflow.test.ts` guards its shape.
 
 ## Documentation

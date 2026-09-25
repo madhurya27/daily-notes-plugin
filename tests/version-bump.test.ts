@@ -11,7 +11,7 @@ const repoRoot = resolve(__dirname, "..");
 function bumpTo(version: string): { manifest: string; versions: string } {
     const dir = mkdtempSync(resolve(tmpdir(), "version-bump-"));
     try {
-        copyFileSync(resolve(repoRoot, "version-bump.mjs"), resolve(dir, "version-bump.mjs"));
+        copyFileSync(resolve(repoRoot, "scripts/version-bump.mjs"), resolve(dir, "version-bump.mjs"));
         writeFileSync(
             resolve(dir, "manifest.json"),
             JSON.stringify({ id: "daily-notes-stream", version: "1.0.0", minAppVersion: "1.8.7" }, null, 4) + "\n"

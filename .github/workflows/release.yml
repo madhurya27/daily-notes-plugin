@@ -1,7 +1,7 @@
 name: Release
 
 # Obsidian requires the tag to equal the manifest version exactly, with no
-# leading "v". `pnpm version` writes both through version-bump.mjs.
+# leading "v". `pnpm version` writes both through scripts/version-bump.mjs.
 on:
     push:
         tags:

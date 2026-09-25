@@ -1,5 +1,5 @@
 /**
- * The edit-reload loop: links the build into PluginTest/, watches it, and
+ * The edit-reload loop: links the build into .dev/vault/, watches it, and
  * reloads the plugin in the open window after every change.
  *
  *   node scripts/dev-vault.mjs [vault]
@@ -91,7 +91,7 @@ export function createReloader(reload, delay) {
 }
 
 function main() {
-    const vault = resolve(process.argv[2] ?? join(REPO, "PluginTest"));
+    const vault = resolve(process.argv[2] ?? join(REPO, ".dev", "vault"));
     const missing = ASSETS.filter((asset) => !existsSync(join(REPO, asset)));
     if (missing.length > 0) {
         console.error(`Build first — missing ${missing.join(", ")}. Run: pnpm run build`);
