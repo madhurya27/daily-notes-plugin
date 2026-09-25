@@ -23,7 +23,7 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] Position the README against Daily Notes Editor — a live-updating reading feed, not an inline editor.
 - [ ] A phone recording for the README. Desktop Chromium can't fake a phone convincingly: a touch swipe
   lacks a thumb's feel, there is no on-screen keyboard to type with, and the phone's own chrome (tapping the
-  title bar to scroll to the top) can't be tapped. The touch-driven attempt is on branch `spike/phone-recording`.
+  title bar to scroll to the top) can't be tapped.
 - [x] Show the features in the README: `e2e/screenshots.spec.ts` captures a still per feature and a recording
   of the stream updating live, scrolling and searching, from the demo vault.
 
