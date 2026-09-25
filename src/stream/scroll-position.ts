@@ -13,12 +13,27 @@ export interface AnchorSnapshot {
 export interface StreamPlace {
     path: string;
     offset: number;
+    /** The notes' heights down to it, so Back lays the stream out as it was. */
+    layout?: PlaceLayout;
+}
+
+/** Heights by path, valid only at the pane width they were measured at. */
+export interface PlaceLayout {
+    width: number;
+    heights: Record<string, number>;
 }
 
 export function isStreamPlace(value: unknown): value is StreamPlace {
     if (typeof value !== "object" || value === null) return false;
-    const { path, offset } = value as Partial<StreamPlace>;
-    return typeof path === "string" && typeof offset === "number";
+    const { path, offset, layout } = value as Partial<StreamPlace>;
+    return typeof path === "string" && typeof offset === "number" && (layout === undefined || isPlaceLayout(layout));
+}
+
+function isPlaceLayout(value: unknown): value is PlaceLayout {
+    if (typeof value !== "object" || value === null) return false;
+    const { width, heights } = value as Partial<PlaceLayout>;
+    if (typeof width !== "number" || typeof heights !== "object" || heights === null) return false;
+    return Object.values(heights).every((height) => typeof height === "number");
 }
 
 /**

@@ -7,7 +7,14 @@ import { StreamBlocks } from "./stream-blocks";
 import { InfiniteScrollController } from "./infinite-scroll";
 import { NoteWindowManager } from "./note-window";
 import { ScrollBoxGuard } from "./scroll-box-guard";
-import { captureAnchor, restoreAnchor, scrollIntoPlace, type StreamLayout, type StreamPlace } from "./scroll-position";
+import {
+    captureAnchor,
+    restoreAnchor,
+    scrollIntoPlace,
+    type PlaceLayout,
+    type StreamLayout,
+    type StreamPlace,
+} from "./scroll-position";
 
 /** Obsidian autosaves as you type; one render per save is wasted work. */
 const MODIFY_DEBOUNCE_MS = 300;
@@ -250,17 +257,52 @@ export class NoteStream {
     place(): StreamPlace | null {
         const find = (f: TFile) => this.blocks.get(f.path);
         const anchor = captureAnchor(this.state.notes, this.scrollRoot, find);
-        return anchor && { path: anchor.file.path, offset: anchor.relativeTopPx };
+        if (!anchor) return null;
+        return { path: anchor.file.path, offset: anchor.relativeTopPx, layout: this.layoutThrough(anchor.file) };
+    }
+
+    /** The heights of the notes from the newest down to `last`, at the pane's width. */
+    private layoutThrough(last: TFile): PlaceLayout {
+        const heights: Record<string, number> = {};
+        for (const file of this.state.notes) {
+            // Every loaded note has a block: the index is kept with the state.
+            const height = this.window.heightOf(this.blocks.get(file.path)!);
+            if (height !== undefined) heights[file.path] = height;
+            if (file === last) break;
+        }
+        return { width: this.scrollRoot.clientWidth, heights };
     }
 
     /** Scrolls back to `place`; stays put when its note is gone. */
     async restorePlace(place: StreamPlace): Promise<void> {
+        if (place.layout?.width === this.scrollRoot.clientWidth) {
+            const { heights } = place.layout;
+            return this.enqueue(() => this.returnTo(place, heights));
+        }
         const index = this.service.indexOf(place.path);
         const block = index === -1 ? null : await this.revealIndex(index);
         if (block) {
             const top = block.getBoundingClientRect().top - this.scrollRoot.getBoundingClientRect().top;
             this.scrollRoot.scrollTop += top - place.offset;
         }
+    }
+
+    /**
+     * Lays the notes down to `place` out at the heights they had, then scrolls
+     * to it, before a frame is drawn: nothing renders into a different height,
+     * so nothing moves once it is shown.
+     */
+    private async returnTo(place: StreamPlace, heights: Record<string, number>): Promise<void> {
+        const index = this.service.indexOf(place.path);
+        const file = index === -1 ? undefined : await this.loadThrough(index);
+        const block = file && this.blocks.get(file.path);
+        if (!block) return;
+        for (const [path, height] of Object.entries(heights)) {
+            const reserved = this.blocks.get(path);
+            if (reserved) this.window.reserve(reserved, height);
+        }
+        const top = block.getBoundingClientRect().top - this.scrollRoot.getBoundingClientRect().top;
+        this.scrollRoot.scrollTop += top - place.offset;
     }
 
     /** The window manager's renders, drained through the queue they run on. */

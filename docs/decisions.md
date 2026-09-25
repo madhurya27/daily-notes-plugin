@@ -3,6 +3,21 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — Back lays the stream out at the heights it left
+
+**Decision:** the place kept in Obsidian's history carries the heights of the
+notes down to it, by path, and the pane width. At the same width, Back
+reserves those heights and scrolls once, before the first frame.
+
+**Why:** Back rebuilds the view from scratch. At estimated heights, each
+render pushed the place and each correction was drawn: the newest note
+flashed on desktop, older ones on a phone.
+
+**Rejected:**
+- Hiding the stream until it settles — up to a second blank on a phone.
+- Opening titles in a new tab so the stream survives — Back stops returning
+  to it.
+
 ## 2026-09-25 — Scroll to top is offered only in the stream
 
 **Decision:** the command is in the palette only while the most recent leaf
