@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import { Component, MarkdownRenderer, TFile } from "obsidian";
 import { BaseMeasurements } from "../../../src/render/bases/base-measurements";
-import { NoteBases, measureHeaderMetrics } from "../../../src/render/bases/note-bases";
+import { BASE_SETTLE_MS, NoteBases, measureHeaderMetrics } from "../../../src/render/bases/note-bases";
 import { extractBases } from "../../../src/render/bases/bases-as-cards";
 import type { HeaderMetrics } from "../../../src/render/bases/bases-width";
-import { asApp, flushPromises } from "../../stream-view-fixture";
+import { asApp } from "../../stream-view-fixture";
 
 const lines = (...l: string[]) => l.join("\n");
 
@@ -426,18 +426,32 @@ describe("NoteBases holding a redrawn Base's height", () => {
     const tall = (slot: Element, height: number) => {
         slot.getBoundingClientRect = () => ({ height }) as DOMRect;
     };
+    const resized = () => FakeResizeObserver.instances.forEach((observer) => observer.resized());
     /** Bases refills the view it drew to `height`, and says so. */
     const refill = (slot: Element, height: number) => {
         slot.lastElementChild!.getBoundingClientRect = () => ({ height }) as DOMRect;
-        for (const observer of FakeResizeObserver.instances) observer.resized();
+        resized();
+    };
+    /** `slot` lays out at `height` and holds still there. */
+    const settleAt = (slot: Element, height: number) => {
+        tall(slot, height);
+        resized();
+        vi.advanceTimersByTime(BASE_SETTLE_MS);
+    };
+    /** The note unloads, as a closing view does: nothing is laid out to measure. */
+    const close = (slot: Element, component: Component) => {
+        tall(slot, 0);
+        component.unload();
     };
 
     // Draws an element, as the real renderer does, for the hold to watch.
     beforeEach(() => {
+        vi.useFakeTimers();
         render.mockImplementation(async (_app, _markdown, el) => {
             el.createDiv();
         });
     });
+    afterEach(() => vi.useRealTimers());
     const held = (slot: Element) => (slot as HTMLElement).style.getPropertyValue("--daily-note-base-held-height");
 
     it("holds a table redrawn as cards at the table's height", async () => {
@@ -449,22 +463,24 @@ describe("NoteBases holding a redrawn Base's height", () => {
         expect(held(slotOf(content))).toBe("112px");
     });
 
-    it("holds a note's Base, back after unloading, at the height it left at", async () => {
+    it("holds a note's Base, back after unloading, at the height it held still at", async () => {
         const component = loaded();
-        tall(slotOf(await renderNote(BLOCK, component)), 300);
-        component.unload();
+        const content = await renderNote(BLOCK, component);
+        settleAt(slotOf(content), 300);
+        close(slotOf(content), component);
 
         const again = await renderNote(BLOCK);
 
         expect(held(slotOf(again))).toBe("300px");
     });
 
-    it("holds a note's Base, drawn by a view sharing what this one measured, at the height it left at", async () => {
+    it("holds a note's Base, drawn by a view sharing what this one measured, at the height it held still at", async () => {
         const measured = new BaseMeasurements();
         bases = new NoteBases(asApp(app), measured, measure);
         const component = loaded();
-        tall(slotOf(await renderNote(BLOCK, component)), 300);
-        component.unload();
+        const content = await renderNote(BLOCK, component);
+        settleAt(slotOf(content), 300);
+        close(slotOf(content), component);
         bases = new NoteBases(asApp(app), measured, measure);
 
         const again = await renderNote(BLOCK);
@@ -472,44 +488,88 @@ describe("NoteBases holding a redrawn Base's height", () => {
         expect(held(slotOf(again))).toBe("300px");
     });
 
-    // Back closes the view while its notes are no longer laid out: they
-    // measure nothing then, so what the cards filled to is kept as it is.
-    it("holds cards, back after the view closed, at the height they filled to", async () => {
+    // Back closes the view before a Base still filling in has held still.
+    it("keeps nothing from a Base left before it held still", async () => {
+        const component = loaded();
+        const content = await renderNote(BLOCK, component);
+        tall(slotOf(content), 300);
+        resized();
+        vi.advanceTimersByTime(BASE_SETTLE_MS - 1);
+        close(slotOf(content), component);
+        vi.advanceTimersByTime(BASE_SETTLE_MS);
+
+        const again = await renderNote(BLOCK);
+
+        expect(held(slotOf(again))).toBe("");
+    });
+
+    it("keeps the height a Base held still at, not one it passed through", async () => {
+        const component = loaded();
+        const content = await renderNote(BLOCK, component);
+        tall(slotOf(content), 300);
+        resized();
+        vi.advanceTimersByTime(BASE_SETTLE_MS - 1);
+        settleAt(slotOf(content), 500);
+        close(slotOf(content), component);
+
+        const again = await renderNote(BLOCK);
+
+        expect(held(slotOf(again))).toBe("500px");
+    });
+
+    // The phone's trace: a table redrawn as cards, which filled far past it.
+    it("keeps what cards redrawn from a table filled to, not the table's height", async () => {
         const component = loaded();
         const content = await renderNote(BLOCK, component);
         tall(slotOf(content), 262);
         bases.onLayout(layOut(slotOf(content), 900));
-        await flushPromises();
+        await vi.advanceTimersByTimeAsync(0);
         tall(slotOf(content), 1384);
         refill(slotOf(content), 1384);
-        tall(slotOf(content), 0);
-        component.unload();
+        vi.advanceTimersByTime(BASE_SETTLE_MS);
+        close(slotOf(content), component);
 
         const again = await renderNote(BLOCK);
 
         expect(held(slotOf(again))).toBe("1384px");
     });
 
-    it("holds a Base, back after the view closed, at the height it grew to on its own", async () => {
+    it("keeps no table's height from a redraw to cards left before they held still", async () => {
         const component = loaded();
         const content = await renderNote(BLOCK, component);
-        tall(slotOf(content), 300);
-        for (const observer of FakeResizeObserver.instances) observer.resized();
-        tall(slotOf(content), 0);
-        component.unload();
+        tall(slotOf(content), 262);
+        bases.onLayout(layOut(slotOf(content), 900));
+        await vi.advanceTimersByTimeAsync(0);
+        close(slotOf(content), component);
 
         const again = await renderNote(BLOCK);
 
-        expect(held(slotOf(again))).toBe("300px");
+        expect(held(slotOf(again))).toBe("");
+    });
+
+    // A hold let go by its timer may be at a height no resize reports again.
+    it("keeps the height a hold lets go at, once it holds still", async () => {
+        const component = loaded();
+        const content = await renderNote(BLOCK, component);
+        tall(slotOf(content), 112);
+        bases.onLayout(layOut(slotOf(content), 900));
+        await vi.advanceTimersByTimeAsync(0);
+        tall(slotOf(content), 90);
+        vi.advanceTimersByTime(2000 + BASE_SETTLE_MS);
+        close(slotOf(content), component);
+
+        const again = await renderNote(BLOCK);
+
+        expect(held(slotOf(again))).toBe("90px");
     });
 
     it("keeps nothing a Base measured while held at an older height", async () => {
-        const component = loaded();
-        tall(slotOf(await renderNote(BLOCK, component)), 300);
-        component.unload();
-        const content = await renderNote(BLOCK, loaded());
-        tall(slotOf(content), 120);
-        for (const observer of FakeResizeObserver.instances) observer.resized();
+        const first = loaded();
+        const content = await renderNote(BLOCK, first);
+        settleAt(slotOf(content), 300);
+        close(slotOf(content), first);
+        const heldBase = await renderNote(BLOCK, loaded());
+        settleAt(slotOf(heldBase), 120);
 
         const third = await renderNote(BLOCK);
 
@@ -518,8 +578,9 @@ describe("NoteBases holding a redrawn Base's height", () => {
 
     it("lets go once the Base refills that height", async () => {
         const component = loaded();
-        tall(slotOf(await renderNote(BLOCK, component)), 112);
-        component.unload();
+        const first = await renderNote(BLOCK, component);
+        settleAt(slotOf(first), 112);
+        close(slotOf(first), component);
         const content = await renderNote(BLOCK);
 
         refill(slotOf(content), 100);
@@ -530,21 +591,20 @@ describe("NoteBases holding a redrawn Base's height", () => {
 
     // It may have lost rows since: then it never gets back to that height.
     it("lets go after a while regardless", async () => {
-        vi.useFakeTimers();
         const content = await renderNote(BLOCK);
         tall(slotOf(content), 112);
         bases.onLayout(layOut(slotOf(content), 900));
 
         vi.runAllTimers();
-        vi.useRealTimers();
 
         expect(held(slotOf(content))).toBe("");
     });
 
-    it("keeps the height it knows through a redraw while held", async () => {
+    it("keeps the height it holds at through a redraw while held", async () => {
         const component = loaded();
-        tall(slotOf(await renderNote(BLOCK, component)), 300);
-        component.unload();
+        const first = await renderNote(BLOCK, component);
+        settleAt(slotOf(first), 300);
+        close(slotOf(first), component);
         const again = await renderNote(BLOCK);
         tall(slotOf(again), 50);
 

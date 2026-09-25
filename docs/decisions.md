@@ -138,8 +138,9 @@ correction.
 
 **Decision:** `NoteBases` keeps the height each Base last laid out at, per note,
 width and definition, and a redraw holds it as `min-height` until the drawn view
-reaches it, or for 2s. A height is kept when a hold lets go and on every
-unheld resize, never at unload alone: a closing view is not laid out. The
+reaches it, or for 2s. A height is kept once the Base has not resized for
+300ms while unheld, never at unload or before a redraw: a closing view is not
+laid out, and a Base left mid-fill keeps the height it had. The
 heights, and which Bases were too wide, live on the plugin (`BaseMeasurements`):
 Back rebuilds the view, which forgot them.
 
