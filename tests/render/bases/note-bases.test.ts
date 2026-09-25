@@ -38,6 +38,10 @@ class FakeResizeObserver {
     resized() {
         this.callback(this.targets.map((target) => ({ target })));
     }
+    /** Reports `target` alone as resized, if it is observed. */
+    resizedOnly(target: Element) {
+        if (this.targets.includes(target)) this.callback([{ target }]);
+    }
     disconnect() {
         this.disconnected = true;
     }
@@ -497,6 +501,25 @@ describe("NoteBases holding a redrawn Base's height", () => {
         vi.advanceTimersByTime(BASE_SETTLE_MS - 1);
         close(slotOf(content), component);
         vi.advanceTimersByTime(BASE_SETTLE_MS);
+
+        const again = await renderNote(BLOCK);
+
+        expect(held(slotOf(again))).toBe("");
+    });
+
+    // A Base can sit still, empty, while Bases fetches its rows: on a phone,
+    // keeping that height made notes jump as they scrolled back in.
+    it("keeps no height while anything else in its note still moves", async () => {
+        const component = loaded();
+        const content = await renderNote(BLOCK, component);
+        const resizedOnly = (el: Element) =>
+            FakeResizeObserver.instances.forEach((observer) => observer.resizedOnly(el));
+        tall(slotOf(content), 300);
+        resizedOnly(slotOf(content));
+        vi.advanceTimersByTime(BASE_SETTLE_MS - 100);
+        resizedOnly(content);
+        vi.advanceTimersByTime(100);
+        close(slotOf(content), component);
 
         const again = await renderNote(BLOCK);
 

@@ -6,8 +6,11 @@ rewriting across layers belongs in [`adr/`](adr/) instead.
 ## 2026-09-25 — Back lays the stream out at the heights it left
 
 **Decision:** the place kept in Obsidian's history carries the heights of the
-notes down to it, by path, and the pane width. At the same width, Back
-reserves those heights and scrolls once, before the first frame. The iOS
+rendered notes down to it, by path, and the pane width. Only they render
+again at the place; the rest stay empty, and the place is measured from its
+own note. At the same width, Back
+reserves those heights; at another, none. Either way it scrolls once, before
+the first frame. The iOS
 scroll anchor is then told the place is set, so growth the scroll already
 holds, reported a frame late, is not added again. It loads past the place
 until the pane can scroll there: a place near the end of what was loaded
@@ -21,6 +24,10 @@ flashed on desktop, older ones on a phone.
 - Hiding the stream until it settles — up to a second blank on a phone.
 - Opening titles in a new tab so the stream survives — Back stops returning
   to it.
+- Every loaded note's height — thousands of entries per history step, scrolled
+  a few years back, for notes that never render there.
+- These heights alone, without `BaseMeasurements` — a Base inside a note
+  still draws empty and refills, whatever height its note reserved.
 
 ## 2026-09-25 — Scroll to top is offered only in the stream
 
@@ -140,18 +147,22 @@ correction.
 
 **Decision:** `NoteBases` keeps the height each Base last laid out at, per note,
 width and definition, and a redraw holds it as `min-height` until the drawn view
-reaches it, or for 2s. A height is kept once the Base has not resized for
+reaches it, or for 2s. A height is kept once nothing in its note has resized for
 300ms while unheld, never at unload or before a redraw: a closing view is not
 laid out, and a Base left mid-fill keeps the height it had. The
 heights, and which Bases were too wide, live on the plugin (`BaseMeasurements`):
-Back rebuilds the view, which forgot them.
+Back rebuilds the view, which forgot them. It keeps the 500 used most recently:
+every pane width is a key of its own.
 
 **Why:** Bases fills a view after it is drawn. A note coming back into view, or
 a table redrawn as cards, dropped by the Bases' height for a few frames and
 grew back; iOS has no scroll anchoring, so the text jumped and returned.
 
-**Rejected:** holding the whole block until it settles — no signal says when a
-note is done, and only Bases was measured dipping.
+**Rejected:**
+- Holding the whole block until it settles — no signal says when a note is
+  done, and only Bases was measured dipping.
+- Each Base waiting only on its own resizes — tried: on a phone, notes
+  flickered as they scrolled back in.
 
 ## 2026-09-24 — The stream takes a note's margins from the theme
 

@@ -6,6 +6,8 @@ declare global {
         electron: any;
         /** history.spec's reading of the stream's place, defined by its `measurePlaces`. */
         streamPlace?: () => string | undefined;
+        /** Each place the stream shows, frame by frame, until it holds still or `deadline`; also `measurePlaces`'. */
+        streamPlaces?: (deadline: number) => Promise<string[]>;
     }
 }
 export {};

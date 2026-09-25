@@ -467,6 +467,20 @@ describe("NoteWindowManager unload", () => {
         expect(manager.heightOf(block)).toBe(640);
     });
 
+    // Back lays out again only what renders again: a note near the place.
+    it("measures a rendered block for the place Back returns to", async () => {
+        const { manager, block } = await rendered(() => 640);
+        expect(manager.renderedHeightOf(block)).toBe(640);
+    });
+
+    it("has no rendered height for a block holding no content", async () => {
+        const { manager, block } = await rendered(() => 640);
+        fire(observers.unload, block, false);
+        await still();
+        expect(manager.renderedHeightOf(block)).toBeUndefined();
+        expect(manager.renderedHeightOf(document.createElement("div"))).toBeUndefined();
+    });
+
     it("has no height for a block it does not own", () => {
         const { manager } = makeManager();
         expect(manager.heightOf(document.createElement("div"))).toBeUndefined();

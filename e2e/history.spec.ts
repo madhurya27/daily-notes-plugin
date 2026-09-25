@@ -4,7 +4,8 @@ import { test, expect, openStream, restoreScrollAnchoring, seededDate, withoutSc
 /**
  * Defines `window.streamPlace` in the page: the first note reaching into the
  * pane and how far its top sits from the pane's, as the stream keeps its place;
- * undefined while no stream is open.
+ * undefined while no stream is open. And `window.streamPlaces`, every distinct
+ * place from the next frame until 30 frames pass without a change.
  */
 function measurePlaces(page: Page) {
     return page.evaluate(() => {
@@ -21,6 +22,17 @@ function measurePlaces(page: Page) {
                     offset: Math.round(first.getBoundingClientRect().top - paneTop),
                 }
             );
+        };
+        window.streamPlaces = async (deadline) => {
+            const seen: string[] = [];
+            for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+                const frame = window.streamPlace!();
+                if (frame === undefined) continue;
+                quiet = frame === seen.at(-1) ? quiet + 1 : 0;
+                seen.push(frame);
+            }
+            return [...new Set(seen)];
         };
     });
 }
@@ -88,16 +100,8 @@ async function goBack(page: Page) {
         }
 
         // Every frame from Back on, as the stream shows it, until it holds still.
-        const seen: string[] = [];
         window.app.commands.executeCommandById("app:go-back");
-        for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
-            await nextFrame();
-            const frame = window.streamPlace!();
-            if (frame === undefined) continue;
-            quiet = frame === seen.at(-1) ? quiet + 1 : 0;
-            seen.push(frame);
-        }
-        return { left, frames: [...new Set(seen)] };
+        return { left, frames: await window.streamPlaces!(deadline) };
     }, title);
 
     return { left, frames };
@@ -107,11 +111,17 @@ async function goBack(page: Page) {
  * Reopens the stream and hands it the place it left once it has drawn a frame,
  * as iOS does; every place it showed from then on, and the one it left.
  */
-async function returnAfterAFrame(page: Page, { daysBack = 3, past }: { daysBack?: number; past?: number } = {}) {
+async function returnAfterAFrame(
+    page: Page,
+    { daysBack = 3, past, widthChanged = false }: { daysBack?: number; past?: number; widthChanged?: boolean } = {}
+) {
     const { before: left } = await scrollPast(page, daysBack, past);
-    const eState = await page.evaluate(() =>
-        window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view.getEphemeralState()
-    );
+    const eState = await page.evaluate((widthChanged) => {
+        const eState = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view.getEphemeralState();
+        // Heights kept at another width are no use.
+        if (widthChanged) eState.place.layout.width += 1;
+        return eState;
+    }, widthChanged);
     await openStream(page);
 
     const frames = await page.evaluate(async (eState) => {
@@ -119,16 +129,7 @@ async function returnAfterAFrame(page: Page, { daysBack = 3, past }: { daysBack?
         await nextFrame();
         await nextFrame();
         window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view.setEphemeralState(eState);
-
-        const seen: string[] = [];
-        const deadline = performance.now() + 15_000;
-        for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
-            await nextFrame();
-            const frame = window.streamPlace!()!;
-            quiet = frame === seen.at(-1) ? quiet + 1 : 0;
-            seen.push(frame);
-        }
-        return [...new Set(seen)];
+        return window.streamPlaces!(performance.now() + 15_000);
     }, eState);
     return { left, frames };
 }
@@ -164,6 +165,11 @@ test.describe("history", () => {
         expect(frames).toEqual([left]);
     });
 
+    test("returns to the place it left when the pane has changed width since", async ({ obsidian }) => {
+        const { left, frames } = await returnAfterAFrame(obsidian.page, { widthChanged: true });
+        expect(frames).toEqual([left]);
+    });
+
     // The tenth note ends the first batch: nothing is loaded below it until the
     // stream loads more, too little to scroll to a place near its bottom.
     test("returns to a place near the bottom of the last note loaded with it", async ({ obsidian }) => {
@@ -183,6 +189,11 @@ test.describe("history", () => {
 
         test("returns to the place it left when handed it after drawing a frame", async ({ obsidian }) => {
             const { left, frames } = await returnAfterAFrame(obsidian.page);
+            expect(frames).toEqual([left]);
+        });
+
+        test("returns to the place it left when the pane has changed width since", async ({ obsidian }) => {
+            const { left, frames } = await returnAfterAFrame(obsidian.page, { widthChanged: true });
             expect(frames).toEqual([left]);
         });
 
