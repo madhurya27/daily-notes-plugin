@@ -2,28 +2,42 @@
 
 A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first.
 
-## Screenshots
-
-| | Desktop | Phone |
-| --- | --- | --- |
-| Every daily note, newest first | <img src="docs/images/stream-desktop.png" alt="One day ending and the day before starting beneath it, on desktop" width="520"> | <img src="docs/images/stream-phone.png" alt="One day ending and the day before starting beneath it, in the phone layout" width="200"> |
-| Follows your theme, dark included | <img src="docs/images/stream-dark-desktop.png" alt="The same stream in Obsidian's dark theme, on desktop" width="520"> | <img src="docs/images/stream-dark-phone.png" alt="The same stream in Obsidian's dark theme, in the phone layout" width="200"> |
-| Search the whole stream | <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Priya, on desktop" width="520"> | <img src="docs/images/search-phone.png" alt="The search bar stepping through notes that mention Priya, in the phone layout" width="200"> |
-| Jump to a date | <img src="docs/images/jump-desktop.png" alt="The jump-to-date prompt listing the vault's dates, on desktop" width="520"> | <img src="docs/images/jump-phone.png" alt="The jump-to-date prompt listing the vault's dates, in the phone layout" width="200"> |
-| Collapse sections | <img src="docs/images/collapse-desktop.png" alt="A note with every section folded to its heading, on desktop" width="520"> | <img src="docs/images/collapse-phone.png" alt="A note with every section folded to its heading, in the phone layout" width="200"> |
-| Bases render in place | <img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base, on desktop" width="520"> | <img src="docs/images/bases-phone.png" alt="A weekly review embedding a reading-list Base, in the phone layout" width="200"> |
+<p><img src="docs/images/stream-desktop.png" alt="The stream on desktop: one day ending and the day before starting beneath it" width="520"> <img src="docs/images/stream-phone.png" alt="The same stream in Obsidian's phone layout" width="213"></p>
 
 ## Features
 
 - Continuous stream sorted newest-first with infinite scroll (batch 10)
 - Live updates — new/modified/renamed/deleted notes reflect instantly
 - Collapsible headers (H1–H6) and nested lists
+
+  <img src="docs/images/collapse-desktop.png" alt="A note with every section folded to its heading" width="440">
+
 - Search the whole stream, note by note, with the vault's own find hotkey
+
+  <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Priya" width="440">
+
+- Jump to any date the vault has a note for
+
+  <img src="docs/images/jump-desktop.png" alt="The jump-to-date prompt listing the vault's dates" width="440">
+
 - Frontmatter properties panel, shown by default (toggleable, collapsible, native-styled)
 - Nested folder support (e.g. `Notes/2025/03/2025-03-04.md`)
-- Full Markdown rendering: images, embeds, wikilinks, tasks
+- Full Markdown rendering: images, embeds, wikilinks, tasks, Bases
+
+  <img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="440">
+
 - Matches your Obsidian theme via native CSS variables
+
+  <img src="docs/images/stream-dark-desktop.png" alt="The stream in Obsidian's dark theme" width="440">
+
 - Mobile friendly: on a phone or tablet, a table or Base too wide for the note becomes cards
+
+<details>
+<summary>Phone layout</summary>
+
+<p><img src="docs/images/search-phone.png" alt="Search in the phone layout" width="150"> <img src="docs/images/jump-phone.png" alt="Jump to date in the phone layout" width="150"> <img src="docs/images/collapse-phone.png" alt="Collapsed sections in the phone layout" width="150"> <img src="docs/images/bases-phone.png" alt="A Base drawn as cards in the phone layout" width="150"> <img src="docs/images/stream-dark-phone.png" alt="The stream in the dark theme, phone layout" width="150"></p>
+
+</details>
 
 ## Installation
 
