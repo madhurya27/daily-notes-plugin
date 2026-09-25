@@ -33,5 +33,4 @@ coverage/
 
 # playwright
 test-results/
-playwright-report/
 /.dev/

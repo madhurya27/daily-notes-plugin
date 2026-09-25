@@ -1,6 +1,9 @@
 import { defineConfig } from "@playwright/test";
 import type { MobileLayoutOptions } from "./e2e/obsidian";
 
+/** When this run started, to the second, safe in a file name. */
+const runStamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+
 export default defineConfig<MobileLayoutOptions>({
     testDir: "e2e",
     globalSetup: "./e2e/global-setup.ts",
@@ -9,7 +12,10 @@ export default defineConfig<MobileLayoutOptions>({
     fullyParallel: true,
     timeout: 60_000,
     expect: { timeout: 15_000 },
-    reporter: process.env.CI ? "list" : [["list"]],
+    // Playwright wipes outputDir at the start of every run; each run's report
+    // sits beside it, kept, to diagnose a failure after the fact.
+    outputDir: "test-results/artifacts",
+    reporter: [["list"], ["json", { outputFile: `test-results/runs/${runStamp}.json` }]],
     use: { trace: "retain-on-failure" },
     // Every spec runs twice. Obsidian's mobile stylesheet and phone layout differ
     // enough that a rule can be right on one and wrong on the other, and each

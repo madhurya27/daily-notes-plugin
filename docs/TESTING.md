@@ -205,3 +205,6 @@ iOS is the one that matters: Android's WebView is Chromium, so desktop plus emul
 
 Developer Console (`Cmd+Opt+I`), `DailyNotesStream:` prefixed logs. "No daily notes found" means the core daily
 notes plugin is unconfigured or nothing matches.
+
+An e2e failure is in `test-results/runs/<start time>.json`, one per run and kept. Traces for the latest run are
+in `test-results/artifacts/`; the next run wipes them.
