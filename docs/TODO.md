@@ -9,13 +9,11 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] PDF, iframe, canvas, Dataview: check for scroll boxes; give what cannot fit a preview that opens on tap.
 - [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on `post-processor-change`.
 - [ ] Opening the stream opens a new tab instead of using the current one.
-- [ ] Command palette shows "Daily Notes Stream: …"; sentence case wants "Daily notes stream". The prefix is
-  `manifest.json`'s `name`.
 - [ ] Ribbon icon `calendar-days` is easily confused with core Daily notes' calendar; pick a distinct one.
 - [ ] Rotation: unloaded notes keep heights measured at the old width, and nothing restores the reader's place.
   Save `place()` when the scroll stops and restore it on a width change; mark unloaded heights unmeasured so a
   held note (`fix/lock-rerender-height`) is not clipped at a stale one. Reproduce in e2e by resizing first.
-- [ ] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
+- [x] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
   frame rate; loading is not the cost, so preloading would not help.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:
   - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**; includes the jump suggester's date

@@ -53,3 +53,4 @@
 - [x] Opening the stream skips files outside the daily-notes folder before parsing dates: 70 → 50 ms at 6× CPU, 10-year vault plus 5,000 other notes
 - [x] Each note keeps the date parsed when the list was built: the jump picker opens in 0.0 ms, from 22 ms at 6× CPU in a 10-year vault
 - [x] A later open reuses the dates earlier opens parsed: the list builds in 4 ms, from 52 ms at 6× CPU (10-year vault, 5,000 other notes)
+- [x] The plugin is named "Daily notes stream" in sentence case, so the command palette reads "Daily notes stream: …"

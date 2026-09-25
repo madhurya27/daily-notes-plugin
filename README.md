@@ -1,4 +1,4 @@
-# Daily Notes Stream
+# Daily notes stream
 
 A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first.
 
@@ -25,14 +25,14 @@ A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first
 **From release**: extract to `<Vault>/.obsidian/plugins/daily-notes-stream/`.  
 **From source**: `pnpm run build`, then copy `main.js`, `manifest.json`, `styles.css` to the same path.
 
-Reload Obsidian and enable **Daily Notes Stream** in **Settings → Community Plugins**.
+Reload Obsidian and enable **Daily notes stream** in **Settings → Community Plugins**.
 
 ## Usage
 
-Open via the ribbon icon (calendar-days) or command palette (`Daily Notes Stream: Open stream`).
+Open via the ribbon icon (calendar-days) or command palette (`Daily notes stream: Open stream`).
 
 - Scroll down to load older notes. On mobile, tap the title in the view header to glide back to the newest.
-- Jump to a date from the calendar action in the view header, or `Daily Notes Stream: Jump to date`. The
+- Jump to a date from the calendar action in the view header, or `Daily notes stream: Jump to date`. The
   prompt lists the days your vault has a note for, spelled the way your daily-note format spells them, and
   narrows as you type — in that format or in `YYYY-MM-DD`. The calendar button opens your platform's own date
   wheel. A date with no note is still offered, as one entry saying it will land on the nearest older one.

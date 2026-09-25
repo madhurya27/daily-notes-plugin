@@ -67,7 +67,7 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 
 ### Jump to date
 
-- The header action and `Daily Notes Stream: Jump to date` both reach the suggester. **[e2e]**
+- The header action and `Daily notes stream: Jump to date` both reach the suggester. **[e2e]**
 - It opens on every date the vault has a note for, newest first. **[e2e]**
 - Typing narrows it, in the vault's own format and in `YYYY-MM-DD`. **[e2e]**
 - A date far back loads the batches between and puts that note at the top of the pane. **[e2e]**
