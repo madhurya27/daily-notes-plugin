@@ -27,16 +27,8 @@ function measurePlaces(page: Page) {
 
 const place = (page: Page) => page.evaluate(() => window.streamPlace!());
 
-/** Scrolls the stream `past` the top of the note `daysBack`, and waits for the notes around it to settle. */
-async function scrollPast(page: Page, daysBack: number, past = 150) {
-    const container = await openStream(page);
-    const target = container.locator(`.daily-note-block[data-source-path="Notes/${seededDate(daysBack)}.md"]`);
-    await target.evaluate((el, past) => {
-        const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
-        pane.scrollTop += el.getBoundingClientRect().top - pane.getBoundingClientRect().top + past;
-    }, past);
-    // The notes around it render once scrolled to, and push it about; a Base
-    // fills in later still, and the phone window draws a frame a second.
+/** Waits until the stream's place has held still: renders push it about, a Base fills in later still, and the phone window draws a frame a second. */
+async function settledPlace(page: Page) {
     let before = await place(page);
     let stillSince = Date.now();
     await expect
@@ -50,7 +42,26 @@ async function scrollPast(page: Page, daysBack: number, past = 150) {
             { intervals: [250], timeout: 20_000 }
         )
         .toBeGreaterThan(1500);
-    return { container, target, before };
+    return before;
+}
+
+/**
+ * Scrolls the stream `past` the top of the note `daysBack` and waits for it to
+ * settle. Twice: the first scroll is measured against placeholders, and the
+ * notes it renders move the target.
+ */
+async function scrollPast(page: Page, daysBack: number, past = 150) {
+    const container = await openStream(page);
+    const target = container.locator(`.daily-note-block[data-source-path="Notes/${seededDate(daysBack)}.md"]`);
+    const scrollTo = () =>
+        target.evaluate((el, past) => {
+            const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+            pane.scrollTop += el.getBoundingClientRect().top - pane.getBoundingClientRect().top + past;
+        }, past);
+    await scrollTo();
+    await settledPlace(page);
+    await scrollTo();
+    return { container, target, before: await settledPlace(page) };
 }
 
 /** Leaves the stream for a note and comes Back; every place the stream showed on the way, and the one it left. */
@@ -96,8 +107,8 @@ async function goBack(page: Page) {
  * Reopens the stream and hands it the place it left once it has drawn a frame,
  * as iOS does; every place it showed from then on, and the one it left.
  */
-async function returnAfterAFrame(page: Page, past?: number) {
-    const { before: left } = await scrollPast(page, 3, past);
+async function returnAfterAFrame(page: Page, { daysBack = 3, past }: { daysBack?: number; past?: number } = {}) {
+    const { before: left } = await scrollPast(page, daysBack, past);
     const eState = await page.evaluate(() =>
         window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view.getEphemeralState()
     );
@@ -153,6 +164,13 @@ test.describe("history", () => {
         expect(frames).toEqual([left]);
     });
 
+    // The tenth note ends the first batch: nothing is loaded below it until the
+    // stream loads more, too little to scroll to a place near its bottom.
+    test("returns to a place near the bottom of the last note loaded with it", async ({ obsidian }) => {
+        const { left, frames } = await returnAfterAFrame(obsidian.page, { daysBack: 9, past: 700 });
+        expect(frames).toEqual([left]);
+    });
+
     // iOS WebKit has no scroll anchoring: the stream holds the reader's place itself.
     test.describe("where the platform has no scroll anchoring", () => {
         test.beforeEach(({ obsidian }) => withoutScrollAnchoring(obsidian.page));
@@ -191,7 +209,7 @@ test.describe("history", () => {
 
             // Bases fills a view after it is drawn: the note shrinks, then grows back.
             test("returns to the place it left", async ({ obsidian }) => {
-                const { left, frames } = await returnAfterAFrame(obsidian.page, 900);
+                const { left, frames } = await returnAfterAFrame(obsidian.page, { past: 900 });
                 expect(frames).toEqual([left]);
             });
         });

@@ -302,9 +302,26 @@ export class NoteStream {
             const reserved = this.blocks.get(path);
             if (reserved) this.window.reserve(reserved, height);
         }
-        const top = block.getBoundingClientRect().top - this.scrollRoot.getBoundingClientRect().top;
-        this.scrollRoot.scrollTop += top - place.offset;
+        const root = this.scrollRoot;
+        const scrollTop =
+            root.scrollTop + block.getBoundingClientRect().top - root.getBoundingClientRect().top - place.offset;
+        await this.loadUntilScrollable(scrollTop);
+        root.scrollTop = scrollTop;
         this.window.placed();
+    }
+
+    /**
+     * Batches until the pane can scroll to `scrollTop`: loaded only through the
+     * place's note, the stream may end too soon below it, and a scroll past the
+     * end stops short. Placeholders only; nothing renders here.
+     */
+    private async loadUntilScrollable(scrollTop: number): Promise<void> {
+        const root = this.scrollRoot;
+        while (root.scrollHeight - root.clientHeight < scrollTop) {
+            const before = this.state.length;
+            await this.loadBatch();
+            if (this.state.length === before) return;
+        }
     }
 
     /** The window manager's renders, drained through the queue they run on. */

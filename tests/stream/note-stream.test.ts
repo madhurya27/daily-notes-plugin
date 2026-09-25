@@ -888,6 +888,33 @@ describe("the stream's place", () => {
         expect(noteWindow.placed).toHaveBeenCalledOnce();
     });
 
+    // Loaded only through the place's note, the stream can end too soon
+    // below it for the pane to scroll there: the scroll stops short.
+    it("loads past the place until the pane can scroll to it", async () => {
+        Object.defineProperty(pane, "clientWidth", { value: 700, configurable: true });
+        Object.defineProperty(pane, "clientHeight", { value: 800, configurable: true });
+        Object.defineProperty(pane, "scrollHeight", { get: () => shown().length * 400, configurable: true });
+        const target = placeholder(notes[9]!.path);
+        target.getBoundingClientRect = () => ({ top: 3600, bottom: 4000 }) as DOMRect;
+        noteWindow.add.mockImplementation((f: TFile) => (f === notes[9] ? target : placeholder(f.path)));
+        pane.scrollTop = 0;
+
+        await stream.restorePlace({ path: notes[9]!.path, offset: -300, layout: { width: 700, heights: {} } });
+
+        expect(await loadedCount()).toBe(20);
+        expect(pane.scrollTop).toBe(3900);
+    });
+
+    it("stops loading past the place when the notes run out", async () => {
+        Object.defineProperty(pane, "clientWidth", { value: 700, configurable: true });
+        Object.defineProperty(pane, "clientHeight", { value: 800, configurable: true });
+        Object.defineProperty(pane, "scrollHeight", { get: () => 0, configurable: true });
+
+        await stream.restorePlace({ path: notes[9]!.path, offset: -300, layout: { width: 700, heights: {} } });
+
+        expect(service.getBatch).toHaveBeenLastCalledWith(30, 10);
+    });
+
     it("passes over a height kept for a note deleted since", async () => {
         Object.defineProperty(pane, "clientWidth", { value: 700, configurable: true });
         const heights = { "Notes/2024-06-01.md": 900, [notes[0]!.path]: 540 };
