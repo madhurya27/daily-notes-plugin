@@ -102,6 +102,71 @@ test.describe("jump to date", () => {
         expect(clear.x + clear.width).toBeLessThanOrEqual(input.x + input.width);
     });
 
+    // iOS opens its wheel only for a tap on the date input itself, never
+    // through showPicker(): so a tap on the icon must land on the input.
+    test("puts the date input under the calendar icon, where a tap lands", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+        const prompt = await openSuggester(page);
+
+        const icon = prompt.locator(".daily-notes-jump-calendar");
+
+        // Polled: on mobile the prompt slides up from below the screen.
+        await expect
+            .poll(async () => {
+                const box = (await icon.boundingBox())!;
+                return page.evaluate(
+                    ({ x, y }) => document.elementFromPoint(x, y)?.matches('input[type="date"]') ?? false,
+                    { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+                );
+            })
+            .toBe(true);
+    });
+
+    // iOS draws a date input at its own width, whatever its box says; one
+    // spilling out of the icon took the clear button's taps.
+    test("leaves the clear button its taps, however wide the date input draws", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+        const prompt = await openSuggester(page);
+        await prompt.locator(".daily-notes-jump-picker").evaluate((el) => (el.style.minWidth = "240px"));
+        const clear = prompt.locator(".search-input-clear-button");
+
+        await expect
+            .poll(async () => {
+                const box = (await clear.boundingBox())!;
+                return page.evaluate(
+                    ({ x, y }) => document.elementFromPoint(x, y)?.matches(".search-input-clear-button") ?? false,
+                    { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+                );
+            })
+            .toBe(true);
+    });
+
+    // iOS fills an empty date input with today as its wheel opens; taking
+    // focus away on that change closed the wheel before the reader turned it.
+    test("keeps the wheel open as it fills the query, and Enter still jumps", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const prompt = await openSuggester(page);
+        const picker = prompt.locator(".daily-notes-jump-picker");
+        const target = seededDate(SEEDED_DAYS - 1);
+
+        await picker.focus();
+        await picker.evaluate((el, value) => {
+            (el as HTMLInputElement).value = value;
+            el.dispatchEvent(new Event("change"));
+        }, target);
+
+        await expect(prompt.locator("input.prompt-input")).toHaveValue(target);
+        await expect(picker).toBeFocused();
+
+        await page.keyboard.press("Enter");
+        await expect(prompt).toBeHidden();
+        const block = container.locator(`.daily-note-block[data-source-path="Notes/${target}.md"]`);
+        await expect(block.locator(".daily-note-title")).toHaveText(target);
+    });
+
     test("fills the query from the platform's own date picker", async ({ obsidian }) => {
         const { page } = obsidian;
         await openStream(page);

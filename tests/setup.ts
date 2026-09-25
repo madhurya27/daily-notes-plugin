@@ -53,7 +53,14 @@ proto.createDiv = function (this: HTMLElement, params?: { cls?: string; text?: s
 proto.createEl = function <K extends keyof HTMLElementTagNameMap>(
     this: HTMLElement,
     tag: K,
-    params?: { cls?: string; text?: string; href?: string; type?: string; placeholder?: string }
+    params?: {
+        cls?: string;
+        text?: string;
+        href?: string;
+        type?: string;
+        placeholder?: string;
+        attr?: Record<string, string>;
+    }
 ) {
     const el = document.createElement(tag);
     if (params?.cls) el.addClass(params.cls);
@@ -61,6 +68,7 @@ proto.createEl = function <K extends keyof HTMLElementTagNameMap>(
     if (params?.href) el.setAttribute("href", params.href);
     if (params?.type) el.setAttribute("type", params.type);
     if (params?.placeholder) el.setAttribute("placeholder", params.placeholder);
+    for (const [name, value] of Object.entries(params?.attr ?? {})) el.setAttribute(name, value);
     this.appendChild(el);
     return el;
 };
