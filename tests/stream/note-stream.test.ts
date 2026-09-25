@@ -833,17 +833,18 @@ describe("the stream's place", () => {
         expect(stream.place()).toBeNull();
     });
 
-    it("is returned to: the note loaded, scrolled to the top, then as far past it as it was", async () => {
+    it("is returned to in one step when it kept no heights", async () => {
         const target = placeholder(notes[24]!.path);
-        // Where scrolling it to the top left it: 10px short.
         target.getBoundingClientRect = () => ({ top: 10, bottom: 600 }) as DOMRect;
         noteWindow.add.mockImplementation((f: TFile) => (f === notes[24] ? target : placeholder(f.path)));
+        Object.defineProperty(pane, "scrollHeight", { value: 20000, configurable: true });
         pane.scrollTop = 1000;
 
         await stream.restorePlace({ path: notes[24]!.path, offset: -150 });
 
         expect(await loadedCount()).toBe(30);
-        expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+        expect(noteWindow.reserve).not.toHaveBeenCalled();
+        expect(target.scrollIntoView).not.toHaveBeenCalled();
         expect(pane.scrollTop).toBe(1160);
     });
 
@@ -876,18 +877,6 @@ describe("the stream's place", () => {
         noteWindow.add.mockImplementation((f: TFile) => (f === notes[1] ? target : placeholder(f.path)));
 
         await stream.restorePlace({ path: notes[1]!.path, offset: 0, layout: { width: 700, heights: {} } });
-
-        expect(noteWindow.placed).toHaveBeenCalledOnce();
-    });
-
-    it("tells the window the scroll was set to the place the old way too", async () => {
-        const target = placeholder(notes[24]!.path);
-        target.getBoundingClientRect = () => ({ top: 10, bottom: 600 }) as DOMRect;
-        noteWindow.add.mockImplementation((f: TFile) => (f === notes[24] ? target : placeholder(f.path)));
-        pane.scrollTop = 1000;
-        noteWindow.placed.mockImplementation(() => expect(pane.scrollTop).toBe(1160));
-
-        await stream.restorePlace({ path: notes[24]!.path, offset: -150 });
 
         expect(noteWindow.placed).toHaveBeenCalledOnce();
     });
@@ -936,11 +925,12 @@ describe("the stream's place", () => {
         expect(noteWindow.reserve).not.toHaveBeenCalled();
     });
 
-    it("is returned to the old way when the pane is no longer the width the heights were kept at", async () => {
+    it("reserves none of its heights when the pane is no longer the width they were kept at", async () => {
         const target = placeholder(notes[24]!.path);
         target.getBoundingClientRect = () => ({ top: 10, bottom: 600 }) as DOMRect;
         noteWindow.add.mockImplementation((f: TFile) => (f === notes[24] ? target : placeholder(f.path)));
         Object.defineProperty(pane, "clientWidth", { value: 390, configurable: true });
+        Object.defineProperty(pane, "scrollHeight", { value: 20000, configurable: true });
         pane.scrollTop = 1000;
 
         await stream.restorePlace({
@@ -950,7 +940,7 @@ describe("the stream's place", () => {
         });
 
         expect(noteWindow.reserve).not.toHaveBeenCalled();
-        expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+        expect(target.scrollIntoView).not.toHaveBeenCalled();
         expect(pane.scrollTop).toBe(1160);
     });
 

@@ -107,11 +107,17 @@ async function goBack(page: Page) {
  * Reopens the stream and hands it the place it left once it has drawn a frame,
  * as iOS does; every place it showed from then on, and the one it left.
  */
-async function returnAfterAFrame(page: Page, { daysBack = 3, past }: { daysBack?: number; past?: number } = {}) {
+async function returnAfterAFrame(
+    page: Page,
+    { daysBack = 3, past, widthChanged = false }: { daysBack?: number; past?: number; widthChanged?: boolean } = {}
+) {
     const { before: left } = await scrollPast(page, daysBack, past);
-    const eState = await page.evaluate(() =>
-        window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view.getEphemeralState()
-    );
+    const eState = await page.evaluate((widthChanged) => {
+        const eState = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view.getEphemeralState();
+        // Heights kept at another width are no use.
+        if (widthChanged) eState.place.layout.width += 1;
+        return eState;
+    }, widthChanged);
     await openStream(page);
 
     const frames = await page.evaluate(async (eState) => {
@@ -164,6 +170,11 @@ test.describe("history", () => {
         expect(frames).toEqual([left]);
     });
 
+    test("returns to the place it left when the pane has changed width since", async ({ obsidian }) => {
+        const { left, frames } = await returnAfterAFrame(obsidian.page, { widthChanged: true });
+        expect(frames).toEqual([left]);
+    });
+
     // The tenth note ends the first batch: nothing is loaded below it until the
     // stream loads more, too little to scroll to a place near its bottom.
     test("returns to a place near the bottom of the last note loaded with it", async ({ obsidian }) => {
@@ -183,6 +194,11 @@ test.describe("history", () => {
 
         test("returns to the place it left when handed it after drawing a frame", async ({ obsidian }) => {
             const { left, frames } = await returnAfterAFrame(obsidian.page);
+            expect(frames).toEqual([left]);
+        });
+
+        test("returns to the place it left when the pane has changed width since", async ({ obsidian }) => {
+            const { left, frames } = await returnAfterAFrame(obsidian.page, { widthChanged: true });
             expect(frames).toEqual([left]);
         });
 

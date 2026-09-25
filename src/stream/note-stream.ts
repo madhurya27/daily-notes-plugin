@@ -277,26 +277,17 @@ export class NoteStream {
         return { width: this.scrollRoot.clientWidth, heights };
     }
 
-    /** Scrolls back to `place`; stays put when its note is gone. */
-    async restorePlace(place: StreamPlace): Promise<void> {
-        if (place.layout?.width === this.scrollRoot.clientWidth) {
-            const { heights } = place.layout;
-            return this.enqueue(() => this.returnTo(place, heights));
-        }
-        const index = this.service.indexOf(place.path);
-        const block = index === -1 ? null : await this.revealIndex(index);
-        if (block) {
-            const top = block.getBoundingClientRect().top - this.scrollRoot.getBoundingClientRect().top;
-            this.scrollRoot.scrollTop += top - place.offset;
-            this.window.placed();
-        }
+    /**
+     * Scrolls back to `place`, before a frame is drawn; stays put when its note
+     * is gone. Heights kept at this width lay its notes out as they were, so
+     * nothing renders into a different height; kept at another, they mean
+     * nothing, and the scroll anchor holds the place as notes render.
+     */
+    restorePlace(place: StreamPlace): Promise<void> {
+        const heights = place.layout?.width === this.scrollRoot.clientWidth ? place.layout.heights : {};
+        return this.enqueue(() => this.returnTo(place, heights));
     }
 
-    /**
-     * Lays the notes down to `place` out at the heights they had, then scrolls
-     * to it, before a frame is drawn: nothing renders into a different height,
-     * so nothing moves once it is shown.
-     */
     private async returnTo(place: StreamPlace, heights: Record<string, number>): Promise<void> {
         const index = this.service.indexOf(place.path);
         const file = index === -1 ? undefined : await this.loadThrough(index);

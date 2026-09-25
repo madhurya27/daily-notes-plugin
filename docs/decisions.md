@@ -9,7 +9,8 @@ rewriting across layers belongs in [`adr/`](adr/) instead.
 rendered notes down to it, by path, and the pane width. Only they render
 again at the place; the rest stay empty, and the place is measured from its
 own note. At the same width, Back
-reserves those heights and scrolls once, before the first frame. The iOS
+reserves those heights; at another, none. Either way it scrolls once, before
+the first frame. The iOS
 scroll anchor is then told the place is set, so growth the scroll already
 holds, reported a frame late, is not added again. It loads past the place
 until the pane can scroll there: a place near the end of what was loaded
