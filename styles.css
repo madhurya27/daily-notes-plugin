@@ -43,18 +43,23 @@
     overflow: clip;
 }
 
+/* The title is the note's inline title, whose em sizes Obsidian resolves
+   against the note's text size, not the interface's. */
 .daily-note-header {
     margin-bottom: var(--size-4-4, 1rem);
+    font-size: var(--font-text-size);
 }
 
 .daily-note-title {
-    font-size: var(--h1-size);
-    font-weight: var(--h1-weight);
+    font-size: var(--inline-title-size);
+    font-weight: var(--inline-title-weight);
+    font-style: var(--inline-title-style);
+    font-variant: var(--inline-title-variant);
     color: var(--text-accent);
     text-decoration: none;
     cursor: pointer;
-    font-family: var(--h1-font);
-    line-height: var(--h1-line-height);
+    font-family: var(--inline-title-font);
+    line-height: var(--inline-title-line-height);
     touch-action: manipulation;
 }
 
@@ -180,17 +185,6 @@
 @media (max-width: 768px) {
     .daily-notes-stream-container {
         gap: var(--size-4-8, 2rem);
-    }
-}
-
-/* Mobile specific tweaks */
-@media (max-width: 480px) {
-    .daily-notes-stream-container {
-        gap: var(--size-4-8);
-    }
-
-    .daily-note-title {
-        font-size: var(--h2-size);
     }
 }
 

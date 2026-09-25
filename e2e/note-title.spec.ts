@@ -24,6 +24,27 @@ test.describe("note title", () => {
         await obsidian.page.evaluate(() => window.app.workspace.detachLeavesOfType("markdown"));
     });
 
+    test("matches the size of the note's own inline title, at any text size", async ({ obsidian }) => {
+        const { page } = obsidian;
+        // Off the 16px default, so a title sized off anything but the text size shows.
+        await page.evaluate(() => document.body.style.setProperty("--font-text-size", "21px"));
+        const fontSize = (el: Element) => getComputedStyle(el).fontSize;
+
+        await page.evaluate(async () => {
+            const file = window.app.vault.getAbstractFileByPath("Notes/2026-03-14.md");
+            await window.app.workspace.getLeaf(false).openFile(file!);
+        });
+        const inlineTitle = page.locator(".workspace-leaf.mod-active .inline-title").first();
+        await expect(inlineTitle).toBeVisible();
+        const native = await inlineTitle.evaluate(fontSize);
+
+        const container = await openStream(page);
+        const stream = await container.locator(".daily-note-title").first().evaluate(fontSize);
+        await page.evaluate(() => document.body.style.removeProperty("--font-text-size"));
+
+        expect(stream).toBe(native);
+    });
+
     test("opens the note in the stream's tab, which Back returns to", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
