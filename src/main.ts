@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf } from "obsidian";
+import { Keymap, PaneType, Plugin, WorkspaceLeaf } from "obsidian";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "./ui/stream-view";
 import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab } from "./settings";
 import { CollapsibleStateStore } from "./render/collapse-store";
@@ -32,7 +32,9 @@ export default class DailyNotesStreamPlugin extends Plugin {
             defaultMod: true,
         });
 
-        this.addRibbonIcon("calendar-days", "Open daily notes stream", () => logActivationFailure(this.activateView()));
+        this.addRibbonIcon("gallery-vertical-end", "Open daily notes stream", (evt) =>
+            logActivationFailure(this.activateView(Keymap.isModEvent(evt)))
+        );
 
         this.addCommand({
             id: "open-stream",
@@ -52,28 +54,15 @@ export default class DailyNotesStreamPlugin extends Plugin {
     /** The stream is the only place a jump means anything, so open it first. */
     private async promptJumpToDate() {
         const leaf = await this.activateView();
-        if (leaf?.view instanceof DailyNotesStreamView) leaf.view.promptJumpToDate();
+        if (leaf.view instanceof DailyNotesStreamView) leaf.view.promptJumpToDate();
     }
 
-    async activateView(): Promise<WorkspaceLeaf | null> {
+    /** Opens the stream as the graph opens: in the current tab, or the pane a mod-click asks for. */
+    async activateView(pane: PaneType | boolean = false): Promise<WorkspaceLeaf> {
         const { workspace } = this.app;
-
-        let leaf: WorkspaceLeaf | null = null;
-        const leaves = workspace.getLeavesOfType(VIEW_TYPE_DAILY_NOTES_STREAM);
-
-        if (leaves.length > 0) {
-            leaf = leaves[0] ?? null;
-        } else {
-            leaf = workspace.getLeaf(true);
-            await leaf.setViewState({
-                type: VIEW_TYPE_DAILY_NOTES_STREAM,
-                active: true,
-            });
-        }
-
-        if (leaf) {
-            await workspace.revealLeaf(leaf);
-        }
+        const leaf = workspace.getLeaf(pane);
+        await leaf.setViewState({ type: VIEW_TYPE_DAILY_NOTES_STREAM, active: true });
+        await workspace.revealLeaf(leaf);
         return leaf;
     }
 

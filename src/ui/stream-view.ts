@@ -92,7 +92,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         return "Daily notes stream";
     }
     getIcon(): string {
-        return "calendar-days";
+        return "gallery-vertical-end";
     }
 
     async onOpen() {

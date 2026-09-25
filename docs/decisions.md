@@ -3,6 +3,32 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — The stream's icon is a stack of cards
+
+**Decision:** the ribbon icon and the view's tab draw `gallery-vertical-end`.
+
+**Why:** `calendar-days` sat in the ribbon beside core Daily notes' `calendar`
+and read as the same action. A stack of cards reads as a feed, and nothing in
+the core ribbon resembles it.
+
+**Rejected:**
+- `rows-3` — close to Bases' `layout-list`.
+- `scroll-text`, `notebook-text`, `book-open-text` — read as one document.
+
+## 2026-09-25 — The stream opens in the current tab
+
+**Decision:** the ribbon icon and `Open stream` open the stream in the current
+tab, even when another tab holds one; a mod-click on the icon opens the pane it
+asks for. Run from a stream, the command keeps that stream as it was.
+
+**Why:** the graph and canvas do exactly this, measured in the app, so the
+stream opens like Obsidian's other views.
+
+**Rejected:**
+- Revealing an open stream instead — the graph opens a second one, and each
+  view owns its service (CLAUDE.md, Invariants), so a second is safe.
+- A new tab every time — tabs pile up; the previous behaviour.
+
 ## 2026-09-25 — Release tags are annotated from 1.0.0
 
 **Decision:** from `1.0.0` on, each release is tagged `git tag -a <version> -m

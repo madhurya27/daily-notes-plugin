@@ -39,6 +39,9 @@ async function loadPlugin(data: unknown = null) {
     return { plugin, app };
 }
 
+/** A leaf whose view is not the stream, for callers that only need a leaf back. */
+const leafWithoutStream = { view: {} } as unknown as Leaf;
+
 /** Flushes microtasks so the .catch() on a fire-and-forget promise runs. */
 function flushPromises(): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, 0));
@@ -107,7 +110,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
         const { plugin } = await loadPlugin();
 
         expect(plugin.ribbonIcons.map(({ icon, title }) => ({ icon, title }))).toEqual([
-            { icon: "calendar-days", title: "Open daily notes stream" },
+            { icon: "gallery-vertical-end", title: "Open daily notes stream" },
         ]);
         expect(plugin.commands.map((c) => c.id)).toEqual(["open-stream", "jump-to-date"]);
         expect(plugin.settingTabs).toHaveLength(1);
@@ -119,13 +122,27 @@ describe("DailyNotesStreamPlugin — onload", () => {
     });
 });
 
+describe("DailyNotesStreamPlugin — ribbon icon", () => {
+    it.each([
+        ["a click", new MouseEvent("click"), false],
+        ["a mod-click", new MouseEvent("click", { metaKey: true }), "tab"],
+    ] as const)("opens the pane %s asks for", async (_label, evt, pane) => {
+        const { plugin } = await loadPlugin();
+        const activate = vi.spyOn(plugin, "activateView").mockResolvedValue(leafWithoutStream);
+
+        plugin.ribbonIcons[0]!.callback(evt);
+
+        expect(activate).toHaveBeenCalledWith(pane);
+    });
+});
+
 describe.each([
     ["ribbon icon", (p: DailyNotesStreamPlugin) => p.ribbonIcons[0]!.callback(new MouseEvent("click"))],
     ["command", (p: DailyNotesStreamPlugin) => p.commands[0]!.callback()],
 ])("DailyNotesStreamPlugin — %s", (_label, trigger) => {
     it("activates the view", async () => {
         const { plugin } = await loadPlugin();
-        const activate = vi.spyOn(plugin, "activateView").mockResolvedValue(null);
+        const activate = vi.spyOn(plugin, "activateView").mockResolvedValue(leafWithoutStream);
 
         trigger(plugin);
 
@@ -165,9 +182,9 @@ describe("DailyNotesStreamPlugin — jump-to-date command", () => {
         expect(view.promptJumpToDate).toHaveBeenCalledTimes(1);
     });
 
-    it("prompts nothing when no stream view came back", async () => {
+    it("prompts nothing when the leaf holds no stream view", async () => {
         const { plugin } = await loadPlugin();
-        vi.spyOn(plugin, "activateView").mockResolvedValue(null);
+        vi.spyOn(plugin, "activateView").mockResolvedValue(leafWithoutStream);
 
         trigger(plugin);
         await flushPromises();
@@ -187,22 +204,22 @@ describe("DailyNotesStreamPlugin — jump-to-date command", () => {
 });
 
 describe("DailyNotesStreamPlugin — activateView", () => {
-    it("hands back the leaf it revealed, for callers that drive the view", async () => {
+    it("hands back the leaf it opened, for callers that drive the view", async () => {
         const { plugin, app } = await loadPlugin();
         const leaf = makeLeaf(app);
-        app.workspace.getLeavesOfType.mockReturnValue([leaf]);
+        app.workspace.getLeaf.mockReturnValue(leaf);
 
         expect(await plugin.activateView()).toBe(leaf);
     });
 
-    it("opens a new leaf when no stream view is open", async () => {
+    it("opens in the current tab, as the graph does", async () => {
         const { plugin, app } = await loadPlugin();
         const leaf = makeLeaf(app);
         app.workspace.getLeaf.mockReturnValue(leaf);
 
         await plugin.activateView();
 
-        expect(app.workspace.getLeaf).toHaveBeenCalledWith(true);
+        expect(app.workspace.getLeaf).toHaveBeenCalledWith(false);
         expect(leaf.setViewState).toHaveBeenCalledWith({
             type: VIEW_TYPE_DAILY_NOTES_STREAM,
             active: true,
@@ -210,25 +227,27 @@ describe("DailyNotesStreamPlugin — activateView", () => {
         expect(app.workspace.revealLeaf).toHaveBeenCalledWith(leaf);
     });
 
-    it("reveals the existing leaf instead of opening a second one", async () => {
+    it("opens in the pane it is asked for", async () => {
         const { plugin, app } = await loadPlugin();
-        const leaf = makeLeaf(app);
-        app.workspace.getLeavesOfType.mockReturnValue([leaf]);
+        app.workspace.getLeaf.mockReturnValue(makeLeaf(app));
 
-        await plugin.activateView();
+        await plugin.activateView("tab");
 
-        expect(app.workspace.getLeaf).not.toHaveBeenCalled();
-        expect(leaf.setViewState).not.toHaveBeenCalled();
-        expect(app.workspace.revealLeaf).toHaveBeenCalledWith(leaf);
+        expect(app.workspace.getLeaf).toHaveBeenCalledWith("tab");
     });
 
-    it("reveals nothing when the leaf list is populated but holds no leaf", async () => {
+    it("opens in the current tab even when another tab holds a stream", async () => {
         const { plugin, app } = await loadPlugin();
-        app.workspace.getLeavesOfType.mockReturnValue([undefined]);
+        const other = makeLeaf(app);
+        const current = makeLeaf(app);
+        app.workspace.getLeavesOfType.mockReturnValue([other]);
+        app.workspace.getLeaf.mockReturnValue(current);
 
         await plugin.activateView();
 
-        expect(app.workspace.revealLeaf).not.toHaveBeenCalled();
+        expect(current.setViewState).toHaveBeenCalled();
+        expect(other.setViewState).not.toHaveBeenCalled();
+        expect(app.workspace.revealLeaf).toHaveBeenCalledWith(current);
     });
 });
 

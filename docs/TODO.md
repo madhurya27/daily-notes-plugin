@@ -8,8 +8,6 @@ Ordered by priority, from the 2026-09 comparison against
   `5da0863`); keep that branch when deleting the other experiments.
 - [ ] PDF, iframe, canvas, Dataview: check for scroll boxes; give what cannot fit a preview that opens on tap.
 - [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on `post-processor-change`.
-- [ ] Opening the stream opens a new tab instead of using the current one.
-- [ ] Ribbon icon `calendar-days` is easily confused with core Daily notes' calendar; pick a distinct one.
 - [ ] Rotation: unloaded notes keep heights measured at the old width, and nothing restores the reader's place.
   Save `place()` when the scroll stops and restore it on a width change; mark unloaded heights unmeasured so a
   held note (`fix/lock-rerender-height`) is not clipped at a stale one. Reproduce in e2e by resizing first.
@@ -23,6 +21,9 @@ Ordered by priority, from the 2026-09 comparison against
   - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`
   - [x] GitHub repo description (mirrors the manifest's) and topics (`obsidian`, `obsidian-plugin`, `obsidian-md`, `daily-notes`, `typescript`)
 - [ ] Position the README against Daily Notes Editor — a live-updating reading feed, not an inline editor.
+- [ ] Show the features in the README: two stills show a stream, not what it does. Capture more and better
+  screenshots — search, jump to date, collapsing, the stream updating live — and a screen recording of it in use.
+  Extend `e2e/screenshots.spec.ts` so they regenerate from the real app.
 
 ## Features
 New capability, as opposed to the fixes above. Embedded editors are ruled out by `docs/decisions.md`.
