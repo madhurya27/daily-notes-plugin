@@ -18,6 +18,8 @@ export class ScrollAnchor {
     private scrollRoot: HTMLElement | null = null;
     /** Each block's height at its last report. */
     private readonly heights = new WeakMap<Element, number>();
+    /** The blocks watched, so a place set can re-read them all. */
+    private readonly watched = new Set<Element>();
     /** What the scroll owes the content, drawn as a shift until the scroll stops. */
     private owed = 0;
     /** The blocks' parent, shifted while `owed` is. */
@@ -39,11 +41,14 @@ export class ScrollAnchor {
     }
 
     observe(block: HTMLElement): void {
-        this.observer?.observe(block);
+        if (!this.observer) return;
+        this.observer.observe(block);
+        this.watched.add(block);
     }
 
     unobserve(block: HTMLElement): void {
         this.observer?.unobserve(block);
+        this.watched.delete(block);
     }
 
     /** A scroll puts off the hand-over until it stops. */
@@ -60,10 +65,21 @@ export class ScrollAnchor {
         this.headedForTop = true;
     }
 
+    /**
+     * The scroll was just set for the layout as it stands, as Back sets it:
+     * what changed before is in it, though a report of it lands a frame later.
+     */
+    placed(): void {
+        for (const block of this.watched) this.heights.set(block, block.getBoundingClientRect().height);
+        this.settleOnceStill.cancel();
+        this.unshift();
+    }
+
     detach(): void {
         this.settleOnceStill.cancel();
         this.observer?.disconnect();
         this.observer = null;
+        this.watched.clear();
         this.scrollRoot?.removeClass("is-scroll-anchored");
         this.scrollRoot = null;
         this.unshift();

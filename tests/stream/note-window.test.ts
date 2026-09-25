@@ -158,6 +158,47 @@ describe("NoteWindowManager.add", () => {
         expect(placeholderHeight(manager.add(FILE, 812))).toBe("812px");
     });
 
+    it("reserves a remembered height for a block still unloaded", () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+
+        manager.reserve(block, 812);
+
+        expect(placeholderHeight(block)).toBe("812px");
+        expect(manager.heightOf(block)).toBe(812);
+    });
+
+    it("leaves a rendered block at the height its content gives it", async () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+
+        manager.reserve(block, 812);
+
+        expect(placeholderHeight(block)).toBe("");
+    });
+
+    it("leaves a block whose render is in flight to the height its content gives it", () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+        fire(observers.render, block, true);
+
+        manager.reserve(block, 812);
+
+        expect(placeholderHeight(block)).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
+    });
+
+    it("reserves nothing for a block it does not own", () => {
+        const { manager } = makeManager();
+        const stranger = document.createElement("div");
+
+        manager.reserve(stranger, 812);
+
+        expect(placeholderHeight(stranger)).toBe("");
+    });
+
     it("observes the block with both observers", () => {
         const { manager } = makeManager();
         const block = manager.add(FILE);
@@ -874,6 +915,16 @@ describe("NoteWindowManager scroll anchoring", () => {
 
         expect(onScroll).toHaveBeenCalledOnce();
         onScroll.mockRestore();
+    });
+
+    it("tells the anchor the scroll was set to a place", () => {
+        const placed = vi.spyOn(ScrollAnchor.prototype, "placed");
+        const { manager } = makeManager();
+
+        manager.placed();
+
+        expect(placed).toHaveBeenCalledOnce();
+        placed.mockRestore();
     });
 
     it("watches the existing blocks again when re-attached", () => {

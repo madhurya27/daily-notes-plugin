@@ -18,6 +18,7 @@ import type { SearchHighlighter } from "./search-highlights";
 import { stackWideTables } from "./wide-tables";
 import { extractBases } from "./bases/bases-as-cards";
 import { NoteBases } from "./bases/note-bases";
+import type { BaseMeasurements } from "./bases/base-measurements";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
 import { wrapTextBesideBlocks } from "./text-beside-blocks";
 import type { DailyNotesStreamSettings } from "../settings";
@@ -94,7 +95,7 @@ function displayValue(value: unknown): string {
 }
 
 export class NoteRenderer {
-    /** Each view's own: what it measured is per pane. */
+    /** Each view's own; what its Bases measured is shared, keyed by width. */
     private readonly bases: NoteBases;
 
     constructor(
@@ -102,9 +103,10 @@ export class NoteRenderer {
         private readonly component: Component,
         private readonly collapsible: CollapsibleManager,
         private readonly getSettings: () => DailyNotesStreamSettings,
-        private readonly highlighter: SearchHighlighter
+        private readonly highlighter: SearchHighlighter,
+        baseMeasurements: BaseMeasurements
     ) {
-        this.bases = new NoteBases(app);
+        this.bases = new NoteBases(app, baseMeasurements);
     }
 
     /**

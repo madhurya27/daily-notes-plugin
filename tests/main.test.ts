@@ -3,6 +3,7 @@ import DailyNotesStreamPlugin from "../src/main";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/ui/stream-view";
 import { DEFAULT_SETTINGS } from "../src/settings";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
+import { BaseMeasurements } from "../src/render/bases/base-measurements";
 import { TFile, WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
 import { asApp, makeService } from "./stream-view-fixture";
 import { __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
@@ -120,6 +121,11 @@ describe("DailyNotesStreamPlugin — onload", () => {
     it("builds a collapse store bound to the app", async () => {
         const { plugin } = await loadPlugin();
         expect(plugin.collapseStore).toBeInstanceOf(CollapsibleStateStore);
+    });
+
+    it("keeps what Bases measured for every view", async () => {
+        const { plugin } = await loadPlugin();
+        expect(plugin.baseMeasurements).toBeInstanceOf(BaseMeasurements);
     });
 });
 

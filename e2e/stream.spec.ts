@@ -1,5 +1,13 @@
 import type { Locator } from "@playwright/test";
-import { test, expect, openStream, closeSearchPanes, SEEDED_DAYS } from "./obsidian";
+import {
+    test,
+    expect,
+    openStream,
+    closeSearchPanes,
+    restoreScrollAnchoring,
+    SEEDED_DAYS,
+    withoutScrollAnchoring,
+} from "./obsidian";
 
 test.describe("daily notes stream in real Obsidian", () => {
     test("renders daily notes as real rendered markdown", async ({ obsidian }) => {
@@ -384,20 +392,8 @@ test.describe("daily notes stream in real Obsidian", () => {
         // iOS WebKit has no scroll anchoring: the text under the reader jumped
         // by whatever a note above grew. Chromium stands in for it here.
         test.describe("where the platform has no scroll anchoring", () => {
-            test.beforeEach(async ({ obsidian }) => {
-                await obsidian.page.evaluate(() => {
-                    const supports = CSS.supports.bind(CSS);
-                    (window as unknown as { realSupports: typeof supports }).realSupports = supports;
-                    CSS.supports = ((...args: [string, string]) =>
-                        args[0] === "overflow-anchor" ? false : supports(...args)) as typeof CSS.supports;
-                });
-            });
-
-            test.afterEach(async ({ obsidian }) => {
-                await obsidian.page.evaluate(() => {
-                    CSS.supports = (window as unknown as { realSupports: typeof CSS.supports }).realSupports;
-                });
-            });
+            test.beforeEach(({ obsidian }) => withoutScrollAnchoring(obsidian.page));
+            test.afterEach(({ obsidian }) => restoreScrollAnchoring(obsidian.page));
 
             async function openUnanchored(page: import("@playwright/test").Page) {
                 const container = await openStream(page);

@@ -195,6 +195,9 @@ Checks:
   the glide is not cut short.
 - Jump to an old date, then tap "Daily notes stream" in the header: it glides to the newest note and stays
   at the very top. Tapping the search or jump action does not scroll. **[e2e]**
+- Tap a note's title, then Back: the stream comes back at the same place and does not move after. Try it with
+  a Base at the top of the screen, and near the end of the 10th or 20th note (a batch's last). **[e2e]** for
+  Chromium's timing; iOS hands the place over a frame later, so only the phone shows its failures.
 - Search a word: every match on screen is highlighted, the current one in the selection colour. A long-press
   selects text in a note.
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading

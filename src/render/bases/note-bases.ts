@@ -1,4 +1,5 @@
-import { App, Component, MarkdownRenderer, TAbstractFile, TFile, setIcon } from "obsidian";
+import { App, Component, type Debouncer, MarkdownRenderer, TAbstractFile, TFile, debounce, setIcon } from "obsidian";
+import type { BaseMeasurements } from "./base-measurements";
 import { asCards, BASE_SLOT_CLASS, type BaseSource } from "./bases-as-cards";
 import { fitBaseToWidth, tableWidth } from "./bases-fit";
 import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
@@ -8,6 +9,9 @@ import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
  * refills it: it may have lost rows since.
  */
 const HOLD_MS = 2000;
+
+/** How long a Base's height is unchanged before it is kept: Bases gives no sign it is done. */
+export const BASE_SETTLE_MS = 300;
 
 /**
  * A note's Bases, each drawn into its own placeholder as a table or, when the
@@ -24,16 +28,13 @@ const HOLD_MS = 2000;
 export class NoteBases {
     /** Undefined until the first Base; null when nothing could be measured. */
     private headers: HeaderMetrics | null | undefined;
-    /** Bases measured too wide, keyed by note, width and source. */
-    private readonly tooWide = new Set<string>();
-    /** The height each Base last laid out at, keyed as `tooWide` is. */
-    private readonly heights = new Map<string, number>();
     private readonly slots = new WeakMap<Element, BaseSlot>();
     /** Embedded Bases in rendered notes, by the path of the file they copy. */
     private readonly copies = new Map<string, Set<BaseSlot>>();
 
     constructor(
         private readonly app: App,
+        private readonly measured: BaseMeasurements,
         /** jsdom lays nothing out, so measuring is the one seam tests replace. */
         private readonly measureHeaders: (host: HTMLElement) => HeaderMetrics | null = measureHeaderMetrics
     ) {}
@@ -45,6 +46,8 @@ export class NoteBases {
         if (this.headers === undefined) this.headers = this.measureHeaders(contentEl);
 
         const slots: BaseSlot[] = [];
+        /** Each slot's wait for its height to hold still, restarted by every resize. */
+        const keeps: Debouncer<[], void>[] = [];
         let width = contentEl.clientWidth;
         for (const [i, placeholder] of placeholders.entries()) {
             const source = sources[i]!;
@@ -54,20 +57,36 @@ export class NoteBases {
                 : source.kind === "block"
                   ? source.definition
                   : null;
-            const slot = new BaseSlot(this.app, contentEl, placeholder, file, noteComponent, source, definition);
+            const keep: Debouncer<[], void> = debounce(() => this.remember(slot), BASE_SETTLE_MS, true);
+            const slot: BaseSlot = new BaseSlot(
+                this.app,
+                contentEl,
+                placeholder,
+                file,
+                noteComponent,
+                source,
+                definition,
+                keep
+            );
+            keeps.push(keep);
             this.slots.set(placeholder, slot);
             if (base) this.track(base.path, slot, noteComponent);
             slots.push(slot);
             await this.draw(slot, this.wantsCards(slot, width) ? "cards" : "table");
         }
-        noteComponent.register(() => slots.forEach((slot) => this.remember(slot)));
+        // Left before it held still, a Base keeps the height it had before.
+        noteComponent.register(() => keeps.forEach((keep) => keep.cancel()));
 
+        // A Base resizes as Bases fills it, or its rows change: its height is
+        // kept once it holds still, never mid-fill or at unload.
         const observer = new ResizeObserver(() => {
+            for (const keep of keeps) keep();
             if (contentEl.clientWidth === width) return;
             width = contentEl.clientWidth;
             for (const slot of slots) void this.recheck(slot, width);
         });
         observer.observe(contentEl);
+        for (const slot of slots) observer.observe(slot.placeholder);
         noteComponent.register(() => observer.disconnect());
     }
 
@@ -95,24 +114,24 @@ export class NoteBases {
     }
 
     private showCards(slot: BaseSlot, width: number): Promise<void> {
-        this.tooWide.add(slot.key(width));
+        this.measured.tooWide.add(slot.key(width));
         return this.draw(slot, "cards");
     }
 
+    /** Redraws `slot`, held at the height it shows now, or else the one it last held still at. */
     private async draw(slot: BaseSlot, mode: "table" | "cards"): Promise<void> {
-        this.remember(slot);
-        await slot.draw(mode, this.heights.get(slot.key(slot.contentWidth)));
+        await slot.draw(mode, slot.shownHeight ?? this.measured.heights.get(slot.key(slot.contentWidth)));
     }
 
     /** Keeps the height `slot` is laid out at now, unless held to an older one. */
     private remember(slot: BaseSlot): void {
         const height = slot.placeholder.getBoundingClientRect().height;
-        if (height > 0 && !slot.held) this.heights.set(slot.key(slot.contentWidth), height);
+        if (height > 0 && !slot.held) this.measured.heights.set(slot.key(slot.contentWidth), height);
     }
 
     private wantsCards(slot: BaseSlot, width: number): boolean {
         if (!slot.cards) return false;
-        if (this.tooWide.has(slot.key(width))) return true;
+        if (this.measured.tooWide.has(slot.key(width))) return true;
         return this.headers ? narrowestTableWidth(slot.definition!, slot.view, this.headers) > width : false;
     }
 
@@ -162,7 +181,9 @@ class BaseSlot {
         private readonly file: TFile,
         private readonly noteComponent: Component,
         private readonly source: BaseSource,
-        public definition: string | null
+        public definition: string | null,
+        /** A hold let go, and resizes may not follow: the wait to keep its height starts. */
+        private readonly settled: () => void
     ) {
         this.view = source.kind === "embed" ? source.view : undefined;
         this.redefine(definition);
@@ -189,6 +210,14 @@ class BaseSlot {
         return this.placeholder.style.getPropertyValue("--daily-note-base-held-height") !== "";
     }
 
+    /** The height it is held at, else laid out at; undefined when it is not laid out. */
+    get shownHeight(): number | undefined {
+        const held = parseFloat(this.placeholder.style.getPropertyValue("--daily-note-base-held-height"));
+        if (held > 0) return held;
+        const height = this.placeholder.getBoundingClientRect().height;
+        return height > 0 ? height : undefined;
+    }
+
     /**
      * Replaces what the Base drew with `mode`, freeing what the last draw
      * registered, and holds `height` until the new draw fills it.
@@ -211,14 +240,19 @@ class BaseSlot {
         const placeholder = this.placeholder;
         placeholder.style.setProperty("--daily-note-base-held-height", `${height}px`);
         const observer = new ResizeObserver((entries) => {
-            if (entries.some((entry) => entry.target.getBoundingClientRect().height >= height - 1)) release();
+            if (entries.some((entry) => entry.target.getBoundingClientRect().height >= height - 1)) settle();
         });
-        const timer = window.setTimeout(() => release(), HOLD_MS);
+        const timer = window.setTimeout(() => settle(), HOLD_MS);
         const release = () => {
             placeholder.style.removeProperty("--daily-note-base-held-height");
             observer.disconnect();
             window.clearTimeout(timer);
         };
+        const settle = () => {
+            release();
+            this.settled();
+        };
+        // Unloaded mid-hold, it is not done filling: nothing to keep.
         component.register(release);
         return observer;
     }

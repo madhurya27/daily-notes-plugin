@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab 
 import { CollapsibleStateStore } from "./render/collapse-store";
 import { DailyNoteService } from "./notes/daily-note-service";
 import { ParsedDates } from "./notes/parsed-dates";
+import { BaseMeasurements } from "./render/bases/base-measurements";
 
 /** A ribbon click or command has no caller to reject to, so a failure is logged. */
 function logActivationFailure(activation: Promise<unknown>): void {
@@ -13,11 +14,13 @@ function logActivationFailure(activation: Promise<unknown>): void {
 export default class DailyNotesStreamPlugin extends Plugin {
     settings!: DailyNotesStreamSettings;
     collapseStore!: CollapsibleStateStore;
+    baseMeasurements!: BaseMeasurements;
 
     async onload() {
         await this.loadSettings();
 
         this.collapseStore = new CollapsibleStateStore(this.app);
+        this.baseMeasurements = new BaseMeasurements();
 
         // Each view owns its service (CLAUDE.md, Invariants); they share only the parsed dates.
         const parsedDates = new ParsedDates();

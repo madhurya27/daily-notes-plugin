@@ -1,4 +1,12 @@
-import { test, expect, openStream, seededDate, SEEDED_DAYS } from "./obsidian";
+import {
+    test,
+    expect,
+    openStream,
+    restoreScrollAnchoring,
+    seededDate,
+    SEEDED_DAYS,
+    withoutScrollAnchoring,
+} from "./obsidian";
 import type { Locator, Page } from "@playwright/test";
 
 /** The stream's pane, the element that scrolls. */
@@ -70,12 +78,8 @@ test.describe("tapping the header title", () => {
                     process.env.E2E_SHOW_WINDOW !== "1",
                     "the hidden phone window draws a frame a second, too slow to glide"
                 );
+                await withoutScrollAnchoring(obsidian.page);
                 originals = await obsidian.page.evaluate(async (paths: string[]) => {
-                    const supports = CSS.supports.bind(CSS);
-                    (window as unknown as { realSupports: typeof supports }).realSupports = supports;
-                    CSS.supports = ((...args: [string, string]) =>
-                        args[0] === "overflow-anchor" ? false : supports(...args)) as typeof CSS.supports;
-
                     const body = (path: string) =>
                         Array.from({ length: 300 }, (_, i) => `Line ${i} of ${path}.`).join("\n\n");
                     const read: string[] = [];
@@ -91,9 +95,9 @@ test.describe("tapping the header title", () => {
             test.afterEach(async ({ obsidian }) => {
                 // Nothing to restore when the test was skipped.
                 if (originals.length === 0) return;
+                await restoreScrollAnchoring(obsidian.page);
                 await obsidian.page.evaluate(
                     async ([paths, bodies]: [string[], string[]]) => {
-                        CSS.supports = (window as unknown as { realSupports: typeof CSS.supports }).realSupports;
                         for (const [i, path] of paths.entries()) {
                             await window.app.vault.modify(window.app.vault.getFileByPath(path)!, bodies[i]!);
                         }

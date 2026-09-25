@@ -44,19 +44,44 @@ describe("DailyNotesStreamView — view API", () => {
         expect(restorePlace).toHaveBeenCalledWith(place);
     });
 
-    it.each([undefined, {}, { place: "top" }, { place: { path: 3, offset: 0 } }, { place: { path: "a.md" } }])(
-        "ignores a state it did not write: %o",
-        (state) => {
-            const restorePlace = vi.spyOn(view["stream"], "restorePlace");
+    it("returns to a place that kept its layout", () => {
+        const restorePlace = vi.spyOn(view["stream"], "restorePlace").mockResolvedValue();
+        const place = { path: "a.md", offset: 0, layout: { width: 700, heights: { "a.md": 540 } } };
 
-            view.setEphemeralState(state);
+        view.setEphemeralState({ place });
 
-            expect(restorePlace).not.toHaveBeenCalled();
-        }
-    );
+        expect(restorePlace).toHaveBeenCalledWith(place);
+    });
+
+    it.each([
+        undefined,
+        {},
+        { place: "top" },
+        { place: { path: 3, offset: 0 } },
+        { place: { path: "a.md" } },
+        { place: { path: "a.md", offset: 0, layout: null } },
+        { place: { path: "a.md", offset: 0, layout: { heights: {} } } },
+        { place: { path: "a.md", offset: 0, layout: { width: 700 } } },
+        { place: { path: "a.md", offset: 0, layout: { width: 700, heights: null } } },
+        { place: { path: "a.md", offset: 0, layout: { width: 700, heights: { "a.md": "540" } } } },
+    ])("ignores a state it did not write: %o", (state) => {
+        const restorePlace = vi.spyOn(view["stream"], "restorePlace");
+
+        view.setEphemeralState(state);
+
+        expect(restorePlace).not.toHaveBeenCalled();
+    });
 
     it("getIcon returns 'gallery-vertical-end'", () => {
         expect(view.getIcon()).toBe("gallery-vertical-end");
+    });
+
+    // Back rebuilds the view: what its Bases measured must outlive it.
+    it("draws Bases from the measurements the plugin keeps for every view", () => {
+        const plugin = makePlugin();
+        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(asApp(makeApp())), plugin, makeService());
+
+        expect(freshView["renderer"]["bases"]["measured"]).toBe(plugin.baseMeasurements);
     });
 
     it("gives the renderer a live view of the plugin settings", async () => {

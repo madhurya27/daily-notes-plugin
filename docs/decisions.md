@@ -3,6 +3,25 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — Back lays the stream out at the heights it left
+
+**Decision:** the place kept in Obsidian's history carries the heights of the
+notes down to it, by path, and the pane width. At the same width, Back
+reserves those heights and scrolls once, before the first frame. The iOS
+scroll anchor is then told the place is set, so growth the scroll already
+holds, reported a frame late, is not added again. It loads past the place
+until the pane can scroll there: a place near the end of what was loaded
+otherwise stops short.
+
+**Why:** Back rebuilds the view from scratch. At estimated heights, each
+render pushed the place and each correction was drawn: the newest note
+flashed on desktop, older ones on a phone.
+
+**Rejected:**
+- Hiding the stream until it settles — up to a second blank on a phone.
+- Opening titles in a new tab so the stream survives — Back stops returning
+  to it.
+
 ## 2026-09-25 — Scroll to top is offered only in the stream
 
 **Decision:** the command is in the palette only while the most recent leaf
@@ -121,7 +140,11 @@ correction.
 
 **Decision:** `NoteBases` keeps the height each Base last laid out at, per note,
 width and definition, and a redraw holds it as `min-height` until the drawn view
-reaches it, or for 2s.
+reaches it, or for 2s. A height is kept once the Base has not resized for
+300ms while unheld, never at unload or before a redraw: a closing view is not
+laid out, and a Base left mid-fill keeps the height it had. The
+heights, and which Bases were too wide, live on the plugin (`BaseMeasurements`):
+Back rebuilds the view, which forgot them.
 
 **Why:** Bases fills a view after it is drawn. A note coming back into view, or
 a table redrawn as cards, dropped by the Bases' height for a few frames and
