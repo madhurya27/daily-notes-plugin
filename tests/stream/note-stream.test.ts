@@ -32,6 +32,7 @@ vi.mock("../../src/stream/note-window", () => ({
         refresh = vi.fn().mockResolvedValue(undefined);
         heightOf = vi.fn().mockReturnValue(undefined);
         reserve = vi.fn();
+        placed = vi.fn();
         layoutChanges = 0;
         add = vi.fn((file: { path: string }) => placeholder(file.path));
         constructor(
@@ -860,6 +861,31 @@ describe("the stream's place", () => {
         // Scrolled straight to the place: no pass through the note's top.
         expect(target.scrollIntoView).not.toHaveBeenCalled();
         expect(pane.scrollTop).toBe(12150);
+    });
+
+    it("tells the window the scroll was set to the place, once it is", async () => {
+        Object.defineProperty(pane, "clientWidth", { value: 700, configurable: true });
+        pane.scrollTop = 0;
+        noteWindow.placed.mockImplementation(() => expect(pane.scrollTop).toBe(900));
+        const target = placeholder(notes[1]!.path);
+        target.getBoundingClientRect = () => ({ top: 900, bottom: 1400 }) as DOMRect;
+        noteWindow.add.mockImplementation((f: TFile) => (f === notes[1] ? target : placeholder(f.path)));
+
+        await stream.restorePlace({ path: notes[1]!.path, offset: 0, layout: { width: 700, heights: {} } });
+
+        expect(noteWindow.placed).toHaveBeenCalledOnce();
+    });
+
+    it("tells the window the scroll was set to the place the old way too", async () => {
+        const target = placeholder(notes[24]!.path);
+        target.getBoundingClientRect = () => ({ top: 10, bottom: 600 }) as DOMRect;
+        noteWindow.add.mockImplementation((f: TFile) => (f === notes[24] ? target : placeholder(f.path)));
+        pane.scrollTop = 1000;
+        noteWindow.placed.mockImplementation(() => expect(pane.scrollTop).toBe(1160));
+
+        await stream.restorePlace({ path: notes[24]!.path, offset: -150 });
+
+        expect(noteWindow.placed).toHaveBeenCalledOnce();
     });
 
     it("passes over a height kept for a note deleted since", async () => {

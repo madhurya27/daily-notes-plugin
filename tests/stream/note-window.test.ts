@@ -917,6 +917,16 @@ describe("NoteWindowManager scroll anchoring", () => {
         onScroll.mockRestore();
     });
 
+    it("tells the anchor the scroll was set to a place", () => {
+        const placed = vi.spyOn(ScrollAnchor.prototype, "placed");
+        const { manager } = makeManager();
+
+        manager.placed();
+
+        expect(placed).toHaveBeenCalledOnce();
+        placed.mockRestore();
+    });
+
     it("watches the existing blocks again when re-attached", () => {
         const { manager, scrollRoot } = makeManager();
         const block = manager.add(FILE);

@@ -169,6 +169,11 @@ export class NoteWindowManager {
         return window.component ? this.measure(block) : window.height;
     }
 
+    /** The scroll was just set to a place, for the stream as it now stands. */
+    placed(): void {
+        this.anchor.placed();
+    }
+
     /** Reserves `height` for `block` while it holds no content. */
     reserve(block: HTMLElement, height: number): void {
         const window = this.windows.get(block);

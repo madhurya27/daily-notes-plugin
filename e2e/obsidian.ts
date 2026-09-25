@@ -557,6 +557,26 @@ export async function openStream(page: Page) {
 }
 
 /**
+ * Chromium stands in for iOS WebKit, which has no scroll anchoring: the stream
+ * holds the reader's place itself from the next view opened. Undone by
+ * `restoreScrollAnchoring`, since tests share the instance.
+ */
+export async function withoutScrollAnchoring(page: Page) {
+    await page.evaluate(() => {
+        const supports = CSS.supports.bind(CSS);
+        (window as unknown as { realSupports: typeof supports }).realSupports = supports;
+        CSS.supports = ((...args: [string, string]) =>
+            args[0] === "overflow-anchor" ? false : supports(...args)) as typeof CSS.supports;
+    });
+}
+
+export async function restoreScrollAnchoring(page: Page) {
+    await page.evaluate(() => {
+        CSS.supports = (window as unknown as { realSupports: typeof CSS.supports }).realSupports;
+    });
+}
+
+/**
  * Detaches every search pane. Tests share one Obsidian instance, so a search
  * opened by an earlier test would still be on screen for this one to match.
  */

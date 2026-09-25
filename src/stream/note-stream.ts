@@ -284,6 +284,7 @@ export class NoteStream {
         if (block) {
             const top = block.getBoundingClientRect().top - this.scrollRoot.getBoundingClientRect().top;
             this.scrollRoot.scrollTop += top - place.offset;
+            this.window.placed();
         }
     }
 
@@ -303,6 +304,7 @@ export class NoteStream {
         }
         const top = block.getBoundingClientRect().top - this.scrollRoot.getBoundingClientRect().top;
         this.scrollRoot.scrollTop += top - place.offset;
+        this.window.placed();
     }
 
     /** The window manager's renders, drained through the queue they run on. */

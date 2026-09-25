@@ -126,6 +126,57 @@ describe("ScrollAnchor", () => {
         expect(readerTop(blocks)).toBe(-100);
     });
 
+    // Back lays the stream out and scrolls to the place in one task; the
+    // growth that scroll accounts for is reported a frame later.
+    it("owes nothing for a change the scroll was set to a place after", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 0);
+
+        resize(blocks[0]!, 1300);
+        pane.scrollTop = 1800;
+        anchor.placed();
+        observer().resized(blocks[0]!);
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(shift(content)).toBe(0);
+        expect(pane.scrollTop).toBe(1800);
+    });
+
+    it("drops what it owed when the scroll is set to a place", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+
+        anchor.placed();
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(shift(content)).toBe(0);
+        expect(pane.scrollTop).toBe(900);
+    });
+
+    it("holds the place again for a change after it was set", () => {
+        const { content, blocks, resize } = watch([400, 400, 400], 900);
+        anchor.placed();
+
+        resize(blocks[0]!, 500);
+        observer().resized(blocks[0]!);
+
+        expect(shift(content)).toBe(-100);
+    });
+
+    it("forgets a block no longer watched when the scroll is set to a place", () => {
+        const { blocks } = watch([400, 400, 400], 900);
+        anchor.unobserve(blocks[0]!);
+        const read = vi.spyOn(blocks[0]!, "getBoundingClientRect");
+
+        anchor.placed();
+
+        expect(read).not.toHaveBeenCalled();
+    });
+
+    it("has nothing to set a place for before it is attached", () => {
+        expect(() => anchor.placed()).not.toThrow();
+    });
+
     // A chevron tapped in the note at the top of the pane grows it below the
     // tap; moving the scroll would carry the note away from the reader.
     it("leaves the place alone when a block reaching into the pane changes", () => {

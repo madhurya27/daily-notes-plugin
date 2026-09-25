@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, openStream, seededDate } from "./obsidian";
+import { test, expect, openStream, restoreScrollAnchoring, seededDate, withoutScrollAnchoring } from "./obsidian";
 
 /** The first note reaching into the pane, and how far its top sits from the pane's. */
 function place(page: Page) {
@@ -36,6 +36,103 @@ async function scrollPast(page: Page, daysBack: number) {
     return { container, target, before };
 }
 
+/** Leaves the stream for a note and comes Back; every place the stream showed on the way, and the one it left. */
+async function goBack(page: Page) {
+    const { target } = await scrollPast(page, 3);
+    const title = await target.locator(".daily-note-title").elementHandle();
+
+    // In one task: on a phone the notes around it may still be rendering,
+    // so the place is taken the instant it is left.
+    const { left, frames } = await page.evaluate(async (title) => {
+        const placeNow = () => {
+            const pane = document.querySelector(".daily-notes-stream-container")?.parentElement;
+            if (!pane) return undefined;
+            const paneTop = pane.getBoundingClientRect().top;
+            const first = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")].find(
+                (block) => block.getBoundingClientRect().bottom > paneTop
+            );
+            return JSON.stringify(
+                first && {
+                    path: first.dataset.sourcePath,
+                    offset: Math.round(first.getBoundingClientRect().top - paneTop),
+                }
+            );
+        };
+        const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+
+        // Back does nothing until the stream is in the leaf's history.
+        const history = () => window.app.workspace.getLeaf(false).history.backHistory.length;
+        const behind = history();
+        const deadline = performance.now() + 15_000;
+
+        const left = placeNow();
+        // Playwright's click() would scroll the title into view first, and move the place.
+        title!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        while (history() === behind) {
+            if (performance.now() > deadline) return { left: "the note never opened", frames: [] };
+            await nextFrame();
+        }
+
+        // Every frame from Back on, as the stream shows it, until it holds still.
+        const seen: string[] = [];
+        window.app.commands.executeCommandById("app:go-back");
+        for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
+            await nextFrame();
+            const frame = placeNow();
+            if (frame === undefined) continue;
+            quiet = frame === seen.at(-1) ? quiet + 1 : 0;
+            seen.push(frame);
+        }
+        return { left, frames: [...new Set(seen)] };
+    }, title);
+
+    return { left, frames };
+}
+
+/**
+ * Reopens the stream and hands it the place it left once it has drawn a frame,
+ * as iOS does; every place it showed from then on, and the one it left.
+ */
+async function returnAfterAFrame(page: Page) {
+    const { target } = await scrollPast(page, 3);
+    const { left, eState } = await target.evaluate((block) => {
+        const pane = block.closest(".daily-notes-stream-container")!.parentElement!;
+        const top = block.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+        const view = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view;
+        return {
+            left: JSON.stringify({ path: block.dataset.sourcePath, offset: Math.round(top) }),
+            eState: view.getEphemeralState(),
+        };
+    });
+    await openStream(page);
+
+    const frames = await page.evaluate(async (eState) => {
+        const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+        await nextFrame();
+        await nextFrame();
+        window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view.setEphemeralState(eState);
+
+        const seen: string[] = [];
+        const deadline = performance.now() + 15_000;
+        for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
+            await nextFrame();
+            const pane = document.querySelector(".daily-notes-stream-container")!.parentElement!;
+            const paneTop = pane.getBoundingClientRect().top;
+            const first = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")].find(
+                (block) => block.getBoundingClientRect().bottom > paneTop
+            )!;
+            const frame = JSON.stringify({
+                path: first.dataset.sourcePath,
+                offset: Math.round(first.getBoundingClientRect().top - paneTop),
+            });
+            quiet = frame === seen.at(-1) ? quiet + 1 : 0;
+            seen.push(frame);
+        }
+        return [...new Set(seen)];
+    }, eState);
+    return { left, frames };
+}
+
 test.describe("history", () => {
     test.afterEach(async ({ obsidian }) => {
         await obsidian.page.evaluate(() => window.app.workspace.detachLeavesOfType("markdown"));
@@ -56,55 +153,28 @@ test.describe("history", () => {
     });
 
     test("Back shows the stream only at the place it left", async ({ obsidian }) => {
-        const { page } = obsidian;
-        const { target } = await scrollPast(page, 3);
-        const title = await target.locator(".daily-note-title").elementHandle();
-
-        // In one task: on a phone the notes around it may still be rendering,
-        // so the place is taken the instant it is left.
-        const { left, frames } = await page.evaluate(async (title) => {
-            const placeNow = () => {
-                const pane = document.querySelector(".daily-notes-stream-container")?.parentElement;
-                if (!pane) return undefined;
-                const paneTop = pane.getBoundingClientRect().top;
-                const first = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")].find(
-                    (block) => block.getBoundingClientRect().bottom > paneTop
-                );
-                return JSON.stringify(
-                    first && {
-                        path: first.dataset.sourcePath,
-                        offset: Math.round(first.getBoundingClientRect().top - paneTop),
-                    }
-                );
-            };
-            const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
-
-            // Back does nothing until the stream is in the leaf's history.
-            const history = () => window.app.workspace.getLeaf(false).history.backHistory.length;
-            const behind = history();
-            const deadline = performance.now() + 15_000;
-
-            const left = placeNow();
-            // Playwright's click() would scroll the title into view first, and move the place.
-            title!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-            while (history() === behind) {
-                if (performance.now() > deadline) return { left: "the note never opened", frames: [] };
-                await nextFrame();
-            }
-
-            // Every frame from Back on, as the stream shows it, until it holds still.
-            const seen: string[] = [];
-            window.app.commands.executeCommandById("app:go-back");
-            for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
-                await nextFrame();
-                const frame = placeNow();
-                if (frame === undefined) continue;
-                quiet = frame === seen.at(-1) ? quiet + 1 : 0;
-                seen.push(frame);
-            }
-            return { left, frames: [...new Set(seen)] };
-        }, title);
-
+        const { left, frames } = await goBack(obsidian.page);
         expect(frames).toEqual([left]);
+    });
+
+    test("returns to the place it left when handed it after drawing a frame", async ({ obsidian }) => {
+        const { left, frames } = await returnAfterAFrame(obsidian.page);
+        expect(frames).toEqual([left]);
+    });
+
+    // iOS WebKit has no scroll anchoring: the stream holds the reader's place itself.
+    test.describe("where the platform has no scroll anchoring", () => {
+        test.beforeEach(({ obsidian }) => withoutScrollAnchoring(obsidian.page));
+        test.afterEach(({ obsidian }) => restoreScrollAnchoring(obsidian.page));
+
+        test("Back shows the stream only at the place it left", async ({ obsidian }) => {
+            const { left, frames } = await goBack(obsidian.page);
+            expect(frames).toEqual([left]);
+        });
+
+        test("returns to the place it left when handed it after drawing a frame", async ({ obsidian }) => {
+            const { left, frames } = await returnAfterAFrame(obsidian.page);
+            expect(frames).toEqual([left]);
+        });
     });
 });

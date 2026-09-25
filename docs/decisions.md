@@ -7,7 +7,9 @@ rewriting across layers belongs in [`adr/`](adr/) instead.
 
 **Decision:** the place kept in Obsidian's history carries the heights of the
 notes down to it, by path, and the pane width. At the same width, Back
-reserves those heights and scrolls once, before the first frame.
+reserves those heights and scrolls once, before the first frame. The iOS
+scroll anchor is then told the place is set, so growth the scroll already
+holds, reported a frame late, is not added again.
 
 **Why:** Back rebuilds the view from scratch. At estimated heights, each
 render pushed the place and each correction was drawn: the newest note
