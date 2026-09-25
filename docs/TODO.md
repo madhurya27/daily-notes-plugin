@@ -21,9 +21,8 @@ Ordered by priority, from the 2026-09 comparison against
   - [x] README screenshots, desktop and phone — captured from the real app by `e2e/screenshots.spec.ts`
   - [x] GitHub repo description (mirrors the manifest's) and topics (`obsidian`, `obsidian-plugin`, `obsidian-md`, `daily-notes`, `typescript`)
 - [ ] Position the README against Daily Notes Editor — a live-updating reading feed, not an inline editor.
-- [ ] Show the features in the README: two stills show a stream, not what it does. Capture more and better
-  screenshots — search, jump to date, collapsing, the stream updating live — and a screen recording of it in use.
-  Extend `e2e/screenshots.spec.ts` so they regenerate from the real app.
+- [ ] A screen recording of the stream in use, the stream updating live included. The stills are done:
+  `e2e/screenshots.spec.ts` captures stream, search, jump, collapse and Bases from the demo vault.
 
 ## Features
 New capability, as opposed to the fixes above. Embedded editors are ruled out by `docs/decisions.md`.
