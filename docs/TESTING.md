@@ -41,6 +41,9 @@ Re-seeding copies over the links; `dev:vault` puts them back.
 
 ### Core
 
+- The ribbon icon and `Open stream` open the stream in the current tab, as the graph does; run from a stream,
+  it keeps its place. **[e2e]**
+- Mod-click on the ribbon icon opens it in a new tab. **[e2e]** desktop; mod-alt-click splits.
 - Notes newest-first, date headers correct. **[e2e]**
 - Clicking a header opens the original file in the stream's tab; Back returns to the stream. **[e2e]**
 - Mod-click opens a new tab, keeping the stream; mod-alt-click splits. **[e2e]**

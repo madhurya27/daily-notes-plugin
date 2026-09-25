@@ -8,7 +8,6 @@ Ordered by priority, from the 2026-09 comparison against
   `5da0863`); keep that branch when deleting the other experiments.
 - [ ] PDF, iframe, canvas, Dataview: check for scroll boxes; give what cannot fit a preview that opens on tap.
 - [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on `post-processor-change`.
-- [ ] Opening the stream opens a new tab instead of using the current one.
 - [ ] Ribbon icon `calendar-days` is easily confused with core Daily notes' calendar; pick a distinct one.
 - [ ] Rotation: unloaded notes keep heights measured at the old width, and nothing restores the reader's place.
   Save `place()` when the scroll stops and restore it on a width change; mark unloaded heights unmeasured so a
