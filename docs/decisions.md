@@ -3,6 +3,18 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — A build for a phone names itself on load
+
+**Decision:** `pnpm run build:device` bakes the branch, commit and build time
+into the bundle as `BUILD_LABEL`; the plugin shows it in a notice on load.
+Plain `build`, which releases use, bakes an empty label and shows nothing.
+
+**Why:** iCloud syncs the plugin to the phone late and silently, so a test
+could run on the previous build.
+
+**Rejected:** a setting or command showing the version — the manifest version
+is the same across every test build.
+
 ## 2026-09-25 — Back lays the stream out at the heights it left
 
 **Decision:** the place kept in Obsidian's history carries the heights of the

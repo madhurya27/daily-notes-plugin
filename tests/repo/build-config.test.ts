@@ -16,4 +16,9 @@ describe("build configuration", () => {
         expect(pkg.type).toBe("module");
         expect(read("e2e/obsidian.ts")).toContain("import.meta.url");
     });
+
+    // Release builds run without BUILD_LABEL, so they carry an empty label and show no notice.
+    it("bakes BUILD_LABEL in from the environment, empty when unset", () => {
+        expect(read("esbuild.config.mjs")).toContain('BUILD_LABEL: JSON.stringify(process.env.BUILD_LABEL ?? "")');
+    });
 });

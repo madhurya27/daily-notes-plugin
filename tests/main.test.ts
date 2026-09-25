@@ -4,7 +4,7 @@ import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/ui/st
 import { DEFAULT_SETTINGS } from "../src/settings";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import { BaseMeasurements } from "../src/render/bases/base-measurements";
-import { TFile, WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
+import { Notice, TFile, WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
 import { asApp, makeService } from "./stream-view-fixture";
 import { __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 
@@ -126,6 +126,34 @@ describe("DailyNotesStreamPlugin — onload", () => {
     it("keeps what Bases measured for every view", async () => {
         const { plugin } = await loadPlugin();
         expect(plugin.baseMeasurements).toBeInstanceOf(BaseMeasurements);
+    });
+});
+
+// A build put on a phone to test names itself, so the right one is known to be running.
+describe("DailyNotesStreamPlugin — build label", () => {
+    beforeEach(() => Notice.reset());
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("names the build on load when it was built with a label", async () => {
+        vi.stubGlobal("BUILD_LABEL", "experiment/near-top f3bf514 18:40");
+
+        await loadPlugin();
+
+        expect(Notice.shown).toEqual(["Daily notes stream: experiment/near-top f3bf514 18:40"]);
+    });
+
+    it("says nothing on load in a release build", async () => {
+        vi.stubGlobal("BUILD_LABEL", "");
+
+        await loadPlugin();
+
+        expect(Notice.shown).toEqual([]);
+    });
+
+    it("says nothing on load when nothing defined a label", async () => {
+        await loadPlugin();
+
+        expect(Notice.shown).toEqual([]);
     });
 });
 

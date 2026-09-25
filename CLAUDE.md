@@ -6,6 +6,7 @@
 pnpm install       # install deps
 pnpm run dev       # watch mode → main.js
 pnpm run build     # type-check + production build
+pnpm run build:device   # the same, named on load by a notice (branch, commit, time): for a build tested on a phone
 pnpm run lint      # ESLint
 pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is ignored — hand-wrapped.
 pnpm test          # typecheck tests/ (tests/tsconfig.json), then vitest run

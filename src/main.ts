@@ -1,10 +1,13 @@
-import { Keymap, PaneType, Plugin, WorkspaceLeaf } from "obsidian";
+import { Keymap, Notice, PaneType, Plugin, WorkspaceLeaf } from "obsidian";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "./ui/stream-view";
 import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab } from "./settings";
 import { CollapsibleStateStore } from "./render/collapse-store";
 import { DailyNoteService } from "./notes/daily-note-service";
 import { ParsedDates } from "./notes/parsed-dates";
 import { BaseMeasurements } from "./render/bases/base-measurements";
+
+/** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
+declare const BUILD_LABEL: string;
 
 /** A ribbon click or command has no caller to reject to, so a failure is logged. */
 function logActivationFailure(activation: Promise<unknown>): void {
@@ -17,6 +20,8 @@ export default class DailyNotesStreamPlugin extends Plugin {
     baseMeasurements!: BaseMeasurements;
 
     async onload() {
+        // Unit tests run the source unbundled, where nothing defines it.
+        if (typeof BUILD_LABEL === "string" && BUILD_LABEL) new Notice(`Daily notes stream: ${BUILD_LABEL}`);
         await this.loadSettings();
 
         this.collapseStore = new CollapsibleStateStore(this.app);
