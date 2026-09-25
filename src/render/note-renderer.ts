@@ -16,8 +16,8 @@ import {
 import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
 import { stackWideTables } from "./wide-tables";
-import { extractBases } from "./bases-as-cards";
-import { NoteBases } from "./note-bases";
+import { extractBases } from "./bases/bases-as-cards";
+import { NoteBases } from "./bases/note-bases";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
 import { wrapTextBesideBlocks } from "./text-beside-blocks";
 import type { DailyNotesStreamSettings } from "../settings";

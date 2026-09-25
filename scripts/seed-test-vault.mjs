@@ -1,5 +1,5 @@
 /**
- * Rebuilds `PluginTest/` — the local vault docs/TESTING.md's checklist is
+ * Rebuilds `.dev/vault/` — the local vault docs/TESTING.md's checklist is
  * written against — and installs the current build into it.
  *
  *   node scripts/seed-test-vault.mjs [target-vault]
@@ -24,7 +24,7 @@ const flagValue = (name) => {
 };
 
 const positional = args.filter((arg, index) => !arg.startsWith("--") && args[index - 1] !== "--days");
-const vault = resolve(positional[0] ?? join(REPO, "PluginTest"));
+const vault = resolve(positional[0] ?? join(REPO, ".dev", "vault"));
 const NOTES = "Notes";
 const PLUGIN_ID = "daily-notes-stream";
 const ASSETS = ["main.js", "manifest.json", "styles.css"];

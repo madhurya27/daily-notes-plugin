@@ -3,6 +3,17 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — Tests mirror the folders they test
+
+**Decision:** `tests/` repeats `src/`'s folders; tests of `scripts/` sit in
+`tests/scripts/`, checks on root files (README, manifest, styles, release
+workflow) in `tests/repo/`. Mocks, setup and the shared fixture stay at the top.
+
+**Why:** 41 files in one folder, beside a `src/` grouped by job.
+
+**Rejected:** tests beside their source — `src/` typechecks against the real
+API and `tests/` against the mocks, through separate tsconfigs.
+
 ## 2026-09-25 — The stream's icon is a stack of cards
 
 **Decision:** the ribbon icon and the view's tab draw `gallery-vertical-end`.
@@ -540,7 +551,7 @@ nothing reads as a bug.
 
 **Decision:** every `.ts` file in `src/`, `tests/` and `e2e/` is kebab-case;
 `src/` groups them into `ui/`, `stream/`, `render/` and `notes/`. Class names
-are unchanged. `tests/compliance.test.ts` enforces the case.
+are unchanged. `tests/repo/compliance.test.ts` enforces the case.
 
 **Why:** Obsidian's plugin guidelines ask for folders once there is more than
 one `.ts` file, and the official sample plugin and Minimal Settings name files

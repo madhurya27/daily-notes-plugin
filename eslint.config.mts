@@ -62,12 +62,11 @@ export default tseslint.config(
         "dist",
         "esbuild.config.mjs",
         "eslint.config.mts",
-        "version-bump.mjs",
         "versions.json",
         "main.js",
-        "PluginTest",
+        ".dev",
         "vitest.config.ts",
-        // Typechecked by tsconfig.e2e.json; ESLint's project service covers src and tests.
+        // Typechecked by e2e/tsconfig.json; ESLint's project service covers src and tests.
         "e2e",
         "playwright.config.ts",
     ])

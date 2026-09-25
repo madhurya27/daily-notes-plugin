@@ -1,5 +1,5 @@
 /**
- * Opens PluginTest/ in Obsidian, plugin enabled and mobile emulation on, then
+ * Opens .dev/vault/ in Obsidian, plugin enabled and mobile emulation on, then
  * detaches and leaves the window running.
  *
  *   node scripts/open-test-vault.mjs [options] [vault]   (--help lists the options)
@@ -25,7 +25,7 @@ const args = process.argv.slice(2);
 
 const USAGE = `pnpm run open [options] [vault]
 
-Opens PluginTest/ in its own Obsidian with the plugin enabled, the stream view
+Opens .dev/vault/ in its own Obsidian with the plugin enabled, the stream view
 showing and mobile emulation on, then detaches and leaves the window up.
 
 Size and layout (default: phone portrait)
@@ -81,7 +81,7 @@ const position = parsePosition(flagValue("--position"));
 // A value consumed by a flag is not the vault path.
 const consumed = new Set(["--position"]);
 const positional = args.filter((arg, index) => !arg.startsWith("--") && !consumed.has(args[index - 1]));
-const vault = resolve(positional[0] ?? join(REPO, "PluginTest"));
+const vault = resolve(positional[0] ?? join(REPO, ".dev", "vault"));
 const userDataDir = join(REPO, ".dev", "obsidian-userdata");
 
 if (!existsSync(join(vault, ".obsidian", "plugins", PLUGIN_ID, "main.js"))) {
