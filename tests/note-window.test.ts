@@ -453,6 +453,32 @@ describe("NoteWindowManager unload", () => {
 // ---------------------------------------------------------------------------
 
 /** On iOS an unload mid-glide ends the glide (docs/decisions.md, 2026-09-23). */
+describe("NoteWindowManager.scrollToTop", () => {
+    it("glides the pane to its top", () => {
+        const { manager, scrollRoot } = makeManager();
+        scrollRoot.scrollTo = vi.fn();
+
+        manager.scrollToTop();
+
+        expect(scrollRoot.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+    });
+
+    it("tells the anchor where the scroll is headed first", () => {
+        const headForTop = vi.spyOn(ScrollAnchor.prototype, "headForTop");
+        const { manager, scrollRoot } = makeManager();
+        scrollRoot.scrollTo = vi.fn(() => expect(headForTop).toHaveBeenCalledOnce());
+
+        manager.scrollToTop();
+
+        expect(scrollRoot.scrollTo).toHaveBeenCalledOnce();
+    });
+
+    it("does nothing before the view is attached", () => {
+        const manager = new NoteWindowManager(makeRenderer() as never, makeQueue());
+        expect(() => manager.scrollToTop()).not.toThrow();
+    });
+});
+
 describe("NoteWindowManager while scrolling", () => {
     async function rendered() {
         const renderer = makeRenderer();

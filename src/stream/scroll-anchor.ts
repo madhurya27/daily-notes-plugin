@@ -22,6 +22,8 @@ export class ScrollAnchor {
     private owed = 0;
     /** The blocks' parent, shifted while `owed` is. */
     private shifted: HTMLElement | null = null;
+    /** A scroll to the top is under way; nothing above it is owed. */
+    private headedForTop = false;
     private readonly settleOnceStill = debounce(() => this.settle(), SCROLL_IDLE_MS, true);
 
     attach(scrollRoot: HTMLElement): void {
@@ -47,6 +49,15 @@ export class ScrollAnchor {
     /** A scroll puts off the hand-over until it stops. */
     onScroll(): void {
         if (this.owed !== 0) this.settleOnceStill();
+        else if (this.scrollRoot?.scrollTop === 0) this.headedForTop = false;
+    }
+
+    /**
+     * The scroll is on its way to the top. Blocks above the reader grow on the
+     * way, and handing that over on arrival would stop short of the top.
+     */
+    headForTop(): void {
+        this.headedForTop = true;
     }
 
     detach(): void {
@@ -80,7 +91,9 @@ export class ScrollAnchor {
 
     /** The scroll takes the shift over, in the same frame. */
     private settle(): void {
-        this.scrollRoot!.scrollTop += this.owed;
+        const root = this.scrollRoot!;
+        if (!(this.headedForTop && root.scrollTop === 0)) root.scrollTop += this.owed;
+        this.headedForTop = false;
         this.unshift();
     }
 

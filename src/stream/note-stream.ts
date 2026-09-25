@@ -74,6 +74,10 @@ export class NoteStream {
         this.window.refreshMargins();
     }
 
+    scrollToTop(): void {
+        this.window.scrollToTop();
+    }
+
     /** Unloads and style reads wait for the scroll to stop. */
     onScroll(): void {
         this.window.onScroll();

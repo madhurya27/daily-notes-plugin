@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../src/ui/stream-view";
-import { TFile, WorkspaceLeaf } from "./mocks/obsidian";
+import { Platform, TFile, WorkspaceLeaf } from "./mocks/obsidian";
 import { asApp, makeApp, makePlugin, makeService, makeStubbedView, makeViewSetup } from "./stream-view-fixture";
 
 describe("DailyNotesStreamView — view API", () => {
@@ -91,6 +91,45 @@ describe("DailyNotesStreamView — scroll", () => {
         const { view } = await makeViewSetup();
         view.contentEl.dispatchEvent(new Event("scroll"));
         expect(view["stream"]["window"].onScroll).toHaveBeenCalled();
+    });
+});
+
+describe("DailyNotesStreamView — header title", () => {
+    /** A view whose header carries the title Obsidian draws there, opened. */
+    async function withTitle() {
+        const setup = makeStubbedView();
+        const titleEl = document.createElement("div");
+        Object.assign(setup.view, { titleEl });
+        await setup.view.onOpen();
+        return { ...setup, titleEl };
+    }
+
+    afterEach(() => {
+        Platform.isMobile = false;
+    });
+
+    // iOS apps scroll to the top on a tap of the title bar.
+    it("scrolls the stream to its top on a tap of the title, on mobile", async () => {
+        Platform.isMobile = true;
+        const { view, titleEl } = await withTitle();
+
+        titleEl.click();
+
+        expect(view["stream"]["window"].scrollToTop).toHaveBeenCalledOnce();
+    });
+
+    it("leaves the title alone on desktop", async () => {
+        const { view, titleEl } = await withTitle();
+
+        titleEl.click();
+
+        expect(view["stream"]["window"].scrollToTop).not.toHaveBeenCalled();
+    });
+
+    it("opens without a title to tap", async () => {
+        Platform.isMobile = true;
+        const { view } = makeStubbedView();
+        await expect(view.onOpen()).resolves.toBeUndefined();
     });
 });
 

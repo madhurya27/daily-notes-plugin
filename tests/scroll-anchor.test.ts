@@ -192,6 +192,71 @@ describe("ScrollAnchor", () => {
         expect(pane.scrollTop).toBe(1800);
     });
 
+    // Nothing lies above the top, so what grew above the reader on the way
+    // up is owed to no one: handing it over would stop short of the top.
+    it("lands a scroll headed for the top at the top", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        anchor.headForTop();
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+
+        pane.scrollTop = 0;
+        anchor.onScroll();
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(pane.scrollTop).toBe(0);
+        expect(shift(content)).toBe(0);
+    });
+
+    it("hands over as usual when the reader stops the scroll short of the top", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400], 900);
+        anchor.headForTop();
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+
+        pane.scrollTop = 500;
+        anchor.onScroll();
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(pane.scrollTop).toBe(1400);
+    });
+
+    it("forgets the top once a scroll has settled", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400], 900);
+        anchor.headForTop();
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+        pane.scrollTop = 500;
+        anchor.onScroll();
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        // The block above grows again, and the reader scrolls up by hand.
+        resize(blocks[0]!, 1400);
+        observer().resized(blocks[0]!);
+        pane.scrollTop = 0;
+        anchor.onScroll();
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(pane.scrollTop).toBe(100);
+    });
+
+    it("forgets the top once a scroll arrives there owing nothing", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400], 900);
+        anchor.headForTop();
+        pane.scrollTop = 0;
+        anchor.onScroll();
+
+        // The reader scrolls down, then back up by hand past a block that grew.
+        pane.scrollTop = 900;
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+        pane.scrollTop = 0;
+        anchor.onScroll();
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(pane.scrollTop).toBe(900);
+    });
+
     it("sets no timer for a scroll with nothing owed", () => {
         watch([400, 400, 400], 900);
 

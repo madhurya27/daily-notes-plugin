@@ -1,4 +1,4 @@
-import type { App, EventRef, Hotkey, PaneType } from "obsidian";
+import type { App, EventRef, Hotkey, ItemView, PaneType } from "obsidian";
 
 /** Obsidian's unpublished shape, so every unsupported access sits in one place. */
 type VaultInternal = {
@@ -104,4 +104,9 @@ export function getSearchHotkeys(app: App): Hotkey[] {
     const manager = (app as unknown as { hotkeyManager?: HotkeyManager }).hotkeyManager;
     if (!manager) return DEFAULT_SEARCH_HOTKEYS;
     return manager.getHotkeys(SEARCH_COMMAND) ?? manager.getDefaultHotkeys(SEARCH_COMMAND) ?? DEFAULT_SEARCH_HOTKEYS;
+}
+
+/** No public API: the title Obsidian draws in a view's header. Null once the internal is gone. */
+export function getViewTitle(view: ItemView): HTMLElement | null {
+    return (view as unknown as { titleEl?: HTMLElement }).titleEl ?? null;
 }

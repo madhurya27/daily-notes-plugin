@@ -1,0 +1,135 @@
+import { test, expect, openStream, seededDate, SEEDED_DAYS } from "./obsidian";
+import type { Locator, Page } from "@playwright/test";
+
+/** The stream's pane, the element that scrolls. */
+const pane = (container: Locator) => container.locator("xpath=..");
+
+const title = (page: Page) =>
+    page.locator('.workspace-leaf-content[data-type="daily-notes-stream-view"] .view-header-title');
+
+/**
+ * Jumps to the oldest note, so the notes between it and the top are
+ * placeholders never rendered: each outgrows its estimate as the scroll back
+ * up passes it.
+ */
+async function scrollToOldest(page: Page, container: Locator) {
+    await page.locator('.view-action[aria-label="Jump to date"]').click();
+    await page.locator(".prompt input.prompt-input").fill(seededDate(SEEDED_DAYS - 1));
+    await page.locator(".prompt .suggestion-item").first().click();
+    await expect(page.locator(".prompt")).toBeHidden();
+    await expect.poll(() => pane(container).evaluate((el) => el.scrollTop)).toBeGreaterThan(1000);
+}
+
+/** How far the newest note sits below the pane's top. */
+const newestOffset = (container: Locator) =>
+    container
+        .locator(".daily-note-block")
+        .first()
+        .evaluate((el) => {
+            const scroller = el.closest(".daily-notes-stream-container")!.parentElement!;
+            return el.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+        });
+
+test.describe("tapping the header title", () => {
+    test.describe("on mobile", () => {
+        test.beforeEach(({ mobileLayout }) => test.skip(!mobileLayout, "a mobile gesture"));
+
+        test("glides back to the newest note", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const container = await openStream(page);
+            await scrollToOldest(page, container);
+
+            await title(page).click();
+
+            await expect.poll(() => pane(container).evaluate((el) => el.scrollTop)).toBe(0);
+            expect(await newestOffset(container)).toBeGreaterThanOrEqual(0);
+        });
+
+        test("leaves the scroll alone on a tap of a header action", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const container = await openStream(page);
+            await scrollToOldest(page, container);
+            const before = await pane(container).evaluate((el) => el.scrollTop);
+
+            await page.locator('.view-action[aria-label="Search"]').click();
+            await page.waitForTimeout(500);
+
+            expect(await pane(container).evaluate((el) => el.scrollTop)).toBe(before);
+            await page.keyboard.press("Escape");
+        });
+
+        // iOS WebKit has no scroll anchoring: the stream holds the reader's
+        // place itself, and must not hold it short of the top here.
+        test.describe("where the platform has no scroll anchoring", () => {
+            /** Notes between the top and the oldest, tall enough to outgrow their placeholders. */
+            const TALL = [3, 4, 5, 6, 7, 8, 9].map((days) => `Notes/${seededDate(days)}.md`);
+            let originals: string[] = [];
+
+            test.beforeEach(async ({ obsidian }) => {
+                test.skip(
+                    process.env.E2E_SHOW_WINDOW !== "1",
+                    "the hidden phone window draws a frame a second, too slow to glide"
+                );
+                originals = await obsidian.page.evaluate(async (paths: string[]) => {
+                    const supports = CSS.supports.bind(CSS);
+                    (window as unknown as { realSupports: typeof supports }).realSupports = supports;
+                    CSS.supports = ((...args: [string, string]) =>
+                        args[0] === "overflow-anchor" ? false : supports(...args)) as typeof CSS.supports;
+
+                    const body = (path: string) =>
+                        Array.from({ length: 300 }, (_, i) => `Line ${i} of ${path}.`).join("\n\n");
+                    const read: string[] = [];
+                    for (const path of paths) {
+                        const file = window.app.vault.getFileByPath(path)!;
+                        read.push(await window.app.vault.read(file));
+                        await window.app.vault.modify(file, body(path));
+                    }
+                    return read;
+                }, TALL);
+            });
+
+            test.afterEach(async ({ obsidian }) => {
+                // Nothing to restore when the test was skipped.
+                if (originals.length === 0) return;
+                await obsidian.page.evaluate(
+                    async ([paths, bodies]: [string[], string[]]) => {
+                        CSS.supports = (window as unknown as { realSupports: typeof CSS.supports }).realSupports;
+                        for (const [i, path] of paths.entries()) {
+                            await window.app.vault.modify(window.app.vault.getFileByPath(path)!, bodies[i]!);
+                        }
+                    },
+                    [TALL, originals] as [string[], string[]]
+                );
+                originals = [];
+            });
+
+            test("reaches the top", async ({ obsidian }) => {
+                const { page } = obsidian;
+                const container = await openStream(page);
+                await expect(pane(container)).toHaveCSS("overflow-anchor", "none");
+                await scrollToOldest(page, container);
+
+                await title(page).click();
+
+                // Still there once the anchor's hand-over, due when the scroll is still, has landed.
+                await expect.poll(() => pane(container).evaluate((el) => el.scrollTop)).toBe(0);
+                await page.waitForTimeout(500);
+                expect(await pane(container).evaluate((el) => el.scrollTop)).toBe(0);
+                expect(await newestOffset(container)).toBeGreaterThanOrEqual(0);
+            });
+        });
+    });
+
+    test("leaves the scroll alone on desktop", async ({ obsidian, mobileLayout }) => {
+        test.skip(mobileLayout, "a desktop rule");
+        const { page } = obsidian;
+        const container = await openStream(page);
+        await scrollToOldest(page, container);
+        const before = await pane(container).evaluate((el) => el.scrollTop);
+
+        await title(page).click();
+        await page.waitForTimeout(500);
+
+        expect(await pane(container).evaluate((el) => el.scrollTop)).toBe(before);
+    });
+});

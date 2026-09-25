@@ -1,4 +1,13 @@
-import { ItemView, Scope, WorkspaceLeaf, debounce, type Hotkey, type HoverParent, type HoverPopover } from "obsidian";
+import {
+    ItemView,
+    Platform,
+    Scope,
+    WorkspaceLeaf,
+    debounce,
+    type Hotkey,
+    type HoverParent,
+    type HoverPopover,
+} from "obsidian";
 import type DailyNotesStreamPlugin from "../main";
 import { JumpToDateModal } from "./jump-to-date-modal";
 import { NoteRenderer } from "../render/note-renderer";
@@ -9,7 +18,7 @@ import { StreamSearch } from "../stream/stream-search";
 import { SearchHighlighter } from "../render/search-highlights";
 import { SearchBar } from "./search-bar";
 import { matchesHotkey } from "./hotkey";
-import { getReadableLineLength, getSearchHotkeys, onVaultConfigChange } from "../obsidian-internals";
+import { getReadableLineLength, getSearchHotkeys, getViewTitle, onVaultConfigChange } from "../obsidian-internals";
 import { isStreamPlace } from "../stream/scroll-position";
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
@@ -127,6 +136,9 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
 
         this.addAction("calendar-1", "Jump to date", () => this.promptJumpToDate());
         this.addAction("search", "Search", () => this.searchBar.open());
+        // iOS apps scroll to the top on a tap of the title bar.
+        const title = getViewTitle(this);
+        if (Platform.isMobile && title) this.registerDomEvent(title, "click", () => this.stream.scrollToTop());
 
         this.registerDomEvent(this.contentEl, "scroll", () => this.stream.onScroll());
         this.stream.open(this.contentEl, streamContainerEl);

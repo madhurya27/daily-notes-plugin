@@ -182,6 +182,8 @@ Checks:
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides out.
 - Jump to an old date, then flick up: the text under your finger does not jump as the notes above render, and
   the glide is not cut short.
+- Jump to an old date, then tap "Daily notes stream" in the header: it glides to the newest note and stays
+  at the very top. Tapping the search or jump action does not scroll. **[e2e]**
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading
   *text* still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall; repeated flicks keep loading.

@@ -123,6 +123,12 @@ export class NoteWindowManager {
         if (this.leaving.size > 0) this.unloadOnceStill();
     }
 
+    /** Glides the pane to its top, the newest note. */
+    scrollToTop(): void {
+        this.anchor.headForTop();
+        this.scrollRoot?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
     /** An unloaded block for `file`, reserving `height` — or the estimate. */
     add(file: TFile, height?: number): HTMLElement {
         const reserved = height ?? this.estimate();

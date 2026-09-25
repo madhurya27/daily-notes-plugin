@@ -33,7 +33,7 @@ New capability, as opposed to the fixes above. Embedded editors are ruled out by
 Surveyed 2026-09 against core and the community directory. **The filter: what operates on a *file* is already
 solved elsewhere; only what operates on *the stream* is ours.** ★ marks the recommended first two.
 
-- [ ] Back to top — a button, and a command. Check whether `g` in keyboard navigation covers it.
+- [ ] Back to top — a command; mobile has the header-title tap. Check whether `g` in keyboard navigation covers it.
 - [ ] ★ Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing external reaches inside a view.
 - [ ] ★ Skip empty notes — unwritten template dailies are noise; frontmatter-only is visible in the cache.
 - [ ] On this day — one calendar date across years, a filter over `_sorted`.

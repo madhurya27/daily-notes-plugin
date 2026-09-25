@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import type { App } from "obsidian";
+import type { App, ItemView } from "obsidian";
 import {
     getPropertyIcon,
     getReadableLineLength,
     getSearchHotkeys,
+    getViewTitle,
     onVaultConfigChange,
     openTagSearch,
 } from "../src/obsidian-internals";
@@ -230,5 +231,16 @@ describe("getSearchHotkeys", () => {
 
     it("falls back to Mod+F once the internal is gone", () => {
         expect(getSearchHotkeys({} as App)).toEqual([{ modifiers: ["Mod"], key: "F" }]);
+    });
+});
+
+describe("getViewTitle", () => {
+    it("returns the title in the view's header", () => {
+        const titleEl = document.createElement("div");
+        expect(getViewTitle({ titleEl } as unknown as ItemView)).toBe(titleEl);
+    });
+
+    it("returns null once the internal is gone", () => {
+        expect(getViewTitle({} as ItemView)).toBeNull();
     });
 });

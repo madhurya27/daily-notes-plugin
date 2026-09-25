@@ -35,7 +35,7 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
 - `obsidian-internals.ts` — the single place unsupported internals are read (`getReadableLineLength`, the
   `vault` "raw" event behind `onVaultConfigChange`, the core global-search plugin and the `search` view's
   `setQuery` behind `openTagSearch`, `metadataTypeManager` behind `getPropertyIcon`, `hotkeyManager` behind
-  `getSearchHotkeys`).
+  `getSearchHotkeys`, a view's `titleEl` behind `getViewTitle`).
 - `notes/daily-note-service.ts` — the vault's daily notes, nested folders (`YYYY/MM/YYYY-MM-DD`) included,
   newest-first in batches.
 - `notes/parsed-dates.ts` — each path's parsed date, shared by every view's service, so a later open parses only

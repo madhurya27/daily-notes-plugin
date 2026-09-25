@@ -3,6 +3,20 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-24 — A tap on the header title glides to the top, on mobile
+
+**Decision:** on mobile, a tap on the view header's title smooth-scrolls the
+stream to its top. `ScrollAnchor` is told first, and a glide that arrives at
+the top drops what it owes instead of handing it to the scroll.
+
+**Why:** iOS apps scroll to the top on a tap of the title bar. Notes above the
+reader render on the way up; handed over, their growth stopped the glide
+23,386px short in e2e.
+
+**Rejected:**
+- Instant jump — iOS animates it.
+- Desktop too — the title there is a label, and nothing hints it is tappable.
+
 ## 2026-09-24 — The stream anchors its own scroll where the platform does not
 
 **Decision:** in the iOS app, and wherever `CSS.supports("overflow-anchor",
