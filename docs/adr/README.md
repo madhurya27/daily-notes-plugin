@@ -23,3 +23,4 @@ Rules:
 | [0006](0006-unload-off-screen-notes.md) | Unload the content of off-screen notes | Accepted |
 | [0007](0007-nothing-in-the-stream-scrolls.md) | Nothing inside the stream scrolls | Superseded by 0008 |
 | [0008](0008-nothing-scrolls-on-mobile.md) | Nothing inside the stream scrolls, on mobile | Accepted |
+| [0009](0009-webkit-render-checks.md) | Check the phone layout in WebKit, from a snapshot of real Obsidian | Accepted |

@@ -13,6 +13,7 @@
 - [x] The status bar clears while the stream has focus, instead of describing the last note
 - [x] Back to the stream returns to the note it was scrolled to
 - [x] On mobile, a tap on the header title glides to the top, as in iOS apps
+- [x] iOS: search highlights paint, and stream text selects
 - [x] Visual separation: vertical spacing between notes
 - [x] Collapsible headers (H1–H6) and nested lists
 - [x] Settings refresh: view re-renders on settings change, scroll position preserved

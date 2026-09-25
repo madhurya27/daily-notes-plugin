@@ -11,6 +11,7 @@ pnpm run format    # Prettier (--write); format:check verifies. Prose (*.md) is 
 pnpm test          # typecheck tests/ (tests/tsconfig.json), then vitest run
 pnpm run test:coverage  # the same, 100% coverage required
 pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
+pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
 pnpm run test:memory    # e2e/memory.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
 
 pnpm run build && pnpm run seed   # write PluginTest/ (gitignored) and install the build into it
@@ -58,7 +59,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   places (`scroll-position.ts`) and, where the platform has none, scroll anchoring (`scroll-anchor.ts`).
 - `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`), wide
   tables as cards (`wide-tables.ts`), each Base in its own placeholder, as cards when too wide (`note-bases.ts`),
-  collapsible sections (`collapsible.ts`) and their persisted state (`collapse-store.ts`).
+  collapsible sections (`collapsible.ts`) and their persisted state (`collapse-store.ts`), bare text beside a
+  block wrapped so WebKit paints highlights on it (`text-beside-blocks.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
 `obsidian-daily-notes-interface` from `tests/mocks/`. Tests typecheck against the mocks, which take their
@@ -67,7 +69,8 @@ signatures from the real API (docs/decisions.md, 2026-09-23).
 **The test split is a contract** ([ADR 0002](docs/adr/0002-real-obsidian-e2e.md)): jsdom loads no stylesheet, so
 a visibility assertion there proves nothing. Anything about real rendering, real events, or what is visible on
 screen belongs in `e2e/`, which drives the installed app against a throwaway vault. Every spec runs twice,
-desktop and mobile.
+desktop and mobile. Both are Chromium; what iOS's engine paints or computes differently is checked in
+`e2e/webkit.spec.ts`, on a snapshot of the mobile run ([ADR 0009](docs/adr/0009-webkit-render-checks.md)).
 
 **Look at a UI change before handing it over.** Screenshot it from the e2e harness, desktop and mobile, and
 inspect the image: measurements prove a rule was matched, not that the result looks right.

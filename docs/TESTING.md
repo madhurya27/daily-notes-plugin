@@ -6,6 +6,7 @@
 pnpm test                          # unit
 pnpm run test:e2e                  # every spec twice, desktop and mobile
 pnpm run test:e2e --project=mobile      # just one project
+pnpm run test:e2e webkit.spec.ts   # the phone layout in iOS's engine (ADR 0009)
 pnpm run build && pnpm run seed    # write PluginTest/ and install the build into it
 pnpm run open --help               # every option, with its default
 ```
@@ -184,6 +185,8 @@ Checks:
   the glide is not cut short.
 - Jump to an old date, then tap "Daily notes stream" in the header: it glides to the newest note and stays
   at the very top. Tapping the search or jump action does not scroll. **[e2e]**
+- Search a word: every match on screen is highlighted, the current one in the selection colour. A long-press
+  selects text in a note.
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading
   *text* still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall; repeated flicks keep loading.

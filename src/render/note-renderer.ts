@@ -19,6 +19,7 @@ import { stackWideTables } from "./wide-tables";
 import { extractBases } from "./bases-as-cards";
 import { NoteBases } from "./note-bases";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
+import { wrapTextBesideBlocks } from "./text-beside-blocks";
 import type { DailyNotesStreamSettings } from "../settings";
 
 /** The fallback, for an Obsidian that resolves no property type. */
@@ -163,6 +164,7 @@ export class NoteRenderer {
                 stackWideTables(contentEl, noteComponent);
             }
 
+            wrapTextBesideBlocks(contentEl);
             const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);
             this.collapsible.forgetRemovedSections(file, sectionKeys);
         } catch (error) {
