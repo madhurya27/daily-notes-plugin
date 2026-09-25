@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Component, TFile } from "obsidian";
-import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX, SCROLL_IDLE_MS } from "../src/stream/note-window";
+import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX } from "../src/stream/note-window";
+import { SCROLL_IDLE_MS, ScrollAnchor } from "../src/stream/scroll-anchor";
 
 /**
  * The two observers, by the rootMargin they were constructed with: the render
@@ -801,6 +802,64 @@ describe("NoteWindowManager teardown", () => {
 // ---------------------------------------------------------------------------
 // Layout changes
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Scroll anchoring, where the platform has none (iOS)
+// ---------------------------------------------------------------------------
+
+describe("NoteWindowManager scroll anchoring", () => {
+    const resizeObserver = { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
+
+    beforeEach(() => {
+        for (const spy of Object.values(resizeObserver)) spy.mockClear();
+        vi.stubGlobal("CSS", { supports: () => false });
+        vi.stubGlobal(
+            "ResizeObserver",
+            vi.fn(function () {
+                return resizeObserver;
+            })
+        );
+    });
+
+    it("watches every block's height from the moment it is added", () => {
+        const { manager } = makeManager();
+
+        const block = manager.add(FILE);
+
+        expect(resizeObserver.observe).toHaveBeenCalledWith(block);
+    });
+
+    it("stops watching a removed block, and every block on detach", () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+
+        manager.remove(block);
+        expect(resizeObserver.unobserve).toHaveBeenCalledWith(block);
+
+        manager.detach();
+        expect(resizeObserver.disconnect).toHaveBeenCalled();
+    });
+
+    it("tells the anchor the stream is scrolling", () => {
+        const onScroll = vi.spyOn(ScrollAnchor.prototype, "onScroll");
+        const { manager } = makeManager();
+
+        manager.onScroll();
+
+        expect(onScroll).toHaveBeenCalledOnce();
+        onScroll.mockRestore();
+    });
+
+    it("watches the existing blocks again when re-attached", () => {
+        const { manager, scrollRoot } = makeManager();
+        const block = manager.add(FILE);
+        resizeObserver.observe.mockClear();
+
+        manager.attach(scrollRoot);
+
+        expect(resizeObserver.observe).toHaveBeenCalledWith(block);
+    });
+});
 
 describe("NoteWindowManager.layoutChanges", () => {
     it("counts a render, so a caller can tell the stream is still settling", async () => {

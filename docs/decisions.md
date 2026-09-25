@@ -3,6 +3,26 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-24 — The stream anchors its own scroll where the platform does not
+
+**Decision:** in the iOS app, and wherever `CSS.supports("overflow-anchor",
+"auto")` is false, `ScrollAnchor` turns native anchoring off, watches every
+block's height and offsets the change of any block wholly above the pane: first
+as a `transform` on the stream, then, once the scroll is still, as `scrollTop`
+in the same frame.
+
+**Why:** a note above the reader rendering past its placeholder estimate pushed
+the text down; e2e mobile, anchoring off, measured 2673px. Chromium absorbs it.
+iOS WebKit answers `CSS.supports` yes and anchors nothing: a phone's Web
+Inspector trace showed the anchor never switched on. Tried on a phone, the shift
+held the place and plain `scrollTop` writes mid-glide still jumped.
+
+**Rejected:** writing `scrollTop` mid-glide — jumped on a phone. Correcting only
+once the scroll stops — the jump shows first. Blocks reaching into the pane — a
+chevron tapped there grows the note below the reader's place, and moving the
+scroll would carry it off. Anchoring everywhere — doubles Chromium's own
+correction.
+
 ## 2026-09-24 — A redrawn Base holds its last height until Bases refills it
 
 **Decision:** `NoteBases` keeps the height each Base last laid out at, per note,

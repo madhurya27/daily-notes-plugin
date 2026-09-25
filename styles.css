@@ -25,6 +25,17 @@
     padding-bottom: var(--size-4-16, 4rem);
 }
 
+/* ScrollAnchor holds the reader's place where the platform does not (iOS):
+   native anchoring off, so nothing corrects twice, and the stream drawn shifted
+   until the scroll stops and takes the shift over (docs/decisions.md, 2026-09-24). */
+.is-scroll-anchored {
+    overflow-anchor: none;
+}
+
+.daily-notes-stream-container.is-scroll-shifted {
+    transform: translateY(var(--daily-notes-scroll-shift));
+}
+
 /* An unloaded note: no content, but the height it had, so nothing shifts. */
 .daily-note-block.is-unloaded {
     height: var(--daily-note-placeholder-height);

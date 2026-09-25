@@ -91,7 +91,8 @@ proto.prepend =
     };
 
 /**
- * jsdom ships no CSS object; Obsidian runs on Chromium, which has CSS.escape.
+ * jsdom ships no CSS object; Obsidian runs on Chromium, which has CSS.escape
+ * and CSS.supports.
  * Escapes every character outside [A-Za-z0-9_-] — stricter than the CSSOM
  * algorithm, and valid wherever the result is used (identifier or quoted value).
  */
@@ -99,6 +100,8 @@ const jsdomGaps = globalThis as { CSS?: Partial<typeof CSS>; Highlight?: typeof 
 
 jsdomGaps.CSS ??= {
     escape: (value: string): string => value.replace(/[^\w-]/g, (c) => `\\${c}`),
+    // Chromium anchors the scroll itself; a test standing in for iOS stubs this.
+    supports: (property: string) => property === "overflow-anchor",
 };
 
 /**

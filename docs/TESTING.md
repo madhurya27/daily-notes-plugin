@@ -180,6 +180,8 @@ Checks:
   case is in **2026-08-30**.
 - Rotate with a Base on screen: a wide one turns to cards or back to a table.
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides out.
+- Jump to an old date, then flick up: the text under your finger does not jump as the notes above render, and
+  the glide is not cut short.
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading
   *text* still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall; repeated flicks keep loading.

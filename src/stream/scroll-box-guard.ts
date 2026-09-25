@@ -1,5 +1,5 @@
 import { debounce } from "obsidian";
-import { SCROLL_IDLE_MS } from "./note-window";
+import { SCROLL_IDLE_MS } from "./scroll-anchor";
 
 /** Clipped by the stylesheet already, Bases and all. */
 const BASE = ".bases-embed, .block-language-base";

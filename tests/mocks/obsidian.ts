@@ -539,7 +539,7 @@ export class Plugin {
 }
 
 /** Mutable, so a test can stand in for either platform. */
-export const Platform = { isMacOS: true, isMobile: false, isPhone: false };
+export const Platform = { isMacOS: true, isMobile: false, isPhone: false, isIosApp: false };
 
 /** Obsidian's own YAML, as the real one parses and prints it. */
 export function parseYaml(text: string): unknown {

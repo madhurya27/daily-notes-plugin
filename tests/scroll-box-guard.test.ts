@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { ScrollBoxGuard } from "../src/stream/scroll-box-guard";
-import { SCROLL_IDLE_MS } from "../src/stream/note-window";
+import { SCROLL_IDLE_MS } from "../src/stream/scroll-anchor";
 
 const still = () => vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS);
 

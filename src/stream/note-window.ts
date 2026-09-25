@@ -1,5 +1,6 @@
 import { Component, TFile, debounce } from "obsidian";
 import type { NoteRenderer } from "../render/note-renderer";
+import { SCROLL_IDLE_MS, ScrollAnchor } from "./scroll-anchor";
 
 /**
  * What a block reserves before this vault has measured anything. A guess only
@@ -22,9 +23,6 @@ const RENDER_VIEWPORTS = 1.5;
 const UNLOAD_VIEWPORTS = 4;
 /** A pane dragged to nothing, or a root not laid out yet, still gets a window. */
 const MIN_VIEWPORT_PX = 400;
-
-/** How long the scroll is still before leaving blocks unload (docs/decisions.md, 2026-09-23). */
-export const SCROLL_IDLE_MS = 300;
 
 interface NoteWindow {
     file: TFile;
@@ -58,6 +56,8 @@ export class NoteWindowManager {
     private changes = 0;
     private renderObserver: IntersectionObserver | null = null;
     private unloadObserver: IntersectionObserver | null = null;
+    /** A render or unload moves everything below it; above the pane, that is the reader's place. */
+    private readonly anchor = new ScrollAnchor();
     private scrollRoot: HTMLElement | null = null;
     /** Recent measured note heights, oldest first; the estimate is their median. */
     private readonly measured: number[] = [];
@@ -102,6 +102,7 @@ export class NoteWindowManager {
             },
             { root: scrollRoot, rootMargin: `${Math.round(this.rootHeight * UNLOAD_VIEWPORTS)}px` }
         );
+        this.anchor.attach(scrollRoot);
 
         for (const block of this.windows.keys()) this.observe(block);
     }
@@ -118,6 +119,7 @@ export class NoteWindowManager {
 
     /** A scroll restarts the wait on any block that left the margin. */
     onScroll(): void {
+        this.anchor.onScroll();
         if (this.leaving.size > 0) this.unloadOnceStill();
     }
 
@@ -299,16 +301,19 @@ export class NoteWindowManager {
     private observe(block: HTMLElement): void {
         this.renderObserver?.observe(block);
         this.unloadObserver?.observe(block);
+        this.anchor.observe(block);
     }
 
     private unobserve(block: HTMLElement): void {
         this.renderObserver?.unobserve(block);
         this.unloadObserver?.unobserve(block);
+        this.anchor.unobserve(block);
     }
 
     private detachObservers(): void {
         this.renderObserver?.disconnect();
         this.unloadObserver?.disconnect();
+        this.anchor.detach();
         this.renderObserver = null;
         this.unloadObserver = null;
     }

@@ -357,6 +357,139 @@ test.describe("daily notes stream in real Obsidian", () => {
         });
     });
 
+    test.describe("a note above the pane changing height", () => {
+        /** Where the fourth note sits, scrolled to the top, before and after a note above it grows 1000px. */
+        async function growAbove(page: import("@playwright/test").Page, container: import("@playwright/test").Locator) {
+            const blocks = container.locator(".daily-note-block");
+            await expect(blocks.nth(3)).toBeAttached();
+            await blocks.nth(3).evaluate((el) => el.scrollIntoView({ block: "start" }));
+            await expect(blocks.first()).not.toHaveClass(/is-unloaded/);
+            const top = () =>
+                blocks.nth(3).evaluate((el) => {
+                    const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                    return el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+                });
+            // The notes above render as it is scrolled to, outgrowing their
+            // placeholders: the first thing anchoring has to absorb.
+            await expect.poll(top).toBeCloseTo(0, 0);
+            const before = await top();
+
+            await blocks.first().evaluate(async (el) => {
+                el.appendChild(document.createElement("div")).style.height = "1000px";
+                // A frame for the resize to be observed, a second for the scroll it sets.
+                for (let frame = 0; frame < 2; frame++) await new Promise((r) => requestAnimationFrame(r));
+            });
+            return { before, after: await top() };
+        }
+
+        // iOS WebKit has no scroll anchoring: the text under the reader jumped
+        // by whatever a note above grew. Chromium stands in for it here.
+        test.describe("where the platform has no scroll anchoring", () => {
+            test.beforeEach(async ({ obsidian }) => {
+                await obsidian.page.evaluate(() => {
+                    const supports = CSS.supports.bind(CSS);
+                    (window as unknown as { realSupports: typeof supports }).realSupports = supports;
+                    CSS.supports = ((...args: [string, string]) =>
+                        args[0] === "overflow-anchor" ? false : supports(...args)) as typeof CSS.supports;
+                });
+            });
+
+            test.afterEach(async ({ obsidian }) => {
+                await obsidian.page.evaluate(() => {
+                    CSS.supports = (window as unknown as { realSupports: typeof CSS.supports }).realSupports;
+                });
+            });
+
+            async function openUnanchored(page: import("@playwright/test").Page) {
+                const container = await openStream(page);
+                // Ours, so a platform half-anchoring cannot correct a second time.
+                await expect(container.locator("xpath=..")).toHaveCSS("overflow-anchor", "none");
+                return container;
+            }
+
+            test("keeps the reader's place", async ({ obsidian }) => {
+                const { page } = obsidian;
+                const container = await openUnanchored(page);
+
+                const { before, after } = await growAbove(page, container);
+
+                expect(after).toBeCloseTo(before, 0);
+            });
+
+            /** A flick upward, frame by frame, until a note above has rendered, then on a little. */
+            const GLIDE_STEP_PX = 30;
+            const GLIDE_STEPS_AFTER_RENDER = 10;
+
+            // iOS owns the scroll mid-glide: a write then is dropped or undone,
+            // which the reader saw as a jump or a flicker. So nothing but the
+            // glide may move the scroll until it stops.
+            test("leaves a glide the only thing moving the scroll, and the text moving with it", async ({
+                obsidian,
+                mobileLayout,
+            }) => {
+                test.skip(
+                    mobileLayout && process.env.E2E_SHOW_WINDOW !== "1",
+                    "the hidden phone window draws a frame a second, too slow to glide"
+                );
+                const { page } = obsidian;
+                const container = await openUnanchored(page);
+                const blocks = container.locator(".daily-note-block");
+                await expect(blocks).toHaveCount(10); // BATCH_SIZE
+                await blocks.last().evaluate((el) => el.scrollIntoView({ block: "start" }));
+                // Still, so what rendered on the way down is settled into the scroll.
+                await page.waitForTimeout(1000);
+                await expect(container).not.toHaveClass(/is-scroll-shifted/);
+
+                const glide = await container.locator("xpath=..").evaluate(
+                    async (pane, { stepPx, stepsAfterRender }) => {
+                        const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                        const box = pane.getBoundingClientRect();
+                        const reader = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)!;
+                        reader.setAttribute("data-e2e-reader", "");
+                        const start = reader.getBoundingClientRect().top;
+                        const blocks = [...pane.querySelectorAll(".daily-note-block")];
+                        const unloaded = () => blocks.filter((b) => b.classList.contains("is-unloaded")).length;
+                        const unloadedBefore = unloaded();
+
+                        const overwritten: number[] = [];
+                        const from = pane.scrollTop;
+                        let set = from;
+                        for (let after = 0; after < stepsAfterRender && set > 0;) {
+                            if (unloaded() < unloadedBefore) after++;
+                            if (pane.scrollTop !== set) overwritten.push(pane.scrollTop - set);
+                            pane.scrollTop = set - stepPx;
+                            set = pane.scrollTop;
+                            await frame();
+                            await frame();
+                        }
+                        return { overwritten, rendered: unloadedBefore - unloaded(), start, glided: from - set };
+                    },
+                    { stepPx: GLIDE_STEP_PX, stepsAfterRender: GLIDE_STEPS_AFTER_RENDER }
+                );
+
+                expect(glide.rendered).toBeGreaterThan(0);
+                expect(glide.overwritten).toEqual([]);
+
+                // Once still, the scroll takes the shift over: the text is where
+                // the glide alone would have put it.
+                await expect(container).not.toHaveClass(/is-scroll-shifted/);
+                const reader = page.locator("[data-e2e-reader]");
+                const moved = await reader.evaluate((el, start) => el.getBoundingClientRect().top - start, glide.start);
+                expect(moved).toBeCloseTo(glide.glided, 0);
+            });
+        });
+
+        // Where the platform anchors, a second correction would double the move.
+        test("leaves the anchoring to the platform where it has its own", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const container = await openStream(page);
+
+            const { before, after } = await growAbove(page, container);
+
+            expect(after).toBeCloseTo(before, 0);
+        });
+    });
+
     test("shows a note created while the view is open", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
