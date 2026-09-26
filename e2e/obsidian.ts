@@ -19,6 +19,10 @@ const NO_THROTTLE = [
     "--disable-renderer-backgrounding",
     "--disable-background-timer-throttling",
 ];
+// Hidden in the phone layout, the window drew about a frame a second and a smooth
+// scroll never moved. Drawing without vsync fixes that; on desktop, which draws
+// normally hidden, it made the jump and menu tests flaky.
+const PHONE_FRAMES = ["--disable-gpu-vsync", "--disable-frame-rate-limit"];
 /**
  * Shrunk to Obsidian's minimum and parked in a corner, so the flash before the
  * hide is a small square. The renderer lays out at VIEWPORT regardless.
@@ -139,7 +143,7 @@ export interface ObsidianApp {
     windowBounds: () => { width: number; height: number; x: number; y: number } | null;
 }
 
-async function launch(): Promise<{
+async function launch(extraArgs: string[]): Promise<{
     app: ObsidianApp;
     dispose: () => Promise<void>;
 }> {
@@ -189,7 +193,7 @@ async function launch(): Promise<{
     }
 
     const port = await freePort();
-    const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE];
+    const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE, ...extraArgs];
     // detached: Electron's helpers outlive a parent-only kill; signal the group.
     const proc: ChildProcess | null = SHOW_WINDOW
         ? spawn(OBSIDIAN, args, { stdio: "ignore", detached: true })
@@ -492,7 +496,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     mobileLayout: [false, { scope: "worker", option: true }],
     obsidian: [
         async ({ mobileLayout }, use: (app: ObsidianApp) => Promise<void>) => {
-            const { app, dispose } = await launch();
+            const { app, dispose } = await launch(mobileLayout && !SHOW_WINDOW ? PHONE_FRAMES : []);
             if (mobileLayout) await applyMobileLayout(app.page);
             await use(app);
             await dispose();

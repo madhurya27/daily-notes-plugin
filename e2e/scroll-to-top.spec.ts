@@ -75,10 +75,6 @@ test.describe("tapping the header title", () => {
             let originals: string[] = [];
 
             test.beforeEach(async ({ obsidian }) => {
-                test.skip(
-                    process.env.E2E_SHOW_WINDOW !== "1",
-                    "the hidden phone window draws a frame a second, too slow to glide"
-                );
                 await withoutScrollAnchoring(obsidian.page);
                 originals = await obsidian.page.evaluate(async (paths: string[]) => {
                     const body = (path: string) =>
@@ -162,10 +158,6 @@ test.describe("tapping the header title", () => {
 });
 
 test("the Scroll to top command glides back to the newest note", async ({ obsidian, mobileLayout }) => {
-    test.skip(
-        mobileLayout && process.env.E2E_SHOW_WINDOW !== "1",
-        "the hidden phone window draws a frame a second, too slow to glide"
-    );
     const { page } = obsidian;
     const container = await openStream(page);
     await scrollToOldest(page, container);
