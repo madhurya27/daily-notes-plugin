@@ -390,6 +390,11 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
     height: auto;
 }
 
+/* An equation wider than the note shrinks to fit (src/render/wide-equations.ts). */
+.is-mobile .daily-note-content mjx-container[display="true"] > mjx-math {
+    zoom: var(--daily-note-equation-zoom, 1);
+}
+
 /* An embedded note grows instead of scrolling inside a capped height. */
 .is-mobile .daily-note-content .markdown-embed-content {
     max-height: none;

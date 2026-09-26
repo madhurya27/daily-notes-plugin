@@ -118,6 +118,30 @@ test("never scrolls the page sideways", async ({ obsidian }) => {
     }
 });
 
+// Clipped, it would pass the test above with the end of the equation cut off.
+test("on mobile, shrinks a wide equation to fit the note", async ({ obsidian, mobileLayout }) => {
+    test.skip(!mobileLayout, "desktop draws math as Obsidian does");
+    const { page } = obsidian;
+    await seedZoo(page);
+    try {
+        const container = await openStream(page);
+        const math = container.locator('mjx-container[display="true"] mjx-math');
+        await expect(math).toBeVisible();
+
+        await expect
+            .poll(() =>
+                math.evaluate((el) => {
+                    const note = el.closest(".daily-note-content")!.getBoundingClientRect();
+                    const box = el.getBoundingClientRect();
+                    return box.left >= note.left - 0.5 && box.right <= note.right + 0.5;
+                })
+            )
+            .toBe(true);
+    } finally {
+        await deleteZoo(page);
+    }
+});
+
 // iOS ends a glide early on a scroll box inside the scroller once notes have
 // unloaded; Android is held to the same rule (ADR 0008).
 test.describe("on mobile, nothing inside the stream scrolls", () => {

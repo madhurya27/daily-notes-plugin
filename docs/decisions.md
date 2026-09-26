@@ -800,3 +800,16 @@ one, so the README's phone screenshots showed a layout no phone had.
 
 **Rejected:**
 - A Pro Max's 440 — fits two cards again, like the old viewport.
+
+## 2026-09-26 — A wide equation shrinks to fit on mobile
+
+**Decision:** on mobile, a display equation wider than its note is zoomed down
+to the note's width (`src/render/wide-equations.ts`).
+
+**Why:** the page may not scroll sideways, and nothing in a note may scroll
+(ADR 0008). MathJax draws HTML, which CSS cannot scale to fit, so it is measured.
+
+**Rejected:**
+- `overflow: clip`, as code blocks do — cuts off the end of the equation.
+- Inline math — it sits in a line of text; shrinking it there would change the
+  line's text size mid-sentence.

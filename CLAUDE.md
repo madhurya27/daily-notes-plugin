@@ -71,10 +71,10 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   ([ADR 0010](docs/adr/0010-layout-memory.md)).
 - `stream/` also holds the loaded range (`stream-state.ts`), the sentinel (`infinite-scroll.ts`), scroll
   places (`scroll-position.ts`) and, where the platform has none, scroll anchoring (`scroll-anchor.ts`).
-- `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`), wide
-  tables as cards (`wide-tables.ts`), each Base in its own placeholder, as cards when too wide (`bases/`),
-  collapsible sections (`collapsible.ts`) and their persisted state (`collapse-store.ts`), bare text beside a
-  block wrapped so WebKit paints highlights on it (`text-beside-blocks.ts`).
+- `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`), wide tables as
+  cards (`wide-tables.ts`), wide equations shrunk to fit (`wide-equations.ts`), each Base in its own placeholder, as
+  cards when too wide (`bases/`), collapsible sections (`collapsible.ts`) and their persisted state
+  (`collapse-store.ts`), bare text beside a block wrapped so WebKit paints highlights on it (`text-beside-blocks.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
 `obsidian-daily-notes-interface` from `tests/mocks/`. Tests typecheck against the mocks, which take their

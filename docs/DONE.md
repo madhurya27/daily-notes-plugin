@@ -31,6 +31,7 @@
 - [x] iOS flicks glide to a natural stop: unloads wait for the scroll to stop
 - [x] iOS glides no longer stop early past Bases and tables: nothing inside the stream scrolls
 - [x] On mobile, a Base too wide for its note draws as cards, as a Markdown table does; desktop scrolls
+- [x] On mobile, a display equation too wide for its note shrinks to fit instead of widening the page
 - [x] Tag click opens Obsidian's search on that tag; mod-click opens it in a new pane
 - [x] Properties panel shown by default
 - [x] Jump to date, from the view header or the command palette

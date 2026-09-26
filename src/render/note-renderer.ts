@@ -16,6 +16,7 @@ import {
 import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
 import { stackWideTables } from "./wide-tables";
+import { fitWideEquations } from "./wide-equations";
 import { extractBases } from "./bases/bases-as-cards";
 import { NoteBases } from "./bases/note-bases";
 import type { BaseMeasurements } from "./bases/base-measurements";
@@ -164,6 +165,7 @@ export class NoteRenderer {
             if (mobile) {
                 await this.bases.render(contentEl, file, noteComponent, bases);
                 stackWideTables(contentEl, noteComponent);
+                fitWideEquations(contentEl, noteComponent);
             }
 
             wrapTextBesideBlocks(contentEl);
