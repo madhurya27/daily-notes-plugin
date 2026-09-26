@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LAYOUT_MEMORY_KEY, LayoutMemory, SAVE_DELAY_MS } from "../../src/stream/layout-memory";
+import { LAYOUT_MEMORY_KEY, LayoutMemory, SAVE_DELAY_MS, layoutOf } from "../../src/stream/layout-memory";
 import { asApp } from "../stream-view-fixture";
 
 function makeApp(saved: unknown = null) {
@@ -70,5 +70,18 @@ describe("LayoutMemory", () => {
         expect(app.saveLocalStorage).toHaveBeenCalledTimes(1);
         vi.advanceTimersByTime(SAVE_DELAY_MS);
         expect(app.saveLocalStorage).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("layoutOf", () => {
+    // Obsidian's font size and line width both reach the column's width or text size.
+    it("names a layout by the stream column's width and text size", () => {
+        const column = document.createElement("div");
+        Object.defineProperty(column, "clientWidth", { value: 612 });
+        column.style.setProperty("--font-text-size", " 16px");
+        document.body.appendChild(column);
+
+        expect(layoutOf(column)).toBe("612:16px");
+        column.remove();
     });
 });

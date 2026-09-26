@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { NoteHeights, layoutOf } from "../../src/stream/note-heights";
+import { NoteHeights } from "../../src/stream/note-heights";
 
 describe("NoteHeights", () => {
     it("keeps a note's last height, per layout", () => {
@@ -112,18 +112,5 @@ describe("NoteHeights", () => {
             heights.restore(junk);
             expect(heights.toJSON()).toEqual([]);
         }
-    });
-});
-
-describe("layoutOf", () => {
-    // Obsidian's font size and line width both reach the column's width or text size.
-    it("names a layout by the stream column's width and text size", () => {
-        const column = document.createElement("div");
-        Object.defineProperty(column, "clientWidth", { value: 612 });
-        column.style.setProperty("--font-text-size", " 16px");
-        document.body.appendChild(column);
-
-        expect(layoutOf(column)).toBe("612:16px");
-        column.remove();
     });
 });

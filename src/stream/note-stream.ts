@@ -6,7 +6,8 @@ import { StreamState } from "./stream-state";
 import { StreamBlocks } from "./stream-blocks";
 import { InfiniteScrollController } from "./infinite-scroll";
 import { NoteWindowManager } from "./note-window";
-import { type NoteHeights, layoutOf } from "./note-heights";
+import type { NoteHeights } from "./note-heights";
+import { layoutOf } from "./layout-memory";
 import { ScrollBoxGuard } from "./scroll-box-guard";
 import { captureAnchor, restoreAnchor, scrollIntoPlace, type StreamLayout, type StreamPlace } from "./scroll-position";
 

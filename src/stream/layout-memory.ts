@@ -43,3 +43,12 @@ export class LayoutMemory {
 function isVersion(saved: unknown): saved is { notes: unknown; bases: unknown } {
     return typeof saved === "object" && saved !== null && (saved as { version?: unknown }).version === VERSION;
 }
+
+/**
+ * The layout `column` lays notes out in: its width and text size. Theme
+ * margins, line width and pane size all reach the width.
+ */
+export function layoutOf(column: HTMLElement): string {
+    const textSize = getComputedStyle(column).getPropertyValue("--font-text-size").trim();
+    return `${column.clientWidth}:${textSize}`;
+}
