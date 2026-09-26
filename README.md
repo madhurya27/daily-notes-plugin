@@ -90,7 +90,7 @@ Date headers and links inside notes open like any link in Obsidian:
 | Right-click (long-press on mobile) | The file menu |
 
 Click a tag to search for it; mod-click to search in a new pane. Mod-hover a link to preview it. To preview on a
-plain hover, turn off "Daily notes stream" in the Page preview settings.
+plain hover, open **Settings → Page preview** and turn off "Daily notes stream".
 
 ### Settings
 
