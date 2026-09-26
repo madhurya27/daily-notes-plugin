@@ -32,7 +32,6 @@ vi.mock("../../src/stream/note-window", () => ({
         refreshMargins = vi.fn();
         onScroll = vi.fn();
         refresh = vi.fn().mockResolvedValue(undefined);
-        heightOf = vi.fn().mockReturnValue(undefined);
         keepRenderedHeights = vi.fn();
         placed = vi.fn();
         layoutChanges = 0;
@@ -477,18 +476,19 @@ describe("refresh", () => {
         expect(await loadedCount()).toBe(2);
     });
 
-    // Rebuilt placeholders reserve the height the old blocks had, or the
-    // stream's scroll extent collapses the moment a refresh runs.
-    it("carries each block's height into its replacement", async () => {
+    // Rebuilt placeholders reserve what the store remembers, or the stream's
+    // scroll extent collapses the moment a refresh runs.
+    it("remembers the rendered notes' heights before rebuilding their placeholders", async () => {
         const file = note("2025-01-03");
         await load(file);
-        const old = stream.blockOf(file);
-        noteWindow.heightOf.mockReturnValue(512);
+        noteWindow.add.mockClear();
 
         await stream.refresh();
 
-        expect(noteWindow.heightOf).toHaveBeenCalledWith(old);
-        expect(noteWindow.add).toHaveBeenCalledWith(file, 512);
+        expect(noteWindow.add).toHaveBeenCalledExactlyOnceWith(file);
+        expect(noteWindow.keepRenderedHeights.mock.invocationCallOrder[0]).toBeLessThan(
+            noteWindow.add.mock.invocationCallOrder[0]!
+        );
     });
 
     it("keeps the note at the top of the pane where it was", async () => {

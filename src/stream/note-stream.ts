@@ -346,17 +346,17 @@ export class NoteStream {
     }
 
     /**
-     * Rebuilds the stream as placeholders of the heights it already has, and
-     * lets the window manager fill in what is near the viewport. Nothing here
-     * renders, so a refresh costs the same whether ten notes are loaded or a
-     * thousand.
+     * Rebuilds the stream as placeholders of the heights the store remembers,
+     * and lets the window manager fill in what is near the viewport. Nothing
+     * here renders, so a refresh costs the same whether ten notes are loaded or
+     * a thousand.
      */
     private async rerenderAll(): Promise<void> {
         const find = (f: TFile) => this.blocks.get(f.path);
         const snapshot = captureAnchor(this.state.notes, this.scrollRoot, find);
 
         const notes = [...this.state.notes];
-        const heights = new Map([...this.blocks.entries()].map(([path, block]) => [path, this.window.heightOf(block)]));
+        this.window.keepRenderedHeights();
 
         this.blocks.empty();
         this.scroll.detach();
@@ -364,7 +364,7 @@ export class NoteStream {
         this.state.reset();
 
         for (const file of notes) {
-            this.blocks.append(file.path, this.window.add(file, heights.get(file.path)));
+            this.blocks.append(file.path, this.window.add(file));
         }
 
         this.attachScroll();

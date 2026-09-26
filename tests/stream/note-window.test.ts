@@ -138,7 +138,7 @@ describe("NoteWindowManager measurement", () => {
         return settle().then(async () => {
             fire(observers.unload, block, false);
             await still();
-            expect(manager.heightOf(block)).toBe(321);
+            expect(placeholderHeight(block)).toBe("321px");
         });
     });
 });
@@ -160,11 +160,6 @@ describe("NoteWindowManager.add", () => {
         const { manager, renderer } = makeManager();
         manager.add(FILE);
         expect(renderer.renderInto).not.toHaveBeenCalled();
-    });
-
-    it("honours a known height, so a rebuilt stream keeps its scroll extent", () => {
-        const { manager } = makeManager();
-        expect(placeholderHeight(manager.add(FILE, 812))).toBe("812px");
     });
 
     it("observes the block with both observers", () => {
@@ -219,14 +214,6 @@ describe("NoteWindowManager remembered heights", () => {
     it("falls back to the constant before anything has been measured", () => {
         const { manager } = makeManager();
         expect(placeholderHeight(manager.add(FILE))).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
-    });
-
-    it("keeps an explicit height ahead of the remembered one", () => {
-        const heights = new NoteHeights();
-        heights.keep(LAYOUT, FILE.path, 812);
-        const { manager } = makeManager(undefined, undefined, undefined, heights);
-
-        expect(placeholderHeight(manager.add(FILE, 120))).toBe("120px");
     });
 
     it("remembers the height a note unloads at", async () => {
@@ -456,24 +443,6 @@ describe("NoteWindowManager unload", () => {
         expect(renderer.discard).toHaveBeenCalledTimes(1);
     });
 
-    it("keeps the measured height for the next placeholder rebuild", async () => {
-        const { manager, block } = await rendered(() => 640);
-        fire(observers.unload, block, false);
-        await still();
-        expect(manager.heightOf(block)).toBe(640);
-    });
-
-    // Its stored height is whatever it last unloaded at — the estimate, here.
-    it("measures a block that is still rendered rather than trusting the estimate", async () => {
-        const { manager, block } = await rendered(() => 640);
-        expect(manager.heightOf(block)).toBe(640);
-    });
-
-    it("has no height for a block it does not own", () => {
-        const { manager } = makeManager();
-        expect(manager.heightOf(document.createElement("div"))).toBeUndefined();
-    });
-
     it("does nothing to an already unloaded block", async () => {
         const { manager, renderer } = makeManager();
         const block = manager.add(FILE);
@@ -674,7 +643,7 @@ describe("NoteWindowManager under a fast scroll", () => {
 
         expect(block.classList.contains("is-unloaded")).toBe(true);
         expect(block.querySelector(".daily-note-content")).toBeNull();
-        expect(manager.heightOf(block)).toBe(ESTIMATED_NOTE_HEIGHT_PX);
+        expect(placeholderHeight(block)).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
     });
 
     // The queue is shared with every vault event (ADR 0004), so a flick must
@@ -801,17 +770,18 @@ describe("NoteWindowManager.refresh", () => {
 describe("NoteWindowManager teardown", () => {
     it("remove stops observing and frees the note", async () => {
         const renderer = makeRenderer();
-        const { manager } = makeManager(renderer);
+        const { manager, heights } = makeManager(renderer);
         const block = manager.add(FILE);
         document.body.appendChild(block);
         fire(observers.render, block, true);
         await settle();
 
         manager.remove(block);
+        manager.keepRenderedHeights();
 
         expect(observers.unobserve).toHaveBeenCalledWith(block);
         expect(renderer.discard).toHaveBeenCalledTimes(1);
-        expect(manager.heightOf(block)).toBeUndefined();
+        expect(heights.toJSON()).toEqual([]);
     });
 
     it("remove frees an unloaded block without discarding anything", () => {
@@ -821,7 +791,6 @@ describe("NoteWindowManager teardown", () => {
         manager.remove(block);
 
         expect(renderer.discard).not.toHaveBeenCalled();
-        expect(manager.heightOf(block)).toBeUndefined();
     });
 
     it("remove is harmless for an unknown block", () => {

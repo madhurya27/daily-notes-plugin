@@ -137,14 +137,11 @@ export class NoteWindowManager {
         this.scrollRoot?.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    /** An unloaded block for `file`, reserving `height`, or what it last measured, or the estimate. */
-    add(file: TFile, height?: number): HTMLElement {
+    /** An unloaded block for `file`, reserving what it last measured, or the estimate. */
+    add(file: TFile): HTMLElement {
         const layout = this.layout();
         const reserved =
-            height ??
-            this.heights.heightOf(layout, file.path) ??
-            this.heights.estimate(layout) ??
-            ESTIMATED_NOTE_HEIGHT_PX;
+            this.heights.heightOf(layout, file.path) ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
         const block = this.renderer.createBlock(file);
         this.windows.set(block, {
             file,
@@ -172,16 +169,6 @@ export class NoteWindowManager {
 
     get layoutChanges(): number {
         return this.changes;
-    }
-
-    /**
-     * The height a rebuilt placeholder should reserve. A rendered block is
-     * measured now — its stored height is whatever it last unloaded at.
-     */
-    heightOf(block: HTMLElement): number | undefined {
-        const window = this.windows.get(block);
-        if (!window) return undefined;
-        return window.component ? this.measure(block) : window.height;
     }
 
     /** The scroll was just set to a place, for the stream as it now stands. */
