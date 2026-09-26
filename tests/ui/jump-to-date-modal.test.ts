@@ -3,7 +3,7 @@ import type { Moment } from "moment";
 import { JumpToDateModal, JUMP_SUGGESTION_LIMIT } from "../../src/ui/jump-to-date-modal";
 import { DailyNoteService } from "../../src/notes/daily-note-service";
 import { __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "obsidian-daily-notes-interface";
-import { moment } from "obsidian";
+import { Platform, moment } from "obsidian";
 import { asApp, makeApp } from "../stream-view-fixture";
 
 describe("JumpToDateModal", () => {
@@ -27,6 +27,11 @@ describe("JumpToDateModal", () => {
 
     beforeEach(() => {
         onSubmit = vi.fn();
+    });
+
+    afterEach(() => {
+        modal.contentEl.remove();
+        Platform.isMobile = false;
     });
 
     it("offers every date, newest first, as this vault names its notes", () => {
@@ -159,6 +164,20 @@ describe("JumpToDateModal", () => {
 
             expect(modal.inputEl.value).toBe("");
         });
+    });
+
+    // A focused query raises the phone's keyboard over half the list.
+    it("leaves the query unfocused on mobile, so the list opens without a keyboard", () => {
+        Platform.isMobile = true;
+        open("YYYY-MM-DD", ["2025-01-01"]);
+
+        expect(document.activeElement).not.toBe(modal.inputEl);
+    });
+
+    it("focuses the query on desktop, ready to type", () => {
+        open("YYYY-MM-DD", ["2025-01-01"]);
+
+        expect(document.activeElement).toBe(modal.inputEl);
     });
 
     it("empties its content on close, so a reopen starts clean", () => {

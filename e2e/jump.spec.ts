@@ -66,6 +66,27 @@ test.describe("jump to date", () => {
         await expect(items.last()).toHaveText(seededDate(SEEDED_DAYS - 1));
     });
 
+    // A focused query raises the phone's keyboard over half the list; the
+    // reader looks first, then taps the query or the calendar.
+    test("focuses the query on desktop only, and a tap focuses it on mobile", async ({ obsidian, mobileLayout }) => {
+        const { page } = obsidian;
+        await openStream(page);
+        const prompt = await openSuggester(page);
+        const query = prompt.locator("input.prompt-input");
+
+        if (!mobileLayout) {
+            await expect(query).toBeFocused();
+            return;
+        }
+        // Polled for a while: Obsidian may focus the query after the open.
+        await expect.poll(() => query.evaluate((el) => el === document.activeElement), { timeout: 1000 }).toBe(false);
+        await page.waitForTimeout(500);
+        await expect(query).not.toBeFocused();
+
+        await query.click();
+        await expect(query).toBeFocused();
+    });
+
     test("narrows to what is typed", async ({ obsidian }) => {
         const { page } = obsidian;
         await openStream(page);

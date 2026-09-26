@@ -255,7 +255,18 @@ export abstract class SuggestModal<T> extends Modal {
     abstract renderSuggestion(value: T, el: HTMLElement): void;
     abstract onChooseSuggestion(item: T, evt: MouseEvent | KeyboardEvent): void;
 
-    /** Obsidian's own: focus the query and draw the unfiltered list. */
+    /** Obsidian's own: on screen, the query focused, the unfiltered list drawn. */
+    open() {
+        document.body.appendChild(this.contentEl);
+        super.open();
+        this.inputEl.focus();
+    }
+
+    close() {
+        super.close();
+        this.contentEl.remove();
+    }
+
     onOpen() {
         this.type("");
     }

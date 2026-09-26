@@ -1,4 +1,4 @@
-import { App, SuggestModal, moment, setIcon } from "obsidian";
+import { App, Platform, SuggestModal, moment, setIcon } from "obsidian";
 import type { DailyNoteService, Moment } from "../notes/daily-note-service";
 
 /** The one format every reader can fall back on, whatever their vault uses. */
@@ -37,6 +37,15 @@ export class JumpToDateModal extends SuggestModal<JumpChoice> {
         this.setPlaceholder(`Jump to a date, e.g. ${service.formatDate(moment())}`);
         this.emptyStateText = "No daily note, and no date to jump to.";
         this.addCalendarButton();
+    }
+
+    /**
+     * On a phone, the list opens without the keyboard, which would cover half
+     * of it: the reader looks first, then taps the query or the calendar.
+     */
+    open(): void {
+        super.open();
+        if (Platform.isMobile) this.inputEl.blur();
     }
 
     getSuggestions(query: string): JumpChoice[] {

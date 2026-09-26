@@ -81,6 +81,8 @@ a reading-list Base every Sunday. Each note is seeded by its date, so a retake s
 
 - The header action and `Daily notes stream: Jump to date` both reach the suggester. **[e2e]**
 - It opens on every date the vault has a note for, newest first. **[e2e]**
+- On a phone it opens with the keyboard down; a tap on the query raises it. **[e2e]** for focus; check the
+  keyboard itself by hand on iOS.
 - Typing narrows it, in the vault's own format and in `YYYY-MM-DD`. **[e2e]**
 - A date far back loads the batches between and puts that note at the top of the pane. **[e2e]**
 - A date with no note is offered as one entry saying so; choosing it lands on the nearest older. **[e2e]**
