@@ -110,3 +110,6 @@ jsdomGaps.CSS ??= {
  */
 jsdomGaps.Highlight ??= class Highlight extends Set<AbstractRange> {} as unknown as typeof Highlight;
 jsdomGaps.CSS.highlights ??= new Map() as unknown as HighlightRegistry;
+
+/** jsdom lays nothing out, so nothing is drawn anywhere; a test with a layout stubs its own. */
+document.elementsFromPoint = () => [];

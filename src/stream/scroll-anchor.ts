@@ -129,9 +129,8 @@ export class ScrollAnchor {
     }
 
     /**
-     * Finds the block the pane's top crosses by halving, since blocks stack and
-     * a stream holds thousands; inside it, element by element, since a
-     * collapsed section lays out as nothing. It stops at anything held
+     * Asks what is drawn at the pane's top, past anything drawn over the
+     * stream, and walks up to its block. It stops short of anything held
      * (`HeightHold`): what is inside is still filling, and where its text lies
      * now is not where it will.
      */
@@ -139,8 +138,24 @@ export class ScrollAnchor {
         this.place = [];
         const stream = this.stream();
         if (!stream) return;
-        const paneTop = this.scrollRoot!.getBoundingClientRect().top;
+        const pane = this.scrollRoot!.getBoundingClientRect();
         this.placeScroll = this.scrollRoot!.scrollTop;
+        const drawn = document
+            .elementsFromPoint(pane.left + pane.width / 2, pane.top + 1)
+            .find((el) => el !== stream && stream.contains(el));
+
+        const path: Element[] = [];
+        for (let el = drawn ?? this.blockAt(stream, pane.top); el && el !== stream; el = el.parentElement) {
+            path.unshift(el);
+        }
+        for (const el of path) {
+            this.place.push({ el, top: el.getBoundingClientRect().top });
+            if ((el as HTMLElement).style.getPropertyValue("--daily-note-held-height")) break;
+        }
+    }
+
+    /** The block `paneTop` crosses, by halving: blocks stack, and a stream holds thousands. */
+    private blockAt(stream: HTMLElement, paneTop: number): Element | null {
         const blocks = stream.children;
         let low = 0;
         let high = blocks.length;
@@ -149,12 +164,7 @@ export class ScrollAnchor {
             if (blocks[mid]!.getBoundingClientRect().bottom > paneTop) high = mid;
             else low = mid + 1;
         }
-        let el: Element | undefined = blocks[low];
-        while (el) {
-            this.place.push({ el, top: el.getBoundingClientRect().top });
-            if ((el as HTMLElement).style.getPropertyValue("--daily-note-held-height")) break;
-            el = Array.from(el.children).find((child) => child.getBoundingClientRect().bottom > paneTop);
-        }
+        return blocks[low] ?? null;
     }
 
     /** What the blocks sit in, shifted while anything is owed. */

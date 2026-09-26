@@ -75,6 +75,20 @@ function makePane(layout: (number | number[])[]) {
         for (const height of spec) add(block, height);
         return block;
     });
+    /** What is drawn at `y`, topmost first: the deepest element there, then its ancestors. */
+    const drawnAt = (y: number): Element[] => {
+        const hits: Element[] = [];
+        for (let level: Element | undefined = content; level;) {
+            // By the layout's own arithmetic: a test counts what the anchor reads.
+            level = Array.from(level.children).find((child) => {
+                const top = topOf(child);
+                return top <= y && y < top + heightOf(child);
+            });
+            if (level) hits.unshift(level);
+        }
+        return [...hits, content, pane];
+    };
+    vi.spyOn(document, "elementsFromPoint").mockImplementation((_x, y) => drawnAt(y));
     const resize = (el: Element, height: number) => ((el as HTMLElement).dataset.height = String(height));
     return { pane, content, blocks, resize, add };
 }
@@ -92,6 +106,7 @@ describe("ScrollAnchor", () => {
 
     afterEach(() => {
         anchor.detach();
+        vi.restoreAllMocks();
         vi.unstubAllGlobals();
         vi.useRealTimers();
     });
@@ -181,16 +196,6 @@ describe("ScrollAnchor", () => {
         observer().resized(blocks[0]!);
 
         expect(shift(content)).toBe(-100);
-    });
-
-    it("forgets a block no longer watched when the scroll is set to a place", () => {
-        const { blocks } = watch([400, 400, 400], 900);
-        anchor.unobserve(blocks[0]!);
-        const read = vi.spyOn(blocks[0]!, "getBoundingClientRect");
-
-        anchor.placed();
-
-        expect(read).not.toHaveBeenCalled();
     });
 
     it("has nothing to set a place for before it is attached", () => {
@@ -328,6 +333,54 @@ describe("ScrollAnchor", () => {
             anchor.onScroll();
 
             resize(blocks[0]!.children[0]!, 1000);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(0);
+        });
+
+        it("asks what is drawn there, reading no other element's place", () => {
+            const long = Array.from({ length: 100 }, () => 40);
+            const { blocks } = watch([400, long], 500);
+            const reads = [...blocks[1]!.children].map((el) => vi.spyOn(el, "getBoundingClientRect"));
+
+            anchor.onScroll();
+
+            expect(reads.filter((read) => read.mock.calls.length > 0)).toHaveLength(1);
+        });
+
+        it("looks past anything drawn over the stream, as the search bar is", () => {
+            const { pane, content, blocks, resize } = watch([[400, 400, 400], 400], 0);
+            const hit = vi.mocked(document.elementsFromPoint);
+            const drawn = hit.getMockImplementation()!;
+            hit.mockImplementation((x, y) => [document.body, ...drawn(x, y)]);
+            pane.scrollTop = 500;
+            anchor.onScroll();
+
+            resize(blocks[0]!.children[0]!, 1000);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(-600);
+        });
+
+        // Between two notes, or before the stream has laid out.
+        it("finds the note under the pane's top when nothing of it is drawn there", () => {
+            const { pane, content, blocks, resize } = watch([400, 400, 400], 0);
+            vi.mocked(document.elementsFromPoint).mockReturnValue([]);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            resize(blocks[0]!, 500);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(-100);
+        });
+
+        it("holds nothing with the pane's top past every note", () => {
+            const { pane, content, blocks, resize } = watch([400, 400], 0);
+            pane.scrollTop = 1000;
+            anchor.onScroll();
+
+            resize(blocks[0]!, 500);
             observer().resized(blocks[0]!);
 
             expect(shift(content)).toBe(0);

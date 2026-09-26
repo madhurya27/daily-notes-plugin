@@ -7,6 +7,9 @@ rewriting across layers belongs in [`adr/`](adr/) instead.
 
 **Decision:** `ScrollAnchor` keeps the deepest element the pane's top crosses,
 picked on each scroll and hand-over, and offsets however far a resize moved it.
+It is found by `elementsFromPoint` at the pane's top, past anything drawn over
+the stream, and its ancestors up to its block; by halving the blocks when
+nothing of the stream is drawn there.
 It hears resizes of every block and of what a rendered note holds. A re-render
 replacing that element falls back to its block. Every re-read first owes what
 moved since the last: a note rendering between frames reaches the scroll event
@@ -21,8 +24,9 @@ lies below.
 
 **Rejected:**
 - Holding a Base's growth for 300ms — the same move, later, with rows clipped.
-- Scanning every block for the anchor — a stream holds thousands; blocks are
-  found by halving.
+- Walking down from the blocks — reads every paragraph above the anchor in a
+  long note, each scroll frame.
+- `IntersectionObserver` — reports a frame late, after a render has moved the place.
 
 ## 2026-09-26 — A note and a Base are held until they settle
 
