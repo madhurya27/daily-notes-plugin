@@ -2,7 +2,7 @@
 
 A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first.
 
-<p><img src="docs/images/demo-desktop.png" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Priya, and it glides back to the top" width="520"> <img src="docs/images/stream-phone.png" alt="The stream in Obsidian's phone layout" width="213"></p>
+<p><img src="docs/images/demo-desktop.png" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Priya, and it glides back to the top" width="520"></p>
 
 ## Features
 
@@ -35,7 +35,7 @@ A read-only, infinite-scroll feed of all your Obsidian Daily Notes, newest first
 <details>
 <summary>Phone layout</summary>
 
-<p><img src="docs/images/search-phone.png" alt="Search in the phone layout" width="150"> <img src="docs/images/jump-phone.png" alt="Jump to date in the phone layout" width="150"> <img src="docs/images/collapse-phone.png" alt="Collapsed sections in the phone layout" width="150"> <img src="docs/images/bases-phone.png" alt="A Base drawn as cards in the phone layout" width="150"> <img src="docs/images/stream-dark-phone.png" alt="The stream in the dark theme, phone layout" width="150"></p>
+<p><img src="docs/images/stream-phone.png" alt="The stream in Obsidian's phone layout" width="150"> <img src="docs/images/search-phone.png" alt="Search in the phone layout" width="150"> <img src="docs/images/jump-phone.png" alt="Jump to date in the phone layout" width="150"> <img src="docs/images/collapse-phone.png" alt="Collapsed sections in the phone layout" width="150"> <img src="docs/images/bases-phone.png" alt="A Base drawn as cards in the phone layout" width="150"> <img src="docs/images/stream-dark-phone.png" alt="The stream in the dark theme, phone layout" width="150"></p>
 
 </details>
 
