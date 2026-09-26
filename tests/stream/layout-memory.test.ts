@@ -77,6 +77,27 @@ describe("LayoutMemory", () => {
         expect(memory.bases.toJSON()).toEqual([["600:16px", [["new.md\nb1", { height: 200 }]]]]);
     });
 
+    // localStorage is a few megabytes, shared by every vault in the app.
+    it("logs a save refused, once, and keeps measuring", () => {
+        const app = makeApp();
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        app.saveLocalStorage.mockImplementation(() => {
+            throw new DOMException("full", "QuotaExceededError");
+        });
+        const memory = new LayoutMemory(asApp(app));
+
+        memory.notes.keep("600:16px", "a.md", 300);
+        expect(() => memory.flush()).not.toThrow();
+        memory.notes.keep("600:16px", "b.md", 300);
+        memory.flush();
+
+        expect(app.saveLocalStorage).toHaveBeenCalledTimes(2);
+        expect(error).toHaveBeenCalledOnce();
+        expect(error).toHaveBeenCalledWith("DailyNotesStream: Failed to save layout memory", expect.any(DOMException));
+        expect(memory.notes.heightOf("600:16px", "b.md")).toBe(300);
+        error.mockRestore();
+    });
+
     it("saves what is pending at once when the plugin unloads", () => {
         const app = makeApp();
         const memory = new LayoutMemory(asApp(app));
