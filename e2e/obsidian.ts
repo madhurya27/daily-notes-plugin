@@ -1,4 +1,4 @@
-import { test as base, chromium, expect, type Browser, type Page } from "@playwright/test";
+import { test as base, chromium, expect, type Browser, type Locator, type Page } from "@playwright/test";
 import { execFileSync, spawn, type ChildProcess } from "child_process";
 import { createServer } from "net";
 import { mkdirSync, mkdtempSync, writeFileSync, copyFileSync, rmSync } from "fs";
@@ -556,6 +556,22 @@ export async function openStream(page: Page) {
     await expect(container).toBeVisible();
     await expect(container.locator(".daily-note-block").first()).toBeVisible();
     return container;
+}
+
+/**
+ * Scrolls the stream to its end a screen at a time, so every note renders and
+ * its height is remembered, then waits for the scroll to count as still.
+ */
+export async function scrollThroughStream(container: Locator) {
+    await container.locator("xpath=..").evaluate(async (pane, notes) => {
+        const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+        const loaded = () => pane.querySelectorAll(".daily-note-block").length;
+        for (let last = -1; pane.scrollTop !== last || loaded() < notes; await wait(150)) {
+            last = pane.scrollTop;
+            pane.scrollTop += pane.clientHeight;
+        }
+        await wait(500);
+    }, SEEDED_DAYS);
 }
 
 /**

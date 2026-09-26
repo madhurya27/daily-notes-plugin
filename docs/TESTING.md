@@ -69,6 +69,8 @@ a reading-list Base every Sunday. Each note is seeded by its date, so a retake s
 - Scrolling to the bottom loads the next batch without duplicates. **[e2e]**
 - With the stream scrolled far, run `Daily notes stream: Scroll to top`: it glides to the newest note. The
   command is not offered with another view open. **[e2e]** for the glide.
+- On iOS, scroll through the stream, quit Obsidian, reopen it and jump to an old date; scroll back up by hand:
+  the glide stops on the newest note, and nothing jumps once it stops. **[e2e]** with anchoring off.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled. **[e2e]** for the wait; the
   glide by hand.
 - Tall window, short notes → loading continues past the first batch.

@@ -3,6 +3,7 @@ import {
     expect,
     openStream,
     restoreScrollAnchoring,
+    scrollThroughStream,
     seededDate,
     SEEDED_DAYS,
     withoutScrollAnchoring,
@@ -117,6 +118,27 @@ test.describe("tapping the header title", () => {
 
                 // Still there once the anchor's hand-over, due when the scroll is still, has landed.
                 await expect.poll(() => pane(container).evaluate((el) => el.scrollTop)).toBe(0);
+                await page.waitForTimeout(500);
+                expect(await pane(container).evaluate((el) => el.scrollTop)).toBe(0);
+                expect(await newestOffset(container)).toBeGreaterThanOrEqual(0);
+            });
+
+            // Each note between the oldest and the top reserves what it last
+            // measured (ADR 0010), so nothing is owed that the glide cannot reach.
+            test("lets a scroll up by hand from a jump reach the newest note", async ({ obsidian }) => {
+                const { page } = obsidian;
+                await scrollThroughStream(await openStream(page));
+                const container = await openStream(page);
+                await scrollToOldest(page, container);
+
+                // By hand: the wheel, until the pane is at its top. The tall notes run to ~12,000px each.
+                await container.hover();
+                while ((await pane(container).evaluate((el) => el.scrollTop)) > 0) {
+                    await page.mouse.wheel(0, -2000);
+                    await page.waitForTimeout(30);
+                }
+
+                // Still there once the anchor's hand-over, due when the scroll is still, has landed.
                 await page.waitForTimeout(500);
                 expect(await pane(container).evaluate((el) => el.scrollTop)).toBe(0);
                 expect(await newestOffset(container)).toBeGreaterThanOrEqual(0);

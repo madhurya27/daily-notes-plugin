@@ -66,6 +66,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
 - `stream/note-window.ts` — renders a block near the viewport, empties it well past; owns each note's
   `Component`.
 - `stream/scroll-box-guard.ts` — reports Base layouts to the renderer; clips stray scroll boxes once still.
+- `stream/layout-memory.ts` — every note's last measured height per layout (`note-heights.ts`) and what Bases
+  measured, kept in the vault's localStorage on this device ([ADR 0010](docs/adr/0010-layout-memory.md)).
 - `stream/` also holds the loaded range (`stream-state.ts`), the sentinel (`infinite-scroll.ts`), scroll
   places (`scroll-position.ts`) and, where the platform has none, scroll anchoring (`scroll-anchor.ts`).
 - `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`), wide

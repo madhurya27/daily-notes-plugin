@@ -12,6 +12,7 @@
 - [x] Links to missing notes fade as in reading view, and unfade once the note exists
 - [x] The status bar clears while the stream has focus, instead of describing the last note
 - [x] Back to the stream returns to the note it was scrolled to
+- [x] Notes reserve the height they last measured, across sessions: a scroll up from a jump reaches the top on iOS
 - [x] On mobile, a tap on the header title glides to the top, as in iOS apps
 - [x] Scroll to top, from the command palette while the stream is open
 - [x] iOS: search highlights paint, and stream text selects

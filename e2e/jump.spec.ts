@@ -1,4 +1,4 @@
-import { test, expect, openStream, seededDate, SEEDED_DAYS } from "./obsidian";
+import { test, expect, openStream, scrollThroughStream, seededDate, SEEDED_DAYS } from "./obsidian";
 
 /** Opens the jump suggester and returns its prompt. */
 async function openSuggester(page: import("@playwright/test").Page) {
@@ -209,5 +209,36 @@ test.describe("jump to date", () => {
         await expect(page.locator(".notice")).toHaveText("No daily note on or before that date.");
         await expect(blocks).toHaveCount(10);
         expect(await scroller.evaluate((el) => el.scrollTop)).toBe(0);
+    });
+
+    // A guess grows or shrinks as the reader scrolls back past it (ADR 0010).
+    test("reserves the heights notes measured in an earlier session", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await scrollThroughStream(await openStream(page));
+        await page.evaluate(async () => {
+            await window.app.plugins.disablePlugin("daily-notes-stream");
+            await window.app.plugins.enablePlugin("daily-notes-stream");
+        });
+        const container = await openStream(page);
+
+        await jumpTo(page, seededDate(SEEDED_DAYS - 1));
+
+        const { layout, remembered, reserved } = await container.evaluate((column) => {
+            const layout = `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-text-size").trim()}`;
+            const notes: [string, [string, number][]][] =
+                window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON();
+            const unloaded = [...column.querySelectorAll<HTMLElement>(".daily-note-block.is-unloaded")];
+            return {
+                layout,
+                remembered: Object.fromEntries(notes.find(([key]) => key === layout)?.[1] ?? []),
+                reserved: unloaded.map((el) => [
+                    el.dataset.sourcePath!,
+                    el.style.getPropertyValue("--daily-note-placeholder-height"),
+                ]),
+            };
+        });
+        expect(layout).toMatch(/^\d+:\d+px$/);
+        expect(reserved.length).toBeGreaterThan(0);
+        for (const [path, height] of reserved) expect(height, path).toBe(`${remembered[path!]}px`);
     });
 });
