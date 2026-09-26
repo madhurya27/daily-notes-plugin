@@ -33,7 +33,7 @@ export class BaseMeasurements {
     }
 
     keepHeight(key: string, height: number): void {
-        this.update(key, { height });
+        if (this.heightOf(key) !== height) this.update(key, { height });
     }
 
     isTooWide(key: string): boolean {
@@ -41,7 +41,7 @@ export class BaseMeasurements {
     }
 
     markTooWide(key: string): void {
-        this.update(key, { tooWide: true });
+        if (!this.isTooWide(key)) this.update(key, { tooWide: true });
     }
 
     toJSON(): SavedMeasurements {
@@ -64,13 +64,7 @@ export class BaseMeasurements {
     }
 
     private update(key: string, change: Measurement): void {
-        const measurement = this.use(key);
-        if (
-            measurement &&
-            Object.entries(change).every(([field, value]) => measurement[field as keyof Measurement] === value)
-        )
-            return;
-        this.byKey.set(key, { ...measurement, ...change });
+        this.byKey.set(key, { ...this.byKey.get(key), ...change });
         if (this.byKey.size > this.limit) this.byKey.delete(this.byKey.keys().next().value!);
         this.changed();
     }
