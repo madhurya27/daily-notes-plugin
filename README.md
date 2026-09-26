@@ -67,7 +67,7 @@ no note takes you to the nearest older one. The calendar button opens your devic
 
 ### Search
 
-Press Obsidian's "Search current file" hotkey or click the search icon in the header.
+Press Obsidian's "Search current file" hotkey (Mod+F unless you changed it) or click the search icon in the header.
 
 | Key | Action |
 | --- | --- |
