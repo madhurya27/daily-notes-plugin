@@ -411,6 +411,44 @@ test.describe("daily notes stream in real Obsidian", () => {
                 expect(after).toBeCloseTo(before, 0);
             });
 
+            // A Base filling in the part of a note scrolled past: nothing above
+            // the pane's top is the reader's doing, whichever note it is in.
+            test("keeps the reader's place when a note reaching into the pane grows above it", async ({ obsidian }) => {
+                const { page } = obsidian;
+                const container = await openUnanchored(page);
+                const note = container.locator(".daily-note-block").nth(3);
+                await expect(note).toBeAttached();
+                await note.evaluate((el) => el.scrollIntoView({ block: "start" }));
+                await expect(note).not.toHaveClass(/is-unloaded/);
+                await page.waitForTimeout(1000);
+                // The pane's top 60px into the note's text.
+                await note.evaluate((el) => {
+                    const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                    const text = el.querySelector(".daily-note-content")!.getBoundingClientRect().top;
+                    pane.scrollTop += text - pane.getBoundingClientRect().top + 60;
+                });
+                await page.waitForTimeout(1000);
+                await expect(container).not.toHaveClass(/is-scroll-shifted/);
+
+                const { before, after } = await note.evaluate(async (el) => {
+                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                    const box = pane.getBoundingClientRect();
+                    const reader = document.elementFromPoint(box.left + box.width / 2, box.top + 40)!;
+                    const before = reader.getBoundingClientRect().top;
+                    const content = el.querySelector(".daily-note-content")!;
+                    if (content.getBoundingClientRect().top >= box.top)
+                        throw new Error("the note's text starts below the pane's top");
+                    content.prepend(document.createElement("div"));
+                    (content.firstElementChild as HTMLElement).style.height = "1000px";
+                    await frame();
+                    await frame();
+                    return { before, after: reader.getBoundingClientRect().top };
+                });
+
+                expect(after).toBeCloseTo(before, 0);
+            });
+
             /** A flick upward, frame by frame, until a note above has rendered, then on a little. */
             const GLIDE_STEP_PX = 30;
             const GLIDE_STEPS_AFTER_RENDER = 10;
