@@ -7,9 +7,11 @@ import type { InfiniteScrollController } from "../../src/stream/infinite-scroll"
 import type { ScrollBoxGuard } from "../../src/stream/scroll-box-guard";
 import type { DailyNoteService } from "../../src/notes/daily-note-service";
 import type { CollapsibleStateStore } from "../../src/render/collapse-store";
+import { NoteHeights } from "../../src/stream/note-heights";
 import { flushPromises, makePlugin, makeService } from "../stream-view-fixture";
 
-type FakeWindow = Mocked<NoteWindowManager>;
+/** What the stream constructed its window with, besides what it calls on it. */
+type FakeWindow = Mocked<NoteWindowManager> & { memory: { heights: NoteHeights; layoutOf: () => string } };
 type FakeScroll = Mocked<InfiniteScrollController>;
 type FakeGuard = Mocked<ScrollBoxGuard>;
 
@@ -35,11 +37,15 @@ vi.mock("../../src/stream/note-window", () => ({
         reserve = vi.fn();
         placed = vi.fn();
         layoutChanges = 0;
+        memory: unknown;
         add = vi.fn((file: { path: string }) => placeholder(file.path));
         constructor(
             _renderer: unknown,
-            readonly enqueue: (task: () => Promise<void>) => Promise<void>
+            readonly enqueue: (task: () => Promise<void>) => Promise<void>,
+            heights: NoteHeights,
+            layoutOf: () => string
         ) {
+            this.memory = { heights, layoutOf };
             fakes.windows.push(this as unknown as FakeWindow);
         }
     },
@@ -92,13 +98,15 @@ let noteWindow: FakeWindow;
 let infiniteScroll: FakeScroll;
 let guard: FakeGuard;
 let renderer: { onBaseLayout: ReturnType<typeof vi.fn> };
+let heights: NoteHeights;
 
 beforeEach(() => {
     Notice.reset();
     service = vi.mocked(makeService());
     collapseStore = makePlugin().collapseStore;
     renderer = { onBaseLayout: vi.fn() };
-    stream = new NoteStream(service, collapseStore, renderer as unknown as NoteRenderer);
+    heights = new NoteHeights();
+    stream = new NoteStream(service, collapseStore, renderer as unknown as NoteRenderer, heights);
     noteWindow = fakes.windows.at(-1)!;
     infiniteScroll = fakes.scrolls.at(-1)!;
     guard = fakes.guards.at(-1)!;
@@ -791,6 +799,16 @@ describe("what a search moves through", () => {
 
     it("names no note in an empty stream", () => {
         expect(stream.firstVisibleNote()).toBeNull();
+    });
+});
+
+describe("the heights the stream reserves", () => {
+    // Every view reads and adds to one store (ADR 0010).
+    it("are the plugin's, measured in the column the notes sit in", () => {
+        Object.defineProperty(container, "clientWidth", { value: 612 });
+
+        expect(noteWindow.memory.heights).toBe(heights);
+        expect(noteWindow.memory.layoutOf()).toBe("612:");
     });
 });
 

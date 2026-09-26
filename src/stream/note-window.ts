@@ -1,18 +1,13 @@
 import { Component, TFile, debounce } from "obsidian";
 import type { NoteRenderer } from "../render/note-renderer";
+import type { NoteHeights } from "./note-heights";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "./scroll-anchor";
 
 /**
- * What a block reserves before this vault has measured anything. A guess only
- * until the first note is unloaded, after which the vault's own notes say.
+ * What a block reserves before anything was measured at this layout. A guess
+ * only until the first note is, after which the vault's own notes say.
  */
 export const ESTIMATED_NOTE_HEIGHT_PX = 400;
-
-/**
- * How many measurements the estimate is drawn from. Short enough that a window
- * resize, which changes every note's height, is forgotten quickly.
- */
-const MEASUREMENT_WINDOW = 50;
 
 /**
  * Both margins are viewports, not pixels: how far ahead of the reader the
@@ -59,13 +54,14 @@ export class NoteWindowManager {
     /** A render or unload moves everything below it; above the pane, that is the reader's place. */
     private readonly anchor = new ScrollAnchor();
     private scrollRoot: HTMLElement | null = null;
-    /** Recent measured note heights, oldest first; the estimate is their median. */
-    private readonly measured: number[] = [];
+    /** The layout heights are read and kept in, until the task reading it ends. */
+    private currentLayout: string | null = null;
     /** The height the current margins were computed from. */
     private rootHeight = 0;
     /** Rendered blocks past the unload margin, waiting for the scroll to be still. */
     private readonly leaving = new Set<HTMLElement>();
     private readonly unloadOnceStill = debounce(() => this.unloadLeaving(), SCROLL_IDLE_MS, true);
+    private readonly keepOnceStill = debounce(() => this.keepRenderedHeights(), SCROLL_IDLE_MS, true);
 
     constructor(
         private readonly renderer: NoteRenderer,
@@ -74,6 +70,10 @@ export class NoteWindowManager {
          * (ADR 0004). Its promise is the view's to chain; nothing here waits.
          */
         private readonly enqueue: (task: () => Promise<void>) => unknown,
+        /** Every height measured, kept across sessions (ADR 0010). */
+        private readonly heights: NoteHeights,
+        /** The layout the stream is laid out in now: a height is true only there. */
+        private readonly layoutOf: () => string,
         /** jsdom lays nothing out, so measurement is the one seam tests replace. */
         private readonly measure: (el: HTMLElement) => number = (el) => el.getBoundingClientRect().height
     ) {}
@@ -121,6 +121,14 @@ export class NoteWindowManager {
     onScroll(): void {
         this.anchor.onScroll();
         if (this.leaving.size > 0) this.unloadOnceStill();
+        this.keepOnceStill();
+    }
+
+    /** Remembers what each rendered note measures now. */
+    keepRenderedHeights(): void {
+        for (const [block, window] of this.windows) {
+            if (window.component) this.keepHeight(block, window);
+        }
     }
 
     /** Glides the pane to its top, the newest note. */
@@ -129,9 +137,14 @@ export class NoteWindowManager {
         this.scrollRoot?.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    /** An unloaded block for `file`, reserving `height` — or the estimate. */
+    /** An unloaded block for `file`, reserving `height`, or what it last measured, or the estimate. */
     add(file: TFile, height?: number): HTMLElement {
-        const reserved = height ?? this.estimate();
+        const layout = this.layout();
+        const reserved =
+            height ??
+            this.heights.heightOf(layout, file.path) ??
+            this.heights.estimate(layout) ??
+            ESTIMATED_NOTE_HEIGHT_PX;
         const block = this.renderer.createBlock(file);
         this.windows.set(block, {
             file,
@@ -146,13 +159,15 @@ export class NoteWindowManager {
     }
 
     /**
-     * The median of what this vault's notes measured, which beats any constant:
-     * note length varies by vault, and every height varies by window width.
+     * Read once per task: reading it lays the stream out, and a batch appends
+     * a block between one add and the next.
      */
-    private estimate(): number {
-        if (this.measured.length === 0) return ESTIMATED_NOTE_HEIGHT_PX;
-        const sorted = [...this.measured].sort((a, b) => a - b);
-        return sorted[sorted.length >> 1]!;
+    private layout(): string {
+        if (this.currentLayout === null) {
+            this.currentLayout = this.layoutOf();
+            queueMicrotask(() => (this.currentLayout = null));
+        }
+        return this.currentLayout;
     }
 
     get layoutChanges(): number {
@@ -291,19 +306,23 @@ export class NoteWindowManager {
     }
 
     private unloadNow(block: HTMLElement, window: NoteWindow): void {
-        // A block that was never laid out measures zero: reserving that would
-        // collapse a note the reader has scrolled past, and take the scroll
-        // position with it. It keeps what it already reserved.
-        const measured = this.measure(block);
-        if (measured > 0) {
-            window.height = measured;
-            this.measured.push(measured);
-            if (this.measured.length > MEASUREMENT_WINDOW) this.measured.shift();
-        }
+        this.keepHeight(block, window);
         this.discard(window);
         block.empty();
         this.markUnloaded(block, window.height);
         this.changes++;
+    }
+
+    /**
+     * A block that was never laid out measures zero: reserving that would
+     * collapse a note the reader has scrolled past, and take the scroll
+     * position with it. It keeps what it already reserved.
+     */
+    private keepHeight(block: HTMLElement, window: NoteWindow): void {
+        const measured = this.measure(block);
+        if (measured <= 0) return;
+        window.height = measured;
+        this.heights.keep(this.layout(), window.file.path, measured);
     }
 
     /**

@@ -84,6 +84,14 @@ describe("DailyNotesStreamView — view API", () => {
         expect(freshView["renderer"]["bases"]["measured"]).toBe(plugin.baseMeasurements);
     });
 
+    // Back rebuilds the view, and the app restarts: what notes measured outlives both.
+    it("reserves the heights the plugin keeps for every view", () => {
+        const plugin = makePlugin();
+        const freshView = new DailyNotesStreamView(new WorkspaceLeaf(asApp(makeApp())), plugin, makeService());
+
+        expect(freshView["stream"]["window"]["heights"]).toBe(plugin.layoutMemory.notes);
+    });
+
     it("gives the renderer a live view of the plugin settings", async () => {
         const plugin = makePlugin();
         const app = makeApp();

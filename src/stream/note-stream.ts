@@ -6,6 +6,7 @@ import { StreamState } from "./stream-state";
 import { StreamBlocks } from "./stream-blocks";
 import { InfiniteScrollController } from "./infinite-scroll";
 import { NoteWindowManager } from "./note-window";
+import { type NoteHeights, layoutOf } from "./note-heights";
 import { ScrollBoxGuard } from "./scroll-box-guard";
 import {
     captureAnchor,
@@ -50,9 +51,10 @@ export class NoteStream {
     constructor(
         private readonly service: DailyNoteService,
         private readonly collapseStore: CollapsibleStateStore,
-        renderer: NoteRenderer
+        renderer: NoteRenderer,
+        heights: NoteHeights
     ) {
-        this.window = new NoteWindowManager(renderer, this.enqueue.bind(this));
+        this.window = new NoteWindowManager(renderer, this.enqueue.bind(this), heights, () => layoutOf(this.blocks.el));
         this.scrollBoxes = new ScrollBoxGuard((view) => renderer.onBaseLayout(view));
     }
 
