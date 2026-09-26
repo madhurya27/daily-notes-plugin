@@ -789,3 +789,14 @@ you type. The cost of the extra redraws is unmeasured.
 - Holding the redraw until typing goes quiet (`editor-change` plus a 2.5 s
   timer) — a minute of steady typing would leave the stream stale for the
   minute. Revisit if redraws are seen to jolt the stream beside an editor.
+
+## 2026-09-26 — The mobile e2e project is an iPhone Pro's screen
+
+**Decision:** the phone viewport is 402 × 874, an iPhone Pro's screen in
+points.
+
+**Why:** at the old 420 × 800, Bases fit two cards per row where a phone shows
+one, so the README's phone screenshots showed a layout no phone had.
+
+**Rejected:**
+- A Pro Max's 440 — fits two cards again, like the old viewport.

@@ -25,8 +25,8 @@ const NO_THROTTLE = [
  */
 const MIN_WINDOW = { width: 300, height: 200 };
 const VIEWPORT = { width: 1024, height: 800 };
-/** Narrow enough for is-phone, which switches at 600px. */
-const PHONE_VIEWPORT = { width: 420, height: 800 };
+/** An iPhone Pro's screen in points: layouts that depend on width, like Bases' cards per row, match the phone. */
+const PHONE_VIEWPORT = { width: 402, height: 874 };
 const PLUGIN_ID = "daily-notes-stream";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
