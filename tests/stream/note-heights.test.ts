@@ -12,6 +12,17 @@ describe("NoteHeights", () => {
         expect(heights.heightOf("600:16px", "b.md")).toBeUndefined();
     });
 
+    // Sub-pixel digits cost a third of an entry; half a pixel is nothing to reserve.
+    it("keeps a height in whole pixels", () => {
+        const changed = vi.fn();
+        const heights = new NoteHeights(changed);
+        heights.keep("600:16px", "a.md", 933.8515625);
+        heights.keep("600:16px", "a.md", 934.2);
+
+        expect(heights.heightOf("600:16px", "a.md")).toBe(934);
+        expect(changed).toHaveBeenCalledOnce();
+    });
+
     it("estimates a layout's unmeasured note as the median of its measured ones", () => {
         const heights = new NoteHeights();
         expect(heights.estimate("600:16px")).toBeUndefined();

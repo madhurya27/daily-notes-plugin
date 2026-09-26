@@ -28,8 +28,10 @@ export class NoteHeights {
         return this.table.get(layout, path);
     }
 
+    /** In whole pixels: sub-pixel digits cost a third of what is stored. */
     keep(layout: string, path: string, height: number): void {
-        if (this.heightOf(layout, path) !== height) this.table.set(layout, path, height);
+        const px = Math.round(height);
+        if (this.heightOf(layout, path) !== px) this.table.set(layout, path, px);
     }
 
     /** The median of what `layout` measured: note length varies by vault. */
