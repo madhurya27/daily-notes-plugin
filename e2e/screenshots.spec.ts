@@ -1,7 +1,7 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { test, expect, openStream } from "./obsidian";
 import { join } from "path";
-import { OUT, prepareDemo } from "./demo";
+import { OUT, prepareDemo, showLightTheme } from "./demo";
 
 /**
  * Captures the README's stills from the real app rather than a mockup, one per
@@ -43,7 +43,6 @@ test.describe("README screenshots", () => {
         await capture(obsidian.page, "stream", testInfo);
     });
 
-    // The vault follows the system theme, so emulating a dark system turns Obsidian dark.
     test("the stream in dark mode", async ({ obsidian }, testInfo) => {
         const { page } = obsidian;
         await page.emulateMedia({ colorScheme: "dark" });
@@ -52,7 +51,7 @@ test.describe("README screenshots", () => {
             await showStream(page);
             await capture(page, "stream-dark", testInfo);
         } finally {
-            await page.emulateMedia({ colorScheme: null });
+            await showLightTheme(page);
         }
     });
 
