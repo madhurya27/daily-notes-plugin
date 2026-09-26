@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Component, TFile } from "obsidian";
-import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX } from "../../src/stream/note-window";
+import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX, SETTLE_MS } from "../../src/stream/note-window";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "../../src/stream/scroll-anchor";
 import { NoteHeights } from "../../src/stream/note-heights";
 
@@ -44,6 +44,29 @@ function stubObservers(): void {
             };
         })
     );
+}
+
+/** Every ResizeObserver's callback, so a test can report a block resized. */
+let resizeCallbacks: ResizeObserverCallback[];
+/** What the last ResizeObserver constructed was told to watch. */
+let lastResizeObserve: ReturnType<typeof vi.fn>;
+
+function stubResizeObservers(): void {
+    resizeCallbacks = [];
+    vi.stubGlobal(
+        "ResizeObserver",
+        vi.fn(function (cb: ResizeObserverCallback) {
+            resizeCallbacks.push(cb);
+            lastResizeObserve = vi.fn();
+            return { observe: lastResizeObserve, unobserve: vi.fn(), disconnect: vi.fn() };
+        })
+    );
+}
+
+/** Reports `block` resized to every ResizeObserver. */
+function resize(block: HTMLElement): void {
+    const entries = [{ target: block } as unknown as ResizeObserverEntry];
+    for (const cb of resizeCallbacks) cb(entries, {} as ResizeObserver);
 }
 
 /** Drives one observer's callback for a block. */
@@ -115,6 +138,7 @@ const placeholderHeight = (block: HTMLElement) => block.style.getPropertyValue("
 
 beforeEach(() => {
     stubObservers();
+    stubResizeObservers();
     vi.useFakeTimers();
 });
 afterEach(() => {
@@ -216,34 +240,52 @@ describe("NoteWindowManager remembered heights", () => {
         expect(placeholderHeight(manager.add(FILE))).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
     });
 
-    it("remembers the height a note unloads at", async () => {
-        const { heights, block } = await renderAt(640);
-        fire(observers.unload, block, false);
-        await still();
-
-        expect(heights.heightOf(LAYOUT, FILE.path)).toBe(640);
-    });
-
     // iOS ends an app without unloading the plugin: a note still on screen
     // has to be remembered before then.
-    it("remembers the rendered notes' heights once the scroll is still", async () => {
-        const { manager, heights } = await renderAt(640);
+    it("remembers a note's height once nothing in it has resized for a while", async () => {
+        const { heights } = await renderAt(640);
 
-        manager.onScroll();
-        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
+        await vi.advanceTimersByTimeAsync(SETTLE_MS - 1);
         expect(heights.heightOf(LAYOUT, FILE.path)).toBeUndefined();
         await vi.advanceTimersByTimeAsync(1);
         expect(heights.heightOf(LAYOUT, FILE.path)).toBe(640);
     });
 
-    it("remembers the rendered notes' heights when asked, as Back leaves", async () => {
-        const { manager, heights } = await renderAt(640);
+    // A Base filling, or an image loading, measures short until it is done.
+    it("keeps the height it had while the note is still changing", async () => {
+        const { heights, block } = await renderAt(640);
+        heights.keep(LAYOUT, FILE.path, 700);
+
+        await vi.advanceTimersByTimeAsync(SETTLE_MS - 100);
+        resize(block);
+        await vi.advanceTimersByTimeAsync(SETTLE_MS - 1);
+        expect(heights.heightOf(LAYOUT, FILE.path)).toBe(700);
+
+        await vi.advanceTimersByTimeAsync(1);
+        expect(heights.heightOf(LAYOUT, FILE.path)).toBe(640);
+    });
+
+    it("keeps watching a rendered note when the pane's height changes", async () => {
+        const { manager, scrollRoot, block } = await renderAt(640);
         const unrendered = manager.add(new TFile("Notes/2025-01-02.md"));
-        document.body.appendChild(unrendered);
 
-        manager.keepRenderedHeights();
+        Object.defineProperty(scrollRoot, "clientHeight", { value: 1600, configurable: true });
+        manager.refreshMargins();
 
-        expect(heights.toJSON()).toEqual([[LAYOUT, [[FILE.path, 640]]]]);
+        expect(lastResizeObserve).toHaveBeenCalledWith(block);
+        expect(lastResizeObserve).not.toHaveBeenCalledWith(unrendered);
+    });
+
+    it("reserves what an unsettled note unloads at, and remembers none of it", async () => {
+        const { heights, block } = await renderAt(640);
+        await vi.advanceTimersByTimeAsync(SETTLE_MS - 100);
+        fire(observers.unload, block, false);
+        resize(block);
+
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS);
+        expect(placeholderHeight(block)).toBe("640px");
+        await vi.advanceTimersByTimeAsync(SETTLE_MS);
+        expect(heights.heightOf(LAYOUT, FILE.path)).toBeUndefined();
     });
 
     it("remembers nothing of a block measuring nothing, and keeps what it reserved", async () => {
@@ -255,7 +297,7 @@ describe("NoteWindowManager remembered heights", () => {
         fire(observers.render, block, true);
         await settle();
 
-        manager.keepRenderedHeights();
+        await vi.advanceTimersByTimeAsync(SETTLE_MS);
         fire(observers.unload, block, false);
         await still();
 
@@ -777,7 +819,7 @@ describe("NoteWindowManager teardown", () => {
         await settle();
 
         manager.remove(block);
-        manager.keepRenderedHeights();
+        await vi.advanceTimersByTimeAsync(SETTLE_MS);
 
         expect(observers.unobserve).toHaveBeenCalledWith(block);
         expect(renderer.discard).toHaveBeenCalledTimes(1);

@@ -3,6 +3,18 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — A note's height is remembered once it settles
+
+**Decision:** a rendered note's height goes into `LayoutMemory` once nothing
+in it has resized for 300ms, as a Base's does. An unload reserves what the
+note measures then, remembering it only if it had settled.
+
+**Why:** a Base filling or an image loading measures short until done; saved,
+that height is next session's placeholder, and the growth an owed scroll.
+
+**Rejected:** saving on scroll stop, Back and refresh — each measured
+whatever was on screen, mid-fill included.
+
 ## 2026-09-25 — The pane keeps a scroll bar's room while it cannot scroll
 
 **Decision:** the stream's pane sets `scrollbar-gutter: stable`.
@@ -30,9 +42,8 @@ is the same across every test build.
 ## 2026-09-25 — Back returns to its place in one scroll
 
 **Decision:** the place kept in Obsidian's history is the note reaching into
-the pane and its offset. Taking it remembers the rendered notes' heights in
-`LayoutMemory` ([ADR 0010](adr/0010-layout-memory.md)), so the rebuilt view's
-placeholders reserve them. Back scrolls once, before the first frame. The iOS
+the pane and its offset. The rebuilt view's placeholders reserve what
+`LayoutMemory` remembers ([ADR 0010](adr/0010-layout-memory.md)). Back scrolls once, before the first frame. The iOS
 scroll anchor is then told the place is set, so growth the scroll already
 holds, reported a frame late, is not added again. It loads past the place
 until the pane can scroll there: a place near the end of what was loaded

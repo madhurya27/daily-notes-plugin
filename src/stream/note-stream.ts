@@ -251,11 +251,9 @@ export class NoteStream {
 
     /**
      * Where the pane is scrolled to; null when no note is in it. Back rebuilds
-     * the view, so what the rendered notes measure is remembered first: the
-     * new view's placeholders reserve it, and lay the stream out as it was.
+     * the view, whose placeholders reserve what the notes measured (ADR 0010).
      */
     place(): StreamPlace | null {
-        this.window.keepRenderedHeights();
         const find = (f: TFile) => this.blocks.get(f.path);
         const anchor = captureAnchor(this.state.notes, this.scrollRoot, find);
         if (!anchor) return null;
@@ -357,7 +355,6 @@ export class NoteStream {
         const snapshot = captureAnchor(this.state.notes, this.scrollRoot, find);
 
         const notes = [...this.state.notes];
-        this.window.keepRenderedHeights();
 
         this.blocks.empty();
         this.scroll.detach();

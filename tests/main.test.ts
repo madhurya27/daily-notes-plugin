@@ -393,12 +393,13 @@ describe("DailyNotesStreamPlugin — saveSettings", () => {
 describe("DailyNotesStreamPlugin — two open streams", () => {
     beforeEach(() => {
         const observer = { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
-        vi.stubGlobal(
-            "IntersectionObserver",
-            vi.fn(function () {
-                return observer;
-            })
-        );
+        for (const name of ["IntersectionObserver", "ResizeObserver"])
+            vi.stubGlobal(
+                name,
+                vi.fn(function () {
+                    return observer;
+                })
+            );
     });
     afterEach(() => vi.unstubAllGlobals());
 

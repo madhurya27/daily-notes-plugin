@@ -32,7 +32,6 @@ vi.mock("../../src/stream/note-window", () => ({
         refreshMargins = vi.fn();
         onScroll = vi.fn();
         refresh = vi.fn().mockResolvedValue(undefined);
-        keepRenderedHeights = vi.fn();
         placed = vi.fn();
         layoutChanges = 0;
         memory: unknown;
@@ -478,7 +477,7 @@ describe("refresh", () => {
 
     // Rebuilt placeholders reserve what the store remembers, or the stream's
     // scroll extent collapses the moment a refresh runs.
-    it("remembers the rendered notes' heights before rebuilding their placeholders", async () => {
+    it("rebuilds each placeholder at the height the store remembers", async () => {
         const file = note("2025-01-03");
         await load(file);
         noteWindow.add.mockClear();
@@ -486,9 +485,6 @@ describe("refresh", () => {
         await stream.refresh();
 
         expect(noteWindow.add).toHaveBeenCalledExactlyOnceWith(file);
-        expect(noteWindow.keepRenderedHeights.mock.invocationCallOrder[0]).toBeLessThan(
-            noteWindow.add.mock.invocationCallOrder[0]!
-        );
     });
 
     it("keeps the note at the top of the pane where it was", async () => {
@@ -831,12 +827,11 @@ describe("the stream's place", () => {
     });
 
     // Back rebuilds the view, which reserves what the plugin remembers (ADR 0010).
-    it("remembers the rendered notes' heights as it is taken, and holds only the place", async () => {
+    it("holds only the place", async () => {
         await stream.loadMoreNotes();
         stream.blockOf(notes[0]!)!.getBoundingClientRect = () => ({ top: -150, bottom: 390 }) as DOMRect;
 
         expect(stream.place()).toEqual({ path: notes[0]!.path, offset: -150 });
-        expect(noteWindow.keepRenderedHeights).toHaveBeenCalledOnce();
     });
 
     it("is nowhere in an empty stream", () => {

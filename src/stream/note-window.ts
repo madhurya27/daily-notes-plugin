@@ -1,4 +1,4 @@
-import { Component, TFile, debounce } from "obsidian";
+import { Component, TFile, debounce, type Debouncer } from "obsidian";
 import type { NoteRenderer } from "../render/note-renderer";
 import type { NoteHeights } from "./note-heights";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "./scroll-anchor";
@@ -8,6 +8,9 @@ import { SCROLL_IDLE_MS, ScrollAnchor } from "./scroll-anchor";
  * only until the first note is, after which the vault's own notes say.
  */
 export const ESTIMATED_NOTE_HEIGHT_PX = 400;
+
+/** A note's height is remembered once nothing in it has resized for this long, as a Base's is. */
+export const SETTLE_MS = 300;
 
 /**
  * Both margins are viewports, not pixels: how far ahead of the reader the
@@ -34,6 +37,8 @@ interface NoteWindow {
     unloadWanted: boolean;
     /** Measured on the last unload; the estimate until then. */
     height: number;
+    /** Remembers the height once the rendered note stops resizing; null while unloaded. */
+    keepOnceSettled: Debouncer<[], void> | null;
 }
 
 /**
@@ -61,7 +66,8 @@ export class NoteWindowManager {
     /** Rendered blocks past the unload margin, waiting for the scroll to be still. */
     private readonly leaving = new Set<HTMLElement>();
     private readonly unloadOnceStill = debounce(() => this.unloadLeaving(), SCROLL_IDLE_MS, true);
-    private readonly keepOnceStill = debounce(() => this.keepRenderedHeights(), SCROLL_IDLE_MS, true);
+    /** Watches rendered notes: a Base filling or an image loading measures short until done. */
+    private resizes: ResizeObserver | null = null;
 
     constructor(
         private readonly renderer: NoteRenderer,
@@ -103,8 +109,14 @@ export class NoteWindowManager {
             { root: scrollRoot, rootMargin: `${Math.round(this.rootHeight * UNLOAD_VIEWPORTS)}px` }
         );
         this.anchor.attach(scrollRoot);
+        this.resizes = new ResizeObserver((entries) => {
+            for (const entry of entries) this.windows.get(entry.target as HTMLElement)?.keepOnceSettled?.();
+        });
 
-        for (const block of this.windows.keys()) this.observe(block);
+        for (const [block, window] of this.windows) {
+            this.observe(block);
+            if (window.keepOnceSettled) this.resizes.observe(block);
+        }
     }
 
     /**
@@ -121,14 +133,6 @@ export class NoteWindowManager {
     onScroll(): void {
         this.anchor.onScroll();
         if (this.leaving.size > 0) this.unloadOnceStill();
-        this.keepOnceStill();
-    }
-
-    /** Remembers what each rendered note measures now. */
-    keepRenderedHeights(): void {
-        for (const [block, window] of this.windows) {
-            if (window.component) this.keepHeight(block, window);
-        }
     }
 
     /** Glides the pane to its top, the newest note. */
@@ -149,6 +153,7 @@ export class NoteWindowManager {
             rendering: false,
             unloadWanted: false,
             height: reserved,
+            keepOnceSettled: null,
         });
         this.markUnloaded(block, reserved);
         this.observe(block);
@@ -191,6 +196,7 @@ export class NoteWindowManager {
         if (!window) return;
         this.unobserve(block);
         this.leaving.delete(block);
+        this.stopSettling(block, window);
         this.discard(window);
         this.windows.delete(block);
     }
@@ -200,7 +206,10 @@ export class NoteWindowManager {
         this.unloadOnceStill.cancel();
         this.leaving.clear();
         this.scrollRoot = null;
-        for (const window of this.windows.values()) this.discard(window);
+        for (const [block, window] of this.windows) {
+            this.stopSettling(block, window);
+            this.discard(window);
+        }
         this.windows.clear();
     }
 
@@ -238,6 +247,7 @@ export class NoteWindowManager {
                 window.component = component;
                 block.removeClass("is-unloaded");
                 block.style.removeProperty("--daily-note-placeholder-height");
+                this.watchSettling(block, window);
 
                 if (window.unloadWanted) this.leave(block);
             } finally {
@@ -279,24 +289,37 @@ export class NoteWindowManager {
         }
     }
 
+    /**
+     * A block that was never laid out measures zero: reserving that would
+     * collapse a note the reader has scrolled past, and take the scroll
+     * position with it. It keeps what it already reserved.
+     */
     private unloadNow(block: HTMLElement, window: NoteWindow): void {
-        this.keepHeight(block, window);
+        const measured = this.measure(block);
+        if (measured > 0) window.height = measured;
+        this.stopSettling(block, window);
         this.discard(window);
         block.empty();
         this.markUnloaded(block, window.height);
         this.changes++;
     }
 
-    /**
-     * A block that was never laid out measures zero: reserving that would
-     * collapse a note the reader has scrolled past, and take the scroll
-     * position with it. It keeps what it already reserved.
-     */
+    private watchSettling(block: HTMLElement, window: NoteWindow): void {
+        window.keepOnceSettled = debounce(() => this.keepHeight(block, window), SETTLE_MS, true);
+        window.keepOnceSettled();
+        this.resizes?.observe(block);
+    }
+
+    private stopSettling(block: HTMLElement, window: NoteWindow): void {
+        window.keepOnceSettled?.cancel();
+        window.keepOnceSettled = null;
+        this.resizes?.unobserve(block);
+    }
+
+    /** A block not laid out, in a hidden tab, measures zero: nothing to remember. */
     private keepHeight(block: HTMLElement, window: NoteWindow): void {
         const measured = this.measure(block);
-        if (measured <= 0) return;
-        window.height = measured;
-        this.heights.keep(this.layout(), window.file.path, measured);
+        if (measured > 0) this.heights.keep(this.layout(), window.file.path, measured);
     }
 
     /**
@@ -331,7 +354,9 @@ export class NoteWindowManager {
         this.renderObserver?.disconnect();
         this.unloadObserver?.disconnect();
         this.anchor.detach();
+        this.resizes?.disconnect();
         this.renderObserver = null;
         this.unloadObserver = null;
+        this.resizes = null;
     }
 }
