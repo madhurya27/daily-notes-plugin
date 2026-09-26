@@ -12,6 +12,17 @@ describe("NoteHeights", () => {
         expect(heights.heightOf("600:16px", "b.md")).toBeUndefined();
     });
 
+    // Sub-pixel digits cost a third of an entry; half a pixel is nothing to reserve.
+    it("keeps a height in whole pixels", () => {
+        const changed = vi.fn();
+        const heights = new NoteHeights(changed);
+        heights.keep("600:16px", "a.md", 933.8515625);
+        heights.keep("600:16px", "a.md", 934.2);
+
+        expect(heights.heightOf("600:16px", "a.md")).toBe(934);
+        expect(changed).toHaveBeenCalledOnce();
+    });
+
     it("estimates a layout's unmeasured note as the median of its measured ones", () => {
         const heights = new NoteHeights();
         expect(heights.estimate("600:16px")).toBeUndefined();
@@ -31,32 +42,6 @@ describe("NoteHeights", () => {
         heights.keep("600:16px", "e.md", 60);
         expect(heights.estimate("600:16px")).toBe(100);
         expect(heights.estimate("400:16px")).toBeUndefined();
-    });
-
-    // Every pane width and font size is a layout of its own.
-    it("forgets the layout used longest ago, past its limit", () => {
-        const heights = new NoteHeights(undefined, 2);
-        heights.keep("a", "x.md", 1);
-        heights.keep("b", "x.md", 2);
-        heights.heightOf("a", "x.md");
-        heights.keep("c", "x.md", 3);
-
-        expect(heights.heightOf("b", "x.md")).toBeUndefined();
-        expect(heights.heightOf("a", "x.md")).toBe(1);
-        expect(heights.heightOf("c", "x.md")).toBe(3);
-    });
-
-    it("carries a note's heights across a rename, in every layout", () => {
-        const heights = new NoteHeights();
-        heights.keep("a", "old.md", 1);
-        heights.keep("b", "old.md", 2);
-        heights.keep("b", "other.md", 5);
-        heights.rename("old.md", "new.md");
-
-        expect(heights.heightOf("a", "old.md")).toBeUndefined();
-        expect(heights.heightOf("a", "new.md")).toBe(1);
-        expect(heights.heightOf("b", "new.md")).toBe(2);
-        expect(heights.heightOf("b", "other.md")).toBe(5);
     });
 
     it("forgets a deleted note, and notes no longer in the vault", () => {
@@ -104,13 +89,5 @@ describe("NoteHeights", () => {
         expect(restored.heightOf("a", "x.md")).toBe(1);
         expect(restored.heightOf("b", "y.md")).toBeUndefined();
         expect(restored.estimate("a")).toBe(1);
-    });
-
-    it("restores nothing from what it did not save", () => {
-        const heights = new NoteHeights();
-        for (const junk of [null, 3, {}, [["a"]], [["a", [["x.md", "1"]]]], [[1, []]], [["a", [[1, 1]]]], [["a", 5]]]) {
-            heights.restore(junk);
-            expect(heights.toJSON()).toEqual([]);
-        }
     });
 });

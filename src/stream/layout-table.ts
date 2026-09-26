@@ -1,0 +1,123 @@
+/**
+ * How many layouts are remembered. Each pane width and font size is a layout
+ * of its own, and everything is measured again in each.
+ */
+const LAYOUTS_KEPT = 4;
+
+/** Values by key, per layout; the layout used longest ago comes first. */
+export type SavedLayoutTable<V> = [layout: string, entries: [key: string, value: V][]][];
+
+/**
+ * What was measured, per layout, keyed by note: a key is a note's path, or
+ * starts with it and a newline. A rename carries a note's entries along, a
+ * delete takes them, and the layout used longest ago is forgotten first.
+ */
+export class LayoutTable<V> {
+    private layouts = new Map<string, Map<string, V>>();
+
+    constructor(
+        /** Whether a saved value is one `V`, so `restore` can refuse the rest. */
+        private readonly isValue: (value: unknown) => value is V,
+        /** Called with each layout that changed. */
+        private readonly changed: (layout: string) => void,
+        private readonly limit = LAYOUTS_KEPT
+    ) {}
+
+    get(layout: string, key: string): V | undefined {
+        return this.use(layout)?.get(key);
+    }
+
+    set(layout: string, key: string, value: V): void {
+        let entries = this.use(layout);
+        if (!entries) {
+            entries = new Map();
+            this.layouts.set(layout, entries);
+            if (this.layouts.size > this.limit) this.layouts.delete(this.layouts.keys().next().value!);
+        }
+        entries.set(key, value);
+        this.changed(layout);
+    }
+
+    /** `layout`'s values, without counting as a use of it. */
+    values(layout: string): V[] {
+        return [...(this.layouts.get(layout)?.values() ?? [])];
+    }
+
+    rename(oldPath: string, newPath: string): void {
+        this.edit((entries) => {
+            const moved = [...entries].filter(([key]) => notePathOf(key) === oldPath);
+            for (const [key, value] of moved) {
+                entries.delete(key);
+                entries.set(newPath + key.slice(oldPath.length), value);
+            }
+            return moved.length > 0;
+        });
+    }
+
+    forget(path: string): void {
+        this.removeWhere((notePath) => notePath === path);
+    }
+
+    /** Forgets notes deleted while the plugin was not running to hear it. */
+    retainOnly(paths: ReadonlySet<string>): void {
+        this.removeWhere((notePath) => !paths.has(notePath));
+    }
+
+    toJSON(): SavedLayoutTable<V> {
+        return [...this.layouts].map(([layout, entries]) => [layout, [...entries]]);
+    }
+
+    /** Replaces what it holds with `saved`, or with nothing when `saved` is not what `toJSON` wrote. */
+    restore(saved: unknown): void {
+        this.layouts = this.isSaved(saved)
+            ? new Map(saved.map(([layout, entries]) => [layout, new Map(entries)]))
+            : new Map<string, Map<string, V>>();
+    }
+
+    /** `layout`'s entries, moved to the back of the line to be forgotten. */
+    private use(layout: string): Map<string, V> | undefined {
+        const entries = this.layouts.get(layout);
+        if (entries) {
+            this.layouts.delete(layout);
+            this.layouts.set(layout, entries);
+        }
+        return entries;
+    }
+
+    private removeWhere(matches: (notePath: string) => boolean): void {
+        this.edit((entries) => {
+            let removed = false;
+            for (const key of entries.keys()) {
+                if (matches(notePathOf(key))) removed = entries.delete(key);
+            }
+            return removed;
+        });
+    }
+
+    /** Applies `change` to every layout; true from it means that layout changed. */
+    private edit(change: (entries: Map<string, V>) => boolean): void {
+        for (const [layout, entries] of this.layouts) {
+            if (change(entries)) this.changed(layout);
+        }
+    }
+
+    private isSaved(value: unknown): value is SavedLayoutTable<V> {
+        return (
+            Array.isArray(value) &&
+            value.every(
+                (entry) =>
+                    Array.isArray(entry) &&
+                    typeof entry[0] === "string" &&
+                    Array.isArray(entry[1]) &&
+                    (entry[1] as unknown[]).every(
+                        (pair) => Array.isArray(pair) && typeof pair[0] === "string" && this.isValue(pair[1])
+                    )
+            )
+        );
+    }
+}
+
+function notePathOf(key: string): string {
+    const end = key.indexOf("\n");
+    return end === -1 ? key : key.slice(0, end);
+}

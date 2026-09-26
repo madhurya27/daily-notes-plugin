@@ -1,5 +1,6 @@
 import { App, Component, type Debouncer, MarkdownRenderer, TAbstractFile, TFile, debounce, setIcon } from "obsidian";
-import type { BaseMeasurements } from "./base-measurements";
+import { baseDigest, type BaseKey, type BaseMeasurements } from "./base-measurements";
+import { layoutOf } from "../../stream/layout-memory";
 import { asCards, BASE_SLOT_CLASS, type BaseSource } from "./bases-as-cards";
 import { fitBaseToWidth, tableWidth } from "./bases-fit";
 import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
@@ -18,7 +19,7 @@ export const BASE_SETTLE_MS = 300;
  * table is wider than the note, as cards — the rule a Markdown table follows
  * (docs/decisions.md, 2026-09-24). Cards come straight away when the headers
  * alone overrun the note; otherwise the table is drawn, measured on its first
- * layout, and redrawn alone. A measured answer is kept per note and width, so
+ * layout, and redrawn alone. A measured answer is kept per note and layout, so
  * a note that unloads and comes back is drawn once.
  *
  * Bases fills a view after it is drawn, so a redraw holds the height the Base
@@ -159,6 +160,8 @@ class BaseSlot {
     /** The Base drawn as cards, or null when it has no table to convert. */
     cards: string | null = null;
     readonly view: string | undefined;
+    /** `baseDigest` of its markdown and definition. */
+    private digest = "";
     private component: Component | null = null;
     /** Restarted by each resize, and by a hold let go, which no resize may follow. */
     readonly keepOnceStill: Debouncer<[], void>;
@@ -184,6 +187,7 @@ class BaseSlot {
     /** Takes the Base as its file now defines it. */
     redefine(definition: string | null): void {
         this.definition = definition;
+        this.digest = baseDigest(this.source.markdown, definition);
         const cards = definition === null ? null : asCards(definition, this.view);
         this.cards = cards === null ? null : ["```base", cards, "```"].join("\n");
     }
@@ -193,8 +197,8 @@ class BaseSlot {
         return this.contentEl.clientWidth;
     }
 
-    key(width: number): string {
-        return [this.file.path, width, this.source.markdown, this.definition].join("\n");
+    key(width: number): BaseKey {
+        return { layout: layoutOf(this.contentEl, width), path: this.file.path, base: this.digest };
     }
 
     /** The earlier height a redraw is holding the placeholder at; undefined when none is. */

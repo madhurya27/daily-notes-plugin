@@ -239,6 +239,7 @@ test.describe("jump to date", () => {
         });
         expect(layout).toMatch(/^\d+:\d+px$/);
         expect(reserved.length).toBeGreaterThan(0);
-        for (const [path, height] of reserved) expect(height, path).toBe(`${remembered[path!]}px`);
+        // A note unloaded this session reserves what it measured; the store keeps whole pixels.
+        for (const [path, height] of reserved) expect(Math.round(parseFloat(height!)), path).toBe(remembered[path!]);
     });
 });

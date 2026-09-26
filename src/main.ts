@@ -74,15 +74,13 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.layoutMemory.flush();
     }
 
-    /** What the stream measured; a note's heights follow it across a rename, and out with a delete. */
+    /** What the stream measured; a note's measurements follow it across a rename, and out with a delete. */
     private rememberLayout(): void {
         const memory = (this.layoutMemory = new LayoutMemory(this.app));
         const { vault, workspace } = this.app;
-        this.registerEvent(vault.on("rename", (file, oldPath) => memory.notes.rename(oldPath, file.path)));
-        this.registerEvent(vault.on("delete", (file) => memory.notes.forget(file.path)));
-        workspace.onLayoutReady(() =>
-            memory.notes.retainOnly(new Set(vault.getMarkdownFiles().map((file) => file.path)))
-        );
+        this.registerEvent(vault.on("rename", (file, oldPath) => memory.rename(oldPath, file.path)));
+        this.registerEvent(vault.on("delete", (file) => memory.forget(file.path)));
+        workspace.onLayoutReady(() => memory.retainOnly(new Set(vault.getMarkdownFiles().map((file) => file.path))));
     }
 
     /** The stream is the only place a jump means anything, so open it first. */

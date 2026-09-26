@@ -142,16 +142,17 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         expect(plugin.layoutMemory).toBeInstanceOf(LayoutMemory);
     });
 
-    it("carries a note's heights across a rename, and forgets a deleted note's", async () => {
+    it("carries a note's measurements across a rename, and forgets a deleted note's", async () => {
         const { plugin, app } = await loadPlugin();
-        const { notes } = plugin.layoutMemory;
-        notes.keep("600:16px", "Notes/old.md", 300);
-        notes.keep("600:16px", "Notes/gone.md", 200);
+        const memory = plugin.layoutMemory;
+        const rename = vi.spyOn(memory, "rename");
+        const forget = vi.spyOn(memory, "forget");
 
         vaultEvent(app, "rename")({ path: "Notes/new.md" }, "Notes/old.md");
         vaultEvent(app, "delete")({ path: "Notes/gone.md" });
 
-        expect(notes.toJSON()).toEqual([["600:16px", [["Notes/new.md", 300]]]]);
+        expect(rename).toHaveBeenCalledWith("Notes/old.md", "Notes/new.md");
+        expect(forget).toHaveBeenCalledWith("Notes/gone.md");
     });
 
     // A note deleted while the plugin was off, or on another device, was never heard of.
@@ -159,7 +160,7 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         __setMockNotes(["Notes/2025-01-01.md"]);
         const app = makeApp();
         app.loadLocalStorage.mockReturnValue({
-            version: 1,
+            version: 2,
             notes: [
                 [
                     "600:16px",

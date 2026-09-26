@@ -1,8 +1,4 @@
-/**
- * How many Bases are remembered. Each pane width a Base is drawn at is a key
- * of its own, so the plugin's lifetime would otherwise keep them all.
- */
-const MEASUREMENTS_KEPT = 500;
+import { LayoutTable, type SavedLayoutTable } from "../../stream/layout-table";
 
 interface Measurement {
     /** The height it last held still at. */
@@ -11,74 +7,95 @@ interface Measurement {
     tooWide?: true;
 }
 
-/** Measurements by key, the Base used longest ago first. */
-export type SavedMeasurements = [key: string, measurement: Measurement][];
+/** A Base in a note, at a layout: its width checked against and text size. */
+export interface BaseKey {
+    layout: string;
+    path: string;
+    /** `baseDigest` of what it is drawn from. */
+    base: string;
+}
+
+/** Measurements by note path and digest, per layout. */
+export type SavedMeasurements = SavedLayoutTable<Measurement>;
 
 /**
  * What the stream's Bases measured, kept across sessions with the notes'
- * heights (ADR 0010): a Base redrawn without the height it left at drops and
- * grows back while Bases refills it. Keys hold the note, width and source, so
- * every view can share them. The Base used longest ago is forgotten first.
+ * heights and by the same rule (ADR 0010): a Base redrawn without the height
+ * it left at drops and grows back while Bases refills it.
  */
 export class BaseMeasurements {
-    private byKey = new Map<string, Measurement>();
+    private readonly table: LayoutTable<Measurement>;
 
-    constructor(
-        private readonly changed: () => void = () => {},
-        private readonly limit = MEASUREMENTS_KEPT
-    ) {}
-
-    heightOf(key: string): number | undefined {
-        return this.use(key)?.height;
+    constructor(changed: () => void = () => {}, limit?: number) {
+        this.table = new LayoutTable(isMeasurement, changed, limit);
     }
 
-    keepHeight(key: string, height: number): void {
+    heightOf(key: BaseKey): number | undefined {
+        return this.get(key)?.height;
+    }
+
+    keepHeight(key: BaseKey, height: number): void {
         if (this.heightOf(key) !== height) this.update(key, { height });
     }
 
-    isTooWide(key: string): boolean {
-        return this.use(key)?.tooWide === true;
+    isTooWide(key: BaseKey): boolean {
+        return this.get(key)?.tooWide === true;
     }
 
-    markTooWide(key: string): void {
+    markTooWide(key: BaseKey): void {
         if (!this.isTooWide(key)) this.update(key, { tooWide: true });
     }
 
+    rename(oldPath: string, newPath: string): void {
+        this.table.rename(oldPath, newPath);
+    }
+
+    forget(path: string): void {
+        this.table.forget(path);
+    }
+
+    retainOnly(paths: ReadonlySet<string>): void {
+        this.table.retainOnly(paths);
+    }
+
     toJSON(): SavedMeasurements {
-        return [...this.byKey];
+        return this.table.toJSON();
     }
 
-    /** Replaces what it holds with `saved`, or with nothing when `saved` is not what `toJSON` wrote. */
     restore(saved: unknown): void {
-        this.byKey = new Map(isSaved(saved) ? saved : []);
+        this.table.restore(saved);
     }
 
-    /** `key`'s measurement, moved to the back of the line to be forgotten. */
-    private use(key: string): Measurement | undefined {
-        const measurement = this.byKey.get(key);
-        if (measurement) {
-            this.byKey.delete(key);
-            this.byKey.set(key, measurement);
-        }
-        return measurement;
+    private get({ layout, path, base }: BaseKey): Measurement | undefined {
+        return this.table.get(layout, `${path}\n${base}`);
     }
 
-    private update(key: string, change: Measurement): void {
-        this.byKey.set(key, { ...this.byKey.get(key), ...change });
-        if (this.byKey.size > this.limit) this.byKey.delete(this.byKey.keys().next().value!);
-        this.changed();
+    private update(key: BaseKey, change: Measurement): void {
+        this.table.set(key.layout, `${key.path}\n${key.base}`, { ...this.get(key), ...change });
     }
-}
-
-function isSaved(value: unknown): value is SavedMeasurements {
-    return (
-        Array.isArray(value) &&
-        value.every((entry) => Array.isArray(entry) && typeof entry[0] === "string" && isMeasurement(entry[1]))
-    );
 }
 
 function isMeasurement(value: unknown): value is Measurement {
     if (typeof value !== "object" || value === null) return false;
     const { height, tooWide } = value as Record<string, unknown>;
     return (height === undefined || typeof height === "number") && (tooWide === undefined || tooWide === true);
+}
+
+/**
+ * A few characters standing for the Base a note embeds: its markdown and
+ * definition, which can run to kilobytes. cyrb53, 53 bits: a note holds a
+ * handful of Bases, so a collision is out of reach.
+ */
+export function baseDigest(markdown: string, definition: string | null): string {
+    const text = `${markdown}\n${definition ?? ""}`;
+    let h1 = 0xdeadbeef;
+    let h2 = 0x41c6ce57;
+    for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        h1 = Math.imul(h1 ^ code, 2654435761);
+        h2 = Math.imul(h2 ^ code, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }

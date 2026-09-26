@@ -95,7 +95,7 @@ function displayValue(value: unknown): string {
 }
 
 export class NoteRenderer {
-    /** Each view's own; what its Bases measured is shared, keyed by width. */
+    /** Each view's own; what its Bases measured is shared, by layout. */
     private readonly bases: NoteBases;
 
     constructor(
