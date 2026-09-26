@@ -4,10 +4,14 @@ import { Platform, debounce } from "obsidian";
 export const SCROLL_IDLE_MS = 300;
 
 /**
- * Holds the reader's place when a block above the pane changes height — a
- * placeholder rendering at its real height, mostly — where the platform does
- * not. Chromium anchors the scroll itself; iOS WebKit has no scroll anchoring,
- * so there the text jumped by the difference.
+ * Holds the reader's place when something above the pane's top changes height
+ * — a placeholder rendering at its real height, a Base filling — where the
+ * platform does not. Chromium anchors the scroll itself; iOS WebKit has no
+ * scroll anchoring, so there the text jumped by the difference.
+ *
+ * The place is the deepest element the pane's top crosses: whatever moves it
+ * lies above the pane, where the reader can touch nothing, so it is undone. A
+ * chevron tapped on screen changes only what lies below.
  *
  * A change is drawn as a shift of the stream first, and handed to the scroll
  * once the scroll is still: mid-glide iOS drops or undoes a scroll write, and
@@ -16,10 +20,16 @@ export const SCROLL_IDLE_MS = 300;
 export class ScrollAnchor {
     private observer: ResizeObserver | null = null;
     private scrollRoot: HTMLElement | null = null;
-    /** Each block's height at its last report. */
-    private readonly heights = new WeakMap<Element, number>();
-    /** The blocks watched, so a place set can re-read them all. */
+    /** The blocks watched, in the order they were added: their parent is the stream. */
     private readonly watched = new Set<Element>();
+    /**
+     * From a block down to the deepest element the pane's top crosses, each
+     * where it was drawn: when a re-render replaces the deeper ones, the
+     * deepest still in the page stands for the place.
+     */
+    private place: { el: Element; top: number }[] = [];
+    /** The scroll `place` was read at: a script may set it again before a resize reports. */
+    private placeScroll = 0;
     /** What the scroll owes the content, drawn as a shift until the scroll stops. */
     private owed = 0;
     /** The blocks' parent, shifted while `owed` is. */
@@ -37,7 +47,7 @@ export class ScrollAnchor {
         // styles.css: overflow-anchor none, so no half-working native anchoring
         // corrects a second time.
         scrollRoot.addClass("is-scroll-anchored");
-        this.observer = new ResizeObserver((entries) => this.hold(entries));
+        this.observer = new ResizeObserver(() => this.hold());
     }
 
     observe(block: HTMLElement): void {
@@ -51,8 +61,19 @@ export class ScrollAnchor {
         this.watched.delete(block);
     }
 
-    /** A scroll puts off the hand-over until it stops. */
+    /** What a note rendered: held at its height, the note hides a change inside it. */
+    observeContent(el: Element): void {
+        this.observer?.observe(el);
+    }
+
+    unobserveContent(el: Element): void {
+        this.observer?.unobserve(el);
+    }
+
+    /** A scroll moves the place, and puts off the hand-over until it stops. */
     onScroll(): void {
+        if (!this.scrollRoot) return;
+        this.hold();
         if (this.owed !== 0) this.settleOnceStill();
         else if (this.scrollRoot?.scrollTop === 0) this.headedForTop = false;
     }
@@ -70,9 +91,9 @@ export class ScrollAnchor {
      * what changed before is in it, though a report of it lands a frame later.
      */
     placed(): void {
-        for (const block of this.watched) this.heights.set(block, block.getBoundingClientRect().height);
         this.settleOnceStill.cancel();
         this.unshift();
+        this.pick();
     }
 
     detach(): void {
@@ -80,29 +101,66 @@ export class ScrollAnchor {
         this.observer?.disconnect();
         this.observer = null;
         this.watched.clear();
+        this.place = [];
         this.scrollRoot?.removeClass("is-scroll-anchored");
         this.scrollRoot = null;
         this.unshift();
     }
 
-    /**
-     * Only a block wholly above the pane moves the reader's place: one reaching
-     * into it changed where the reader can see, as a chevron tapped there does,
-     * and the reader's place is inside it.
-     */
-    private hold(entries: readonly { target: Element }[]): void {
-        const paneTop = this.scrollRoot!.getBoundingClientRect().top;
-        for (const { target } of entries) {
-            // Read per entry: the shift for the one before moves this one.
-            const rect = target.getBoundingClientRect();
-            const before = this.heights.get(target);
-            this.heights.set(target, rect.height);
-            if (before === undefined || rect.top + before > paneTop) continue;
+    /** Something resized: however far the place moved, the shift moves it back. */
+    private hold(): void {
+        if (this.owe()) this.settleOnceStill();
+        this.pick();
+    }
 
-            this.owed += rect.height - before;
-            this.shift(target.parentElement!);
-            this.settleOnceStill();
+    /**
+     * Owes however far the place moved since it was read, less any scroll
+     * since. Run before every new read: the layout that read sees may already
+     * hold a change no resize has reported yet, and it would be lost.
+     */
+    private owe(): boolean {
+        const point = [...this.place].reverse().find(({ el }) => this.scrollRoot!.contains(el));
+        const scrolled = this.scrollRoot!.scrollTop - this.placeScroll;
+        const moved = point ? point.el.getBoundingClientRect().top + scrolled - point.top : 0;
+        if (moved === 0) return false;
+        this.owed += moved;
+        this.shift(this.stream()!);
+        return true;
+    }
+
+    /**
+     * Finds the block the pane's top crosses by halving, since blocks stack and
+     * a stream holds thousands; inside it, element by element, since a
+     * collapsed section lays out as nothing. It stops at anything held
+     * (`HeightHold`): what is inside is still filling, and where its text lies
+     * now is not where it will.
+     */
+    private pick(): void {
+        this.place = [];
+        const stream = this.stream();
+        if (!stream) return;
+        const paneTop = this.scrollRoot!.getBoundingClientRect().top;
+        this.placeScroll = this.scrollRoot!.scrollTop;
+        const blocks = stream.children;
+        let low = 0;
+        let high = blocks.length;
+        while (low < high) {
+            const mid = (low + high) >> 1;
+            if (blocks[mid]!.getBoundingClientRect().bottom > paneTop) high = mid;
+            else low = mid + 1;
         }
+        let el: Element | undefined = blocks[low];
+        while (el) {
+            this.place.push({ el, top: el.getBoundingClientRect().top });
+            if ((el as HTMLElement).style.getPropertyValue("--daily-note-held-height")) break;
+            el = Array.from(el.children).find((child) => child.getBoundingClientRect().bottom > paneTop);
+        }
+    }
+
+    /** What the blocks sit in, shifted while anything is owed. */
+    private stream(): HTMLElement | null {
+        const [block] = this.watched;
+        return block?.parentElement ?? null;
     }
 
     /**
@@ -111,9 +169,11 @@ export class ScrollAnchor {
      */
     private settle(): void {
         const root = this.scrollRoot!;
+        this.owe();
         if (this.owed !== 0 && !(this.headedForTop && root.scrollTop === 0)) root.scrollTop += this.owed;
         this.headedForTop = false;
         this.unshift();
+        this.pick();
     }
 
     /**

@@ -32,10 +32,11 @@ const shift = (el: HTMLElement) =>
 
 /**
  * A pane stacking blocks one under the other inside the stream's content, as
- * the stream does. jsdom lays nothing out, so each block's rect is computed
- * from the heights above it, the scroll, and the content's transform.
+ * the stream does; a block given as a list holds elements of those heights.
+ * jsdom lays nothing out, so each rect is computed from the heights above it,
+ * the scroll, and the content's transform.
  */
-function makePane(heights: number[]) {
+function makePane(layout: (number | number[])[]) {
     const pane = document.createElement("div");
     let scrollTop = 0;
     Object.defineProperty(pane, "scrollTop", {
@@ -44,21 +45,38 @@ function makePane(heights: number[]) {
         set: (value: number) => (scrollTop = value),
     });
     pane.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
-
     const content = pane.createDiv();
-    const blocks = heights.map((height) => {
-        const block = content.createDiv();
-        block.dataset.height = String(height);
+
+    const heightOf = (el: Element): number =>
+        el.children.length > 0
+            ? Array.from(el.children).reduce((sum, child) => sum + heightOf(child), 0)
+            : Number((el as HTMLElement).dataset.height);
+    const topOf = (el: Element): number => {
+        if (el === content) return -scrollTop + shift(content);
+        const parent = el.parentElement!;
+        const before = Array.from(parent.children).slice(0, Array.from(parent.children).indexOf(el));
+        return before.reduce((top, sibling) => top + heightOf(sibling), topOf(parent));
+    };
+    /** Appends an element `height` tall to `parent`, laid out as the rest. */
+    const add = (parent: HTMLElement, height?: number) => {
+        const el = parent.createDiv();
+        if (height !== undefined) el.dataset.height = String(height);
+        el.getBoundingClientRect = () => {
+            const top = topOf(el);
+            const height = heightOf(el);
+            return { top, height, bottom: top + height } as DOMRect;
+        };
+        return el;
+    };
+
+    const blocks = layout.map((spec) => {
+        if (!Array.isArray(spec)) return add(content, spec);
+        const block = add(content);
+        for (const height of spec) add(block, height);
         return block;
     });
-    for (const [index, block] of blocks.entries()) {
-        block.getBoundingClientRect = () => {
-            const above = blocks.slice(0, index).reduce((sum, b) => sum + Number(b.dataset.height), 0);
-            return { top: above - scrollTop + shift(content), height: Number(block.dataset.height) } as DOMRect;
-        };
-    }
-    const resize = (block: HTMLElement, height: number) => (block.dataset.height = String(height));
-    return { pane, content, blocks, resize };
+    const resize = (el: Element, height: number) => ((el as HTMLElement).dataset.height = String(height));
+    return { pane, content, blocks, resize, add };
 }
 
 describe("ScrollAnchor", () => {
@@ -79,12 +97,13 @@ describe("ScrollAnchor", () => {
     });
 
     /** Blocks observed and first reported, the way ResizeObserver opens. */
-    function watch(heights: number[], scrollTop: number) {
+    function watch(heights: (number | number[])[], scrollTop: number) {
         const layout = makePane(heights);
         anchor.attach(layout.pane);
         for (const block of layout.blocks) anchor.observe(block);
         observer().resized(...layout.blocks);
         layout.pane.scrollTop = scrollTop;
+        anchor.onScroll();
         return layout;
     }
 
@@ -215,6 +234,138 @@ describe("ScrollAnchor", () => {
         expect(shift(content)).toBe(0);
     });
 
+    // Nothing above the top of the pane is the reader's doing: they can only
+    // touch what is on screen. So whatever moves the text there is undone.
+    describe("at the text at the top of the pane", () => {
+        /** The element in the first block that the pane's top crosses at 500. */
+        const reading = (blocks: HTMLElement[]) => blocks[0]!.children[1]!;
+
+        it("holds it when something above it grows inside the note reaching into the pane", () => {
+            const { content, blocks, resize } = watch([[400, 400, 400], 400], 500);
+
+            resize(blocks[0]!.children[0]!, 1000);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(-600);
+            expect(reading(blocks).getBoundingClientRect().top).toBe(-100);
+        });
+
+        // A chevron tapped on screen changes what lies below the reader.
+        it("leaves it alone when something below it in that note changes", () => {
+            const { content, blocks, resize } = watch([[400, 400, 400], 400], 500);
+
+            resize(blocks[0]!.children[2]!, 1000);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(0);
+        });
+
+        it("follows the reader as they scroll", () => {
+            const { pane, content, blocks, resize } = watch([[400, 400, 400], 400], 500);
+
+            pane.scrollTop = 900;
+            anchor.onScroll();
+            resize(blocks[0]!.children[1]!, 500);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(-100);
+        });
+
+        // A note re-rendered replaces what it held: its own top still stands.
+        it("holds the note's top when the text there was replaced", () => {
+            const { content, blocks, resize, add } = watch([400, [400, 400]], 500);
+            blocks[1]!.empty();
+            for (const height of [400, 400]) add(blocks[1]!, height);
+
+            resize(blocks[0]!, 500);
+            observer().resized(blocks[0]!, blocks[1]!);
+
+            expect(shift(content)).toBe(-100);
+        });
+
+        // A script sets the scroll between a scroll event and the next resize
+        // report, as Back and a glide do: that move is no resize's.
+        it("owes nothing for a scroll since it last looked", () => {
+            const { pane, content, blocks, resize } = watch([[400, 400, 400], 400], 500);
+
+            pane.scrollTop = 700;
+            resize(blocks[1]!, 500);
+            observer().resized(blocks[1]!);
+
+            expect(shift(content)).toBe(0);
+        });
+
+        // A note renders between frames; the next frame's scroll event comes
+        // before the resize report, and the layout it reads holds the growth.
+        it("owes a change the scroll hears of before a resize reports it", () => {
+            const { pane, content, blocks, resize } = watch([[400, 400, 400], 400], 500);
+
+            resize(blocks[0]!.children[0]!, 1000);
+            pane.scrollTop = 450;
+            anchor.onScroll();
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(-600);
+        });
+
+        it("owes a change made since it last looked before handing over", () => {
+            const { pane, blocks, resize } = watch([[400, 400, 400], 400], 500);
+            resize(blocks[0]!.children[0]!, 500);
+            observer().resized(blocks[0]!);
+
+            resize(blocks[0]!.children[0]!, 600);
+            vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+            expect(pane.scrollTop).toBe(700);
+        });
+
+        // Back restores a place measured against a note's full layout; held,
+        // the note is still filling, and the text at the top is not yet its own.
+        it("anchors at a note still held, not at text still settling inside it", () => {
+            const { pane, content, blocks, resize } = watch([[400, 400, 400], 400], 0);
+            blocks[0]!.style.setProperty("--daily-note-held-height", "1200px");
+            pane.scrollTop = 500;
+            anchor.onScroll();
+
+            resize(blocks[0]!.children[0]!, 1000);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(0);
+        });
+
+        it("picks it anew once the change is handed over", () => {
+            const { pane, blocks, resize } = watch([[400, 400, 400], 400], 500);
+            resize(blocks[0]!.children[0]!, 1000);
+            observer().resized(blocks[0]!);
+            vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+            resize(blocks[0]!.children[0]!, 1100);
+            observer().resized(blocks[0]!);
+            vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+            expect(pane.scrollTop).toBe(1200);
+        });
+
+        it("reports each rendered element of a note, whose change a held note hides", () => {
+            const { blocks } = watch([[400, 400]], 0);
+
+            anchor.observeContent(blocks[0]!.children[0]!);
+            expect(observer().targets.has(blocks[0]!.children[0]!)).toBe(true);
+
+            anchor.unobserveContent(blocks[0]!.children[0]!);
+            expect(observer().targets.has(blocks[0]!.children[0]!)).toBe(false);
+        });
+
+        it("has nothing to hold in a pane holding no notes", () => {
+            const { pane, content } = makePane([]);
+            anchor.attach(pane);
+
+            anchor.onScroll();
+
+            expect(shift(content)).toBe(0);
+        });
+    });
+
     it("hands the shift to the scroll once the scroll is still, in one step", () => {
         const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
         resize(blocks[0]!, 1300);
@@ -300,6 +451,7 @@ describe("ScrollAnchor", () => {
 
         // The reader scrolls down, then back up by hand past a block that grew.
         pane.scrollTop = 900;
+        anchor.onScroll();
         resize(blocks[0]!, 1300);
         observer().resized(blocks[0]!);
         pane.scrollTop = 0;
@@ -381,6 +533,7 @@ describe("ScrollAnchor", () => {
 
         anchor.attach(pane);
         anchor.observe(blocks[0]!);
+        anchor.onScroll();
 
         expect(supports).toHaveBeenCalledWith("overflow-anchor", "auto");
         expect(FakeResizeObserver.instances).toEqual([]);

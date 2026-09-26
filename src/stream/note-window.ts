@@ -119,7 +119,7 @@ export class NoteWindowManager {
 
         for (const [block, window] of this.windows) {
             this.observe(block);
-            for (const el of window.watched) this.resizes.observe(el);
+            this.watch(window.watched);
         }
     }
 
@@ -328,14 +328,26 @@ export class NoteWindowManager {
         window.keepOnceSettled = debounce(() => this.keepHeight(block, window), SETTLE_MS, true);
         window.keepOnceSettled();
         window.watched = [block, ...Array.from(block.children)];
-        for (const el of window.watched) this.resizes?.observe(el);
+        this.watch(window.watched);
+    }
+
+    /** The block and what was rendered in it; held, the block hides a change inside. */
+    private watch([block, ...rendered]: Element[]): void {
+        if (block) this.resizes?.observe(block);
+        for (const el of rendered) {
+            this.resizes?.observe(el);
+            this.anchor.observeContent(el);
+        }
     }
 
     private stopSettling(window: NoteWindow): void {
         this.releaseHold(window);
         window.keepOnceSettled?.cancel();
         window.keepOnceSettled = null;
-        for (const el of window.watched) this.resizes?.unobserve(el);
+        for (const el of window.watched) {
+            this.resizes?.unobserve(el);
+            this.anchor.unobserveContent(el);
+        }
         window.watched = [];
     }
 

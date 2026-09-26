@@ -3,6 +3,27 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-26 — The stream anchors at the element the pane's top crosses
+
+**Decision:** `ScrollAnchor` keeps the deepest element the pane's top crosses,
+picked on each scroll and hand-over, and offsets however far a resize moved it.
+It hears resizes of every block and of what a rendered note holds. A re-render
+replacing that element falls back to its block. Every re-read first owes what
+moved since the last: a note rendering between frames reaches the scroll event
+before its resize report. It never descends into anything held: Back's place
+is measured against the note's full layout, and text in a note still filling
+is not where it will be.
+
+**Why:** a Base filling in the part of a note scrolled past pushed the text down:
+the note reached into the pane, so the block rule skipped it. Nothing above the
+pane's top is the reader's doing; a chevron tapped on screen changes only what
+lies below.
+
+**Rejected:**
+- Holding a Base's growth for 300ms — the same move, later, with rows clipped.
+- Scanning every block for the anchor — a stream holds thousands; blocks are
+  found by halving.
+
 ## 2026-09-26 — A note and a Base are held until they settle
 
 **Decision:** a note rendering or re-rendering keeps `min-height` at a height it
@@ -177,6 +198,9 @@ reader render on the way up; handed over, their growth stopped the glide
 - Desktop too — the title there is a label, and nothing hints it is tappable.
 
 ## 2026-09-24 — The stream anchors its own scroll where the platform does not
+
+Which change is offset superseded 2026-09-26: whatever moves the element the
+pane's top crosses.
 
 **Decision:** in the iOS app, and wherever `CSS.supports("overflow-anchor",
 "auto")` is false, `ScrollAnchor` turns native anchoring off, watches every

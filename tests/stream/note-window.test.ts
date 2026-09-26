@@ -1075,6 +1075,27 @@ describe("NoteWindowManager scroll anchoring", () => {
         placed.mockRestore();
     });
 
+    // Held at its height, a note hides a change inside it from a watch on it.
+    it("has the anchor watch what a note rendered while it is rendered", async () => {
+        const observeContent = vi.spyOn(ScrollAnchor.prototype, "observeContent");
+        const unobserveContent = vi.spyOn(ScrollAnchor.prototype, "unobserveContent");
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        const rendered = block.firstElementChild;
+
+        expect(observeContent).toHaveBeenCalledWith(rendered);
+
+        fire(observers.unload, block, false);
+        await still();
+        expect(unobserveContent).toHaveBeenCalledWith(rendered);
+        observeContent.mockRestore();
+        unobserveContent.mockRestore();
+        document.body.empty();
+    });
+
     it("watches the existing blocks again when re-attached", () => {
         const { manager, scrollRoot } = makeManager();
         const block = manager.add(FILE);

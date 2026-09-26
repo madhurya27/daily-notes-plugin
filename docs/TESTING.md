@@ -199,6 +199,8 @@ Checks:
 - With a Base on screen, add a note it lists from another pane: the text below it never jumps up and back.
 - Jump to an old date, then flick up: the text under your finger does not jump as the notes above render, and
   the glide is not cut short.
+- Stop with a note's Base just above the top of the screen and its text below: as the Base fills, the text
+  does not move. **[e2e]** with anchoring off.
 - Jump to an old date, then tap "Daily notes stream" in the header: it glides to the newest note and stays
   at the very top. Tapping the search or jump action does not scroll. **[e2e]**
 - Tap a note's title, then Back: the stream comes back at the same place and does not move after. Try it with
