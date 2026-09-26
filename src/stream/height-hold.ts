@@ -1,20 +1,19 @@
-/** How long something must not resize before it counts as done: Bases gives no sign it is. */
+/** No resize for this long counts as done: Bases gives no sign it is. */
 export const SETTLE_MS = 300;
 
 /** Long enough for Bases to fill a view; short enough that a real shrink shows. */
 export const HOLD_LIMIT_MS = 2000;
 
 /**
- * Holds an element at least `height` tall while what is in it refills, so a
- * dip is never drawn: iOS has no scroll anchoring, and everything below would
- * jump and return. Its owner releases it once the contents hold still; the
- * limit lets go of contents that never do.
+ * Holds an element at least `height` tall while its contents refill, so a dip
+ * is never drawn: on iOS, with no scroll anchoring, the text below would jump
+ * and return. The owner releases it once they settle; the limit, if they never do.
  */
 export class HeightHold {
     private readonly timer: number;
     private held = true;
 
-    /** styles.css turns the custom property into a `min-height`, for notes and Bases alike. */
+    /** styles.css turns the property into a `min-height`, for notes and Bases alike. */
     constructor(
         private readonly el: HTMLElement,
         height: number

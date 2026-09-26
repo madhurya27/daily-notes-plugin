@@ -196,11 +196,10 @@ Checks:
 - Rotate with a Base on screen: a wide one turns to cards or back to a table. A wide equation grows or shrinks
   with the note.
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides out.
-- With a Base on screen, add a note it lists from another pane: the text below it never jumps up and back.
+- A Base on screen gains a row from another pane: the text below never jumps and returns.
 - Jump to an old date, then flick up: the text under your finger does not jump as the notes above render, and
   the glide is not cut short.
-- Stop with a note's Base just above the top of the screen and its text below: as the Base fills, the text
-  does not move. **[e2e]** with anchoring off.
+- A Base filling just above the screen's top leaves the text below still. **[e2e]** with anchoring off.
 - Jump to an old date, then tap "Daily notes stream" in the header: it glides to the newest note and stays
   at the very top. Tapping the search or jump action does not scroll. **[e2e]**
 - Tap a note's title, then Back: the stream comes back at the same place and does not move after. Try it with

@@ -40,8 +40,8 @@ export class JumpToDateModal extends SuggestModal<JumpChoice> {
     }
 
     /**
-     * On a phone, the list opens without the keyboard, which would cover half
-     * of it: the reader looks first, then taps the query or the calendar.
+     * On a phone, the list opens without the keyboard covering half of it; the
+     * reader taps the query to type, or the calendar.
      */
     open(): void {
         super.open();

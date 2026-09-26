@@ -3,49 +3,46 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
-## 2026-09-26 — The stream anchors at the element the pane's top crosses
+## 2026-09-26 — The scroll anchor is the element at the pane's top
 
-**Decision:** `ScrollAnchor` keeps the deepest element the pane's top crosses,
-picked on each scroll and hand-over, and offsets however far a resize moved it.
-It is found by `elementsFromPoint` at the pane's top, past anything drawn over
-the stream, and its ancestors up to its block; by halving the blocks when
-nothing of the stream is drawn there.
-It hears resizes of every block and of what a rendered note holds. A re-render
-replacing that element falls back to its block. Every re-read first owes what
-moved since the last: a note rendering between frames reaches the scroll event
-before its resize report. It never descends into anything held: Back's place
-is measured against the note's full layout, and text in a note still filling
-is not where it will be.
+**Decision:** where `ScrollAnchor` runs, it offsets however far the element at
+the pane's top moved. It re-picks that element on each scroll and hand-over:
+`elementsFromPoint`, walked up to its block; halving the blocks when nothing of
+the stream is there.
 
-**Why:** a Base filling in the part of a note scrolled past pushed the text down:
-the note reached into the pane, so the block rule skipped it. Nothing above the
-pane's top is the reader's doing; a chevron tapped on screen changes only what
-lies below.
+- It stops at anything held — a held note's text is not yet where Back
+  measured the place.
+- It owes what moved before every re-pick — a note rendering between frames
+  reaches the scroll event before its resize report.
+- A replaced element falls back to its block.
+
+**Why:** a Base filling above the pane, in a note reaching into it, pushed the
+text down: only notes wholly above were offset. Nothing above the pane's top is
+the reader's doing; a chevron tapped on screen changes only what is below.
 
 **Rejected:**
-- Holding a Base's growth for 300ms — the same move, later, with rows clipped.
-- Walking down from the blocks — reads every paragraph above the anchor in a
-  long note, each scroll frame.
-- `IntersectionObserver` — reports a frame late, after a render has moved the place.
+- Holding a Base's growth — the same move, later, rows clipped.
+- Walking down the note — every paragraph read each scroll frame.
+- `IntersectionObserver` — a frame late.
 
-## 2026-09-26 — A note and a Base are held until they settle
+## 2026-09-26 — Notes and Bases are held until they settle
 
-**Decision:** a note rendering or re-rendering keeps `min-height` at a height it
-measured before — remembered, unloaded at, or shown — until nothing in it has
-resized for 300ms, then its height is remembered. A Base redrawn, or shrinking
-by itself as Bases refreshes it, is held at the height it showed, by the same
-rule. Either lets go after 2s regardless; a note, too, on a touch. A Base's
-height is never stored; which Bases were too wide still is.
+**Decision:** each is held at `min-height` until nothing in it resizes for
+300ms, and 2s at most:
 
-**Why:** the note's settle wait, added a day after holding whole notes was
-rejected, is the signal that rejection lacked. A note held at its own height
-covers every late fill — Bases, images, embeds — so per-Base heights, keyed by
-note, layout and a digest, were a second cache for one case.
+- a rendered note at a height it measured before — remembered, or shown before
+  a re-render; never a guess. A touch lets it go, so a collapse shows at once.
+- a Base at what it showed, when redrawn or when it shrinks by itself (a live
+  Bases refresh). It grows unheld.
+
+Base heights are no longer stored: a Base coming back is held by its note.
+
+**Why:** the settle wait is the signal holding whole notes lacked (2026-09-24),
+and it covers every late fill, so per-Base heights were a second cache.
 
 **Rejected:**
-- Holding a note at a guessed height — a short note shows a gap until it settles.
-- Freezing a Base both ways — new rows would be clipped until it settles.
-- Only a note-level hold — a live refresh dips a Base inside a note on screen.
+- Holding at a guessed height — a short note shows a gap.
+- A note-level hold alone — a live Bases refresh dips inside a note on screen.
 
 ## 2026-09-25 — A note's height is remembered once it settles
 
@@ -105,7 +102,7 @@ flashed on desktop, older ones on a phone.
   every view and session.
 - Note heights alone, without what Bases measured — a Base inside a note
   still draws empty and refills, whatever height its note reserved.
-  Superseded 2026-09-26: the note is held until it settles.
+  (Superseded 2026-09-26.)
 
 ## 2026-09-25 — Scroll to top is offered only in the stream
 
@@ -203,8 +200,7 @@ reader render on the way up; handed over, their growth stopped the glide
 
 ## 2026-09-24 — The stream anchors its own scroll where the platform does not
 
-Which change is offset superseded 2026-09-26: whatever moves the element the
-pane's top crosses.
+Superseded in part 2026-09-26: what is offset.
 
 **Decision:** in the iOS app, and wherever `CSS.supports("overflow-anchor",
 "auto")` is false, `ScrollAnchor` turns native anchoring off, watches every
@@ -226,7 +222,7 @@ correction.
 
 ## 2026-09-24 — A redrawn Base holds its last height until Bases refills it
 
-Heights superseded 2026-09-26: nothing is kept; a note and a Base are held until they settle.
+Superseded in part 2026-09-26: heights are no longer kept.
 
 **Decision:** `NoteBases` keeps the height each Base last laid out at, per note,
 layout and a digest of its source, and a redraw holds it as `min-height` until the drawn view

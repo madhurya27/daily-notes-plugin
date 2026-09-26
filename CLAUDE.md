@@ -69,7 +69,7 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
 - `stream/layout-memory.ts` — every note's last measured height (`note-heights.ts`) and which Bases were too
   wide, each per layout (`layout-table.ts`), kept in the vault's localStorage on this device
   ([ADR 0010](docs/adr/0010-layout-memory.md)).
-- `stream/height-hold.ts` — holds a note or a Base at a height it showed while it refills, until it settles.
+- `stream/height-hold.ts` — holds a note or a Base at an earlier height while it refills, until it settles.
 - `stream/` also holds the loaded range (`stream-state.ts`), the sentinel (`infinite-scroll.ts`), scroll
   places (`scroll-position.ts`) and, where the platform has none, scroll anchoring (`scroll-anchor.ts`).
 - `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`), wide tables as

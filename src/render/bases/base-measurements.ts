@@ -17,9 +17,8 @@ export interface BaseKey {
 export type SavedMeasurements = SavedLayoutTable<Measurement>;
 
 /**
- * Which of the stream's Bases were too wide for a table, kept across sessions
- * with the notes' heights and by the same rule (ADR 0010), so a Base comes
- * back straight as cards. Its height is its note's to hold.
+ * Which Bases were too wide for a table, kept with the notes' heights (ADR 0010),
+ * so a Base comes back straight as cards. Its height is its note's to hold.
  */
 export class BaseMeasurements {
     private readonly table: LayoutTable<Measurement>;

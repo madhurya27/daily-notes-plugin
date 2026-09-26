@@ -35,11 +35,11 @@ interface NoteWindow {
     unloadWanted: boolean;
     /** Measured on the last unload; the estimate until then. */
     height: number;
-    /** `height` was measured, here or in an earlier session, rather than guessed. */
+    /** `height` was measured, this session or an earlier one, not guessed. */
     measured: boolean;
     /** Holds the rendered note at `height` until it settles; null once let go. */
     hold: HeightHold | null;
-    /** What the settling watch observes: the block and what was rendered in it. */
+    /** The block and what was rendered in it. */
     watched: Element[];
     /** Remembers the height once the rendered note stops resizing; null while unloaded. */
     keepOnceSettled: Debouncer<[], void> | null;
@@ -139,7 +139,7 @@ export class NoteWindowManager {
         if (this.leaving.size > 0) this.unloadOnceStill();
     }
 
-    /** The reader touched `target`: collapsing a section is their own change, which no hold may keep. */
+    /** A touch is the reader's own change, such as a collapse: no hold keeps it. */
     onTouch(target: EventTarget | null): void {
         const window = this.windowOf(target);
         if (window) this.releaseHold(window);
@@ -319,10 +319,7 @@ export class NoteWindowManager {
         this.changes++;
     }
 
-    /**
-     * Held, the block cannot shrink, so a dip shows only in what was rendered
-     * in it: that is watched too.
-     */
+    /** Held, the block cannot shrink: a dip shows only in what was rendered in it. */
     private watchSettling(block: HTMLElement, window: NoteWindow): void {
         if (window.measured) window.hold = new HeightHold(block, window.height);
         window.keepOnceSettled = debounce(() => this.keepHeight(block, window), SETTLE_MS, true);
@@ -331,7 +328,6 @@ export class NoteWindowManager {
         this.watch(window.watched);
     }
 
-    /** The block and what was rendered in it; held, the block hides a change inside. */
     private watch([block, ...rendered]: Element[]): void {
         if (block) this.resizes?.observe(block);
         for (const el of rendered) {
@@ -362,10 +358,7 @@ export class NoteWindowManager {
         return block ? this.windows.get(block) : undefined;
     }
 
-    /**
-     * What the block lays out at now, as the height it reserves and holds. A
-     * block never laid out measures zero and keeps what it had.
-     */
+    /** Takes the block's height now; one never laid out measures zero and keeps what it had. */
     private measureInto(block: HTMLElement, window: NoteWindow): void {
         const measured = this.measure(block);
         if (measured <= 0) return;

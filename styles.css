@@ -46,8 +46,8 @@
     overflow: clip;
 }
 
-/* A note or a Base held at a height it showed before, until what is drawn in
-   it holds still (src/stream/height-hold.ts). */
+/* A note or Base held at an earlier height while it refills
+   (src/stream/height-hold.ts). */
 .daily-note-block,
 .daily-note-base {
     min-height: var(--daily-note-held-height, 0);

@@ -4,14 +4,10 @@ import { Platform, debounce } from "obsidian";
 export const SCROLL_IDLE_MS = 300;
 
 /**
- * Holds the reader's place when something above the pane's top changes height
- * — a placeholder rendering at its real height, a Base filling — where the
- * platform does not. Chromium anchors the scroll itself; iOS WebKit has no
- * scroll anchoring, so there the text jumped by the difference.
- *
- * The place is the deepest element the pane's top crosses: whatever moves it
- * lies above the pane, where the reader can touch nothing, so it is undone. A
- * chevron tapped on screen changes only what lies below.
+ * Holds the reader's place where the platform does not: Chromium anchors the
+ * scroll itself, iOS WebKit not at all. The place is the element at the pane's
+ * top; whatever moves it lies above, beyond the reader's touch, so it is
+ * undone. A chevron tapped on screen changes only what is below.
  *
  * A change is drawn as a shift of the stream first, and handed to the scroll
  * once the scroll is still: mid-glide iOS drops or undoes a scroll write, and
@@ -20,15 +16,14 @@ export const SCROLL_IDLE_MS = 300;
 export class ScrollAnchor {
     private observer: ResizeObserver | null = null;
     private scrollRoot: HTMLElement | null = null;
-    /** The blocks watched, in the order they were added: their parent is the stream. */
+    /** The blocks watched; their parent is the stream. */
     private readonly watched = new Set<Element>();
     /**
-     * From a block down to the deepest element the pane's top crosses, each
-     * where it was drawn: when a re-render replaces the deeper ones, the
-     * deepest still in the page stands for the place.
+     * From a block down to the element at the pane's top, each where it was
+     * drawn. A re-render may replace the deeper ones: the deepest left stands in.
      */
     private place: { el: Element; top: number }[] = [];
-    /** The scroll `place` was read at: a script may set it again before a resize reports. */
+    /** The scroll `place` was read at: a script may move it before a resize reports. */
     private placeScroll = 0;
     /** What the scroll owes the content, drawn as a shift until the scroll stops. */
     private owed = 0;
@@ -61,7 +56,7 @@ export class ScrollAnchor {
         this.watched.delete(block);
     }
 
-    /** What a note rendered: held at its height, the note hides a change inside it. */
+    /** What a note rendered: a held note hides a change inside it. */
     observeContent(el: Element): void {
         this.observer?.observe(el);
     }
@@ -107,16 +102,15 @@ export class ScrollAnchor {
         this.unshift();
     }
 
-    /** Something resized: however far the place moved, the shift moves it back. */
+    /** Something resized: the shift moves the place back. */
     private hold(): void {
         if (this.owe()) this.settleOnceStill();
         this.pick();
     }
 
     /**
-     * Owes however far the place moved since it was read, less any scroll
-     * since. Run before every new read: the layout that read sees may already
-     * hold a change no resize has reported yet, and it would be lost.
+     * Owes how far the place moved since it was read, less any scroll. Run
+     * before every re-read: its layout may hold a change no resize reported yet.
      */
     private owe(): boolean {
         const point = [...this.place].reverse().find(({ el }) => this.scrollRoot!.contains(el));
@@ -129,10 +123,8 @@ export class ScrollAnchor {
     }
 
     /**
-     * Asks what is drawn at the pane's top, past anything drawn over the
-     * stream, and walks up to its block. It stops short of anything held
-     * (`HeightHold`): what is inside is still filling, and where its text lies
-     * now is not where it will.
+     * What is drawn at the pane's top, past anything over the stream, up to its
+     * block. Not inside anything held: its text is not yet where it will be.
      */
     private pick(): void {
         this.place = [];

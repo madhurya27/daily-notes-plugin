@@ -14,10 +14,9 @@ import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
  * layout, and redrawn alone. A measured answer is kept per note and layout, so
  * a note that unloads and comes back is drawn once.
  *
- * Bases fills a view after it is drawn, and refills it on a live update, so a
- * Base is held at the height it showed until what is drawn holds still:
- * without it, everything below jumps and returns, and iOS has no scroll
- * anchoring to hide that. A Base coming back into view is held by its note.
+ * Bases fills a view after drawing it, and refills it on a live update, so a
+ * Base is held at the height it showed until it settles; otherwise the text
+ * below jumps and returns. A Base coming back into view is held by its note.
  */
 export class NoteBases {
     /** Undefined until the first Base; null when nothing could be measured. */
@@ -142,7 +141,7 @@ class BaseSlot {
     /** `baseDigest` of its markdown and definition. */
     private digest = "";
     private component: Component | null = null;
-    /** Watches the placeholder, and what is drawn in it, which moves under a hold. */
+    /** The placeholder, and what is drawn in it: a held placeholder stops resizing, its contents do not. */
     private readonly resizes = new ResizeObserver(() => this.resized());
     private hold: HeightHold | null = null;
     /** Restarted by each resize while held. */
@@ -189,7 +188,7 @@ class BaseSlot {
 
     /**
      * Replaces what the Base drew with `mode`, freeing what the last draw
-     * registered, held at the height it shows now until the new draw holds still.
+     * registered, held at the height it shows now until it settles.
      */
     async draw(mode: "table" | "cards"): Promise<void> {
         const shown = this.hold?.holding ? this.laidOut : this.height();
@@ -205,7 +204,7 @@ class BaseSlot {
     }
 
     /**
-     * A resize while held restarts the wait; one let go by the limit is over.
+     * Held, a resize restarts the wait; released by the limit, the hold is over.
      * Unheld, a shrink is Bases refilling: it is held where it was.
      */
     private resized(): void {
@@ -230,7 +229,7 @@ class BaseSlot {
         this.letGoOnceStill();
     }
 
-    /** Lets go, and takes what it lays out at unheld as its height: shorter, it lost rows. */
+    /** Lets go, taking its unheld height as its own: shorter, it lost rows. */
     private letGo(): void {
         this.letGoOnceStill.cancel();
         this.hold?.release();
