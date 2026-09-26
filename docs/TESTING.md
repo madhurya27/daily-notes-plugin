@@ -196,6 +196,7 @@ Checks:
 - Rotate with a Base on screen: a wide one turns to cards or back to a table. A wide equation grows or shrinks
   with the note.
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides out.
+- With a Base on screen, add a note it lists from another pane: the text below it never jumps up and back.
 - Jump to an old date, then flick up: the text under your finger does not jump as the notes above render, and
   the glide is not cut short.
 - Jump to an old date, then tap "Daily notes stream" in the header: it glides to the newest note and stays

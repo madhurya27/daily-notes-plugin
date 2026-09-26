@@ -142,6 +142,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         if (Platform.isMobile && title) this.registerDomEvent(title, "click", () => this.scrollToTop());
 
         this.registerDomEvent(this.contentEl, "scroll", () => this.stream.onScroll());
+        this.registerDomEvent(this.contentEl, "pointerdown", (evt) => this.stream.onTouch(evt.target));
         this.stream.open(this.contentEl, streamContainerEl);
     }
 

@@ -3,6 +3,25 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-26 — A note and a Base are held until they settle
+
+**Decision:** a note rendering or re-rendering keeps `min-height` at a height it
+measured before — remembered, unloaded at, or shown — until nothing in it has
+resized for 300ms, then its height is remembered. A Base redrawn, or shrinking
+by itself as Bases refreshes it, is held at the height it showed, by the same
+rule. Either lets go after 2s regardless; a note, too, on a touch. A Base's
+height is never stored; which Bases were too wide still is.
+
+**Why:** the note's settle wait, added a day after holding whole notes was
+rejected, is the signal that rejection lacked. A note held at its own height
+covers every late fill — Bases, images, embeds — so per-Base heights, keyed by
+note, layout and a digest, were a second cache for one case.
+
+**Rejected:**
+- Holding a note at a guessed height — a short note shows a gap until it settles.
+- Freezing a Base both ways — new rows would be clipped until it settles.
+- Only a note-level hold — a live refresh dips a Base inside a note on screen.
+
 ## 2026-09-25 — A note's height is remembered once it settles
 
 **Decision:** a rendered note's height goes into `LayoutMemory` once nothing
@@ -61,6 +80,7 @@ flashed on desktop, older ones on a phone.
   every view and session.
 - Note heights alone, without what Bases measured — a Base inside a note
   still draws empty and refills, whatever height its note reserved.
+  Superseded 2026-09-26: the note is held until it settles.
 
 ## 2026-09-25 — Scroll to top is offered only in the stream
 
@@ -177,6 +197,8 @@ scroll would carry it off. Anchoring everywhere — doubles Chromium's own
 correction.
 
 ## 2026-09-24 — A redrawn Base holds its last height until Bases refills it
+
+Heights superseded 2026-09-26: nothing is kept; a note and a Base are held until they settle.
 
 **Decision:** `NoteBases` keeps the height each Base last laid out at, per note,
 layout and a digest of its source, and a redraw holds it as `min-height` until the drawn view

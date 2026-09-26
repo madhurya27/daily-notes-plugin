@@ -31,6 +31,7 @@ vi.mock("../../src/stream/note-window", () => ({
         render = vi.fn();
         refreshMargins = vi.fn();
         onScroll = vi.fn();
+        onTouch = vi.fn();
         refresh = vi.fn().mockResolvedValue(undefined);
         placed = vi.fn();
         layoutChanges = 0;
@@ -66,6 +67,7 @@ vi.mock("../../src/stream/scroll-box-guard", () => ({
         attach = vi.fn();
         detach = vi.fn();
         onScroll = vi.fn();
+        onTouch = vi.fn();
         constructor(readonly onBaseLayout: (view: HTMLElement) => void) {
             fakes.guards.push(this as unknown as FakeGuard);
         }
@@ -523,6 +525,12 @@ describe("the pane", () => {
     it("passes a scroll on to the window, which waits for it to stop before unloading", () => {
         stream.onScroll();
         expect(noteWindow.onScroll).toHaveBeenCalled();
+    });
+
+    it("passes a touch on to the window, which lets that note's hold go", () => {
+        const target = document.createElement("div");
+        stream.onTouch(target);
+        expect(noteWindow.onTouch).toHaveBeenCalledWith(target);
     });
 
     it("stops observing on close", () => {

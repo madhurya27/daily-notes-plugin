@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Component, TFile } from "obsidian";
-import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX, SETTLE_MS } from "../../src/stream/note-window";
+import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX } from "../../src/stream/note-window";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "../../src/stream/scroll-anchor";
 import { NoteHeights } from "../../src/stream/note-heights";
+import { HOLD_LIMIT_MS, SETTLE_MS } from "../../src/stream/height-hold";
 
 /**
  * The two observers, by the rootMargin they were constructed with: the render
@@ -317,6 +318,133 @@ describe("NoteWindowManager remembered heights", () => {
         await settle();
         manager.add(new TFile("Notes/2025-01-04.md"));
         expect(layoutOf).toHaveBeenCalledTimes(2);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Holding a note while it fills
+// ---------------------------------------------------------------------------
+
+/**
+ * A note renders short and fills: Bases draw empty, images load late. Held at
+ * a height it measured before, it never draws the dip (docs/decisions.md,
+ * 2026-09-26).
+ */
+describe("NoteWindowManager holds a rendered note until it settles", () => {
+    const heldHeight = (block: HTMLElement) => block.style.getPropertyValue("--daily-note-held-height");
+
+    /** Renders a block for FILE, which measured `remembered` before, if anything. */
+    async function renderRemembering(remembered: number | undefined, measure = () => 640) {
+        const heights = new NoteHeights();
+        if (remembered !== undefined) heights.keep(LAYOUT, FILE.path, remembered);
+        const setup = makeManager(makeRenderer(), measure, undefined, heights);
+        const block = setup.manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        return { ...setup, block };
+    }
+
+    afterEach(() => document.body.empty());
+
+    it("holds it at the height it measured before", async () => {
+        const { block } = await renderRemembering(812);
+
+        expect(heldHeight(block)).toBe("812px");
+        expect(placeholderHeight(block)).toBe("");
+    });
+
+    // A guess held would leave a short note's gap on screen until it settles.
+    it("holds nothing on a note never measured", async () => {
+        const { block } = await renderRemembering(undefined);
+
+        expect(heldHeight(block)).toBe("");
+    });
+
+    it("lets go once it settles, remembering what it measures without the hold", async () => {
+        const { block, heights } = await renderRemembering(812, () =>
+            block.style.getPropertyValue("--daily-note-held-height") ? 812 : 640
+        );
+
+        await vi.advanceTimersByTimeAsync(SETTLE_MS);
+
+        expect(heldHeight(block)).toBe("");
+        expect(heights.heightOf(LAYOUT, FILE.path)).toBe(640);
+    });
+
+    // Held, the block cannot shrink: only its contents report a dip.
+    it("waits on its contents, which move under the hold", async () => {
+        const { block } = await renderRemembering(812);
+
+        await vi.advanceTimersByTimeAsync(SETTLE_MS - 100);
+        resize(block.firstElementChild as HTMLElement);
+        await vi.advanceTimersByTimeAsync(SETTLE_MS - 1);
+
+        expect(heldHeight(block)).toBe("812px");
+        expect(lastResizeObserve).toHaveBeenCalledWith(block.firstElementChild);
+    });
+
+    it("lets go of a note that never settles, and remembers nothing of it", async () => {
+        const { block, heights } = await renderRemembering(812);
+
+        for (let t = 0; t < HOLD_LIMIT_MS; t += SETTLE_MS / 2) {
+            resize(block);
+            await vi.advanceTimersByTimeAsync(SETTLE_MS / 2);
+        }
+
+        expect(heldHeight(block)).toBe("");
+        expect(heights.heightOf(LAYOUT, FILE.path)).toBe(812);
+    });
+
+    // A note measured this session holds what it unloaded at.
+    it("holds a note coming back at what it unloaded at", async () => {
+        const { manager, block } = await renderRemembering(undefined);
+        await vi.advanceTimersByTimeAsync(SETTLE_MS);
+        fire(observers.unload, block, false);
+        await still();
+
+        manager.render(block);
+        await settle();
+
+        expect(heldHeight(block)).toBe("640px");
+    });
+
+    it("holds a note re-rendered in place at the height it showed", async () => {
+        const { manager, block } = await renderRemembering(undefined);
+        await vi.advanceTimersByTimeAsync(SETTLE_MS);
+
+        await manager.refresh(block);
+
+        expect(heldHeight(block)).toBe("640px");
+    });
+
+    // Collapsing a section is the reader's own change: holding it would leave a gap.
+    it("lets go the moment the reader touches the note", async () => {
+        const { manager, block } = await renderRemembering(812);
+
+        manager.onTouch(block.firstElementChild);
+
+        expect(heldHeight(block)).toBe("");
+    });
+
+    it("keeps holding through a touch elsewhere", async () => {
+        const { manager, block } = await renderRemembering(812);
+
+        manager.onTouch(document.body);
+        manager.onTouch(null);
+
+        expect(heldHeight(block)).toBe("812px");
+    });
+
+    it("unloads at what it measures without the hold", async () => {
+        const { block } = await renderRemembering(812, () =>
+            block.style.getPropertyValue("--daily-note-held-height") ? 812 : 640
+        );
+
+        fire(observers.unload, block, false);
+        await still();
+
+        expect(placeholderHeight(block)).toBe("640px");
     });
 });
 

@@ -160,7 +160,7 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         __setMockNotes(["Notes/2025-01-01.md"]);
         const app = makeApp();
         app.loadLocalStorage.mockReturnValue({
-            version: 2,
+            version: 3,
             notes: [
                 [
                     "600:16px",

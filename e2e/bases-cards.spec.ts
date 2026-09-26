@@ -205,6 +205,24 @@ test.describe("Bases on mobile", () => {
         expect(lowest).toBeGreaterThanOrEqual(height - 1);
     });
 
+    // Custom properties inherit: a note's hold would hold each Base as tall.
+    test("holds a note without holding the Bases in it", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await seed(page, block("views:", ...table("Wide", HEADERS_WIDE)));
+        const container = await openStream(page);
+        const top = container.locator(".daily-note-block").first();
+        const base = top.locator(".daily-note-base").first();
+        await expect(cards(base).first()).toBeVisible();
+
+        const minHeights = await top.evaluate((el) => {
+            el.style.setProperty("--daily-note-held-height", "5000px");
+            const base = el.querySelector(".daily-note-base")!;
+            return [getComputedStyle(el).minHeight, getComputedStyle(base).minHeight];
+        });
+
+        expect(minHeights).toEqual(["5000px", "0px"]);
+    });
+
     test("measures a table whose values overrun the note, and redraws it as cards", async ({ obsidian }) => {
         const { page } = obsidian;
         await seed(page, block(...VALUES_WIDE));

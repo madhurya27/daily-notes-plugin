@@ -5,7 +5,7 @@ import { NoteHeights } from "./note-heights";
 /** Vault-scoped and per device: a height is only true on the screen that measured it. */
 export const LAYOUT_MEMORY_KEY = "daily-notes-stream:layout";
 /** A save that no longer reads what is stored bumps this, and the old one is dropped: it is a cache. */
-const VERSION = 2;
+const VERSION = 3;
 /** From the first change of a burst, so a long scroll still saves as it goes. */
 export const SAVE_DELAY_MS = 1000;
 

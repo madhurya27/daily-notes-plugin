@@ -1,18 +1,10 @@
 import { App, Component, type Debouncer, MarkdownRenderer, TAbstractFile, TFile, debounce, setIcon } from "obsidian";
+import { HeightHold, SETTLE_MS } from "../../stream/height-hold";
 import { baseDigest, type BaseKey, type BaseMeasurements } from "./base-measurements";
 import { layoutOf } from "../../stream/layout-memory";
 import { asCards, BASE_SLOT_CLASS, type BaseSource } from "./bases-as-cards";
 import { fitBaseToWidth, tableWidth } from "./bases-fit";
 import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
-
-/**
- * How long a redrawn Base holds the height it last laid out at, if it never
- * refills it: it may have lost rows since.
- */
-const HOLD_MS = 2000;
-
-/** How long a Base's height is unchanged before it is kept: Bases gives no sign it is done. */
-export const BASE_SETTLE_MS = 300;
 
 /**
  * A note's Bases, each drawn into its own placeholder as a table or, when the
@@ -22,9 +14,10 @@ export const BASE_SETTLE_MS = 300;
  * layout, and redrawn alone. A measured answer is kept per note and layout, so
  * a note that unloads and comes back is drawn once.
  *
- * Bases fills a view after it is drawn, so a redraw holds the height the Base
- * last laid out at until it refills it: without it, everything below jumps and
- * returns, and iOS has no scroll anchoring to hide that.
+ * Bases fills a view after it is drawn, and refills it on a live update, so a
+ * Base is held at the height it showed until what is drawn holds still:
+ * without it, everything below jumps and returns, and iOS has no scroll
+ * anchoring to hide that. A Base coming back into view is held by its note.
  */
 export class NoteBases {
     /** Undefined until the first Base; null when nothing could be measured. */
@@ -56,25 +49,18 @@ export class NoteBases {
                 : source.kind === "block"
                   ? source.definition
                   : null;
-            const slot = new BaseSlot(this.app, contentEl, placeholder, file, noteComponent, source, definition, (s) =>
-                this.remember(s)
-            );
+            const slot = new BaseSlot(this.app, contentEl, placeholder, file, noteComponent, source, definition);
             this.slots.set(placeholder, slot);
             if (base) this.track(base.path, slot, noteComponent);
             slots.push(slot);
             await this.draw(slot, this.wantsCards(slot, width) ? "cards" : "table");
         }
-        // A Base resizes as Bases fills it, or its rows change: its height is
-        // kept once the whole note holds still, never mid-fill or at unload. A
-        // Base alone can sit still, empty, while Bases fetches its rows.
         const observer = new ResizeObserver(() => {
-            for (const slot of slots) slot.keepOnceStill();
             if (contentEl.clientWidth === width) return;
             width = contentEl.clientWidth;
             for (const slot of slots) void this.recheck(slot, width);
         });
         observer.observe(contentEl);
-        for (const slot of slots) observer.observe(slot.placeholder);
         noteComponent.register(() => observer.disconnect());
     }
 
@@ -106,15 +92,8 @@ export class NoteBases {
         return this.draw(slot, "cards");
     }
 
-    /** Redraws `slot`, held at the height it shows now, or else the one it last held still at. */
     private async draw(slot: BaseSlot, mode: "table" | "cards"): Promise<void> {
-        await slot.draw(mode, slot.shownHeight ?? this.measured.heightOf(slot.key(slot.contentWidth)));
-    }
-
-    /** Keeps the height `slot` is laid out at now, unless held to an older one. */
-    private remember(slot: BaseSlot): void {
-        const height = slot.placeholder.getBoundingClientRect().height;
-        if (height > 0 && slot.heldHeight === undefined) this.measured.keepHeight(slot.key(slot.contentWidth), height);
+        await slot.draw(mode);
     }
 
     private wantsCards(slot: BaseSlot, width: number): boolean {
@@ -163,8 +142,13 @@ class BaseSlot {
     /** `baseDigest` of its markdown and definition. */
     private digest = "";
     private component: Component | null = null;
-    /** Restarted by each resize, and by a hold let go, which no resize may follow. */
-    readonly keepOnceStill: Debouncer<[], void>;
+    /** Watches the placeholder, and what is drawn in it, which moves under a hold. */
+    private readonly resizes = new ResizeObserver(() => this.resized());
+    private hold: HeightHold | null = null;
+    /** Restarted by each resize while held. */
+    private readonly letGoOnceStill: Debouncer<[], void>;
+    /** The height it last laid out at unheld: a shrink from it is held there. */
+    private laidOut = 0;
 
     constructor(
         private readonly app: App,
@@ -173,15 +157,17 @@ class BaseSlot {
         private readonly file: TFile,
         private readonly noteComponent: Component,
         private readonly source: BaseSource,
-        public definition: string | null,
-        /** Its height has held still for `BASE_SETTLE_MS`. */
-        onStill: (slot: BaseSlot) => void
+        public definition: string | null
     ) {
         this.view = source.kind === "embed" ? source.view : undefined;
         this.redefine(definition);
-        this.keepOnceStill = debounce(() => onStill(this), BASE_SETTLE_MS, true);
-        // Left before it held still, a Base keeps the height it had before.
-        noteComponent.register(() => this.keepOnceStill.cancel());
+        this.letGoOnceStill = debounce(() => this.letGo(), SETTLE_MS, true);
+        this.resizes.observe(placeholder);
+        noteComponent.register(() => {
+            this.resizes.disconnect();
+            this.letGoOnceStill.cancel();
+            this.hold?.release();
+        });
     }
 
     /** Takes the Base as its file now defines it. */
@@ -201,56 +187,59 @@ class BaseSlot {
         return { layout: layoutOf(this.contentEl, width), path: this.file.path, base: this.digest };
     }
 
-    /** The earlier height a redraw is holding the placeholder at; undefined when none is. */
-    get heldHeight(): number | undefined {
-        const held = parseFloat(this.placeholder.style.getPropertyValue("--daily-note-base-held-height"));
-        return held > 0 ? held : undefined;
-    }
-
-    /** The height it is held at, else laid out at; undefined when it is not laid out. */
-    get shownHeight(): number | undefined {
-        if (this.heldHeight !== undefined) return this.heldHeight;
-        const height = this.placeholder.getBoundingClientRect().height;
-        return height > 0 ? height : undefined;
-    }
-
     /**
      * Replaces what the Base drew with `mode`, freeing what the last draw
-     * registered, and holds `height` until the new draw fills it.
+     * registered, held at the height it shows now until the new draw holds still.
      */
-    async draw(mode: "table" | "cards", height: number | undefined): Promise<void> {
+    async draw(mode: "table" | "cards"): Promise<void> {
+        const shown = this.hold?.holding ? this.laidOut : this.height();
         if (this.component) this.noteComponent.removeChild(this.component);
         this.placeholder.empty();
         this.mode = mode;
+        if (shown > 0) this.holdAt(shown);
         const component = (this.component = this.noteComponent.addChild(new Component()));
-        const hold = height ? this.hold(height, component) : null;
         const markdown = mode === "cards" ? this.cards! : this.source.markdown;
         await MarkdownRenderer.render(this.app, markdown, this.placeholder, this.file.path, component);
-        // The hold keeps the placeholder still: only what was drawn in it grows.
         const drawn = this.placeholder.lastElementChild;
-        if (hold && drawn) hold.observe(drawn);
+        if (drawn) this.resizes.observe(drawn);
     }
 
-    /** Holds the placeholder at `height` until what is drawn in it reaches that, or for `HOLD_MS`. */
-    private hold(height: number, component: Component): ResizeObserver {
-        const placeholder = this.placeholder;
-        placeholder.style.setProperty("--daily-note-base-held-height", `${height}px`);
-        const observer = new ResizeObserver((entries) => {
-            if (entries.some((entry) => entry.target.getBoundingClientRect().height >= height - 1)) settle();
-        });
-        const timer = window.setTimeout(() => settle(), HOLD_MS);
-        const release = () => {
-            placeholder.style.removeProperty("--daily-note-base-held-height");
-            observer.disconnect();
-            window.clearTimeout(timer);
-        };
-        const settle = () => {
-            release();
-            this.keepOnceStill();
-        };
-        // Unloaded mid-hold, it is not done filling: nothing to keep.
-        component.register(release);
-        return observer;
+    /**
+     * A resize while held restarts the wait; one let go by the limit is over.
+     * Unheld, a shrink is Bases refilling: it is held where it was.
+     */
+    private resized(): void {
+        if (this.hold?.holding) {
+            this.letGoOnceStill();
+            return;
+        }
+        if (this.hold) {
+            this.letGo();
+            return;
+        }
+        const height = this.height();
+        if (height < this.laidOut) this.holdAt(this.laidOut);
+        else this.laidOut = height;
+    }
+
+    /** Holds the placeholder at `height`, which becomes what it laid out at. */
+    private holdAt(height: number): void {
+        this.hold?.release();
+        this.laidOut = height;
+        this.hold = new HeightHold(this.placeholder, height);
+        this.letGoOnceStill();
+    }
+
+    /** Lets go, and takes what it lays out at unheld as its height: shorter, it lost rows. */
+    private letGo(): void {
+        this.letGoOnceStill.cancel();
+        this.hold?.release();
+        this.hold = null;
+        this.laidOut = this.height();
+    }
+
+    private height(): number {
+        return this.placeholder.getBoundingClientRect().height;
     }
 }
 

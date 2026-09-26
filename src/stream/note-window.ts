@@ -2,15 +2,13 @@ import { Component, TFile, debounce, type Debouncer } from "obsidian";
 import type { NoteRenderer } from "../render/note-renderer";
 import type { NoteHeights } from "./note-heights";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "./scroll-anchor";
+import { HeightHold, SETTLE_MS } from "./height-hold";
 
 /**
  * What a block reserves before anything was measured at this layout. A guess
  * only until the first note is, after which the vault's own notes say.
  */
 export const ESTIMATED_NOTE_HEIGHT_PX = 400;
-
-/** A note's height is remembered once nothing in it has resized for this long, as a Base's is. */
-export const SETTLE_MS = 300;
 
 /**
  * Both margins are viewports, not pixels: how far ahead of the reader the
@@ -37,6 +35,12 @@ interface NoteWindow {
     unloadWanted: boolean;
     /** Measured on the last unload; the estimate until then. */
     height: number;
+    /** `height` was measured, here or in an earlier session, rather than guessed. */
+    measured: boolean;
+    /** Holds the rendered note at `height` until it settles; null once let go. */
+    hold: HeightHold | null;
+    /** What the settling watch observes: the block and what was rendered in it. */
+    watched: Element[];
     /** Remembers the height once the rendered note stops resizing; null while unloaded. */
     keepOnceSettled: Debouncer<[], void> | null;
 }
@@ -110,12 +114,12 @@ export class NoteWindowManager {
         );
         this.anchor.attach(scrollRoot);
         this.resizes = new ResizeObserver((entries) => {
-            for (const entry of entries) this.windows.get(entry.target as HTMLElement)?.keepOnceSettled?.();
+            for (const entry of entries) this.windowOf(entry.target)?.keepOnceSettled?.();
         });
 
         for (const [block, window] of this.windows) {
             this.observe(block);
-            if (window.keepOnceSettled) this.resizes.observe(block);
+            for (const el of window.watched) this.resizes.observe(el);
         }
     }
 
@@ -135,6 +139,12 @@ export class NoteWindowManager {
         if (this.leaving.size > 0) this.unloadOnceStill();
     }
 
+    /** The reader touched `target`: collapsing a section is their own change, which no hold may keep. */
+    onTouch(target: EventTarget | null): void {
+        const window = this.windowOf(target);
+        if (window) this.releaseHold(window);
+    }
+
     /** Glides the pane to its top, the newest note. */
     scrollToTop(): void {
         this.anchor.headForTop();
@@ -144,8 +154,8 @@ export class NoteWindowManager {
     /** An unloaded block for `file`, reserving what it last measured, or the estimate. */
     add(file: TFile): HTMLElement {
         const layout = this.layout();
-        const reserved =
-            this.heights.heightOf(layout, file.path) ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
+        const remembered = this.heights.heightOf(layout, file.path);
+        const reserved = remembered ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
         const block = this.renderer.createBlock(file);
         this.windows.set(block, {
             file,
@@ -153,6 +163,9 @@ export class NoteWindowManager {
             rendering: false,
             unloadWanted: false,
             height: reserved,
+            measured: remembered !== undefined,
+            hold: null,
+            watched: [],
             keepOnceSettled: null,
         });
         this.markUnloaded(block, reserved);
@@ -186,9 +199,12 @@ export class NoteWindowManager {
         const window = this.windows.get(block);
         if (!window?.component) return;
 
+        this.measureInto(block, window);
+        this.stopSettling(window);
         this.discard(window);
         block.empty();
         window.component = await this.renderer.renderInto(block, window.file);
+        this.watchSettling(block, window);
     }
 
     remove(block: HTMLElement): void {
@@ -196,7 +212,7 @@ export class NoteWindowManager {
         if (!window) return;
         this.unobserve(block);
         this.leaving.delete(block);
-        this.stopSettling(block, window);
+        this.stopSettling(window);
         this.discard(window);
         this.windows.delete(block);
     }
@@ -206,8 +222,8 @@ export class NoteWindowManager {
         this.unloadOnceStill.cancel();
         this.leaving.clear();
         this.scrollRoot = null;
-        for (const [block, window] of this.windows) {
-            this.stopSettling(block, window);
+        for (const window of this.windows.values()) {
+            this.stopSettling(window);
             this.discard(window);
         }
         this.windows.clear();
@@ -295,29 +311,59 @@ export class NoteWindowManager {
      * position with it. It keeps what it already reserved.
      */
     private unloadNow(block: HTMLElement, window: NoteWindow): void {
-        const measured = this.measure(block);
-        if (measured > 0) window.height = measured;
-        this.stopSettling(block, window);
+        this.stopSettling(window);
+        this.measureInto(block, window);
         this.discard(window);
         block.empty();
         this.markUnloaded(block, window.height);
         this.changes++;
     }
 
+    /**
+     * Held, the block cannot shrink, so a dip shows only in what was rendered
+     * in it: that is watched too.
+     */
     private watchSettling(block: HTMLElement, window: NoteWindow): void {
+        if (window.measured) window.hold = new HeightHold(block, window.height);
         window.keepOnceSettled = debounce(() => this.keepHeight(block, window), SETTLE_MS, true);
         window.keepOnceSettled();
-        this.resizes?.observe(block);
+        window.watched = [block, ...Array.from(block.children)];
+        for (const el of window.watched) this.resizes?.observe(el);
     }
 
-    private stopSettling(block: HTMLElement, window: NoteWindow): void {
+    private stopSettling(window: NoteWindow): void {
+        this.releaseHold(window);
         window.keepOnceSettled?.cancel();
         window.keepOnceSettled = null;
-        this.resizes?.unobserve(block);
+        for (const el of window.watched) this.resizes?.unobserve(el);
+        window.watched = [];
+    }
+
+    private releaseHold(window: NoteWindow): void {
+        window.hold?.release();
+        window.hold = null;
+    }
+
+    /** The note `target` is in, or is. */
+    private windowOf(target: EventTarget | null): NoteWindow | undefined {
+        const block = target instanceof Element ? target.closest<HTMLElement>(".daily-note-block") : null;
+        return block ? this.windows.get(block) : undefined;
+    }
+
+    /**
+     * What the block lays out at now, as the height it reserves and holds. A
+     * block never laid out measures zero and keeps what it had.
+     */
+    private measureInto(block: HTMLElement, window: NoteWindow): void {
+        const measured = this.measure(block);
+        if (measured <= 0) return;
+        window.height = measured;
+        window.measured = true;
     }
 
     /** A block not laid out, in a hidden tab, measures zero: nothing to remember. */
     private keepHeight(block: HTMLElement, window: NoteWindow): void {
+        this.releaseHold(window);
         const measured = this.measure(block);
         if (measured > 0) this.heights.keep(this.layout(), window.file.path, measured);
     }

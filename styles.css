@@ -46,6 +46,18 @@
     overflow: clip;
 }
 
+/* A note or a Base held at a height it showed before, until what is drawn in
+   it holds still (src/stream/height-hold.ts). */
+.daily-note-block,
+.daily-note-base {
+    min-height: var(--daily-note-held-height, 0);
+}
+
+/* Custom properties inherit: a note's hold must not reach the Bases in it. */
+.daily-note-block > * {
+    --daily-note-held-height: initial;
+}
+
 /* The title is the note's inline title, whose em sizes Obsidian resolves
    against the note's text size, not the interface's. */
 .daily-note-header {
@@ -531,12 +543,6 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
 
 .is-phone .mod-root .daily-notes-search:not(.is-closed) + .view-content {
     margin-top: 0;
-}
-
-/* The height a redrawn Base last laid out at, held until Bases refills it
-   (src/render/bases/note-bases.ts). */
-.daily-note-base {
-    min-height: var(--daily-note-base-held-height, 0);
 }
 
 /* The hidden header src/render/bases/note-bases.ts reads Bases' header font and

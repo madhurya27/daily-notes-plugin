@@ -17,7 +17,7 @@ state, and `BaseMeasurements`.
 ## Decision
 
 `LayoutMemory`, one per plugin, keeps every note's last measured height per
-layout (content width and text size) and what Bases measured, in the vault's
+layout (content width and text size), and which Bases were too wide, in the vault's
 localStorage on this device. A placeholder reserves the stored height, else the
 layout's median, else 400px. An edited note keeps its last height: nearer than
 any median. Back keeps only the place; the store holds its heights.

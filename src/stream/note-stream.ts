@@ -87,6 +87,10 @@ export class NoteStream {
         this.scrollBoxes.onScroll();
     }
 
+    onTouch(target: EventTarget | null): void {
+        this.window.onTouch(target);
+    }
+
     onFileModify(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
         // Keyed by path, so a burst touching two notes still re-renders both

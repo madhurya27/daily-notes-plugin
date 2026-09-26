@@ -1,10 +1,8 @@
 import { LayoutTable, type SavedLayoutTable } from "../../stream/layout-table";
 
 interface Measurement {
-    /** The height it last held still at. */
-    height?: number;
     /** Measured too wide for a table. */
-    tooWide?: true;
+    tooWide: true;
 }
 
 /** A Base in a note, at a layout: its width checked against and text size. */
@@ -19,9 +17,9 @@ export interface BaseKey {
 export type SavedMeasurements = SavedLayoutTable<Measurement>;
 
 /**
- * What the stream's Bases measured, kept across sessions with the notes'
- * heights and by the same rule (ADR 0010): a Base redrawn without the height
- * it left at drops and grows back while Bases refills it.
+ * Which of the stream's Bases were too wide for a table, kept across sessions
+ * with the notes' heights and by the same rule (ADR 0010), so a Base comes
+ * back straight as cards. Its height is its note's to hold.
  */
 export class BaseMeasurements {
     private readonly table: LayoutTable<Measurement>;
@@ -30,20 +28,12 @@ export class BaseMeasurements {
         this.table = new LayoutTable(isMeasurement, changed, limit);
     }
 
-    heightOf(key: BaseKey): number | undefined {
-        return this.get(key)?.height;
-    }
-
-    keepHeight(key: BaseKey, height: number): void {
-        if (this.heightOf(key) !== height) this.update(key, { height });
-    }
-
     isTooWide(key: BaseKey): boolean {
         return this.get(key)?.tooWide === true;
     }
 
     markTooWide(key: BaseKey): void {
-        if (!this.isTooWide(key)) this.update(key, { tooWide: true });
+        if (!this.isTooWide(key)) this.table.set(key.layout, `${key.path}\n${key.base}`, { tooWide: true });
     }
 
     rename(oldPath: string, newPath: string): void {
@@ -69,16 +59,10 @@ export class BaseMeasurements {
     private get({ layout, path, base }: BaseKey): Measurement | undefined {
         return this.table.get(layout, `${path}\n${base}`);
     }
-
-    private update(key: BaseKey, change: Measurement): void {
-        this.table.set(key.layout, `${key.path}\n${key.base}`, { ...this.get(key), ...change });
-    }
 }
 
 function isMeasurement(value: unknown): value is Measurement {
-    if (typeof value !== "object" || value === null) return false;
-    const { height, tooWide } = value as Record<string, unknown>;
-    return (height === undefined || typeof height === "number") && (tooWide === undefined || tooWide === true);
+    return typeof value === "object" && value !== null && (value as Record<string, unknown>).tooWide === true;
 }
 
 /**

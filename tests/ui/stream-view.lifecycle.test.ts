@@ -118,6 +118,14 @@ describe("DailyNotesStreamView — scroll", () => {
         view.contentEl.dispatchEvent(new Event("scroll"));
         expect(view["stream"]["window"].onScroll).toHaveBeenCalled();
     });
+
+    // A touch is the reader's own change to a note: nothing may hold it.
+    it("tells the window what the reader touched", async () => {
+        const { view } = await makeViewSetup();
+        const touched = view.contentEl.createDiv();
+        touched.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+        expect(view["stream"]["window"].onTouch).toHaveBeenCalledWith(touched);
+    });
 });
 
 describe("DailyNotesStreamView — header title", () => {
