@@ -14,7 +14,7 @@ describe("LayoutMemory", () => {
     afterEach(() => vi.useRealTimers());
 
     it("comes back with the heights a last session saved", () => {
-        const app = makeApp({ version: 1, notes: [["600:16px", [["a.md", 300]]]] });
+        const app = makeApp({ version: 2, notes: [["600:16px", [["a.md", 300]]]] });
         const memory = new LayoutMemory(asApp(app));
 
         expect(app.loadLocalStorage).toHaveBeenCalledWith(LAYOUT_MEMORY_KEY);
@@ -22,12 +22,14 @@ describe("LayoutMemory", () => {
     });
 
     it("comes back with what Bases measured in a last session", () => {
-        const memory = new LayoutMemory(asApp(makeApp({ version: 1, notes: [], bases: [["k", { height: 240 }]] })));
-        expect(memory.bases.heightOf("k")).toBe(240);
+        const bases = [["600:16px", [["a.md\nb1", { height: 240 }]]]];
+        const memory = new LayoutMemory(asApp(makeApp({ version: 2, notes: [], bases })));
+        expect(memory.bases.heightOf({ layout: "600:16px", path: "a.md", base: "b1" })).toBe(240);
     });
 
+    // Version 1 keyed Bases by their whole source.
     it("starts empty from another version's save", () => {
-        const memory = new LayoutMemory(asApp(makeApp({ version: 0, notes: [["600:16px", [["a.md", 300]]]] })));
+        const memory = new LayoutMemory(asApp(makeApp({ version: 1, notes: [["600:16px", [["a.md", 300]]]] })));
         expect(memory.notes.toJSON()).toEqual([]);
         expect(memory.bases.toJSON()).toEqual([]);
         expect(new LayoutMemory(asApp(makeApp())).notes.toJSON()).toEqual([]);
@@ -39,13 +41,13 @@ describe("LayoutMemory", () => {
         const memory = new LayoutMemory(asApp(app));
         memory.notes.keep("600:16px", "a.md", 300);
         memory.notes.keep("600:16px", "b.md", 200);
-        memory.bases.markTooWide("k");
+        memory.bases.markTooWide({ layout: "600:16px", path: "a.md", base: "b1" });
         expect(app.saveLocalStorage).not.toHaveBeenCalled();
 
         vi.advanceTimersByTime(SAVE_DELAY_MS);
         expect(app.saveLocalStorage).toHaveBeenCalledTimes(1);
         expect(app.saveLocalStorage).toHaveBeenCalledWith(LAYOUT_MEMORY_KEY, {
-            version: 1,
+            version: 2,
             notes: [
                 [
                     "600:16px",
@@ -55,8 +57,24 @@ describe("LayoutMemory", () => {
                     ],
                 ],
             ],
-            bases: [["k", { tooWide: true }]],
+            bases: [["600:16px", [["a.md\nb1", { tooWide: true }]]]],
         });
+    });
+
+    it("carries a note's measurements across a rename, and forgets a deleted note's", () => {
+        const memory = new LayoutMemory(asApp(makeApp()));
+        const base = (path: string) => ({ layout: "600:16px", path, base: "b1" });
+        for (const path of ["old.md", "gone.md", "stale.md"]) {
+            memory.notes.keep("600:16px", path, 300);
+            memory.bases.keepHeight(base(path), 200);
+        }
+
+        memory.rename("old.md", "new.md");
+        memory.forget("gone.md");
+        memory.retainOnly(new Set(["new.md"]));
+
+        expect(memory.notes.toJSON()).toEqual([["600:16px", [["new.md", 300]]]]);
+        expect(memory.bases.toJSON()).toEqual([["600:16px", [["new.md\nb1", { height: 200 }]]]]);
     });
 
     it("saves what is pending at once when the plugin unloads", () => {
@@ -82,6 +100,8 @@ describe("layoutOf", () => {
         document.body.appendChild(column);
 
         expect(layoutOf(column)).toBe("612:16px");
+        // A Base asks of the width it is checked against.
+        expect(layoutOf(column, 500)).toBe("500:16px");
         column.remove();
     });
 });

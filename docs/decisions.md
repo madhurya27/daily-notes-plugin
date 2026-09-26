@@ -179,14 +179,16 @@ correction.
 ## 2026-09-24 — A redrawn Base holds its last height until Bases refills it
 
 **Decision:** `NoteBases` keeps the height each Base last laid out at, per note,
-width and definition, and a redraw holds it as `min-height` until the drawn view
+layout and a digest of its source, and a redraw holds it as `min-height` until the drawn view
 reaches it, or for 2s. A height is kept once nothing in its note has resized for
 300ms while unheld, never at unload or before a redraw: a closing view is not
 laid out, and a Base left mid-fill keeps the height it had. The
 heights, and which Bases were too wide, are kept across sessions in
 `LayoutMemory` ([ADR 0010](adr/0010-layout-memory.md)): Back rebuilds the view,
-which forgot them. It keeps the 500 used most recently: every pane width is a
-key of its own.
+which forgot them. They follow the notes' rule: the 4 layouts used most
+recently, a rename carrying them along, a delete taking them. A cap of 500
+Bases kept an eighth of a vault whose template embeds one in every note, and
+whole `.base` files in the keys ran to kilobytes each.
 
 **Why:** Bases fills a view after it is drawn. A note coming back into view, or
 a table redrawn as cards, dropped by the Bases' height for a few frames and
@@ -218,7 +220,7 @@ Bases as Obsidian does (ADR 0008). Each
 placeholder, so one Base redraws alone. Cards come straight away when the
 headers alone overrun the note (Bases' header font and padding, measured once);
 otherwise the table draws and is measured on its first layout. A measured
-answer is kept per note and width.
+answer is kept per note and layout.
 
 Cards are a view-only copy: Bases saves a block only through an editor, and a
 save would write `type: cards` into the file. A copy of an embedded Base

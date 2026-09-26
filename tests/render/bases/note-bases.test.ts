@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import { Component, MarkdownRenderer, TFile } from "obsidian";
-import { BaseMeasurements } from "../../../src/render/bases/base-measurements";
+import { BaseMeasurements, baseDigest } from "../../../src/render/bases/base-measurements";
 import { BASE_SETTLE_MS, NoteBases, measureHeaderMetrics } from "../../../src/render/bases/note-bases";
 import { extractBases } from "../../../src/render/bases/bases-as-cards";
 import type { HeaderMetrics } from "../../../src/render/bases/bases-width";
@@ -490,6 +490,17 @@ describe("NoteBases holding a redrawn Base's height", () => {
         const again = await renderNote(BLOCK);
 
         expect(held(slotOf(again))).toBe("300px");
+    });
+
+    // Keyed by its whole source, a Base's entry ran to kilobytes.
+    it("remembers a Base by its note, layout and a digest of its source", async () => {
+        const measured = new BaseMeasurements();
+        bases = new NoteBases(asApp(app), measured, measure);
+        settleAt(slotOf(await renderNote(BLOCK)), 300);
+
+        const [[layout, entries]] = measured.toJSON() as [[string, [string, unknown][]]];
+        expect(layout).toBe("400:");
+        expect(entries).toEqual([[`${note.path}\n${baseDigest(BLOCK, TABLE)}`, { height: 300 }]]);
     });
 
     // Back closes the view before a Base still filling in has held still.
