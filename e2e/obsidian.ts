@@ -559,19 +559,39 @@ export async function openStream(page: Page) {
 }
 
 /**
- * Scrolls the stream to its end a screen at a time, so every note renders and
- * its height is remembered, then waits for the scroll to count as still.
+ * Holds each note at the top in turn until its height is remembered, then
+ * waits for the scroll to count as still. Stepping a screen at a time skips
+ * notes: one growing from its estimate above the screen moves the page on.
  */
 export async function scrollThroughStream(container: Locator) {
-    await container.locator("xpath=..").evaluate(async (pane, notes) => {
-        const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-        const loaded = () => pane.querySelectorAll(".daily-note-block").length;
-        for (let last = -1; pane.scrollTop !== last || loaded() < notes; await wait(150)) {
-            last = pane.scrollTop;
-            pane.scrollTop += pane.clientHeight;
-        }
-        await wait(500);
-    }, SEEDED_DAYS);
+    const blocks = container.locator(".daily-note-block");
+    const pane = container.locator("xpath=..");
+    for (let i = 0; i < SEEDED_DAYS; i++) {
+        // The next batch loads as the end comes into view.
+        await expect
+            .poll(async () => {
+                const count = await blocks.count();
+                if (count <= i) await pane.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
+                return count;
+            })
+            .toBeGreaterThan(i);
+        const block = blocks.nth(i);
+        const path = await block.getAttribute("data-source-path");
+        // Brought back each time: a batch arriving, or the place being held, can move the page.
+        await expect
+            .poll(
+                () =>
+                    block.evaluate((el) => {
+                        el.scrollIntoView({ block: "start", behavior: "instant" });
+                        const notes: [string, [string, number][]][] =
+                            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON();
+                        return notes.some(([, heights]) => heights.some(([key]) => key === el.dataset.sourcePath));
+                    }),
+                { message: `${path} is remembered` }
+            )
+            .toBe(true);
+    }
+    await container.page().waitForTimeout(500);
 }
 
 /**
