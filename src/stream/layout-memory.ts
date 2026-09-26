@@ -1,0 +1,37 @@
+import { App, debounce } from "obsidian";
+import { NoteHeights } from "./note-heights";
+
+/** Vault-scoped and per device: a height is only true on the screen that measured it. */
+export const LAYOUT_MEMORY_KEY = "daily-notes-stream:layout";
+/** A save that no longer reads what is stored bumps this, and the old one is dropped: it is a cache. */
+const VERSION = 1;
+/** From the first change of a burst, so a long scroll still saves as it goes. */
+export const SAVE_DELAY_MS = 1000;
+
+/**
+ * What the stream measured, kept across sessions, so a note never rendered
+ * this session still reserves its real height (docs/adr/0010-layout-memory.md).
+ * One per plugin; every view shares it.
+ */
+export class LayoutMemory {
+    readonly notes = new NoteHeights(() => this.saveSoon());
+    private readonly saveSoon = debounce(() => this.save(), SAVE_DELAY_MS);
+
+    constructor(private readonly app: App) {
+        const saved: unknown = app.loadLocalStorage(LAYOUT_MEMORY_KEY);
+        if (isVersion(saved)) this.notes.restore(saved.notes);
+    }
+
+    /** Saves a pending change now: the plugin is unloading. */
+    flush(): void {
+        this.saveSoon.run();
+    }
+
+    private save(): void {
+        this.app.saveLocalStorage(LAYOUT_MEMORY_KEY, { version: VERSION, notes: this.notes.toJSON() });
+    }
+}
+
+function isVersion(saved: unknown): saved is { notes: unknown } {
+    return typeof saved === "object" && saved !== null && (saved as { version?: unknown }).version === VERSION;
+}

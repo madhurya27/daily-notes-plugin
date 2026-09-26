@@ -5,6 +5,7 @@ import { CollapsibleStateStore } from "./render/collapse-store";
 import { DailyNoteService } from "./notes/daily-note-service";
 import { ParsedDates } from "./notes/parsed-dates";
 import { BaseMeasurements } from "./render/bases/base-measurements";
+import { LayoutMemory } from "./stream/layout-memory";
 
 /** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
 declare const BUILD_LABEL: string;
@@ -18,6 +19,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
     settings!: DailyNotesStreamSettings;
     collapseStore!: CollapsibleStateStore;
     baseMeasurements!: BaseMeasurements;
+    layoutMemory!: LayoutMemory;
 
     async onload() {
         // Unit tests run the source unbundled, where nothing defines it.
@@ -26,6 +28,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
 
         this.collapseStore = new CollapsibleStateStore(this.app);
         this.baseMeasurements = new BaseMeasurements();
+        this.rememberLayout();
 
         // Each view owns its service (CLAUDE.md, Invariants); they share only the parsed dates.
         const parsedDates = new ParsedDates();
@@ -68,6 +71,21 @@ export default class DailyNotesStreamPlugin extends Plugin {
         });
 
         this.addSettingTab(new DailyNotesStreamSettingTab(this.app, this));
+    }
+
+    onunload() {
+        this.layoutMemory.flush();
+    }
+
+    /** Heights follow their note: across a rename, and out with a delete. */
+    private rememberLayout(): void {
+        const memory = (this.layoutMemory = new LayoutMemory(this.app));
+        const { vault, workspace } = this.app;
+        this.registerEvent(vault.on("rename", (file, oldPath) => memory.notes.rename(oldPath, file.path)));
+        this.registerEvent(vault.on("delete", (file) => memory.notes.forget(file.path)));
+        workspace.onLayoutReady(() =>
+            memory.notes.retainOnly(new Set(vault.getMarkdownFiles().map((file) => file.path)))
+        );
     }
 
     /** The stream is the only place a jump means anything, so open it first. */
