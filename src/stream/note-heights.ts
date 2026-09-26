@@ -1,11 +1,7 @@
-/**
- * How many layouts are remembered. Each pane width and font size is a layout
- * of its own, and every note is measured again in each.
- */
-const LAYOUTS_KEPT = 4;
+import { LayoutTable, type SavedLayoutTable } from "./layout-table";
 
 /** Heights by path, oldest layout first. */
-export type SavedNoteHeights = [layout: string, heights: [path: string, height: number][]][];
+export type SavedNoteHeights = SavedLayoutTable<number>;
 
 /**
  * Each note's last measured height, per layout: what its placeholder reserves
@@ -13,115 +9,58 @@ export type SavedNoteHeights = [layout: string, heights: [path: string, height: 
  * nearer than any estimate — and the scroll anchor absorbs the difference.
  */
 export class NoteHeights {
-    /** Heights by path, per layout; the layout used longest ago comes first. */
-    private layouts = new Map<string, Map<string, number>>();
+    private readonly table: LayoutTable<number>;
     /** Each layout's median, until one of its heights changes. */
     private readonly medians = new Map<string, number>();
 
-    constructor(
-        private readonly changed: () => void = () => {},
-        private readonly limit = LAYOUTS_KEPT
-    ) {}
+    constructor(changed: () => void = () => {}, limit?: number) {
+        this.table = new LayoutTable(
+            (value): value is number => typeof value === "number",
+            (layout) => {
+                this.medians.delete(layout);
+                changed();
+            },
+            limit
+        );
+    }
 
     heightOf(layout: string, path: string): number | undefined {
-        return this.use(layout)?.get(path);
+        return this.table.get(layout, path);
     }
 
     keep(layout: string, path: string, height: number): void {
-        let heights = this.use(layout);
-        if (heights?.get(path) === height) return;
-        if (!heights) {
-            heights = new Map();
-            this.layouts.set(layout, heights);
-            if (this.layouts.size > this.limit) this.layouts.delete(this.layouts.keys().next().value!);
-        }
-        heights.set(path, height);
-        this.medians.delete(layout);
-        this.changed();
+        if (this.heightOf(layout, path) !== height) this.table.set(layout, path, height);
     }
 
     /** The median of what `layout` measured: note length varies by vault. */
     estimate(layout: string): number | undefined {
         const known = this.medians.get(layout);
         if (known !== undefined) return known;
-        const heights = this.layouts.get(layout);
-        if (!heights?.size) return undefined;
-        const sorted = [...heights.values()].sort((a, b) => a - b);
+        const sorted = this.table.values(layout).sort((a, b) => a - b);
+        if (sorted.length === 0) return undefined;
         const median = sorted[sorted.length >> 1]!;
         this.medians.set(layout, median);
         return median;
     }
 
     rename(oldPath: string, newPath: string): void {
-        this.edit((heights) => {
-            const height = heights.get(oldPath);
-            if (height === undefined) return false;
-            heights.delete(oldPath);
-            heights.set(newPath, height);
-            return true;
-        });
+        this.table.rename(oldPath, newPath);
     }
 
     forget(path: string): void {
-        this.edit((heights) => heights.delete(path));
+        this.table.forget(path);
     }
 
-    /** Forgets notes deleted while the plugin was not running to hear it. */
     retainOnly(paths: ReadonlySet<string>): void {
-        this.edit((heights) => {
-            let removed = false;
-            for (const path of heights.keys()) {
-                if (!paths.has(path)) removed = heights.delete(path);
-            }
-            return removed;
-        });
+        this.table.retainOnly(paths);
     }
 
     toJSON(): SavedNoteHeights {
-        return [...this.layouts].map(([layout, heights]) => [layout, [...heights]]);
+        return this.table.toJSON();
     }
 
-    /** Replaces what it holds with `saved`, or with nothing when `saved` is not what `toJSON` wrote. */
     restore(saved: unknown): void {
-        this.layouts = isSaved(saved)
-            ? new Map(saved.map(([layout, heights]) => [layout, new Map(heights)]))
-            : new Map<string, Map<string, number>>();
+        this.table.restore(saved);
         this.medians.clear();
     }
-
-    /** `layout`'s heights, moved to the back of the line to be forgotten. */
-    private use(layout: string): Map<string, number> | undefined {
-        const heights = this.layouts.get(layout);
-        if (heights) {
-            this.layouts.delete(layout);
-            this.layouts.set(layout, heights);
-        }
-        return heights;
-    }
-
-    /** Applies `change` to every layout; true from it means that layout changed. */
-    private edit(change: (heights: Map<string, number>) => boolean): void {
-        let changed = false;
-        for (const [layout, heights] of this.layouts) {
-            if (!change(heights)) continue;
-            this.medians.delete(layout);
-            changed = true;
-        }
-        if (changed) this.changed();
-    }
-}
-
-function isSaved(value: unknown): value is SavedNoteHeights {
-    return (
-        Array.isArray(value) &&
-        value.every(
-            (entry) =>
-                Array.isArray(entry) &&
-                typeof entry[0] === "string" &&
-                Array.isArray(entry[1]) &&
-                (entry[1] as unknown[]).every(
-                    (pair) => Array.isArray(pair) && typeof pair[0] === "string" && typeof pair[1] === "number"
-                )
-        )
-    );
 }
