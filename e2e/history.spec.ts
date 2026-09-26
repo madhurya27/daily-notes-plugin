@@ -113,15 +113,15 @@ async function goBack(page: Page) {
  */
 async function returnAfterAFrame(
     page: Page,
-    { daysBack = 3, past, widthChanged = false }: { daysBack?: number; past?: number; widthChanged?: boolean } = {}
+    { daysBack = 3, past, unmeasured = false }: { daysBack?: number; past?: number; unmeasured?: boolean } = {}
 ) {
     const { before: left } = await scrollPast(page, daysBack, past);
-    const eState = await page.evaluate((widthChanged) => {
+    const eState = await page.evaluate((unmeasured) => {
         const eState = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!.view.getEphemeralState();
-        // Heights kept at another width are no use.
-        if (widthChanged) eState.place.layout.width += 1;
+        // As after a change of width: nothing was measured at the new layout.
+        if (unmeasured) window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.restore(null);
         return eState;
-    }, widthChanged);
+    }, unmeasured);
     await openStream(page);
 
     const frames = await page.evaluate(async (eState) => {
@@ -165,8 +165,8 @@ test.describe("history", () => {
         expect(frames).toEqual([left]);
     });
 
-    test("returns to the place it left when the pane has changed width since", async ({ obsidian }) => {
-        const { left, frames } = await returnAfterAFrame(obsidian.page, { widthChanged: true });
+    test("returns to the place it left when none of its notes' heights are remembered", async ({ obsidian }) => {
+        const { left, frames } = await returnAfterAFrame(obsidian.page, { unmeasured: true });
         expect(frames).toEqual([left]);
     });
 
@@ -192,8 +192,8 @@ test.describe("history", () => {
             expect(frames).toEqual([left]);
         });
 
-        test("returns to the place it left when the pane has changed width since", async ({ obsidian }) => {
-            const { left, frames } = await returnAfterAFrame(obsidian.page, { widthChanged: true });
+        test("returns to the place it left when none of its notes' heights are remembered", async ({ obsidian }) => {
+            const { left, frames } = await returnAfterAFrame(obsidian.page, { unmeasured: true });
             expect(frames).toEqual([left]);
         });
 

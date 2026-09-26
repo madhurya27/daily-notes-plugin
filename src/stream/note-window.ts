@@ -184,22 +184,9 @@ export class NoteWindowManager {
         return window.component ? this.measure(block) : window.height;
     }
 
-    /** The height `block` is laid out at while it holds content; undefined when it holds none. */
-    renderedHeightOf(block: HTMLElement): number | undefined {
-        return this.windows.get(block)?.component ? this.measure(block) : undefined;
-    }
-
     /** The scroll was just set to a place, for the stream as it now stands. */
     placed(): void {
         this.anchor.placed();
-    }
-
-    /** Reserves `height` for `block` while it holds no content. */
-    reserve(block: HTMLElement, height: number): void {
-        const window = this.windows.get(block);
-        if (!window || window.component || window.rendering) return;
-        window.height = height;
-        this.markUnloaded(block, height);
     }
 
     /** Rebuilds a rendered block's content; an unloaded one renders on re-entry. */

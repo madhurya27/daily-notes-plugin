@@ -167,47 +167,6 @@ describe("NoteWindowManager.add", () => {
         expect(placeholderHeight(manager.add(FILE, 812))).toBe("812px");
     });
 
-    it("reserves a remembered height for a block still unloaded", () => {
-        const { manager } = makeManager();
-        const block = manager.add(FILE);
-
-        manager.reserve(block, 812);
-
-        expect(placeholderHeight(block)).toBe("812px");
-        expect(manager.heightOf(block)).toBe(812);
-    });
-
-    it("leaves a rendered block at the height its content gives it", async () => {
-        const { manager } = makeManager();
-        const block = manager.add(FILE);
-        document.body.appendChild(block);
-        fire(observers.render, block, true);
-        await settle();
-
-        manager.reserve(block, 812);
-
-        expect(placeholderHeight(block)).toBe("");
-    });
-
-    it("leaves a block whose render is in flight to the height its content gives it", () => {
-        const { manager } = makeManager();
-        const block = manager.add(FILE);
-        fire(observers.render, block, true);
-
-        manager.reserve(block, 812);
-
-        expect(placeholderHeight(block)).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
-    });
-
-    it("reserves nothing for a block it does not own", () => {
-        const { manager } = makeManager();
-        const stranger = document.createElement("div");
-
-        manager.reserve(stranger, 812);
-
-        expect(placeholderHeight(stranger)).toBe("");
-    });
-
     it("observes the block with both observers", () => {
         const { manager } = makeManager();
         const block = manager.add(FILE);
@@ -508,20 +467,6 @@ describe("NoteWindowManager unload", () => {
     it("measures a block that is still rendered rather than trusting the estimate", async () => {
         const { manager, block } = await rendered(() => 640);
         expect(manager.heightOf(block)).toBe(640);
-    });
-
-    // Back lays out again only what renders again: a note near the place.
-    it("measures a rendered block for the place Back returns to", async () => {
-        const { manager, block } = await rendered(() => 640);
-        expect(manager.renderedHeightOf(block)).toBe(640);
-    });
-
-    it("has no rendered height for a block holding no content", async () => {
-        const { manager, block } = await rendered(() => 640);
-        fire(observers.unload, block, false);
-        await still();
-        expect(manager.renderedHeightOf(block)).toBeUndefined();
-        expect(manager.renderedHeightOf(document.createElement("div"))).toBeUndefined();
     });
 
     it("has no height for a block it does not own", () => {

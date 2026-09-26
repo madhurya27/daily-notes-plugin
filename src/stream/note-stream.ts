@@ -8,14 +8,7 @@ import { InfiniteScrollController } from "./infinite-scroll";
 import { NoteWindowManager } from "./note-window";
 import { type NoteHeights, layoutOf } from "./note-heights";
 import { ScrollBoxGuard } from "./scroll-box-guard";
-import {
-    captureAnchor,
-    restoreAnchor,
-    scrollIntoPlace,
-    type PlaceLayout,
-    type StreamLayout,
-    type StreamPlace,
-} from "./scroll-position";
+import { captureAnchor, restoreAnchor, scrollIntoPlace, type StreamLayout, type StreamPlace } from "./scroll-position";
 
 /** Obsidian autosaves as you type; one render per save is wasted work. */
 const MODIFY_DEBOUNCE_MS = 300;
@@ -255,50 +248,33 @@ export class NoteStream {
         return captureAnchor(this.state.notes, this.scrollRoot, find)?.file ?? null;
     }
 
-    /** Where the pane is scrolled to; null when no note is in it. */
+    /**
+     * Where the pane is scrolled to; null when no note is in it. Back rebuilds
+     * the view, so what the rendered notes measure is remembered first: the
+     * new view's placeholders reserve it, and lay the stream out as it was.
+     */
     place(): StreamPlace | null {
+        this.window.keepRenderedHeights();
         const find = (f: TFile) => this.blocks.get(f.path);
         const anchor = captureAnchor(this.state.notes, this.scrollRoot, find);
         if (!anchor) return null;
-        return { path: anchor.file.path, offset: anchor.relativeTopPx, layout: this.layoutThrough(anchor.file) };
-    }
-
-    /**
-     * The heights of the rendered notes from the newest down to `last`, at the
-     * pane's width. Only they render again at the place; the rest stay empty,
-     * and the place is measured from its own note, wherever that lands.
-     */
-    private layoutThrough(last: TFile): PlaceLayout {
-        const heights: Record<string, number> = {};
-        for (const file of this.state.notes) {
-            // Every loaded note has a block: the index is kept with the state.
-            const height = this.window.renderedHeightOf(this.blocks.get(file.path)!);
-            if (height !== undefined) heights[file.path] = height;
-            if (file === last) break;
-        }
-        return { width: this.scrollRoot.clientWidth, heights };
+        return { path: anchor.file.path, offset: anchor.relativeTopPx };
     }
 
     /**
      * Scrolls back to `place`, before a frame is drawn; stays put when its note
-     * is gone. Heights kept at this width lay its notes out as they were, so
-     * nothing renders into a different height; kept at another, they mean
-     * nothing, and the scroll anchor holds the place as notes render.
+     * is gone. A note never measured at this layout renders into a new height,
+     * and the scroll anchor holds the place.
      */
     restorePlace(place: StreamPlace): Promise<void> {
-        const heights = place.layout?.width === this.scrollRoot.clientWidth ? place.layout.heights : {};
-        return this.enqueue(() => this.returnTo(place, heights));
+        return this.enqueue(() => this.returnTo(place));
     }
 
-    private async returnTo(place: StreamPlace, heights: Record<string, number>): Promise<void> {
+    private async returnTo(place: StreamPlace): Promise<void> {
         const index = this.service.indexOf(place.path);
         const file = index === -1 ? undefined : await this.loadThrough(index);
         const block = file && this.blocks.get(file.path);
         if (!block) return;
-        for (const [path, height] of Object.entries(heights)) {
-            const reserved = this.blocks.get(path);
-            if (reserved) this.window.reserve(reserved, height);
-        }
         const root = this.scrollRoot;
         const scrollTop =
             root.scrollTop + block.getBoundingClientRect().top - root.getBoundingClientRect().top - place.offset;

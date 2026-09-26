@@ -474,6 +474,7 @@ async function resetPluginState(page: Page): Promise<void> {
         await plugin.saveData({});
         await plugin.loadSettings();
         for (const file of window.app.vault.getMarkdownFiles()) plugin.collapseStore.clearForFile(file.path);
+        plugin.layoutMemory.notes.restore(null);
     }, PLUGIN_ID);
     await page.mouse.move(0, 0);
 }
