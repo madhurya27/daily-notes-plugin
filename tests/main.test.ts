@@ -4,6 +4,7 @@ import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/ui/st
 import { DEFAULT_SETTINGS } from "../src/settings";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import { BaseMeasurements } from "../src/render/bases/base-measurements";
+import { LAYOUT_MEMORY_KEY, LayoutMemory } from "../src/stream/layout-memory";
 import { Notice, TFile, WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
 import { asApp, makeService } from "./stream-view-fixture";
 import { __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
@@ -21,6 +22,7 @@ function makeApp() {
             getLeaf: vi.fn(),
             getMostRecentLeaf: vi.fn().mockReturnValue(null),
             revealLeaf: vi.fn().mockResolvedValue(undefined),
+            onLayoutReady: vi.fn((callback: () => unknown) => void callback()),
         },
         metadataCache: { on: vi.fn().mockReturnValue({}), getFileCache: vi.fn().mockReturnValue(null) },
         loadLocalStorage: vi.fn().mockReturnValue(null),
@@ -125,7 +127,62 @@ describe("DailyNotesStreamPlugin — onload", () => {
 
     it("keeps what Bases measured for every view", async () => {
         const { plugin } = await loadPlugin();
-        expect(plugin.baseMeasurements).toBeInstanceOf(BaseMeasurements);
+        expect(plugin.layoutMemory.bases).toBeInstanceOf(BaseMeasurements);
+    });
+});
+
+describe("DailyNotesStreamPlugin — layout memory", () => {
+    /** The callback onload() gave `vault.on(name)`. */
+    function vaultEvent(app: ReturnType<typeof makeApp>, name: string): (...args: unknown[]) => void {
+        return app.vault.on.mock.calls.find(([event]) => event === name)![1] as (...args: unknown[]) => void;
+    }
+
+    it("keeps what the stream measured for every view", async () => {
+        const { plugin } = await loadPlugin();
+        expect(plugin.layoutMemory).toBeInstanceOf(LayoutMemory);
+    });
+
+    it("carries a note's heights across a rename, and forgets a deleted note's", async () => {
+        const { plugin, app } = await loadPlugin();
+        const { notes } = plugin.layoutMemory;
+        notes.keep("600:16px", "Notes/old.md", 300);
+        notes.keep("600:16px", "Notes/gone.md", 200);
+
+        vaultEvent(app, "rename")({ path: "Notes/new.md" }, "Notes/old.md");
+        vaultEvent(app, "delete")({ path: "Notes/gone.md" });
+
+        expect(notes.toJSON()).toEqual([["600:16px", [["Notes/new.md", 300]]]]);
+    });
+
+    // A note deleted while the plugin was off, or on another device, was never heard of.
+    it("forgets notes no longer in the vault once it is indexed", async () => {
+        __setMockNotes(["Notes/2025-01-01.md"]);
+        const app = makeApp();
+        app.loadLocalStorage.mockReturnValue({
+            version: 1,
+            notes: [
+                [
+                    "600:16px",
+                    [
+                        ["Notes/2025-01-01.md", 300],
+                        ["Notes/2024-01-01.md", 200],
+                    ],
+                ],
+            ],
+        });
+        const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
+        await plugin.onload();
+
+        expect(plugin.layoutMemory.notes.toJSON()).toEqual([["600:16px", [["Notes/2025-01-01.md", 300]]]]);
+    });
+
+    it("saves what it measured when the plugin unloads", async () => {
+        const { plugin, app } = await loadPlugin();
+        plugin.layoutMemory.notes.keep("600:16px", "Notes/a.md", 300);
+
+        plugin.onunload();
+
+        expect(app.saveLocalStorage).toHaveBeenCalledWith(LAYOUT_MEMORY_KEY, expect.anything());
     });
 });
 
@@ -336,12 +393,13 @@ describe("DailyNotesStreamPlugin — saveSettings", () => {
 describe("DailyNotesStreamPlugin — two open streams", () => {
     beforeEach(() => {
         const observer = { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
-        vi.stubGlobal(
-            "IntersectionObserver",
-            vi.fn(function () {
-                return observer;
-            })
-        );
+        for (const name of ["IntersectionObserver", "ResizeObserver"])
+            vi.stubGlobal(
+                name,
+                vi.fn(function () {
+                    return observer;
+                })
+            );
     });
     afterEach(() => vi.unstubAllGlobals());
 

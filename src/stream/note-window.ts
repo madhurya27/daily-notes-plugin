@@ -1,18 +1,16 @@
-import { Component, TFile, debounce } from "obsidian";
+import { Component, TFile, debounce, type Debouncer } from "obsidian";
 import type { NoteRenderer } from "../render/note-renderer";
+import type { NoteHeights } from "./note-heights";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "./scroll-anchor";
 
 /**
- * What a block reserves before this vault has measured anything. A guess only
- * until the first note is unloaded, after which the vault's own notes say.
+ * What a block reserves before anything was measured at this layout. A guess
+ * only until the first note is, after which the vault's own notes say.
  */
 export const ESTIMATED_NOTE_HEIGHT_PX = 400;
 
-/**
- * How many measurements the estimate is drawn from. Short enough that a window
- * resize, which changes every note's height, is forgotten quickly.
- */
-const MEASUREMENT_WINDOW = 50;
+/** A note's height is remembered once nothing in it has resized for this long, as a Base's is. */
+export const SETTLE_MS = 300;
 
 /**
  * Both margins are viewports, not pixels: how far ahead of the reader the
@@ -39,6 +37,8 @@ interface NoteWindow {
     unloadWanted: boolean;
     /** Measured on the last unload; the estimate until then. */
     height: number;
+    /** Remembers the height once the rendered note stops resizing; null while unloaded. */
+    keepOnceSettled: Debouncer<[], void> | null;
 }
 
 /**
@@ -59,13 +59,15 @@ export class NoteWindowManager {
     /** A render or unload moves everything below it; above the pane, that is the reader's place. */
     private readonly anchor = new ScrollAnchor();
     private scrollRoot: HTMLElement | null = null;
-    /** Recent measured note heights, oldest first; the estimate is their median. */
-    private readonly measured: number[] = [];
+    /** The layout heights are read and kept in, until the task reading it ends. */
+    private currentLayout: string | null = null;
     /** The height the current margins were computed from. */
     private rootHeight = 0;
     /** Rendered blocks past the unload margin, waiting for the scroll to be still. */
     private readonly leaving = new Set<HTMLElement>();
     private readonly unloadOnceStill = debounce(() => this.unloadLeaving(), SCROLL_IDLE_MS, true);
+    /** Watches rendered notes: a Base filling or an image loading measures short until done. */
+    private resizes: ResizeObserver | null = null;
 
     constructor(
         private readonly renderer: NoteRenderer,
@@ -74,6 +76,10 @@ export class NoteWindowManager {
          * (ADR 0004). Its promise is the view's to chain; nothing here waits.
          */
         private readonly enqueue: (task: () => Promise<void>) => unknown,
+        /** Every height measured, kept across sessions (ADR 0010). */
+        private readonly heights: NoteHeights,
+        /** The layout the stream is laid out in now: a height is true only there. */
+        private readonly layoutOf: () => string,
         /** jsdom lays nothing out, so measurement is the one seam tests replace. */
         private readonly measure: (el: HTMLElement) => number = (el) => el.getBoundingClientRect().height
     ) {}
@@ -103,8 +109,14 @@ export class NoteWindowManager {
             { root: scrollRoot, rootMargin: `${Math.round(this.rootHeight * UNLOAD_VIEWPORTS)}px` }
         );
         this.anchor.attach(scrollRoot);
+        this.resizes = new ResizeObserver((entries) => {
+            for (const entry of entries) this.windows.get(entry.target as HTMLElement)?.keepOnceSettled?.();
+        });
 
-        for (const block of this.windows.keys()) this.observe(block);
+        for (const [block, window] of this.windows) {
+            this.observe(block);
+            if (window.keepOnceSettled) this.resizes.observe(block);
+        }
     }
 
     /**
@@ -129,9 +141,11 @@ export class NoteWindowManager {
         this.scrollRoot?.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    /** An unloaded block for `file`, reserving `height` — or the estimate. */
-    add(file: TFile, height?: number): HTMLElement {
-        const reserved = height ?? this.estimate();
+    /** An unloaded block for `file`, reserving what it last measured, or the estimate. */
+    add(file: TFile): HTMLElement {
+        const layout = this.layout();
+        const reserved =
+            this.heights.heightOf(layout, file.path) ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
         const block = this.renderer.createBlock(file);
         this.windows.set(block, {
             file,
@@ -139,6 +153,7 @@ export class NoteWindowManager {
             rendering: false,
             unloadWanted: false,
             height: reserved,
+            keepOnceSettled: null,
         });
         this.markUnloaded(block, reserved);
         this.observe(block);
@@ -146,45 +161,24 @@ export class NoteWindowManager {
     }
 
     /**
-     * The median of what this vault's notes measured, which beats any constant:
-     * note length varies by vault, and every height varies by window width.
+     * Read once per task: reading it lays the stream out, and a batch appends
+     * a block between one add and the next.
      */
-    private estimate(): number {
-        if (this.measured.length === 0) return ESTIMATED_NOTE_HEIGHT_PX;
-        const sorted = [...this.measured].sort((a, b) => a - b);
-        return sorted[sorted.length >> 1]!;
+    private layout(): string {
+        if (this.currentLayout === null) {
+            this.currentLayout = this.layoutOf();
+            queueMicrotask(() => (this.currentLayout = null));
+        }
+        return this.currentLayout;
     }
 
     get layoutChanges(): number {
         return this.changes;
     }
 
-    /**
-     * The height a rebuilt placeholder should reserve. A rendered block is
-     * measured now — its stored height is whatever it last unloaded at.
-     */
-    heightOf(block: HTMLElement): number | undefined {
-        const window = this.windows.get(block);
-        if (!window) return undefined;
-        return window.component ? this.measure(block) : window.height;
-    }
-
-    /** The height `block` is laid out at while it holds content; undefined when it holds none. */
-    renderedHeightOf(block: HTMLElement): number | undefined {
-        return this.windows.get(block)?.component ? this.measure(block) : undefined;
-    }
-
     /** The scroll was just set to a place, for the stream as it now stands. */
     placed(): void {
         this.anchor.placed();
-    }
-
-    /** Reserves `height` for `block` while it holds no content. */
-    reserve(block: HTMLElement, height: number): void {
-        const window = this.windows.get(block);
-        if (!window || window.component || window.rendering) return;
-        window.height = height;
-        this.markUnloaded(block, height);
     }
 
     /** Rebuilds a rendered block's content; an unloaded one renders on re-entry. */
@@ -202,6 +196,7 @@ export class NoteWindowManager {
         if (!window) return;
         this.unobserve(block);
         this.leaving.delete(block);
+        this.stopSettling(block, window);
         this.discard(window);
         this.windows.delete(block);
     }
@@ -211,7 +206,10 @@ export class NoteWindowManager {
         this.unloadOnceStill.cancel();
         this.leaving.clear();
         this.scrollRoot = null;
-        for (const window of this.windows.values()) this.discard(window);
+        for (const [block, window] of this.windows) {
+            this.stopSettling(block, window);
+            this.discard(window);
+        }
         this.windows.clear();
     }
 
@@ -249,6 +247,7 @@ export class NoteWindowManager {
                 window.component = component;
                 block.removeClass("is-unloaded");
                 block.style.removeProperty("--daily-note-placeholder-height");
+                this.watchSettling(block, window);
 
                 if (window.unloadWanted) this.leave(block);
             } finally {
@@ -290,20 +289,37 @@ export class NoteWindowManager {
         }
     }
 
+    /**
+     * A block that was never laid out measures zero: reserving that would
+     * collapse a note the reader has scrolled past, and take the scroll
+     * position with it. It keeps what it already reserved.
+     */
     private unloadNow(block: HTMLElement, window: NoteWindow): void {
-        // A block that was never laid out measures zero: reserving that would
-        // collapse a note the reader has scrolled past, and take the scroll
-        // position with it. It keeps what it already reserved.
         const measured = this.measure(block);
-        if (measured > 0) {
-            window.height = measured;
-            this.measured.push(measured);
-            if (this.measured.length > MEASUREMENT_WINDOW) this.measured.shift();
-        }
+        if (measured > 0) window.height = measured;
+        this.stopSettling(block, window);
         this.discard(window);
         block.empty();
         this.markUnloaded(block, window.height);
         this.changes++;
+    }
+
+    private watchSettling(block: HTMLElement, window: NoteWindow): void {
+        window.keepOnceSettled = debounce(() => this.keepHeight(block, window), SETTLE_MS, true);
+        window.keepOnceSettled();
+        this.resizes?.observe(block);
+    }
+
+    private stopSettling(block: HTMLElement, window: NoteWindow): void {
+        window.keepOnceSettled?.cancel();
+        window.keepOnceSettled = null;
+        this.resizes?.unobserve(block);
+    }
+
+    /** A block not laid out, in a hidden tab, measures zero: nothing to remember. */
+    private keepHeight(block: HTMLElement, window: NoteWindow): void {
+        const measured = this.measure(block);
+        if (measured > 0) this.heights.keep(this.layout(), window.file.path, measured);
     }
 
     /**
@@ -338,7 +354,9 @@ export class NoteWindowManager {
         this.renderObserver?.disconnect();
         this.unloadObserver?.disconnect();
         this.anchor.detach();
+        this.resizes?.disconnect();
         this.renderObserver = null;
         this.unloadObserver = null;
+        this.resizes = null;
     }
 }

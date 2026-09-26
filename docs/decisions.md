@@ -3,6 +3,30 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — A note's height is remembered once it settles
+
+**Decision:** a rendered note's height goes into `LayoutMemory` once nothing
+in it has resized for 300ms, as a Base's does. An unload reserves what the
+note measures then, remembering it only if it had settled.
+
+**Why:** a Base filling or an image loading measures short until done; saved,
+that height is next session's placeholder, and the growth an owed scroll.
+
+**Rejected:** saving on scroll stop, Back and refresh — each measured
+whatever was on screen, mid-fill included.
+
+## 2026-09-25 — The pane keeps a scroll bar's room while it cannot scroll
+
+**Decision:** the stream's pane sets `scrollbar-gutter: stable`.
+
+**Why:** heights are remembered by the column's width
+([ADR 0010](adr/0010-layout-memory.md)). With classic scroll bars (macOS with
+a mouse, Windows), a stream opening empty read a width 15px wider than the one
+its notes were measured at, and reserved no remembered height.
+
+**Rejected:** leaving the scroll bar out of the layout key — it narrows the
+text, so heights measured with and without it differ.
+
 ## 2026-09-25 — A build for a phone names itself on load
 
 **Decision:** `pnpm run build:device` bakes the branch, commit and build time
@@ -15,14 +39,11 @@ could run on the previous build.
 **Rejected:** a setting or command showing the version — the manifest version
 is the same across every test build.
 
-## 2026-09-25 — Back lays the stream out at the heights it left
+## 2026-09-25 — Back returns to its place in one scroll
 
-**Decision:** the place kept in Obsidian's history carries the heights of the
-rendered notes down to it, by path, and the pane width. Only they render
-again at the place; the rest stay empty, and the place is measured from its
-own note. At the same width, Back
-reserves those heights; at another, none. Either way it scrolls once, before
-the first frame. The iOS
+**Decision:** the place kept in Obsidian's history is the note reaching into
+the pane and its offset. The rebuilt view's placeholders reserve what
+`LayoutMemory` remembers ([ADR 0010](adr/0010-layout-memory.md)). Back scrolls once, before the first frame. The iOS
 scroll anchor is then told the place is set, so growth the scroll already
 holds, reported a frame late, is not added again. It loads past the place
 until the pane can scroll there: a place near the end of what was loaded
@@ -36,9 +57,9 @@ flashed on desktop, older ones on a phone.
 - Hiding the stream until it settles — up to a second blank on a phone.
 - Opening titles in a new tab so the stream survives — Back stops returning
   to it.
-- Every loaded note's height — thousands of entries per history step, scrolled
-  a few years back, for notes that never render there.
-- These heights alone, without `BaseMeasurements` — a Base inside a note
+- Heights carried in the place — superseded by ADR 0010, which keeps them for
+  every view and session.
+- Note heights alone, without what Bases measured — a Base inside a note
   still draws empty and refills, whatever height its note reserved.
 
 ## 2026-09-25 — Scroll to top is offered only in the stream
@@ -162,9 +183,10 @@ width and definition, and a redraw holds it as `min-height` until the drawn view
 reaches it, or for 2s. A height is kept once nothing in its note has resized for
 300ms while unheld, never at unload or before a redraw: a closing view is not
 laid out, and a Base left mid-fill keeps the height it had. The
-heights, and which Bases were too wide, live on the plugin (`BaseMeasurements`):
-Back rebuilds the view, which forgot them. It keeps the 500 used most recently:
-every pane width is a key of its own.
+heights, and which Bases were too wide, are kept across sessions in
+`LayoutMemory` ([ADR 0010](adr/0010-layout-memory.md)): Back rebuilds the view,
+which forgot them. It keeps the 500 used most recently: every pane width is a
+key of its own.
 
 **Why:** Bases fills a view after it is drawn. A note coming back into view, or
 a table redrawn as cards, dropped by the Bases' height for a few frames and

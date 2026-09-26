@@ -16,7 +16,11 @@ async function loadedPlugin() {
     __setMockNotes([]);
     const app = {
         vault: { on: vi.fn().mockReturnValue({}) },
-        workspace: { on: vi.fn().mockReturnValue({}), getLeavesOfType: vi.fn().mockReturnValue([]) },
+        workspace: {
+            on: vi.fn().mockReturnValue({}),
+            getLeavesOfType: vi.fn().mockReturnValue([]),
+            onLayoutReady: vi.fn(),
+        },
         metadataCache: { on: vi.fn().mockReturnValue({}) },
         loadLocalStorage: vi.fn().mockReturnValue(null),
     };

@@ -58,5 +58,4 @@ absorbs them on desktop; iOS WebKit has none
 ([ADR 0006](adr/0006-unload-off-screen-notes.md)). A flick past unrendered
 placeholders, anchoring off in e2e mobile, jumped 891–2673px as they rendered
 above the viewport (400px estimate → 1291px notes).
-- [ ] Learn the estimate on render, not only on unload: until a note unloads, a fresh stream reserves 400px.
 - [ ] Estimate per note from `TFile.stat.size` — only if the median proves too coarse for a vault of uneven notes.

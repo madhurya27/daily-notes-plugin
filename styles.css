@@ -4,6 +4,9 @@
    column capped at the line width, with no margin of the stream's own. */
 .workspace-leaf-content[data-type="daily-notes-stream-view"] > .view-content {
     padding: var(--file-margins);
+    /* A height is remembered by the column's width (ADR 0010), which a scroll
+       bar appearing as the stream fills would change. */
+    scrollbar-gutter: stable;
 }
 
 .daily-notes-stream-container {

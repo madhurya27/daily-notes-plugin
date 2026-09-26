@@ -548,6 +548,26 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(stream).toEqual(await reading.evaluate(edges));
     });
 
+    // A height is remembered by the column's width (ADR 0010): a stream opening
+    // empty, before a scroll bar can show, has to read the width it fills at.
+    test("keeps the column as wide while the pane cannot scroll", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const scrolling = await container.evaluate((el) => el.clientWidth);
+
+        // Every spec shares the page: the rule goes with the measurement.
+        const still = await container.evaluate((el) => {
+            const hidden = el.appendChild(document.createElement("style"));
+            hidden.textContent = ".daily-note-block { display: none; }";
+            const pane = el.parentElement!;
+            const measured = { width: el.clientWidth, scrolls: pane.scrollHeight > pane.clientHeight };
+            hidden.remove();
+            return measured;
+        });
+
+        expect(still).toEqual({ width: scrolling, scrolls: false });
+    });
+
     test("keeps wide content inside the stream instead of scrolling the page", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
