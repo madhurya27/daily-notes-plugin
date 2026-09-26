@@ -105,10 +105,13 @@ export class ScrollAnchor {
         }
     }
 
-    /** The scroll takes the shift over, in the same frame. */
+    /**
+     * The scroll takes the shift over, in the same frame. Nothing owed writes
+     * nothing: a write of the same value still stops a glide under way.
+     */
     private settle(): void {
         const root = this.scrollRoot!;
-        if (!(this.headedForTop && root.scrollTop === 0)) root.scrollTop += this.owed;
+        if (this.owed !== 0 && !(this.headedForTop && root.scrollTop === 0)) root.scrollTop += this.owed;
         this.headedForTop = false;
         this.unshift();
     }

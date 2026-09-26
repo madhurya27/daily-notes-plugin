@@ -39,6 +39,7 @@ function makePane(heights: number[]) {
     const pane = document.createElement("div");
     let scrollTop = 0;
     Object.defineProperty(pane, "scrollTop", {
+        configurable: true,
         get: () => scrollTop,
         set: (value: number) => (scrollTop = value),
     });
@@ -306,6 +307,22 @@ describe("ScrollAnchor", () => {
         vi.advanceTimersByTime(SCROLL_IDLE_MS);
 
         expect(pane.scrollTop).toBe(900);
+    });
+
+    // A write, even of the same value, stops a glide under way: a title tapped
+    // just after a hand-over was due never left the spot.
+    it("leaves the scroll alone when what it owed came back to nothing", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400], 900);
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+        resize(blocks[0]!, 400);
+        observer().resized(blocks[0]!);
+        const writes = vi.fn();
+        Object.defineProperty(pane, "scrollTop", { get: () => 900, set: writes });
+
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(writes).not.toHaveBeenCalled();
     });
 
     it("sets no timer for a scroll with nothing owed", () => {

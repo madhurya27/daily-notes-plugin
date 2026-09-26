@@ -189,9 +189,10 @@ Then a real device:
 
 Checks:
 
-- Nothing scrolls sideways: code and URLs wrap, wide tables stack, wide Bases draw as cards. **[e2e]** Each
-  case is in **2026-08-30**.
-- Rotate with a Base on screen: a wide one turns to cards or back to a table.
+- Nothing scrolls sideways: code and URLs wrap, wide tables stack, wide Bases draw as cards, wide equations
+  shrink to fit. **[e2e]** Each case is in **2026-08-30**.
+- Rotate with a Base on screen: a wide one turns to cards or back to a table. A wide equation grows or shrinks
+  with the note.
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides out.
 - Jump to an old date, then flick up: the text under your finger does not jump as the notes above render, and
   the glide is not cut short.

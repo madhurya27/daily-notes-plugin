@@ -16,7 +16,7 @@ actually *visible*. A rendered-list indent bug shipped for exactly this reason.
 `e2e/` drives the installed Obsidian app: Playwright attaches over CDP to an
 instance launched with its own `--user-data-dir` and a throwaway seeded vault,
 so the user's real vault and config are never touched. Every spec runs twice —
-a `desktop` project and a `mobile` one applying `emulateMobile(true)` at 420px —
+a `desktop` project and a `mobile` one applying `emulateMobile(true)` at an iPhone Pro's 402px —
 because Obsidian's mobile stylesheet differs enough that a rule can be right on
 one layout and wrong on the other.
 

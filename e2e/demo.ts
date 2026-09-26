@@ -33,5 +33,12 @@ export async function prepareDemo(page: Page): Promise<void> {
         await new Promise((r) => setTimeout(r, 1000));
     }, files);
     await page.evaluate(() => window.app.workspace.leftSplit?.collapse?.());
+    await showLightTheme(page);
     mkdirSync(OUT, { recursive: true });
+}
+
+/** The vault follows the system theme: pinned, a Mac in dark mode takes the same images. */
+export async function showLightTheme(page: Page): Promise<void> {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.waitForFunction(() => document.body.classList.contains("theme-light"));
 }

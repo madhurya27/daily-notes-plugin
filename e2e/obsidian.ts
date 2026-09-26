@@ -19,14 +19,18 @@ const NO_THROTTLE = [
     "--disable-renderer-backgrounding",
     "--disable-background-timer-throttling",
 ];
+// Hidden in the phone layout, the window drew about a frame a second and a smooth
+// scroll never moved. Drawing without vsync fixes that; on desktop, which draws
+// normally hidden, it made the jump and menu tests flaky.
+const PHONE_FRAMES = ["--disable-gpu-vsync", "--disable-frame-rate-limit"];
 /**
  * Shrunk to Obsidian's minimum and parked in a corner, so the flash before the
  * hide is a small square. The renderer lays out at VIEWPORT regardless.
  */
 const MIN_WINDOW = { width: 300, height: 200 };
 const VIEWPORT = { width: 1024, height: 800 };
-/** Narrow enough for is-phone, which switches at 600px. */
-const PHONE_VIEWPORT = { width: 420, height: 800 };
+/** An iPhone Pro's screen in points: layouts that depend on width, like Bases' cards per row, match the phone. */
+const PHONE_VIEWPORT = { width: 402, height: 874 };
 const PLUGIN_ID = "daily-notes-stream";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -139,7 +143,7 @@ export interface ObsidianApp {
     windowBounds: () => { width: number; height: number; x: number; y: number } | null;
 }
 
-async function launch(): Promise<{
+async function launch(extraArgs: string[]): Promise<{
     app: ObsidianApp;
     dispose: () => Promise<void>;
 }> {
@@ -189,7 +193,7 @@ async function launch(): Promise<{
     }
 
     const port = await freePort();
-    const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE];
+    const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE, ...extraArgs];
     // detached: Electron's helpers outlive a parent-only kill; signal the group.
     const proc: ChildProcess | null = SHOW_WINDOW
         ? spawn(OBSIDIAN, args, { stdio: "ignore", detached: true })
@@ -492,7 +496,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     mobileLayout: [false, { scope: "worker", option: true }],
     obsidian: [
         async ({ mobileLayout }, use: (app: ObsidianApp) => Promise<void>) => {
-            const { app, dispose } = await launch();
+            const { app, dispose } = await launch(mobileLayout && !SHOW_WINDOW ? PHONE_FRAMES : []);
             if (mobileLayout) await applyMobileLayout(app.page);
             await use(app);
             await dispose();
@@ -559,19 +563,39 @@ export async function openStream(page: Page) {
 }
 
 /**
- * Scrolls the stream to its end a screen at a time, so every note renders and
- * its height is remembered, then waits for the scroll to count as still.
+ * Holds each note at the top in turn until its height is remembered, then
+ * waits for the scroll to count as still. Stepping a screen at a time skips
+ * notes: one growing from its estimate above the screen moves the page on.
  */
 export async function scrollThroughStream(container: Locator) {
-    await container.locator("xpath=..").evaluate(async (pane, notes) => {
-        const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-        const loaded = () => pane.querySelectorAll(".daily-note-block").length;
-        for (let last = -1; pane.scrollTop !== last || loaded() < notes; await wait(150)) {
-            last = pane.scrollTop;
-            pane.scrollTop += pane.clientHeight;
-        }
-        await wait(500);
-    }, SEEDED_DAYS);
+    const blocks = container.locator(".daily-note-block");
+    const pane = container.locator("xpath=..");
+    for (let i = 0; i < SEEDED_DAYS; i++) {
+        // The next batch loads as the end comes into view.
+        await expect
+            .poll(async () => {
+                const count = await blocks.count();
+                if (count <= i) await pane.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
+                return count;
+            })
+            .toBeGreaterThan(i);
+        const block = blocks.nth(i);
+        const path = await block.getAttribute("data-source-path");
+        // Brought back each time: a batch arriving, or the place being held, can move the page.
+        await expect
+            .poll(
+                () =>
+                    block.evaluate((el) => {
+                        el.scrollIntoView({ block: "start", behavior: "instant" });
+                        const notes: [string, [string, number][]][] =
+                            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON();
+                        return notes.some(([, heights]) => heights.some(([key]) => key === el.dataset.sourcePath));
+                    }),
+                { message: `${path} is remembered` }
+            )
+            .toBe(true);
+    }
+    await container.page().waitForTimeout(500);
 }
 
 /**

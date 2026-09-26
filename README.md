@@ -29,7 +29,7 @@ a note, open it.
 
   <img src="docs/images/stream-dark-desktop.png" alt="The stream in Obsidian's dark theme" width="440">
 
-- **Phone and tablet.** Tables and Bases too wide for the screen become cards.
+- **Phone and tablet.** Tables and Bases too wide for the screen become cards; wide equations shrink to fit.
 
 <details>
 <summary>Phone layout</summary>
