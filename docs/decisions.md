@@ -3,6 +3,18 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-25 — The pane keeps a scroll bar's room while it cannot scroll
+
+**Decision:** the stream's pane sets `scrollbar-gutter: stable`.
+
+**Why:** heights are remembered by the column's width
+([ADR 0010](adr/0010-layout-memory.md)). With classic scroll bars (macOS with
+a mouse, Windows), a stream opening empty read a width 15px wider than the one
+its notes were measured at, and reserved no remembered height.
+
+**Rejected:** leaving the scroll bar out of the layout key — it narrows the
+text, so heights measured with and without it differ.
+
 ## 2026-09-25 — A build for a phone names itself on load
 
 **Decision:** `pnpm run build:device` bakes the branch, commit and build time
