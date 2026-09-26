@@ -74,7 +74,7 @@ describe("DailyNotesStreamView — view API", () => {
         const plugin = makePlugin();
         const freshView = new DailyNotesStreamView(new WorkspaceLeaf(asApp(makeApp())), plugin, makeService());
 
-        expect(freshView["renderer"]["bases"]["measured"]).toBe(plugin.baseMeasurements);
+        expect(freshView["renderer"]["bases"]["measured"]).toBe(plugin.layoutMemory.bases);
     });
 
     // Back rebuilds the view, and the app restarts: what notes measured outlives both.

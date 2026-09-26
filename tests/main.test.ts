@@ -127,7 +127,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
 
     it("keeps what Bases measured for every view", async () => {
         const { plugin } = await loadPlugin();
-        expect(plugin.baseMeasurements).toBeInstanceOf(BaseMeasurements);
+        expect(plugin.layoutMemory.bases).toBeInstanceOf(BaseMeasurements);
     });
 });
 

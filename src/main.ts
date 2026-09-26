@@ -4,7 +4,6 @@ import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab 
 import { CollapsibleStateStore } from "./render/collapse-store";
 import { DailyNoteService } from "./notes/daily-note-service";
 import { ParsedDates } from "./notes/parsed-dates";
-import { BaseMeasurements } from "./render/bases/base-measurements";
 import { LayoutMemory } from "./stream/layout-memory";
 
 /** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
@@ -18,7 +17,6 @@ function logActivationFailure(activation: Promise<unknown>): void {
 export default class DailyNotesStreamPlugin extends Plugin {
     settings!: DailyNotesStreamSettings;
     collapseStore!: CollapsibleStateStore;
-    baseMeasurements!: BaseMeasurements;
     layoutMemory!: LayoutMemory;
 
     async onload() {
@@ -27,7 +25,6 @@ export default class DailyNotesStreamPlugin extends Plugin {
         await this.loadSettings();
 
         this.collapseStore = new CollapsibleStateStore(this.app);
-        this.baseMeasurements = new BaseMeasurements();
         this.rememberLayout();
 
         // Each view owns its service (CLAUDE.md, Invariants); they share only the parsed dates.
@@ -77,7 +74,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.layoutMemory.flush();
     }
 
-    /** Heights follow their note: across a rename, and out with a delete. */
+    /** What the stream measured; a note's heights follow it across a rename, and out with a delete. */
     private rememberLayout(): void {
         const memory = (this.layoutMemory = new LayoutMemory(this.app));
         const { vault, workspace } = this.app;

@@ -21,9 +21,15 @@ describe("LayoutMemory", () => {
         expect(memory.notes.heightOf("600:16px", "a.md")).toBe(300);
     });
 
+    it("comes back with what Bases measured in a last session", () => {
+        const memory = new LayoutMemory(asApp(makeApp({ version: 1, notes: [], bases: [["k", { height: 240 }]] })));
+        expect(memory.bases.heightOf("k")).toBe(240);
+    });
+
     it("starts empty from another version's save", () => {
         const memory = new LayoutMemory(asApp(makeApp({ version: 0, notes: [["600:16px", [["a.md", 300]]]] })));
         expect(memory.notes.toJSON()).toEqual([]);
+        expect(memory.bases.toJSON()).toEqual([]);
         expect(new LayoutMemory(asApp(makeApp())).notes.toJSON()).toEqual([]);
     });
 
@@ -33,6 +39,7 @@ describe("LayoutMemory", () => {
         const memory = new LayoutMemory(asApp(app));
         memory.notes.keep("600:16px", "a.md", 300);
         memory.notes.keep("600:16px", "b.md", 200);
+        memory.bases.markTooWide("k");
         expect(app.saveLocalStorage).not.toHaveBeenCalled();
 
         vi.advanceTimersByTime(SAVE_DELAY_MS);
@@ -48,6 +55,7 @@ describe("LayoutMemory", () => {
                     ],
                 ],
             ],
+            bases: [["k", { tooWide: true }]],
         });
     });
 

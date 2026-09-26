@@ -1,4 +1,5 @@
 import { App, debounce } from "obsidian";
+import { BaseMeasurements } from "../render/bases/base-measurements";
 import { NoteHeights } from "./note-heights";
 
 /** Vault-scoped and per device: a height is only true on the screen that measured it. */
@@ -15,11 +16,14 @@ export const SAVE_DELAY_MS = 1000;
  */
 export class LayoutMemory {
     readonly notes = new NoteHeights(() => this.saveSoon());
+    readonly bases = new BaseMeasurements(() => this.saveSoon());
     private readonly saveSoon = debounce(() => this.save(), SAVE_DELAY_MS);
 
     constructor(private readonly app: App) {
         const saved: unknown = app.loadLocalStorage(LAYOUT_MEMORY_KEY);
-        if (isVersion(saved)) this.notes.restore(saved.notes);
+        if (!isVersion(saved)) return;
+        this.notes.restore(saved.notes);
+        this.bases.restore(saved.bases);
     }
 
     /** Saves a pending change now: the plugin is unloading. */
@@ -28,10 +32,14 @@ export class LayoutMemory {
     }
 
     private save(): void {
-        this.app.saveLocalStorage(LAYOUT_MEMORY_KEY, { version: VERSION, notes: this.notes.toJSON() });
+        this.app.saveLocalStorage(LAYOUT_MEMORY_KEY, {
+            version: VERSION,
+            notes: this.notes.toJSON(),
+            bases: this.bases.toJSON(),
+        });
     }
 }
 
-function isVersion(saved: unknown): saved is { notes: unknown } {
+function isVersion(saved: unknown): saved is { notes: unknown; bases: unknown } {
     return typeof saved === "object" && saved !== null && (saved as { version?: unknown }).version === VERSION;
 }
