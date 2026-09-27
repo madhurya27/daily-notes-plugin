@@ -65,6 +65,8 @@ export class NoteWindowManager {
     private scrollRoot: HTMLElement | null = null;
     /** The layout heights are read and kept in, until the task reading it ends. */
     private currentLayout: string | null = null;
+    /** The layout the unloaded blocks reserve heights for. */
+    private reservedIn: string | null = null;
     /** The height the current margins were computed from. */
     private rootHeight = 0;
     /** Rendered blocks past the unload margin, waiting for the scroll to be still. */
@@ -123,11 +125,17 @@ export class NoteWindowManager {
         }
     }
 
+    /** Obsidian reports a pane dragged or a device turned. */
+    onResize(): void {
+        this.refreshMargins();
+        this.reserveForLayout();
+    }
+
     /**
      * Rebuilds the observers against the pane's new height. A no-op when the
      * height did not change, so dragging a split costs nothing.
      */
-    refreshMargins(): void {
+    private refreshMargins(): void {
         if (!this.scrollRoot) return;
         if (Math.max(this.scrollRoot.clientHeight, MIN_VIEWPORT_PX) === this.rootHeight) return;
         this.attach(this.scrollRoot);
@@ -153,22 +161,21 @@ export class NoteWindowManager {
 
     /** An unloaded block for `file`, reserving what it last measured, or the estimate. */
     add(file: TFile): HTMLElement {
-        const layout = this.layout();
-        const remembered = this.heights.heightOf(layout, file.path);
-        const reserved = remembered ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
         const block = this.renderer.createBlock(file);
-        this.windows.set(block, {
+        const window: NoteWindow = {
             file,
             component: null,
             rendering: false,
             unloadWanted: false,
-            height: reserved,
-            measured: remembered !== undefined,
+            height: ESTIMATED_NOTE_HEIGHT_PX,
+            measured: false,
             hold: null,
             watched: [],
             keepOnceSettled: null,
-        });
-        this.markUnloaded(block, reserved);
+        };
+        this.windows.set(block, window);
+        this.reservedIn = this.layout();
+        this.reserve(block, window, this.reservedIn);
         this.observe(block);
         return block;
     }
@@ -317,6 +324,28 @@ export class NoteWindowManager {
         block.empty();
         this.markUnloaded(block, window.height);
         this.changes++;
+    }
+
+    /**
+     * A height is true only at the width it was measured at: on a new one,
+     * every unloaded block reserves what it measured there, and nothing is
+     * held at the old one. The same width rewrites nothing.
+     */
+    private reserveForLayout(): void {
+        const layout = this.layout();
+        if (layout === this.reservedIn) return;
+        this.reservedIn = layout;
+        for (const [block, window] of this.windows) {
+            this.releaseHold(window);
+            if (!window.component) this.reserve(block, window, layout);
+        }
+    }
+
+    private reserve(block: HTMLElement, window: NoteWindow, layout: string): void {
+        const remembered = this.heights.heightOf(layout, window.file.path);
+        window.height = remembered ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
+        window.measured = remembered !== undefined;
+        this.markUnloaded(block, window.height);
     }
 
     /** Held, the block cannot shrink: a dip shows only in what was rendered in it. */

@@ -271,7 +271,7 @@ describe("NoteWindowManager remembered heights", () => {
         const unrendered = manager.add(new TFile("Notes/2025-01-02.md"));
 
         Object.defineProperty(scrollRoot, "clientHeight", { value: 1600, configurable: true });
-        manager.refreshMargins();
+        manager.onResize();
 
         expect(lastResizeObserve).toHaveBeenCalledWith(block);
         expect(lastResizeObserve).not.toHaveBeenCalledWith(unrendered);
@@ -449,6 +449,89 @@ describe("NoteWindowManager holds a rendered note until it settles", () => {
 });
 
 // ---------------------------------------------------------------------------
+// A new width
+// ---------------------------------------------------------------------------
+
+/** A height is true only at the width it was measured at: rotation changes it. */
+describe("NoteWindowManager after the pane's width changes", () => {
+    const NARROW = "400:16px";
+    const heldHeight = (block: HTMLElement) => block.style.getPropertyValue("--daily-note-held-height");
+
+    /** A manager whose layout the test changes; FILE measured 812 at LAYOUT. */
+    function makeResizable() {
+        let layout = LAYOUT;
+        const heights = new NoteHeights();
+        heights.keep(LAYOUT, FILE.path, 812);
+        const manager = new NoteWindowManager(
+            makeRenderer() as never,
+            makeQueue(),
+            heights,
+            () => layout,
+            () => 640
+        );
+        manager.attach(makeScrollRoot(800));
+        /** The layout is read once per task: the width changes in the next one. */
+        const narrow = async () => {
+            await settle();
+            layout = NARROW;
+            manager.onResize();
+        };
+        return { manager, heights, narrow };
+    }
+
+    afterEach(() => document.body.empty());
+
+    it("reserves what an unloaded note measured at the new width", async () => {
+        const { manager, heights, narrow } = makeResizable();
+        heights.keep(NARROW, FILE.path, 1200);
+        const block = manager.add(FILE);
+
+        await narrow();
+
+        expect(placeholderHeight(block)).toBe("1200px");
+    });
+
+    it("reserves the estimate for a note never measured at the new width, and holds nothing on it", async () => {
+        const { manager, narrow } = makeResizable();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        await narrow();
+        expect(placeholderHeight(block)).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
+
+        fire(observers.render, block, true);
+        await settle();
+        expect(heldHeight(block)).toBe("");
+    });
+
+    it("lets go of a note held at the old width's height", async () => {
+        const { manager, narrow } = makeResizable();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        expect(heldHeight(block)).toBe("812px");
+
+        await narrow();
+
+        expect(heldHeight(block)).toBe("");
+        expect(placeholderHeight(block)).toBe("");
+    });
+
+    // Dragging a split resizes on every frame: thousands of blocks are not rewritten each time.
+    it("leaves the placeholders alone when the width did not change", async () => {
+        const { manager, heights } = makeResizable();
+        const block = manager.add(FILE);
+        heights.keep(LAYOUT, FILE.path, 900);
+
+        await settle();
+        manager.onResize();
+
+        expect(placeholderHeight(block)).toBe("812px");
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Hysteresis
 // ---------------------------------------------------------------------------
 
@@ -485,7 +568,7 @@ describe("NoteWindowManager margins", () => {
         const { manager } = makeManager(makeRenderer(), () => 500, root);
 
         Object.defineProperty(root, "clientHeight", { value: 1600, configurable: true });
-        manager.refreshMargins();
+        manager.onResize();
 
         expect(marginsPx()).toEqual([2400, 6400]);
     });
@@ -494,7 +577,7 @@ describe("NoteWindowManager margins", () => {
         const { manager } = makeManager();
         observers.disconnect.mockClear();
 
-        manager.refreshMargins();
+        manager.onResize();
 
         expect(observers.disconnect).not.toHaveBeenCalled();
     });
@@ -507,7 +590,7 @@ describe("NoteWindowManager margins", () => {
             () => LAYOUT,
             () => 0
         );
-        expect(() => manager.refreshMargins()).not.toThrow();
+        expect(() => manager.onResize()).not.toThrow();
         expect(observers.margins).toHaveLength(0);
     });
 

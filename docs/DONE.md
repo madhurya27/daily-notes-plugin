@@ -29,6 +29,7 @@
 - [x] Reload the stream when Obsidian's daily-note format or folder changes
 - [x] Unload off-screen notes: only blocks near the viewport hold content, and a placeholder holds their space
 - [x] iOS flicks glide to a natural stop: unloads wait for the scroll to stop
+- [x] A turned or narrowed pane: notes off screen reserve the new width's heights, and none is held at the old one
 - [x] iOS glides no longer stop early past Bases and tables: nothing inside the stream scrolls
 - [x] On mobile, a Base too wide for its note draws as cards, as a Markdown table does; desktop scrolls
 - [x] On mobile, a display equation too wide for its note shrinks to fit instead of widening the page

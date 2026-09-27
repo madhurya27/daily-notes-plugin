@@ -1,4 +1,39 @@
-import { test, expect, openStream, scrollThroughStream, seededDate, SEEDED_DAYS } from "./obsidian";
+import { test, expect, openStream, scrollThroughStream, seededDate, LAYOUT_VIEWPORT, SEEDED_DAYS } from "./obsidian";
+
+/** The layout heights are remembered under, as the plugin reads it. */
+function layoutOf(column: HTMLElement): string {
+    return `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-text-size").trim()}`;
+}
+
+/** What each unloaded note reserves, in whole pixels, by path. */
+function reservedHeights(container: import("@playwright/test").Locator): Promise<Record<string, number>> {
+    return container.evaluate((column) =>
+        Object.fromEntries(
+            [...column.querySelectorAll<HTMLElement>(".daily-note-block.is-unloaded")].map((el) => [
+                el.dataset.sourcePath!,
+                Math.round(parseFloat(el.style.getPropertyValue("--daily-note-placeholder-height"))),
+            ])
+        )
+    );
+}
+
+/** Turns the phone on its side, as a reader does. */
+async function turnPhone(page: import("@playwright/test").Page) {
+    const turn = ({ width, height }: { width: number; height: number }) =>
+        cdp.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+    const cdp = await page.context().newCDPSession(page);
+    await turn({ width: LAYOUT_VIEWPORT.mobile.height, height: LAYOUT_VIEWPORT.mobile.width });
+    return { restore: () => turn(LAYOUT_VIEWPORT.mobile) };
+}
+
+/**
+ * Narrows the pane as a desktop reader does. Not by resizing the viewport:
+ * afterwards Obsidian's menus no longer close on Escape.
+ */
+async function openRightSidebar(page: import("@playwright/test").Page) {
+    await page.evaluate(() => window.app.workspace.rightSplit.expand());
+    return { restore: () => page.evaluate(() => window.app.workspace.rightSplit.collapse()) };
+}
 
 /** Opens the jump suggester and returns its prompt. */
 async function openSuggester(page: import("@playwright/test").Page) {
@@ -262,5 +297,43 @@ test.describe("jump to date", () => {
         expect(reserved.length).toBeGreaterThan(0);
         // A note unloaded this session reserves what it measured; the store keeps whole pixels.
         for (const [path, height] of reserved) expect(Math.round(parseFloat(height!)), path).toBe(remembered[path!]);
+    });
+
+    // A height is true only at the width it was measured at: the notes above
+    // the reader reserve the new width's, not what they measured before.
+    test("reserves the new width's heights when the pane's width changes", async ({ obsidian }, testInfo) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        await scrollThroughStream(container);
+        await jumpTo(page, seededDate(SEEDED_DAYS - 1));
+        const reservedBefore = await reservedHeights(container);
+        expect(Object.keys(reservedBefore).length).toBeGreaterThan(0);
+        const layoutBefore = await container.evaluate(layoutOf);
+
+        const width = testInfo.project.name === "mobile" ? await turnPhone(page) : await openRightSidebar(page);
+        try {
+            await expect.poll(() => container.evaluate(layoutOf)).not.toBe(layoutBefore);
+
+            // Obsidian reports the resize a moment after the layout changes.
+            await expect
+                .poll(async () => {
+                    const layout = await container.evaluate(layoutOf);
+                    const reserved = await reservedHeights(container);
+                    const remembered = await page.evaluate(
+                        ([layout, paths]) => {
+                            const notes = window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes;
+                            return paths.map((path) => notes.heightOf(layout, path) ?? null);
+                        },
+                        [layout, Object.keys(reserved)] as const
+                    );
+                    // Measured at the new width, that height; never measured there, anything but the old one.
+                    return Object.entries(reserved).filter(([path, height], i) =>
+                        remembered[i] != null ? height !== remembered[i] : height === reservedBefore[path]
+                    );
+                })
+                .toEqual([]);
+        } finally {
+            await width.restore();
+        }
     });
 });
