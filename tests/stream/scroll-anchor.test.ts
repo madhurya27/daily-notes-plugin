@@ -494,6 +494,30 @@ describe("ScrollAnchor", () => {
             expect(base.getBoundingClientRect().top).toBe(-200);
         });
 
+        // A phone's log: mid-turn the Base was emptied to be redrawn, unheld,
+        // and the place re-read then was its note, whose top never moved.
+        it("keeps the place read before the width changed through a Base emptied and redrawn", () => {
+            const { pane, blocks, addBase, turn, resize } = makePane([[400], 400]);
+            const { base, draw } = addBase(blocks[0]!);
+            draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            turn();
+            resize(blocks[0]!.children[0]!, 563);
+            observer().resized(blocks[0]!);
+            base.empty();
+            base.dataset.height = "0";
+            observer().resized(blocks[0]!);
+            draw(...Array<number>(4).fill(100));
+            observer().resized(blocks[0]!);
+
+            expect(base.getBoundingClientRect().top).toBe(-200);
+        });
+
         it("keeps the pane's top in a Base, not the heading starting below it, as the width changes", () => {
             const { pane, content, blocks, add, addBase, turn, resize } = makePane([[400], 400]);
             const { base, draw } = addBase(blocks[0]!);
@@ -588,6 +612,26 @@ describe("ScrollAnchor", () => {
             observer().resized(blocks[0]!);
 
             expect(base.getBoundingClientRect().top).toBe(-200);
+        });
+
+        it("counts a clamp as no scroll of the reader's once the stream grows back mid-reflow", () => {
+            const { pane, blocks, addBase, turn } = makePane([[400], 200]);
+            const { base, draw } = addBase(blocks[0]!);
+            draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            turn();
+            draw(400);
+            pane.scrollTop = pane.scrollHeight - pane.clientHeight;
+            observer().resized(blocks[0]!);
+            draw(...Array<number>(8).fill(100));
+            observer().resized(blocks[0]!);
+
+            expect(base.getBoundingClientRect().top).toBe(-400);
         });
 
         // Back restores a place measured against a note's full layout; held,

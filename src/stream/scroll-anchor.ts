@@ -38,9 +38,12 @@ export class ScrollAnchor {
     private placeScroll = 0;
     /** The pane's width `place` was read at. */
     private placeWidth = 0;
+    /** What was owed when `place` was read: a reflow reads it no more until handed over. */
+    private placeOwed = 0;
     /**
      * The width changed since the last hand-over: the text reflows over
-     * several frames, and `reflowPlace` is held through all of them.
+     * several frames, and `reflowPlace`, as read before, is held through all
+     * of them. Re-read mid-reflow, it was whatever was being redrawn.
      */
     private reflowing = false;
     /** What the scroll owes the content, drawn as a shift until the scroll stops. */
@@ -125,7 +128,8 @@ export class ScrollAnchor {
     /** Something resized: the shift moves the place back. */
     private hold(): void {
         if (this.owe()) this.settleOnceStill();
-        this.pick();
+        if (this.reflowing) this.watchBase();
+        else this.pick();
     }
 
     /**
@@ -139,8 +143,12 @@ export class ScrollAnchor {
         }
         const place = this.reflowing ? this.reflowPlace : this.place;
         const point = [...place].reverse().find(({ el }) => this.scrollRoot!.contains(el));
-        const scrolled = this.clamped() ? 0 : this.scrollRoot!.scrollTop - this.placeScroll;
-        const moved = point ? this.movedSince(point, scrolled) : 0;
+        // A clamp is none of the reader's, then or once the stream grows back.
+        if (this.clamped()) this.placeScroll = this.scrollRoot!.scrollTop;
+        const scrolled = this.scrollRoot!.scrollTop - this.placeScroll;
+        // The shift since the place was read moved it too: what is owed is the rest.
+        const drift = this.owed - this.placeOwed;
+        const moved = point ? this.movedSince(point, scrolled + drift) - drift : 0;
         if (moved === 0) return false;
         this.owed += moved;
         this.shift(this.stream()!);
@@ -160,6 +168,7 @@ export class ScrollAnchor {
         const pane = this.scrollRoot!.getBoundingClientRect();
         this.placeScroll = this.scrollRoot!.scrollTop;
         this.placeWidth = this.scrollRoot!.clientWidth;
+        this.placeOwed = this.owed;
         const drawn = document
             .elementsFromPoint(pane.left + pane.width / 2, pane.top + 1)
             .find((el) => el !== stream && stream.contains(el));
