@@ -427,6 +427,17 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
     overflow: visible !important;
 }
 
+/* Clipped, a Base has no scroll box to pin its header and summaries to
+   (docs/decisions.md, 2026-09-27). */
+.is-mobile .daily-note-block .bases-thead {
+    position: static;
+}
+
+/* Bases' own rule for the summaries is !important. */
+.is-mobile .daily-note-block .bases-table-footer {
+    position: static !important;
+}
+
 /* Bases fixes a card's line at 24px, which a tag pill outgrows at a larger
    font. Its ratio to the default font, kept at every size; Bases lays cards
    out from this. */

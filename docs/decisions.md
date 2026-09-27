@@ -935,3 +935,15 @@ one above the match pushed it off screen, leaving the reader on the Base.
 - Counting Base fills as layout changes — `scrollIntoPlace` would wait on them,
   and every step with it.
 - Scroll anchoring — it holds the note's top, not the match.
+
+## 2026-09-27 — A Base's header and summaries scroll with it, on mobile
+
+**Decision:** on mobile, a Base table's header and summary row are
+`position: static` (`styles.css`).
+
+**Why:** Bases pins both to its own scroll box. ADR 0008 clips that box away,
+so they pinned to the stream's instead and floated over the notes.
+
+**Rejected:**
+- Leaving them pinned to the stream — they cover other notes' text.
+- Giving the Base its scroll box back — ADR 0008.

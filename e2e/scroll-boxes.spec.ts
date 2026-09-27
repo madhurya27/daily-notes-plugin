@@ -182,6 +182,54 @@ test.describe("on mobile, nothing inside the stream scrolls", () => {
             .toBeLessThanOrEqual(0);
     });
 
+    // Bases pins both to its own scroll box; clipped, they would pin to the stream's.
+    test("keeps a Base's header and summaries on its table while the stream scrolls", async ({ obsidian }) => {
+        const { page } = obsidian;
+        // A screen of text either side, so the stream can scroll the table past either edge.
+        const screen = Array.from({ length: 40 }, (_, i) => `Line ${i}`).join("\n\n");
+        await page.evaluate(
+            async ({ note, body, base }) => {
+                await window.app.vault.create("Summed.base", base);
+                await window.app.vault.create(note, body);
+            },
+            {
+                note: NOTE,
+                body: `${screen}\n\n![[Summed.base]]\n\n${screen}\n`,
+                base: baseView(["file.name", "file.size"], ["summaries:", "      file.size: Sum"]),
+            }
+        );
+        try {
+            const view = (await openStream(page)).locator(".bases-view").first();
+            await expect(view.locator(".bases-table-footer")).toBeAttached();
+
+            /** Scrolls the view's `edge` 100px past the screen's; how far it went, and where each bar sits on the view. */
+            const scrollPast = (edge: "top" | "bottom") =>
+                view.evaluate((el, edge) => {
+                    const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                    const sign = edge === "top" ? -1 : 1;
+                    const past = () => sign * (el.getBoundingClientRect()[edge] - pane.getBoundingClientRect()[edge]);
+                    const offset = (bar: string) =>
+                        el.querySelector(bar)!.getBoundingClientRect()[edge] - el.getBoundingClientRect()[edge];
+                    const bars = () => ({ header: offset(".bases-thead"), footer: offset(".bases-table-footer") });
+                    const before = bars();
+                    pane.scrollTop -= sign * (100 - past());
+                    return { past: past(), before, after: bars() };
+                }, edge);
+
+            const top = await scrollPast("top");
+            expect(top.past).toBeCloseTo(100, 0);
+            expect(top.after.header).toBe(top.before.header);
+            const bottom = await scrollPast("bottom");
+            expect(bottom.past).toBeCloseTo(100, 0);
+            expect(bottom.after.footer).toBe(bottom.before.footer);
+        } finally {
+            await page.evaluate(async () => {
+                const file = window.app.vault.getAbstractFileByPath("Summed.base");
+                if (file) await window.app.vault.delete(file);
+            });
+        }
+    });
+
     test("stacks a table too wide for the note", async ({ obsidian }) => {
         const container = await openStream(obsidian.page);
         const table = container.locator(".daily-note-block").first().locator("table").first();
