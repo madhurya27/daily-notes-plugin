@@ -348,4 +348,59 @@ test.describe("jump to date", () => {
             }
         });
     }
+
+    // Turned, a phone redraws the cards being read as a table: the reader lands
+    // as far through the Base as they were (docs/decisions.md, 2026-09-27).
+    test("keeps how far the pane's top is through a Base redrawn as a table", async ({ obsidian, mobileLayout }) => {
+        test.skip(!mobileLayout, "only a phone draws a Base as cards");
+        const { page } = obsidian;
+        const date = seededDate(SEEDED_DAYS);
+        const path = `Notes/${date}.md`;
+        const columns = ["file.name", "file.path", "file.folder", "file.ext", "file.size"];
+        const base = ["```base", "views:", "  - type: table", "    name: Files", "    order:"];
+        await page.evaluate(
+            async ({ path, text }) => {
+                await window.app.vault.create(path, text);
+            },
+            {
+                path,
+                text: [...base, ...columns.map((c) => `      - ${c}`), "```", ""].join("\n"),
+            }
+        );
+        await withoutScrollAnchoring(page);
+        try {
+            const container = await openStream(page);
+            await jumpTo(page, date);
+            const slot = container.locator(`.daily-note-block[data-source-path="${path}"] .daily-note-base`);
+            await expect(slot.locator(".bases-cards-item[draggable]").first()).toBeVisible();
+            await page.waitForTimeout(1000);
+            /** How far through the Base the pane's top is. */
+            const through = () =>
+                slot.evaluate((el) => {
+                    const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                    const { top, height } = el.getBoundingClientRect();
+                    return (pane.getBoundingClientRect().top - top) / height;
+                });
+            await slot.evaluate((el) => {
+                const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                const { top, height } = el.getBoundingClientRect();
+                pane.scrollTop += top + height / 2 - pane.getBoundingClientRect().top;
+            });
+            await page.waitForTimeout(1000);
+            expect(await through()).toBeCloseTo(0.5, 1);
+
+            const width = await turnPhone(page);
+            try {
+                await expect(slot.locator(".bases-thead")).toBeVisible();
+                // Held until Bases fills it, then handed to the scroll once still.
+                await page.waitForTimeout(3000);
+                expect(await through()).toBeCloseTo(0.5, 1);
+            } finally {
+                await width.restore();
+            }
+        } finally {
+            await restoreScrollAnchoring(page);
+            await page.evaluate((path) => window.app.vault.delete(window.app.vault.getAbstractFileByPath(path)!), path);
+        }
+    });
 });

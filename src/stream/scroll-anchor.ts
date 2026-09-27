@@ -1,10 +1,11 @@
 import { Platform, debounce } from "obsidian";
+import { BASE_SLOT_CLASS } from "../render/bases/bases-as-cards";
 
 /** How long the scroll is still before the stream counts it stopped (docs/decisions.md, 2026-09-23). */
 export const SCROLL_IDLE_MS = 300;
 
-/** From a block down to an element, each where it was drawn in the pane. */
-type Place = { el: Element; top: number }[];
+/** From a block down to an element, each where it was drawn in the pane, and how tall. */
+type Place = { el: Element; top: number; height: number }[];
 
 /**
  * Holds the reader's place where the platform does not: Chromium anchors the
@@ -135,8 +136,8 @@ export class ScrollAnchor {
         }
         const place = this.reflowing ? this.reflowPlace : this.place;
         const point = [...place].reverse().find(({ el }) => this.scrollRoot!.contains(el));
-        const scrolled = this.scrollRoot!.scrollTop - this.placeScroll;
-        const moved = point ? this.topInPane(point.el) + scrolled - point.top : 0;
+        const scrolled = this.clamped() ? 0 : this.scrollRoot!.scrollTop - this.placeScroll;
+        const moved = point ? this.movedSince(point, scrolled) : 0;
         if (moved === 0) return false;
         this.owed += moved;
         this.shift(this.stream()!);
@@ -172,10 +173,33 @@ export class ScrollAnchor {
         for (let at: Element | null = el; at && at !== stream; at = at.parentElement) path.unshift(at);
         const place: Place = [];
         for (const at of path) {
-            place.push({ el: at, top: this.topInPane(at) });
+            place.push({ el: at, top: this.topInPane(at), height: at.getBoundingClientRect().height });
             if ((at as HTMLElement).style.getPropertyValue("--daily-note-held-height")) break;
         }
         return place;
+    }
+
+    /**
+     * The browser pulled the scroll back to the stream's new end: the stream
+     * shrank by more than lay below the pane, as below a note jumped to. The
+     * reader never scrolls up onto the end.
+     */
+    private clamped(): boolean {
+        const root = this.scrollRoot!;
+        return root.scrollTop < this.placeScroll && root.scrollHeight - root.clientHeight - root.scrollTop <= 1;
+    }
+
+    /**
+     * How far `point` moved, less `scrolled`. A Base the pane's top crosses is
+     * held as far through as it was: redrawn between cards and a table, its
+     * entries keep their order, not their height (docs/decisions.md, 2026-09-27).
+     */
+    private movedSince(point: Place[number], scrolled: number): number {
+        const now = this.topInPane(point.el) + scrolled;
+        const crossed = point.top < 0 && point.top + point.height > 0;
+        if (!crossed || !point.el.hasClass(BASE_SLOT_CLASS)) return now - point.top;
+        const through = -point.top / point.height;
+        return now + through * point.el.getBoundingClientRect().height;
     }
 
     /**

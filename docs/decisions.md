@@ -3,6 +3,21 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-27 — A Base redrawn under the pane's top keeps the reader's fraction
+
+**Decision:** when the pane's top crosses a Base, `ScrollAnchor` holds it as
+far through the Base as it was, not at the Base's top. A scroll pulled back to
+the stream's end is a clamp, not the reader's.
+
+**Why:** a turned phone redraws cards as a table: the entry read is gone, and
+held at its top the reader landed anywhere. Cards and rows keep one order. Below
+a note jumped to, the stream shrank by more than lay below the pane, and the
+clamp was undone as a scroll.
+
+**Rejected:**
+- The same entry, card to row — Bases fills the table after drawing it.
+- The Base's top at the pane's — the reader loses their place in it.
+
 ## 2026-09-27 — A reflow holds the block starting in the pane
 
 **Decision:** once the pane's width changes, `ScrollAnchor` holds the first

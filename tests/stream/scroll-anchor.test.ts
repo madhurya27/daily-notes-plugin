@@ -55,6 +55,8 @@ function makePane(layout: (number | number[])[]) {
     /** The pane turned wider, as a phone on its side. */
     const turn = () => (width = 700);
     const content = pane.createDiv();
+    Object.defineProperty(pane, "clientHeight", { configurable: true, get: () => PANE_HEIGHT });
+    Object.defineProperty(pane, "scrollHeight", { configurable: true, get: () => heightOf(content) });
 
     const heightOf = (el: Element): number =>
         el.children.length > 0
@@ -429,6 +431,48 @@ describe("ScrollAnchor", () => {
             vi.advanceTimersByTime(SCROLL_IDLE_MS);
 
             expect(pane.scrollTop).toBe(700);
+        });
+
+        // Cards and a table list the same entries in the same order, so the
+        // reader lands as far through the one as they were through the other.
+        it("keeps how far the pane's top was through a Base redrawn under it", () => {
+            const { pane, content, blocks, add } = makePane([[400], 400]);
+            const base = add(blocks[0]!);
+            base.addClass("daily-note-base");
+            for (let i = 0; i < 10; i++) add(base, 100);
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            base.empty();
+            add(base, 400);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(300);
+            expect(base.getBoundingClientRect().top).toBe(-200);
+        });
+
+        // Little lies below a note jumped to: the stream shrinks by more, and
+        // the browser clamps the scroll to its new end.
+        it("counts a scroll clamped to the stream's end as no scroll of the reader's", () => {
+            const { pane, blocks, add } = makePane([[400], 200]);
+            const base = add(blocks[0]!);
+            base.addClass("daily-note-base");
+            for (let i = 0; i < 10; i++) add(base, 100);
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            base.empty();
+            add(base, 400);
+            pane.scrollTop = pane.scrollHeight - pane.clientHeight;
+            observer().resized(blocks[0]!);
+
+            expect(base.getBoundingClientRect().top).toBe(-200);
         });
 
         // Back restores a place measured against a note's full layout; held,
