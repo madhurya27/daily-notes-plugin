@@ -27,6 +27,8 @@ clamp was undone as a scroll.
 block starting inside the pane below the text crossing its top — climbing past
 inline text, anything beside it, anything taking no space — until the shift is
 handed to the scroll. Otherwise it holds the text crossing the top, as before.
+A Base crossing the top is held by its fraction either way, never by what it
+draws.
 
 **Why:** a turned phone reflows the text crossing the top, and holding its top
 moved a title just below it out of view. Native anchoring prefers what is fully
@@ -37,6 +39,8 @@ visible for the same reason.
 - The next element in document order — a span in the reflowing text, and
   dozens of reads in a highlighted code block.
 - Only the first report after the width changes — the text reflows over frames.
+- A card, or a heading below a Base — on a phone the cards re-flow before the
+  Base is redrawn, and a card's place says nothing of the reader's.
 
 ## 2026-09-26 — A new width changes no placeholder
 

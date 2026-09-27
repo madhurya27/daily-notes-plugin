@@ -474,6 +474,45 @@ describe("ScrollAnchor", () => {
             expect(base.getBoundingClientRect().top).toBe(-200);
         });
 
+        // A phone's log: turned, the cards re-flow wider before the Base is
+        // redrawn, and a card below the pane's top says nothing of the place.
+        it("keeps how far the pane's top was through a Base whose cards re-flow as the width changes", () => {
+            const { pane, content, blocks, addBase, turn, resize } = makePane([[400], 400]);
+            const { base, draw } = addBase(blocks[0]!);
+            const drawn = draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            turn();
+            for (const card of Array.from(drawn.children)) resize(card, 40);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(300);
+            expect(base.getBoundingClientRect().top).toBe(-200);
+        });
+
+        it("keeps the pane's top in a Base, not the heading starting below it, as the width changes", () => {
+            const { pane, content, blocks, add, addBase, turn, resize } = makePane([[400], 400]);
+            const { base, draw } = addBase(blocks[0]!);
+            const drawn = draw(...Array<number>(10).fill(100));
+            add(blocks[0]!, 200);
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 1350;
+            anchor.onScroll();
+
+            turn();
+            for (const card of Array.from(drawn.children)) resize(card, 40);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(570);
+            expect(base.getBoundingClientRect().top).toBe(-380);
+        });
+
         // Held open at the cards' height, the Base shows the table at its top
         // and nothing under it: the reader is held in what is drawn.
         it("holds the pane's top in what a held Base draws, not the space held for it", () => {

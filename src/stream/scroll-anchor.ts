@@ -150,6 +150,7 @@ export class ScrollAnchor {
     /**
      * What is drawn at the pane's top, past anything over the stream, up to its
      * block. Not inside anything held: its text is not yet where it will be.
+     * Not inside a Base: what it draws re-flows and is redrawn whole.
      */
     private pick(): void {
         this.place = [];
@@ -167,17 +168,23 @@ export class ScrollAnchor {
 
         this.place = this.placeOf(stream, crossing);
         this.watchBase();
+        // Held by how far through it the pane's top is, reflowing or not.
+        if (this.place.some(({ el }) => el.hasClass(BASE_SLOT_CLASS))) {
+            this.reflowPlace = this.place;
+            return;
+        }
         const starting = this.startingIn(pane, stream, crossing);
         this.reflowPlace = starting === crossing ? this.place : this.placeOf(stream, starting);
     }
 
-    /** From `el`'s block down to it, each where it is drawn, stopping at anything held. */
+    /** From `el`'s block down to it, each where it is drawn, stopping at anything held or a Base. */
     private placeOf(stream: HTMLElement, el: Element): Place {
         const path: Element[] = [];
         for (let at: Element | null = el; at && at !== stream; at = at.parentElement) path.unshift(at);
         const place: Place = [];
         for (const at of path) {
             place.push({ el: at, top: this.topInPane(at), height: this.heightOf(at) });
+            if (at.hasClass(BASE_SLOT_CLASS)) break;
             if ((at as HTMLElement).style.getPropertyValue("--daily-note-held-height")) break;
         }
         return place;

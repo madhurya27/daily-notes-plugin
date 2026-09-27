@@ -425,4 +425,104 @@ test.describe("jump to date", () => {
             await page.evaluate((path) => window.app.vault.delete(window.app.vault.getAbstractFileByPath(path)!), path);
         }
     });
+
+    // As a phone's trace showed: the pane's top on the Base's last card, a
+    // heading below it starting inside the pane. The reader is in the Base.
+    test("keeps the pane's top in a Base redrawn as a table when a heading starts below it", async ({
+        obsidian,
+        mobileLayout,
+    }) => {
+        test.skip(!mobileLayout, "only a phone draws a Base as cards");
+        const { page } = obsidian;
+        const date = seededDate(SEEDED_DAYS);
+        const path = `Notes/${date}.md`;
+        // The demo vault's: six books, too wide for a phone's table, embedded from a .base file.
+        const books: [string, string, string, string][] = [
+            ["A Pattern Language", "Christopher Alexander", "up next", ""],
+            ["Four Thousand Weeks", "Oliver Burkeman", "finished", "4"],
+            ["Piranesi", "Susanna Clarke", "finished", "5"],
+            ["The Design of Everyday Things", "Don Norman", "reading", "4"],
+            ["The Dispossessed", "Ursula K. Le Guin", "reading", "5"],
+            ["Tomorrow, and Tomorrow, and Tomorrow", "Gabrielle Zevin", "up next", ""],
+        ];
+        const files: Record<string, string> = {
+            ...Object.fromEntries(
+                books.map(([title, author, status, rating]) => [
+                    `Books/${title}.md`,
+                    `---\nauthor: ${author}\nstatus: ${status}\nrating: ${rating}\n---\n`,
+                ])
+            ),
+            "Reading.base": [
+                "filters:",
+                "  and:",
+                '    - file.inFolder("Books")',
+                "views:",
+                "  - type: table",
+                "    name: Reading",
+                "    order:",
+                "      - file.name",
+                "      - author",
+                "      - status",
+                "      - rating",
+                "",
+            ].join("\n"),
+            [path]: [
+                "## Reading",
+                "",
+                "![[Reading.base]]",
+                "",
+                "## Next week",
+                "",
+                "- [ ] Order tiles",
+                "- [x] Book dentist",
+                "- [ ] Back up the laptop",
+                "",
+            ].join("\n"),
+        };
+        await page.evaluate(async (files) => {
+            await window.app.vault.createFolder("Books").catch(() => {});
+            for (const [path, text] of Object.entries(files)) await window.app.vault.create(path, text);
+        }, files);
+        await withoutScrollAnchoring(page);
+        try {
+            const container = await openStream(page);
+            await jumpTo(page, date);
+            const slot = container.locator(`.daily-note-block[data-source-path="${path}"] .daily-note-base`);
+            await expect(slot.locator(".bases-cards-item[draggable]").first()).toBeVisible();
+            await page.waitForTimeout(1000);
+            /** How far through the Base the pane's top is. */
+            const through = () =>
+                slot.evaluate((el) => {
+                    const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                    const { top, height } = el.getBoundingClientRect();
+                    return (pane.getBoundingClientRect().top - top) / height;
+                });
+            // The Base ends 40% down the pane, the heading just below.
+            await slot.evaluate((el) => {
+                const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                const bottom = el.getBoundingClientRect().bottom - pane.getBoundingClientRect().top;
+                pane.scrollTop += bottom - 0.4 * pane.clientHeight;
+            });
+            await page.waitForTimeout(1000);
+            const before = await through();
+            expect(before).toBeGreaterThan(0);
+            expect(before).toBeLessThan(1);
+
+            const width = await turnPhone(page);
+            try {
+                await expect(slot.locator(".bases-thead")).toBeVisible();
+                // Held until Bases fills it, then handed to the scroll once still.
+                await page.waitForTimeout(3000);
+                expect(await through()).toBeCloseTo(before, 1);
+            } finally {
+                await width.restore();
+            }
+        } finally {
+            await restoreScrollAnchoring(page);
+            await page.evaluate(async (paths) => {
+                for (const path of [...paths, "Books"])
+                    await window.app.vault.delete(window.app.vault.getAbstractFileByPath(path)!, true);
+            }, Object.keys(files));
+        }
+    });
 });
