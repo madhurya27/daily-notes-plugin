@@ -350,7 +350,8 @@ test.describe("jump to date", () => {
     }
 
     // Turned, a phone redraws the cards being read as a table: the reader lands
-    // as far through the Base as they were (docs/decisions.md, 2026-09-27).
+    // as far through the Base as they were (docs/decisions.md, 2026-09-27), in
+    // the table while it is held open at the cards' height.
     test("keeps how far the pane's top is through a Base redrawn as a table", async ({ obsidian, mobileLayout }) => {
         test.skip(!mobileLayout, "only a phone draws a Base as cards");
         const { page } = obsidian;
@@ -389,8 +390,29 @@ test.describe("jump to date", () => {
             await page.waitForTimeout(1000);
             expect(await through()).toBeCloseTo(0.5, 1);
 
+            // Two frames into the table being held open at the cards' height.
+            const whileHeld = slot.evaluate(
+                (el) =>
+                    new Promise<{ paneAt: number; drawn: number }>((resolve) => {
+                        const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                        const measure = () =>
+                            resolve({
+                                paneAt: pane.getBoundingClientRect().top - el.getBoundingClientRect().top,
+                                drawn: el.lastElementChild!.getBoundingClientRect().height,
+                            });
+                        const tick = () => {
+                            const held = el.style.getPropertyValue("--daily-note-held-height");
+                            if (held && el.querySelector(".bases-thead"))
+                                requestAnimationFrame(() => requestAnimationFrame(measure));
+                            else requestAnimationFrame(tick);
+                        };
+                        tick();
+                    })
+            );
             const width = await turnPhone(page);
             try {
+                const { paneAt, drawn } = await whileHeld;
+                expect(paneAt).toBeLessThan(drawn);
                 await expect(slot.locator(".bases-thead")).toBeVisible();
                 // Held until Bases fills it, then handed to the scroll once still.
                 await page.waitForTimeout(3000);

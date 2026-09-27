@@ -32,6 +32,8 @@ export class ScrollAnchor {
      * once the pane's width changes (docs/decisions.md, 2026-09-27).
      */
     private reflowPlace: Place = [];
+    /** What the Base the pane's top crosses draws: it fills in after drawing, inside a box held open. */
+    private drawnBase: Element | null = null;
     /** The scroll `place` was read at: a script may move it before a resize reports. */
     private placeScroll = 0;
     /** The pane's width `place` was read at. */
@@ -113,6 +115,7 @@ export class ScrollAnchor {
         this.observer?.disconnect();
         this.observer = null;
         this.watched.clear();
+        this.drawnBase = null;
         this.place = [];
         this.scrollRoot?.removeClass("is-scroll-anchored");
         this.scrollRoot = null;
@@ -163,6 +166,7 @@ export class ScrollAnchor {
         if (!crossing) return;
 
         this.place = this.placeOf(stream, crossing);
+        this.watchBase();
         const starting = this.startingIn(pane, stream, crossing);
         this.reflowPlace = starting === crossing ? this.place : this.placeOf(stream, starting);
     }
@@ -173,7 +177,7 @@ export class ScrollAnchor {
         for (let at: Element | null = el; at && at !== stream; at = at.parentElement) path.unshift(at);
         const place: Place = [];
         for (const at of path) {
-            place.push({ el: at, top: this.topInPane(at), height: at.getBoundingClientRect().height });
+            place.push({ el: at, top: this.topInPane(at), height: this.heightOf(at) });
             if ((at as HTMLElement).style.getPropertyValue("--daily-note-held-height")) break;
         }
         return place;
@@ -199,7 +203,23 @@ export class ScrollAnchor {
         const crossed = point.top < 0 && point.top + point.height > 0;
         if (!crossed || !point.el.hasClass(BASE_SLOT_CLASS)) return now - point.top;
         const through = -point.top / point.height;
-        return now + through * point.el.getBoundingClientRect().height;
+        return now + through * this.heightOf(point.el);
+    }
+
+    /** A Base is as tall as what it draws, not the box held open for it. */
+    private heightOf(el: Element): number {
+        const drawn = el.hasClass(BASE_SLOT_CLASS) ? (el.lastElementChild ?? el) : el;
+        return drawn.getBoundingClientRect().height;
+    }
+
+    /** Hears the Base the pane's top crosses fill in, which resizes nothing watched while it is held. */
+    private watchBase(): void {
+        const base = this.place.find(({ el }) => el.hasClass(BASE_SLOT_CLASS))?.el;
+        const drawn = base?.lastElementChild ?? null;
+        if (drawn === this.drawnBase) return;
+        if (this.drawnBase) this.observer!.unobserve(this.drawnBase);
+        this.drawnBase = drawn;
+        if (drawn) this.observer!.observe(drawn);
     }
 
     /**
