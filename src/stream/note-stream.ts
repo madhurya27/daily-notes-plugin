@@ -72,9 +72,8 @@ export class NoteStream {
         this.blocks.clear();
     }
 
-    /** The margins are viewports, so a resized pane needs new ones. */
     onResize(): void {
-        this.window.refreshMargins();
+        this.window.onResize();
     }
 
     scrollToTop(): void {

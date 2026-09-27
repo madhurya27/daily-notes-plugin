@@ -44,15 +44,30 @@ function makePane(layout: (number | number[])[]) {
         get: () => scrollTop,
         set: (value: number) => (scrollTop = value),
     });
-    pane.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+    /** The pane's height, which the anchor looks for text starting in. */
+    const PANE_HEIGHT = 600;
+    /** Where the pane sits in the window: a phone turned hides its status bar. */
+    let paneTop = 0;
+    pane.getBoundingClientRect = () => ({ top: paneTop, bottom: paneTop + PANE_HEIGHT }) as DOMRect;
+    const movePane = (top: number) => (paneTop = top);
+    let width = 400;
+    Object.defineProperty(pane, "clientWidth", { configurable: true, get: () => width });
+    /** The pane turned wider, as a phone on its side. */
+    const turn = () => (width = 700);
     const content = pane.createDiv();
+    Object.defineProperty(pane, "clientHeight", { configurable: true, get: () => PANE_HEIGHT });
+    Object.defineProperty(pane, "scrollHeight", { configurable: true, get: () => heightOf(content) });
 
+    /** A parent is as tall as its children, or the height it is held at. */
     const heightOf = (el: Element): number =>
         el.children.length > 0
-            ? Array.from(el.children).reduce((sum, child) => sum + heightOf(child), 0)
-            : Number((el as HTMLElement).dataset.height);
+            ? Math.max(
+                  Array.from(el.children).reduce((sum, child) => sum + heightOf(child), 0),
+                  Number((el as HTMLElement).dataset.heldAt ?? 0)
+              )
+            : Number((el as HTMLElement).dataset.height ?? (el as HTMLElement).dataset.heldAt);
     const topOf = (el: Element): number => {
-        if (el === content) return -scrollTop + shift(content);
+        if (el === content) return paneTop - scrollTop + shift(content);
         const parent = el.parentElement!;
         const before = Array.from(parent.children).slice(0, Array.from(parent.children).indexOf(el));
         return before.reduce((top, sibling) => top + heightOf(sibling), topOf(parent));
@@ -78,6 +93,7 @@ function makePane(layout: (number | number[])[]) {
     /** What is drawn at `y`, topmost first: the deepest element there, then its ancestors. */
     const drawnAt = (y: number): Element[] => {
         const hits: Element[] = [];
+        if (y < paneTop) return hits;
         for (let level: Element | undefined = content; level;) {
             // By the layout's own arithmetic: a test counts what the anchor reads.
             level = Array.from(level.children).find((child) => {
@@ -90,7 +106,25 @@ function makePane(layout: (number | number[])[]) {
     };
     vi.spyOn(document, "elementsFromPoint").mockImplementation((_x, y) => drawnAt(y));
     const resize = (el: Element, height: number) => ((el as HTMLElement).dataset.height = String(height));
-    return { pane, content, blocks, resize, add };
+    /** A Base in `parent`, drawn into a child of it as `NoteBases` draws. */
+    const addBase = (parent: HTMLElement) => {
+        const base = add(parent);
+        base.addClass("daily-note-base");
+        /** Replaces what is drawn with elements of `heights`. */
+        const draw = (...heights: number[]) => {
+            base.empty();
+            const drawn = add(base);
+            for (const height of heights) add(drawn, height);
+            return drawn;
+        };
+        /** Holds it open at `height`, as `NoteBases` holds a redrawn Base. */
+        const holdAt = (height: number) => {
+            base.dataset.heldAt = String(height);
+            base.style.setProperty("--daily-note-held-height", `${height}px`);
+        };
+        return { base, draw, holdAt };
+    };
+    return { pane, content, blocks, resize, add, addBase, turn, movePane };
 }
 
 describe("ScrollAnchor", () => {
@@ -136,6 +170,20 @@ describe("ScrollAnchor", () => {
         expect(pane.scrollTop).toBe(900);
         expect(shift(content)).toBe(-900);
         expect(readerTop(blocks)).toBe(-100);
+    });
+
+    // A phone turned on its side hides the status bar: the pane moves up, and
+    // everything in it with the pane.
+    it("owes nothing for the pane itself moving", () => {
+        const { pane, content, blocks, turn, movePane } = watch([400, 400, 400], 900);
+
+        movePane(-47);
+        turn();
+        observer().resized(...blocks);
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(shift(content)).toBe(0);
+        expect(pane.scrollTop).toBe(900);
     });
 
     it("holds it when a block above shrinks", () => {
@@ -265,6 +313,89 @@ describe("ScrollAnchor", () => {
             expect(shift(content)).toBe(0);
         });
 
+        it("holds the text starting just below the pane's top when the pane's width changes", () => {
+            const { content, blocks, resize, turn } = watch([[400, 400, 400], 400], 500);
+
+            turn();
+            resize(blocks[0]!.children[1]!, 200);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(200);
+            expect(blocks[0]!.children[2]!.getBoundingClientRect().top).toBe(300);
+        });
+
+        // The text reflows over several frames, each reported apart.
+        it("holds the text below the pane's top until the reflow is handed to the scroll", () => {
+            const { pane, content, blocks, resize, turn } = watch([[400, 400, 400], 400], 500);
+
+            turn();
+            resize(blocks[0]!.children[1]!, 300);
+            observer().resized(blocks[0]!);
+            resize(blocks[0]!.children[1]!, 200);
+            observer().resized(blocks[0]!);
+            expect(blocks[0]!.children[2]!.getBoundingClientRect().top).toBe(300);
+
+            vi.advanceTimersByTime(SCROLL_IDLE_MS);
+            expect(pane.scrollTop).toBe(300);
+            resize(blocks[0]!.children[1]!, 1000);
+            observer().resized(blocks[0]!);
+            expect(shift(content)).toBe(0);
+        });
+
+        it("holds the block below text crossing the pane's top, not a span inside that text", () => {
+            const { pane, content, blocks, resize, add, turn } = watch([[400, 400, 400], 400], 0);
+            const text = blocks[0]!.children[1] as HTMLElement;
+            add(text, 200).style.display = "inline";
+            const after = add(text, 200);
+            pane.scrollTop = 500;
+            anchor.onScroll();
+
+            turn();
+            resize(after, 100);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(100);
+            expect(blocks[0]!.children[2]!.getBoundingClientRect().top).toBe(300);
+        });
+
+        it("climbs past what sits beside the text crossing the pane's top, as cards in a row", () => {
+            const { pane, content, blocks, resize, add, turn } = watch([[400, 400, 400], 400], 0);
+            const row = blocks[0]!.children[1] as HTMLElement;
+            const card = add(row, 200);
+            add(row, 200).getBoundingClientRect = () => card.getBoundingClientRect();
+            pane.scrollTop = 500;
+            anchor.onScroll();
+
+            turn();
+            resize(card, 100);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(100);
+        });
+
+        // A collapsed section's body is display: none, drawn at no place.
+        it("passes over what takes up no space to the block after it", () => {
+            const { content, blocks, resize, turn } = watch([[400, 400, 0, 400], 400], 500);
+            blocks[0]!.children[2]!.getBoundingClientRect = () => ({ top: 0, height: 0, bottom: 0 }) as DOMRect;
+            anchor.onScroll();
+
+            turn();
+            resize(blocks[0]!.children[1]!, 200);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(200);
+        });
+
+        it("holds the text crossing the pane's top when nothing starts below it in the pane", () => {
+            const { content, blocks, resize, turn } = watch([[400, 1200, 400]], 500);
+
+            turn();
+            resize(blocks[0]!.children[1]!, 1300);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(0);
+        });
+
         it("follows the reader as they scroll", () => {
             const { pane, content, blocks, resize } = watch([[400, 400, 400], 400], 500);
 
@@ -324,6 +455,185 @@ describe("ScrollAnchor", () => {
             expect(pane.scrollTop).toBe(700);
         });
 
+        // Cards and a table list the same entries in the same order, so the
+        // reader lands as far through the one as they were through the other.
+        it("keeps how far the pane's top was through a Base redrawn under it", () => {
+            const { pane, content, blocks, addBase } = makePane([[400], 400]);
+            const { base, draw } = addBase(blocks[0]!);
+            draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            draw(400);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(300);
+            expect(base.getBoundingClientRect().top).toBe(-200);
+        });
+
+        // A phone's log: turned, the cards re-flow wider before the Base is
+        // redrawn, and a card below the pane's top says nothing of the place.
+        it("keeps how far the pane's top was through a Base whose cards re-flow as the width changes", () => {
+            const { pane, content, blocks, addBase, turn, resize } = makePane([[400], 400]);
+            const { base, draw } = addBase(blocks[0]!);
+            const drawn = draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            turn();
+            for (const card of Array.from(drawn.children)) resize(card, 40);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(300);
+            expect(base.getBoundingClientRect().top).toBe(-200);
+        });
+
+        // A phone's log: mid-turn the Base was emptied to be redrawn, unheld,
+        // and the place re-read then was its note, whose top never moved.
+        it("keeps the place read before the width changed through a Base emptied and redrawn", () => {
+            const { pane, blocks, addBase, turn, resize } = makePane([[400], 400]);
+            const { base, draw } = addBase(blocks[0]!);
+            draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            turn();
+            resize(blocks[0]!.children[0]!, 563);
+            observer().resized(blocks[0]!);
+            base.empty();
+            base.dataset.height = "0";
+            observer().resized(blocks[0]!);
+            draw(...Array<number>(4).fill(100));
+            observer().resized(blocks[0]!);
+
+            expect(base.getBoundingClientRect().top).toBe(-200);
+        });
+
+        it("keeps the pane's top in a Base, not the heading starting below it, as the width changes", () => {
+            const { pane, content, blocks, add, addBase, turn, resize } = makePane([[400], 400]);
+            const { base, draw } = addBase(blocks[0]!);
+            const drawn = draw(...Array<number>(10).fill(100));
+            add(blocks[0]!, 200);
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 1350;
+            anchor.onScroll();
+
+            turn();
+            for (const card of Array.from(drawn.children)) resize(card, 40);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(570);
+            expect(base.getBoundingClientRect().top).toBe(-380);
+        });
+
+        // Held open at the cards' height, the Base shows the table at its top
+        // and nothing under it: the reader is held in what is drawn.
+        it("holds the pane's top in what a held Base draws, not the space held for it", () => {
+            const { pane, blocks, add, addBase } = makePane([[400], 400]);
+            const { base, draw, holdAt } = addBase(blocks[0]!);
+            draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            holdAt(1000);
+            const drawn = draw(100);
+            observer().resized(blocks[0]!);
+            expect(base.getBoundingClientRect().top).toBe(-50);
+
+            // Bases fills the table after drawing it.
+            expect(observer().targets).toContain(drawn);
+            add(drawn, 300);
+            observer().resized(drawn);
+            expect(base.getBoundingClientRect().top).toBe(-200);
+        });
+
+        // Between emptying a Base and Bases drawing into it, only the held box is there.
+        it("holds the pane's top as far through a held Base that draws nothing yet", () => {
+            const { pane, blocks, addBase } = makePane([[400], 400]);
+            const { base, draw, holdAt } = addBase(blocks[0]!);
+            draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            holdAt(1000);
+            base.empty();
+            observer().resized(blocks[0]!);
+
+            expect(base.getBoundingClientRect().top).toBe(-500);
+        });
+
+        it("stops hearing a Base once the pane's top leaves it", () => {
+            const { pane, blocks, addBase } = makePane([[400], 400]);
+            const drawn = addBase(blocks[0]!).draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+            expect(observer().targets).toContain(drawn);
+
+            pane.scrollTop = 1500;
+            anchor.onScroll();
+
+            expect(observer().targets).not.toContain(drawn);
+        });
+
+        // Little lies below a note jumped to: the stream shrinks by more, and
+        // the browser clamps the scroll to its new end.
+        it("counts a scroll clamped to the stream's end as no scroll of the reader's", () => {
+            const { pane, blocks, addBase } = makePane([[400], 200]);
+            const { base, draw } = addBase(blocks[0]!);
+            draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            draw(400);
+            pane.scrollTop = pane.scrollHeight - pane.clientHeight;
+            observer().resized(blocks[0]!);
+
+            expect(base.getBoundingClientRect().top).toBe(-200);
+        });
+
+        it("counts a clamp as no scroll of the reader's once the stream grows back mid-reflow", () => {
+            const { pane, blocks, addBase, turn } = makePane([[400], 200]);
+            const { base, draw } = addBase(blocks[0]!);
+            draw(...Array<number>(10).fill(100));
+            anchor.attach(pane);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            turn();
+            draw(400);
+            pane.scrollTop = pane.scrollHeight - pane.clientHeight;
+            observer().resized(blocks[0]!);
+            draw(...Array<number>(8).fill(100));
+            observer().resized(blocks[0]!);
+
+            expect(base.getBoundingClientRect().top).toBe(-400);
+        });
+
         // Back restores a place measured against a note's full layout; held,
         // the note is still filling, and the text at the top is not yet its own.
         it("anchors at a note still held, not at text still settling inside it", () => {
@@ -338,14 +648,14 @@ describe("ScrollAnchor", () => {
             expect(shift(content)).toBe(0);
         });
 
-        it("asks what is drawn there, reading no other element's place", () => {
+        it("asks what is drawn there, reading only it and what starts after it", () => {
             const long = Array.from({ length: 100 }, () => 40);
             const { blocks } = watch([400, long], 500);
             const reads = [...blocks[1]!.children].map((el) => vi.spyOn(el, "getBoundingClientRect"));
 
             anchor.onScroll();
 
-            expect(reads.filter((read) => read.mock.calls.length > 0)).toHaveLength(1);
+            expect(reads.filter((read) => read.mock.calls.length > 0)).toHaveLength(2);
         });
 
         it("looks past anything drawn over the stream, as the search bar is", () => {

@@ -1,4 +1,46 @@
-import { test, expect, openStream, scrollThroughStream, seededDate, SEEDED_DAYS } from "./obsidian";
+import {
+    test,
+    expect,
+    openStream,
+    scrollThroughStream,
+    seededDate,
+    LAYOUT_VIEWPORT,
+    SEEDED_DAYS,
+    withoutScrollAnchoring,
+    restoreScrollAnchoring,
+} from "./obsidian";
+
+/** The note at the pane's top, how far it starts above it, and how many unloaded notes lie above. */
+function readingPoint(container: import("@playwright/test").Locator) {
+    return container.evaluate((column) => {
+        const pane = column.parentElement!.getBoundingClientRect();
+        const blocks = [...column.querySelectorAll<HTMLElement>(".daily-note-block")];
+        const i = blocks.findIndex((block) => block.getBoundingClientRect().bottom > pane.top + 1);
+        return {
+            path: blocks[i]!.dataset.sourcePath,
+            offset: blocks[i]!.getBoundingClientRect().top - pane.top,
+            unloadedAbove: blocks.slice(0, i).filter((block) => block.classList.contains("is-unloaded")).length,
+        };
+    });
+}
+
+/** Turns the phone on its side, as a reader does. */
+async function turnPhone(page: import("@playwright/test").Page) {
+    const turn = ({ width, height }: { width: number; height: number }) =>
+        cdp.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+    const cdp = await page.context().newCDPSession(page);
+    await turn({ width: LAYOUT_VIEWPORT.mobile.height, height: LAYOUT_VIEWPORT.mobile.width });
+    return { restore: () => turn(LAYOUT_VIEWPORT.mobile) };
+}
+
+/**
+ * Narrows the pane as a desktop reader does. Not by resizing the viewport:
+ * afterwards Obsidian's menus no longer close on Escape.
+ */
+async function openRightSidebar(page: import("@playwright/test").Page) {
+    await page.evaluate(() => window.app.workspace.rightSplit.expand());
+    return { restore: () => page.evaluate(() => window.app.workspace.rightSplit.collapse()) };
+}
 
 /** Opens the jump suggester and returns its prompt. */
 async function openSuggester(page: import("@playwright/test").Page) {
@@ -262,5 +304,225 @@ test.describe("jump to date", () => {
         expect(reserved.length).toBeGreaterThan(0);
         // A note unloaded this session reserves what it measured; the store keeps whole pixels.
         for (const [path, height] of reserved) expect(Math.round(parseFloat(height!)), path).toBe(remembered[path!]);
+    });
+
+    // iOS has no scroll anchoring: whatever changes height as the width
+    // changes, the stream alone must hold the place. At 100px, the note above
+    // straddles the pane's top and reflows too.
+    for (const below of [0, 100]) {
+        test(`keeps a title ${below}px below the pane's top where it was when the width changes`, async ({
+            obsidian,
+        }, testInfo) => {
+            const { page } = obsidian;
+            await withoutScrollAnchoring(page);
+            try {
+                const container = await openStream(page);
+                await scrollThroughStream(container);
+                const date = seededDate(Math.floor(SEEDED_DAYS / 2));
+                await jumpTo(page, date);
+                await container.evaluate((column, below) => column.parentElement!.scrollBy(0, -below), below);
+                // The scroll counts as still, and the anchor re-picks the place.
+                await page.waitForTimeout(1000);
+                const title = container.locator(`.daily-note-block[data-source-path$="${date}.md"] .daily-note-title`);
+                const titleTop = () =>
+                    title.evaluate((el) => {
+                        const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                        return el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+                    });
+                const before = await titleTop();
+                expect(before).toBeGreaterThan(-1);
+                expect((await readingPoint(container)).unloadedAbove).toBeGreaterThan(0);
+                const widthBefore = await container.evaluate((column) => column.clientWidth);
+
+                const width = testInfo.project.name === "mobile" ? await turnPhone(page) : await openRightSidebar(page);
+                try {
+                    await expect.poll(() => container.evaluate((column) => column.clientWidth)).not.toBe(widthBefore);
+                    // Obsidian reports the resize late, and the scroll takes the shift once still.
+                    await page.waitForTimeout(1000);
+                    expect(await titleTop()).toBeCloseTo(before, 0);
+                } finally {
+                    await width.restore();
+                }
+            } finally {
+                await restoreScrollAnchoring(page);
+            }
+        });
+    }
+
+    // Turned, a phone redraws the cards being read as a table: the reader lands
+    // as far through the Base as they were (docs/decisions.md, 2026-09-27), in
+    // the table while it is held open at the cards' height.
+    test("keeps how far the pane's top is through a Base redrawn as a table", async ({ obsidian, mobileLayout }) => {
+        test.skip(!mobileLayout, "only a phone draws a Base as cards");
+        const { page } = obsidian;
+        const date = seededDate(SEEDED_DAYS);
+        const path = `Notes/${date}.md`;
+        const columns = ["file.name", "file.path", "file.folder", "file.ext", "file.size"];
+        const base = ["```base", "views:", "  - type: table", "    name: Files", "    order:"];
+        await page.evaluate(
+            async ({ path, text }) => {
+                await window.app.vault.create(path, text);
+            },
+            {
+                path,
+                text: [...base, ...columns.map((c) => `      - ${c}`), "```", ""].join("\n"),
+            }
+        );
+        await withoutScrollAnchoring(page);
+        try {
+            const container = await openStream(page);
+            await jumpTo(page, date);
+            const slot = container.locator(`.daily-note-block[data-source-path="${path}"] .daily-note-base`);
+            await expect(slot.locator(".bases-cards-item[draggable]").first()).toBeVisible();
+            await page.waitForTimeout(1000);
+            /** How far through the Base the pane's top is. */
+            const through = () =>
+                slot.evaluate((el) => {
+                    const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                    const { top, height } = el.getBoundingClientRect();
+                    return (pane.getBoundingClientRect().top - top) / height;
+                });
+            await slot.evaluate((el) => {
+                const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                const { top, height } = el.getBoundingClientRect();
+                pane.scrollTop += top + height / 2 - pane.getBoundingClientRect().top;
+            });
+            await page.waitForTimeout(1000);
+            expect(await through()).toBeCloseTo(0.5, 1);
+
+            // Two frames into the table being held open at the cards' height.
+            const whileHeld = slot.evaluate(
+                (el) =>
+                    new Promise<{ paneAt: number; drawn: number }>((resolve) => {
+                        const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                        const measure = () =>
+                            resolve({
+                                paneAt: pane.getBoundingClientRect().top - el.getBoundingClientRect().top,
+                                drawn: el.lastElementChild!.getBoundingClientRect().height,
+                            });
+                        const tick = () => {
+                            const held = el.style.getPropertyValue("--daily-note-held-height");
+                            if (held && el.querySelector(".bases-thead"))
+                                requestAnimationFrame(() => requestAnimationFrame(measure));
+                            else requestAnimationFrame(tick);
+                        };
+                        tick();
+                    })
+            );
+            const width = await turnPhone(page);
+            try {
+                const { paneAt, drawn } = await whileHeld;
+                expect(paneAt).toBeLessThan(drawn);
+                await expect(slot.locator(".bases-thead")).toBeVisible();
+                // Held until Bases fills it, then handed to the scroll once still.
+                await page.waitForTimeout(3000);
+                expect(await through()).toBeCloseTo(0.5, 1);
+            } finally {
+                await width.restore();
+            }
+        } finally {
+            await restoreScrollAnchoring(page);
+            await page.evaluate((path) => window.app.vault.delete(window.app.vault.getAbstractFileByPath(path)!), path);
+        }
+    });
+
+    // As a phone's trace showed: the pane's top on the Base's last card, a
+    // heading below it starting inside the pane. The reader is in the Base.
+    test("keeps the pane's top in a Base redrawn as a table when a heading starts below it", async ({
+        obsidian,
+        mobileLayout,
+    }) => {
+        test.skip(!mobileLayout, "only a phone draws a Base as cards");
+        const { page } = obsidian;
+        const date = seededDate(SEEDED_DAYS);
+        const path = `Notes/${date}.md`;
+        // The demo vault's: six books, too wide for a phone's table, embedded from a .base file.
+        const books: [string, string, string, string][] = [
+            ["A Pattern Language", "Christopher Alexander", "up next", ""],
+            ["Four Thousand Weeks", "Oliver Burkeman", "finished", "4"],
+            ["Piranesi", "Susanna Clarke", "finished", "5"],
+            ["The Design of Everyday Things", "Don Norman", "reading", "4"],
+            ["The Dispossessed", "Ursula K. Le Guin", "reading", "5"],
+            ["Tomorrow, and Tomorrow, and Tomorrow", "Gabrielle Zevin", "up next", ""],
+        ];
+        const files: Record<string, string> = {
+            ...Object.fromEntries(
+                books.map(([title, author, status, rating]) => [
+                    `Books/${title}.md`,
+                    `---\nauthor: ${author}\nstatus: ${status}\nrating: ${rating}\n---\n`,
+                ])
+            ),
+            "Reading.base": [
+                "filters:",
+                "  and:",
+                '    - file.inFolder("Books")',
+                "views:",
+                "  - type: table",
+                "    name: Reading",
+                "    order:",
+                "      - file.name",
+                "      - author",
+                "      - status",
+                "      - rating",
+                "",
+            ].join("\n"),
+            [path]: [
+                "## Reading",
+                "",
+                "![[Reading.base]]",
+                "",
+                "## Next week",
+                "",
+                "- [ ] Order tiles",
+                "- [x] Book dentist",
+                "- [ ] Back up the laptop",
+                "",
+            ].join("\n"),
+        };
+        await page.evaluate(async (files) => {
+            await window.app.vault.createFolder("Books").catch(() => {});
+            for (const [path, text] of Object.entries(files)) await window.app.vault.create(path, text);
+        }, files);
+        await withoutScrollAnchoring(page);
+        try {
+            const container = await openStream(page);
+            await jumpTo(page, date);
+            const slot = container.locator(`.daily-note-block[data-source-path="${path}"] .daily-note-base`);
+            await expect(slot.locator(".bases-cards-item[draggable]").first()).toBeVisible();
+            await page.waitForTimeout(1000);
+            /** How far through the Base the pane's top is. */
+            const through = () =>
+                slot.evaluate((el) => {
+                    const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                    const { top, height } = el.getBoundingClientRect();
+                    return (pane.getBoundingClientRect().top - top) / height;
+                });
+            // The Base ends 40% down the pane, the heading just below.
+            await slot.evaluate((el) => {
+                const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                const bottom = el.getBoundingClientRect().bottom - pane.getBoundingClientRect().top;
+                pane.scrollTop += bottom - 0.4 * pane.clientHeight;
+            });
+            await page.waitForTimeout(1000);
+            const before = await through();
+            expect(before).toBeGreaterThan(0);
+            expect(before).toBeLessThan(1);
+
+            const width = await turnPhone(page);
+            try {
+                await expect(slot.locator(".bases-thead")).toBeVisible();
+                // Held until Bases fills it, then handed to the scroll once still.
+                await page.waitForTimeout(3000);
+                expect(await through()).toBeCloseTo(before, 1);
+            } finally {
+                await width.restore();
+            }
+        } finally {
+            await restoreScrollAnchoring(page);
+            await page.evaluate(async (paths) => {
+                for (const path of [...paths, "Books"])
+                    await window.app.vault.delete(window.app.vault.getAbstractFileByPath(path)!, true);
+            }, Object.keys(files));
+        }
     });
 });

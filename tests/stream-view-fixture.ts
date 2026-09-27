@@ -102,7 +102,7 @@ export function makeStubbedView(app: object = makeApp()) {
         remove: vi.fn(),
         refresh: vi.fn().mockResolvedValue(undefined),
         render: vi.fn(),
-        refreshMargins: vi.fn(),
+        onResize: vi.fn(),
         onScroll: vi.fn(),
         onTouch: vi.fn(),
         scrollToTop: vi.fn(),

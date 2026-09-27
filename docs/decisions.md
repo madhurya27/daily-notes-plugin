@@ -3,6 +3,64 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-27 — A Base redrawn under the pane's top keeps the reader's fraction
+
+**Decision:** when the pane's top crosses a Base, `ScrollAnchor` holds it as
+far through the Base as it was, not at the Base's top — through what the Base
+draws, not the box held open for it. A scroll pulled back to the stream's end is
+a clamp, not the reader's.
+
+**Why:** a turned phone redraws cards as a table: the entry read is gone, and
+held at its top the reader landed anywhere. Cards and rows keep one order. Below
+a note jumped to, the stream shrank by more than lay below the pane, and the
+clamp was undone as a scroll.
+
+**Rejected:**
+- The same entry, card to row — Bases fills the table after drawing it.
+- The Base's top at the pane's — the reader loses their place in it.
+- Through the held box — the table fills its top, and the reader sat in the
+  blank below until the hold let go.
+
+## 2026-09-27 — A reflow holds the block starting in the pane
+
+**Decision:** once the pane's width changes, `ScrollAnchor` holds the first
+block starting inside the pane below the text crossing its top — climbing past
+inline text, anything beside it, anything taking no space — until the shift is
+handed to the scroll. Otherwise it holds the text crossing the top, as before.
+A Base crossing the top is held by its fraction either way, never by what it
+draws. The place is the one read before the width changed, measured again but
+not re-read until handed over.
+
+**Why:** a turned phone reflows the text crossing the top, and holding its top
+moved a title just below it out of view. Native anchoring prefers what is fully
+visible for the same reason.
+
+**Rejected:**
+- Always the block starting in the pane — a chevron tapped there scrolls away.
+- The next element in document order — a span in the reflowing text, and
+  dozens of reads in a highlighted code block.
+- Only the first report after the width changes — the text reflows over frames.
+- A card, or a heading below a Base — on a phone the cards re-flow before the
+  Base is redrawn, and a card's place says nothing of the reader's.
+- Re-reading the place each frame — mid-turn it was a Base emptied for its
+  redraw, then its note, whose top never moved as the Base shrank.
+
+## 2026-09-26 — A new width changes no placeholder
+
+**Decision:** on a width change, an unloaded note keeps its placeholder until it
+renders; only the height it is held at on rendering comes from the new width.
+The scroll anchor survives the margins' rebuild.
+
+**Why:** shrinking placeholders shortens the stream under the scroll. The
+browser clamps the scroll at once, `ScrollAnchor` counts the clamp as the
+reader's, and a phone turned mid-stream landed notes away. An anchor rebuilt
+with the margins has no place to hold while the notes on screen reflow: the
+place moved 120 px.
+
+**Rejected:**
+- Re-reserving every unloaded note — the clamp above.
+- Only those above the pane — clamps once they shrink by more than lies below.
+
 ## 2026-09-26 — The scroll anchor is the element at the pane's top
 
 **Decision:** where `ScrollAnchor` runs, it offsets however far the element at

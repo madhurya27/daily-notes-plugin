@@ -65,6 +65,8 @@ export class NoteWindowManager {
     private scrollRoot: HTMLElement | null = null;
     /** The layout heights are read and kept in, until the task reading it ends. */
     private currentLayout: string | null = null;
+    /** The layout the unloaded blocks expect heights in. */
+    private expectedIn: string | null = null;
     /** The height the current margins were computed from. */
     private rootHeight = 0;
     /** Rendered blocks past the unload margin, waiting for the scroll to be still. */
@@ -91,6 +93,20 @@ export class NoteWindowManager {
     attach(scrollRoot: HTMLElement): void {
         this.detachObservers();
         this.scrollRoot = scrollRoot;
+        this.observeMargins(scrollRoot);
+        this.anchor.attach(scrollRoot);
+        this.resizes = new ResizeObserver((entries) => {
+            for (const entry of entries) this.windowOf(entry.target)?.keepOnceSettled?.();
+        });
+
+        for (const [block, window] of this.windows) {
+            this.observe(block);
+            this.watch(window.watched);
+        }
+    }
+
+    /** The margins are viewports of the pane's height, taken now. */
+    private observeMargins(scrollRoot: HTMLElement): void {
         this.rootHeight = Math.max(scrollRoot.clientHeight, MIN_VIEWPORT_PX);
 
         this.renderObserver = new IntersectionObserver(
@@ -112,25 +128,29 @@ export class NoteWindowManager {
             },
             { root: scrollRoot, rootMargin: `${Math.round(this.rootHeight * UNLOAD_VIEWPORTS)}px` }
         );
-        this.anchor.attach(scrollRoot);
-        this.resizes = new ResizeObserver((entries) => {
-            for (const entry of entries) this.windowOf(entry.target)?.keepOnceSettled?.();
-        });
+    }
 
-        for (const [block, window] of this.windows) {
-            this.observe(block);
-            this.watch(window.watched);
-        }
+    /** Obsidian reports a pane dragged or a device turned. */
+    onResize(): void {
+        this.refreshMargins();
+        this.expectLayout();
     }
 
     /**
-     * Rebuilds the observers against the pane's new height. A no-op when the
-     * height did not change, so dragging a split costs nothing.
+     * Rebuilds the margins against the pane's new height. A no-op when the
+     * height did not change, so dragging a split costs nothing. The anchor
+     * stays (docs/decisions.md, 2026-09-26).
      */
-    refreshMargins(): void {
+    private refreshMargins(): void {
         if (!this.scrollRoot) return;
         if (Math.max(this.scrollRoot.clientHeight, MIN_VIEWPORT_PX) === this.rootHeight) return;
-        this.attach(this.scrollRoot);
+        this.renderObserver?.disconnect();
+        this.unloadObserver?.disconnect();
+        this.observeMargins(this.scrollRoot);
+        for (const block of this.windows.keys()) {
+            this.renderObserver!.observe(block);
+            this.unloadObserver!.observe(block);
+        }
     }
 
     /** A scroll restarts the wait on any block that left the margin. */
@@ -153,22 +173,22 @@ export class NoteWindowManager {
 
     /** An unloaded block for `file`, reserving what it last measured, or the estimate. */
     add(file: TFile): HTMLElement {
-        const layout = this.layout();
-        const remembered = this.heights.heightOf(layout, file.path);
-        const reserved = remembered ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
         const block = this.renderer.createBlock(file);
-        this.windows.set(block, {
+        const window: NoteWindow = {
             file,
             component: null,
             rendering: false,
             unloadWanted: false,
-            height: reserved,
-            measured: remembered !== undefined,
+            height: ESTIMATED_NOTE_HEIGHT_PX,
+            measured: false,
             hold: null,
             watched: [],
             keepOnceSettled: null,
-        });
-        this.markUnloaded(block, reserved);
+        };
+        this.windows.set(block, window);
+        this.expectedIn = this.layout();
+        this.expect(window, this.expectedIn);
+        this.markUnloaded(block, window.height);
         this.observe(block);
         return block;
     }
@@ -317,6 +337,30 @@ export class NoteWindowManager {
         block.empty();
         this.markUnloaded(block, window.height);
         this.changes++;
+    }
+
+    /**
+     * A height is true only at the width it was measured at: on a new one,
+     * nothing is held at the old one, and a note rendering again is held at
+     * what it measured at the new one. Placeholders keep their heights until
+     * they render (docs/decisions.md, 2026-09-26). The same width rereads
+     * nothing.
+     */
+    private expectLayout(): void {
+        const layout = this.layout();
+        if (layout === this.expectedIn) return;
+        this.expectedIn = layout;
+        for (const window of this.windows.values()) {
+            this.releaseHold(window);
+            if (!window.component) this.expect(window, layout);
+        }
+    }
+
+    /** What `window` last measured in `layout`, or the estimate. */
+    private expect(window: NoteWindow, layout: string): void {
+        const remembered = this.heights.heightOf(layout, window.file.path);
+        window.height = remembered ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
+        window.measured = remembered !== undefined;
     }
 
     /** Held, the block cannot shrink: a dip shows only in what was rendered in it. */
