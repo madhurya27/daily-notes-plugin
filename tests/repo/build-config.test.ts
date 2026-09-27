@@ -21,4 +21,9 @@ describe("build configuration", () => {
     it("bakes BUILD_LABEL in from the environment, empty when unset", () => {
         expect(read("esbuild.config.mjs")).toContain('BUILD_LABEL: JSON.stringify(process.env.BUILD_LABEL ?? "")');
     });
+
+    it("names a phone build by its code, in words", () => {
+        const pkg = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
+        expect(pkg.scripts["build:device"]).toContain('BUILD_LABEL="$(node scripts/build-name.mjs)"');
+    });
 });

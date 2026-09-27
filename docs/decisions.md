@@ -70,15 +70,19 @@ text, so heights measured with and without it differ.
 
 ## 2026-09-25 — A build for a phone names itself on load
 
-**Decision:** `pnpm run build:device` bakes the branch, commit and build time
-into the bundle as `BUILD_LABEL`; the plugin shows it in a notice on load.
+**Decision:** `pnpm run build:device` bakes a two-word name into the bundle as
+`BUILD_LABEL`, hashed from the commit and any uncommitted change
+(`scripts/build-name.mjs`); the plugin shows it in a notice on load.
 Plain `build`, which releases use, bakes an empty label and shows nothing.
 
 **Why:** iCloud syncs the plugin to the phone late and silently, so a test
 could run on the previous build.
 
-**Rejected:** a setting or command showing the version — the manifest version
-is the same across every test build.
+**Rejected:**
+- A setting or command showing the version — the manifest version is the same
+  across every test build.
+- The branch, commit and time — read on a phone, compared character by
+  character.
 
 ## 2026-09-25 — Back returns to its place in one scroll
 

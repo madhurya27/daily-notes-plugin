@@ -193,11 +193,11 @@ describe("DailyNotesStreamPlugin — build label", () => {
     afterEach(() => vi.unstubAllGlobals());
 
     it("names the build on load when it was built with a label", async () => {
-        vi.stubGlobal("BUILD_LABEL", "experiment/near-top f3bf514 18:40");
+        vi.stubGlobal("BUILD_LABEL", "amber otter");
 
         await loadPlugin();
 
-        expect(Notice.shown).toEqual(["Daily notes stream: experiment/near-top f3bf514 18:40"]);
+        expect(Notice.shown).toEqual(["Daily notes stream: amber otter"]);
     });
 
     it("says nothing on load in a release build", async () => {
