@@ -481,8 +481,7 @@ describe("NoteWindowManager after the pane's width changes", () => {
 
     afterEach(() => document.body.empty());
 
-    // Shrinking a placeholder shortens the stream under the scroll, and the
-    // browser pulls the reader down before the anchor can hold the place.
+    // docs/decisions.md, 2026-09-26.
     it("keeps an unloaded note's placeholder, and holds it at what it measured at the new width", async () => {
         const { manager, heights, narrow } = makeResizable();
         heights.keep(NARROW, FILE.path, 1200);
@@ -581,8 +580,7 @@ describe("NoteWindowManager margins", () => {
         expect(marginsPx()).toEqual([2400, 6400]);
     });
 
-    // Turning a phone changes the height: a new anchor would have no place to
-    // hold while the notes on screen reflow at the new width.
+    // Turning a phone changes the height too (docs/decisions.md, 2026-09-26).
     it("keeps the scroll anchor when the pane is resized", () => {
         const root = makeScrollRoot(800);
         const { manager } = makeManager(makeRenderer(), () => 500, root);

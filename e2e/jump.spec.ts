@@ -307,8 +307,8 @@ test.describe("jump to date", () => {
     });
 
     // iOS has no scroll anchoring: whatever changes height as the width
-    // changes, the stream alone must hold the place. The title just below the
-    // pane's top leaves the note above straddling it, reflowing too.
+    // changes, the stream alone must hold the place. At 100px, the note above
+    // straddles the pane's top and reflows too.
     for (const below of [0, 100]) {
         test(`keeps a title ${below}px below the pane's top where it was when the width changes`, async ({
             obsidian,

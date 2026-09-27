@@ -12,8 +12,7 @@ handed to the scroll. Otherwise it holds the text crossing the top, as before.
 
 **Why:** a turned phone reflows the text crossing the top, and holding its top
 moved a title just below it out of view. Native anchoring prefers what is fully
-visible for the same reason. A width only reflows; a chevron tapped in the text
-crossing the top is the reader's own change, and must not move it.
+visible for the same reason.
 
 **Rejected:**
 - Always the block starting in the pane — a chevron tapped there scrolls away.
@@ -29,8 +28,9 @@ The scroll anchor survives the margins' rebuild.
 
 **Why:** shrinking placeholders shortens the stream under the scroll. The
 browser clamps the scroll at once, `ScrollAnchor` counts the clamp as the
-reader's, and a phone turned mid-stream landed notes away. A new anchor has no
-place to hold while the notes on screen reflow: 120 px off, on `main` too.
+reader's, and a phone turned mid-stream landed notes away. An anchor rebuilt
+with the margins has no place to hold while the notes on screen reflow: the
+place moved 120 px.
 
 **Rejected:**
 - Re-reserving every unloaded note — the clamp above.

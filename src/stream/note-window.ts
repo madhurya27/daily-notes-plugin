@@ -139,7 +139,7 @@ export class NoteWindowManager {
     /**
      * Rebuilds the margins against the pane's new height. A no-op when the
      * height did not change, so dragging a split costs nothing. The anchor
-     * stays: a new one would have no place to hold while the notes reflow.
+     * stays (docs/decisions.md, 2026-09-26).
      */
     private refreshMargins(): void {
         if (!this.scrollRoot) return;
@@ -343,9 +343,8 @@ export class NoteWindowManager {
      * A height is true only at the width it was measured at: on a new one,
      * nothing is held at the old one, and a note rendering again is held at
      * what it measured at the new one. Placeholders keep their heights until
-     * they render: shrinking them shortens the stream under the scroll, and
-     * the browser pulls the reader down before the anchor can hold the place.
-     * The same width rereads nothing.
+     * they render (docs/decisions.md, 2026-09-26). The same width rereads
+     * nothing.
      */
     private expectLayout(): void {
         const layout = this.layout();

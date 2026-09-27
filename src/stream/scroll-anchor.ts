@@ -28,9 +28,7 @@ export class ScrollAnchor {
     private place: Place = [];
     /**
      * The same from the first element starting inside the pane, held instead
-     * once the pane's width changes: the text crossing the top reflows then,
-     * and holding its top moves everything the reader sees below it. Otherwise
-     * a change there is the reader's own, as a chevron tapped in it.
+     * once the pane's width changes (docs/decisions.md, 2026-09-27).
      */
     private reflowPlace: Place = [];
     /** The scroll `place` was read at: a script may move it before a resize reports. */

@@ -271,8 +271,6 @@ describe("ScrollAnchor", () => {
             expect(shift(content)).toBe(0);
         });
 
-        // A turned phone reflows the text crossing the pane's top: holding its
-        // top would move everything the reader sees below it.
         it("holds the text starting just below the pane's top when the pane's width changes", () => {
             const { content, blocks, resize, turn } = watch([[400, 400, 400], 400], 500);
 
