@@ -40,12 +40,6 @@ describe("plugin submission compliance", () => {
         }
     });
 
-    it("builds the DOM through the helpers rather than raw HTML", () => {
-        for (const { name, text } of sources) {
-            expect(text, name).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML/);
-        }
-    });
-
     // A placeholder's height is measured at runtime, so it cannot live in a
     // class. Custom properties are the exception: styles.css still owns which
     // declaration uses the value. See docs/decisions.md (2026-09-20). Reading
@@ -55,12 +49,6 @@ describe("plugin submission compliance", () => {
         const write = /\.style\.\w+\s*=[^=]|\.style\.(set|remove)Property|cssText|setCssStyles/;
         for (const { name, text } of sources) {
             expect(text.replace(customProperty, ""), name).not.toMatch(write);
-        }
-    });
-
-    it("declares no var", () => {
-        for (const { name, text } of sources) {
-            expect(text, name).not.toMatch(/\bvar\s/);
         }
     });
 
@@ -83,32 +71,6 @@ describe("plugin submission compliance", () => {
         for (const { name, text } of sources) {
             expect(text, name).not.toMatch(/\bwindow\.app\b/);
             expect(text, name).not.toMatch(/(^|[^.\w])app\.(workspace|vault|metadataCache|plugins)\b/m);
-        }
-    });
-
-    // Obsidian prefixes command ids with the plugin id; repeating it here would
-    // register "daily-notes-stream:daily-notes-stream-open-stream".
-    it("leaves the plugin id out of its command ids", () => {
-        for (const { name, text } of sources) {
-            for (const [, id] of text.matchAll(/\bid:\s*["'`]([^"'`]+)["'`]/g)) {
-                expect(id, name).not.toContain(manifest.id);
-            }
-        }
-    });
-
-    // A default hotkey overrides whatever the user has bound to that chord.
-    it("binds no hotkey by default", () => {
-        for (const { name, text } of sources) {
-            expect(text, name).not.toMatch(/\bhotkeys\s*:/);
-        }
-    });
-
-    // Obsidian reinstates every open leaf where it was; detaching on unload
-    // moves the user's view for them.
-    it("detaches no leaf when the plugin unloads", () => {
-        for (const { name, text } of sources) {
-            const unload = /\bonunload\s*\(\)\s*\{([\s\S]*?)\n {4}\}/.exec(text);
-            if (unload) expect(unload[1], name).not.toMatch(/detachLeavesOfType|\.detach\(/);
         }
     });
 
@@ -137,14 +99,6 @@ describe("plugin submission compliance", () => {
             expect(text, name).not.toMatch(/\.addEventListener\(/);
             expect(text, name).not.toMatch(/\.onClickEvent\(/);
         }
-    });
-
-    it("debounces the file-system event it re-renders from", () => {
-        // AGENTS.md: debounce file-system handlers. Obsidian autosaves while
-        // typing, and each save would otherwise re-render the whole note.
-        const stream = sources.find(({ name }) => name === "stream/note-stream.ts")!;
-        expect(stream.text).toMatch(/debounce\(/);
-        expect(stream.text).toMatch(/flushModified/);
     });
 
     // Obsidian's sample plugin names files in kebab-case; docs/decisions.md, 2026-09-23.

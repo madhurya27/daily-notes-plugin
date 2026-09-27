@@ -27,10 +27,6 @@ const script = () =>
 const RELEASE_ASSETS = ["main.js", "manifest.json", "styles.css"];
 
 describe("release workflow", () => {
-    it("exists", () => {
-        expect(workflow).not.toBeNull();
-    });
-
     it("runs on a pushed tag", () => {
         expect(workflow!.on.push?.tags).toBeTruthy();
     });

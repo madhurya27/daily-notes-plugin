@@ -5,8 +5,8 @@ Implementation-ready specs for work that has not started. Shipped items are not 
 
 ## M — Marketplace readiness
 
-`tests/repo/compliance.test.ts` guards every automatable submission rule, so a regression fails there rather than in
-review. Three things it cannot check, to confirm by hand before submitting:
+`tests/repo/compliance.test.ts` and the Obsidian ESLint rules guard every automatable submission rule, so a
+regression fails there rather than in review. Three things it cannot check, to confirm by hand before submitting:
 
 - Settings has no headings, and no setting name repeats the plugin name.
 - `normalizePath` guards the constructed path in `DailyNoteService`.

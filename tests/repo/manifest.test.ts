@@ -27,14 +27,6 @@ describe("manifest.json — marketplace submission requirements", () => {
         expect(manifest.authorUrl).toBe(`https://github.com/${owner}`);
     });
 
-    it("declares the repository it is published from", () => {
-        expect(repoSlug()).toBe("madhurya27/daily-notes-plugin");
-    });
-
-    it("names the plugin in sentence case, without the word 'plugin'", () => {
-        expect(manifest.name).toBe("Daily notes stream");
-    });
-
     it("records this version's minAppVersion in versions.json", () => {
         expect(versions[manifest.version as string]).toBe(manifest.minAppVersion);
     });

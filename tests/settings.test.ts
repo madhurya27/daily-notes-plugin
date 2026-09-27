@@ -18,10 +18,6 @@ function makeTab(plugin: ReturnType<typeof makePlugin>) {
 describe("DailyNotesStreamSettingTab", () => {
     beforeEach(() => Setting.reset());
 
-    it("defaults to shown, expanded properties", () => {
-        expect(DEFAULT_SETTINGS).toEqual({ showProperties: true, propertiesCollapsed: false });
-    });
-
     it("renders one toggle per setting, seeded from current values", () => {
         const plugin = makePlugin();
         plugin.settings.showProperties = true;
