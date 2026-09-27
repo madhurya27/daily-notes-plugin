@@ -3,7 +3,7 @@ import { Platform, debounce } from "obsidian";
 /** How long the scroll is still before the stream counts it stopped (docs/decisions.md, 2026-09-23). */
 export const SCROLL_IDLE_MS = 300;
 
-/** From a block down to an element, each where it was drawn. */
+/** From a block down to an element, each where it was drawn in the pane. */
 type Place = { el: Element; top: number }[];
 
 /**
@@ -136,7 +136,7 @@ export class ScrollAnchor {
         const place = this.reflowing ? this.reflowPlace : this.place;
         const point = [...place].reverse().find(({ el }) => this.scrollRoot!.contains(el));
         const scrolled = this.scrollRoot!.scrollTop - this.placeScroll;
-        const moved = point ? point.el.getBoundingClientRect().top + scrolled - point.top : 0;
+        const moved = point ? this.topInPane(point.el) + scrolled - point.top : 0;
         if (moved === 0) return false;
         this.owed += moved;
         this.shift(this.stream()!);
@@ -172,10 +172,18 @@ export class ScrollAnchor {
         for (let at: Element | null = el; at && at !== stream; at = at.parentElement) path.unshift(at);
         const place: Place = [];
         for (const at of path) {
-            place.push({ el: at, top: at.getBoundingClientRect().top });
+            place.push({ el: at, top: this.topInPane(at) });
             if ((at as HTMLElement).style.getPropertyValue("--daily-note-held-height")) break;
         }
         return place;
+    }
+
+    /**
+     * Measured from the pane, not the window: a phone turned on its side hides
+     * the status bar, moving the pane and all it holds.
+     */
+    private topInPane(el: Element): number {
+        return el.getBoundingClientRect().top - this.scrollRoot!.getBoundingClientRect().top;
     }
 
     /**

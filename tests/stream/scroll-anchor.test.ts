@@ -46,7 +46,10 @@ function makePane(layout: (number | number[])[]) {
     });
     /** The pane's height, which the anchor looks for text starting in. */
     const PANE_HEIGHT = 600;
-    pane.getBoundingClientRect = () => ({ top: 0, bottom: PANE_HEIGHT }) as DOMRect;
+    /** Where the pane sits in the window: a phone turned hides its status bar. */
+    let paneTop = 0;
+    pane.getBoundingClientRect = () => ({ top: paneTop, bottom: paneTop + PANE_HEIGHT }) as DOMRect;
+    const movePane = (top: number) => (paneTop = top);
     let width = 400;
     Object.defineProperty(pane, "clientWidth", { configurable: true, get: () => width });
     /** The pane turned wider, as a phone on its side. */
@@ -58,7 +61,7 @@ function makePane(layout: (number | number[])[]) {
             ? Array.from(el.children).reduce((sum, child) => sum + heightOf(child), 0)
             : Number((el as HTMLElement).dataset.height);
     const topOf = (el: Element): number => {
-        if (el === content) return -scrollTop + shift(content);
+        if (el === content) return paneTop - scrollTop + shift(content);
         const parent = el.parentElement!;
         const before = Array.from(parent.children).slice(0, Array.from(parent.children).indexOf(el));
         return before.reduce((top, sibling) => top + heightOf(sibling), topOf(parent));
@@ -84,6 +87,7 @@ function makePane(layout: (number | number[])[]) {
     /** What is drawn at `y`, topmost first: the deepest element there, then its ancestors. */
     const drawnAt = (y: number): Element[] => {
         const hits: Element[] = [];
+        if (y < paneTop) return hits;
         for (let level: Element | undefined = content; level;) {
             // By the layout's own arithmetic: a test counts what the anchor reads.
             level = Array.from(level.children).find((child) => {
@@ -96,7 +100,7 @@ function makePane(layout: (number | number[])[]) {
     };
     vi.spyOn(document, "elementsFromPoint").mockImplementation((_x, y) => drawnAt(y));
     const resize = (el: Element, height: number) => ((el as HTMLElement).dataset.height = String(height));
-    return { pane, content, blocks, resize, add, turn };
+    return { pane, content, blocks, resize, add, turn, movePane };
 }
 
 describe("ScrollAnchor", () => {
@@ -142,6 +146,20 @@ describe("ScrollAnchor", () => {
         expect(pane.scrollTop).toBe(900);
         expect(shift(content)).toBe(-900);
         expect(readerTop(blocks)).toBe(-100);
+    });
+
+    // A phone turned on its side hides the status bar: the pane moves up, and
+    // everything in it with the pane.
+    it("owes nothing for the pane itself moving", () => {
+        const { pane, content, blocks, turn, movePane } = watch([400, 400, 400], 900);
+
+        movePane(-47);
+        turn();
+        observer().resized(...blocks);
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(shift(content)).toBe(0);
+        expect(pane.scrollTop).toBe(900);
     });
 
     it("holds it when a block above shrinks", () => {
