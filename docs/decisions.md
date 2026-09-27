@@ -921,3 +921,17 @@ to the note's width (`src/render/wide-equations.ts`).
 - `overflow: clip`, as code blocks do — cuts off the end of the equation.
 - Inline math — it sits in a line of text; shrinking it there would change the
   line's text size mid-sentence.
+
+## 2026-09-27 — A search holds its match while the Bases around it fill in
+
+**Decision:** once centred, a match is re-centred whenever the stream resizes,
+until it is still for `SETTLE_MS` or the reader touches or wheels the pane
+(`keepInPlace`, `src/stream/scroll-position.ts`).
+
+**Why:** Bases fill in after the note renders, uncounted by `scrollIntoPlace`;
+one above the match pushed it off screen, leaving the reader on the Base.
+
+**Rejected:**
+- Counting Base fills as layout changes — `scrollIntoPlace` would wait on them,
+  and every step with it.
+- Scroll anchoring — it holds the note's top, not the match.

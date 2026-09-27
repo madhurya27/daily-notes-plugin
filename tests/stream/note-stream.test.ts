@@ -729,12 +729,31 @@ describe("jumping to a date", () => {
 
 describe("what a search moves through", () => {
     let notes: TFile[];
+    const observers: { callback: () => void; disconnected: boolean }[] = [];
+    /** Reports a resize to every observer still connected. */
+    const resized = () => observers.filter((o) => !o.disconnected).forEach((o) => o.callback());
 
     beforeEach(() => {
+        observers.length = 0;
+        vi.stubGlobal(
+            "ResizeObserver",
+            class {
+                disconnected = false;
+                constructor(readonly callback: () => void) {
+                    observers.push(this);
+                }
+                observe() {}
+                disconnect() {
+                    this.disconnected = true;
+                }
+            }
+        );
         notes = makeNotes();
         service.getBatch.mockImplementation((offset: number, limit: number) => notes.slice(offset, offset + limit));
         service.indexOf = vi.fn((path: string) => notes.findIndex((n) => n.path === path));
     });
+
+    afterEach(() => vi.unstubAllGlobals());
 
     const rect = (top: number, bottom: number) => ({ top, bottom }) as DOMRect;
 
@@ -768,6 +787,67 @@ describe("what a search moves through", () => {
         await stream.centre(el);
 
         expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+    });
+
+    describe("a centred match, as the stream settles around it", () => {
+        let el: HTMLElement;
+
+        beforeEach(async () => {
+            document.body.appendChild(pane);
+            HTMLElement.prototype.scrollIntoView = vi.fn();
+            pane.getBoundingClientRect = () => rect(0, 800);
+            el = container.createSpan();
+            el.scrollIntoView = vi.fn();
+            el.getBoundingClientRect = () => rect(390, 410);
+            await stream.centre(el);
+            // A Base above it fills in.
+            el.getBoundingClientRect = () => rect(6390, 6410);
+            vi.mocked(el.scrollIntoView).mockClear();
+        });
+        afterEach(() => pane.remove());
+
+        it("is centred again when a Base above it fills in", () => {
+            resized();
+
+            expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+        });
+
+        it("is let go once another is revealed", async () => {
+            await stream.reveal(notes[3]!);
+            resized();
+
+            expect(el.scrollIntoView).not.toHaveBeenCalled();
+        });
+
+        it("is let go once another is centred", async () => {
+            const next = container.createSpan();
+            next.getBoundingClientRect = () => rect(390, 410);
+            await stream.centre(next);
+            resized();
+
+            expect(el.scrollIntoView).not.toHaveBeenCalled();
+        });
+
+        it("is let go once the reader touches the pane", () => {
+            stream.onTouch(null);
+            resized();
+
+            expect(el.scrollIntoView).not.toHaveBeenCalled();
+        });
+
+        it("is let go once the reader wheels", () => {
+            stream.onWheel();
+            resized();
+
+            expect(el.scrollIntoView).not.toHaveBeenCalled();
+        });
+
+        it("is let go when the stream closes", () => {
+            stream.close();
+            resized();
+
+            expect(el.scrollIntoView).not.toHaveBeenCalled();
+        });
     });
 
     it("tells a match inside the pane from one past its edge", () => {

@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, openStream, SEEDED_DAYS } from "./obsidian";
+import { test, expect, openStream, seededDate, SEEDED_DAYS } from "./obsidian";
 
 /** Opens the bar from the header, which both layouts show. */
 async function openSearch(page: Page): Promise<Locator> {
@@ -94,6 +94,32 @@ test.describe("search the stream", () => {
 
         await expect(bar.locator(".document-search-count")).toHaveText("1 / 1");
         await expect.poll(() => currentMatch(page)).toEqual({ text: "Ran 2 km", onScreen: true });
+    });
+
+    // The Bases above the match fill in after the scroll lands on it.
+    test("keeps a match on screen while the Bases above it fill in", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const path = `Notes/${seededDate(SEEDED_DAYS)}.md`;
+        const columns = ["file.name", "file.path", "file.folder", "file.ext", "file.size", "file.ctime", "file.mtime"];
+        const base = ["```base", "views:", "  - type: table", "    name: Wide", "    order:"];
+        const text = [...base, ...columns.map((c) => `      - ${c}`), "```", ""].join("\n").repeat(2) + "Quokka";
+        await page.evaluate(async ({ path, text }) => void (await window.app.vault.create(path, text)), { path, text });
+        try {
+            await openStream(page);
+            const bar = await openSearch(page);
+            await bar.locator("input").fill("Quokka");
+            await page.keyboard.press("Enter");
+
+            await expect(bar.locator(".document-search-count")).toHaveText("1 / 1");
+            const views = page.locator(`[data-source-path="${path}"] .bases-view`);
+            await expect(views).toHaveCount(2);
+            for (const view of await views.all()) {
+                await expect(view.locator(".bases-tr, .bases-cards-item").first()).toBeAttached();
+            }
+            await expect.poll(() => currentMatch(page)).toEqual({ text: "Quokka", onScreen: true });
+        } finally {
+            await page.evaluate((p) => window.app.vault.delete(window.app.vault.getFileByPath(p)!), path);
+        }
     });
 
     // Typing marks what the reader already sees, as Obsidian's own bar does,

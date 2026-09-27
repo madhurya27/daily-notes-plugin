@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { captureAnchor, restoreAnchor, scrollIntoPlace } from "../../src/stream/scroll-position";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { captureAnchor, keepInPlace, restoreAnchor, scrollIntoPlace } from "../../src/stream/scroll-position";
+import { SETTLE_MS } from "../../src/stream/height-hold";
 import { TFile } from "obsidian";
 
 function makeFile(path: string): TFile {
@@ -220,5 +221,105 @@ describe("scrollIntoPlace", () => {
         await scrollIntoPlace(block, "start", pane, layoutCounting([0, 1, 2, 2, 2, 2]));
 
         expect(block.scrollIntoView).toHaveBeenCalledTimes(3);
+    });
+});
+
+describe("keepInPlace", () => {
+    class FakeResizeObserver {
+        static last: FakeResizeObserver;
+        disconnected = false;
+        constructor(readonly callback: () => void) {
+            FakeResizeObserver.last = this;
+        }
+        observe() {}
+        disconnect() {
+            this.disconnected = true;
+        }
+    }
+    // A real observer reports nothing once disconnected.
+    const resized = () => FakeResizeObserver.last.disconnected || FakeResizeObserver.last.callback();
+
+    const pane = document.createElement("div");
+    pane.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
+    const stream = document.createElement("div");
+    pane.appendChild(stream);
+    document.body.appendChild(pane);
+
+    /** A match 20px tall, centred at `centre.at`, which a test moves. */
+    function match(centre: { at: number }) {
+        const el = document.createElement("span");
+        stream.appendChild(el);
+        el.scrollIntoView = vi.fn();
+        el.getBoundingClientRect = () => ({ top: centre.at - 10, bottom: centre.at + 10 }) as DOMRect;
+        return el;
+    }
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    // A Base above the match fills in after it was centred.
+    it("centres it again when the stream grows above it", () => {
+        const centre = { at: 400 };
+        const el = match(centre);
+        keepInPlace(el, "center", pane, stream);
+
+        centre.at = 6400;
+        resized();
+
+        expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+    });
+
+    it("leaves it alone while it is still in place", () => {
+        const el = match({ at: 401 });
+        keepInPlace(el, "center", pane, stream);
+
+        resized();
+
+        expect(el.scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it("lets go once the stream is still", () => {
+        keepInPlace(match({ at: 400 }), "center", pane, stream);
+
+        vi.advanceTimersByTime(SETTLE_MS);
+
+        expect(FakeResizeObserver.last.disconnected).toBe(true);
+    });
+
+    it("keeps holding while the stream keeps resizing", () => {
+        keepInPlace(match({ at: 400 }), "center", pane, stream);
+
+        vi.advanceTimersByTime(SETTLE_MS - 1);
+        resized();
+        vi.advanceTimersByTime(SETTLE_MS - 1);
+
+        expect(FakeResizeObserver.last.disconnected).toBe(false);
+    });
+
+    it("lets go when stopped", () => {
+        const stop = keepInPlace(match({ at: 400 }), "center", pane, stream);
+
+        stop();
+
+        expect(FakeResizeObserver.last.disconnected).toBe(true);
+    });
+
+    it("lets go of an element no longer in the stream", () => {
+        const centre = { at: 400 };
+        const el = match(centre);
+        keepInPlace(el, "center", pane, stream);
+
+        el.remove();
+        centre.at = 6400;
+        resized();
+
+        expect(el.scrollIntoView).not.toHaveBeenCalled();
+        expect(FakeResizeObserver.last.disconnected).toBe(true);
     });
 });

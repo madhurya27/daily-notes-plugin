@@ -1,4 +1,5 @@
 import { TFile } from "obsidian";
+import { SETTLE_MS } from "./height-hold";
 
 export interface AnchorSnapshot {
     file: TFile;
@@ -135,4 +136,36 @@ export async function scrollIntoPlace(
         if (Math.abs(offset) <= SCROLL_TOLERANCE_PX && settled === changes) return;
     }
     // Out of passes: something kept pushing it away.
+}
+
+/**
+ * Keeps `el` at its place in `scrollEl` while `stream` resizes around it, until
+ * it is still for `SETTLE_MS`; returns what lets go sooner, as the reader
+ * moving the pane must. A Base fills in after drawing, uncounted by
+ * `scrollIntoPlace`, and one above `el` pushes it off screen.
+ */
+export function keepInPlace(
+    el: HTMLElement,
+    placement: Placement,
+    scrollEl: HTMLElement,
+    stream: HTMLElement
+): () => void {
+    let settle = 0;
+    const waitForStill = () => {
+        window.clearTimeout(settle);
+        settle = window.setTimeout(letGo, SETTLE_MS);
+    };
+    const observer = new ResizeObserver(() => {
+        if (!el.isConnected) return letGo();
+        if (Math.abs(offsetFromPlace(el, placement, scrollEl)) > SCROLL_TOLERANCE_PX)
+            el.scrollIntoView({ block: placement });
+        waitForStill();
+    });
+    function letGo(): void {
+        window.clearTimeout(settle);
+        observer.disconnect();
+    }
+    observer.observe(stream);
+    waitForStill();
+    return letGo;
 }

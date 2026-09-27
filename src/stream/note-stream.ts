@@ -9,7 +9,14 @@ import { NoteWindowManager } from "./note-window";
 import type { NoteHeights } from "./note-heights";
 import { layoutOf } from "./layout-memory";
 import { ScrollBoxGuard } from "./scroll-box-guard";
-import { captureAnchor, restoreAnchor, scrollIntoPlace, type StreamLayout, type StreamPlace } from "./scroll-position";
+import {
+    captureAnchor,
+    keepInPlace,
+    restoreAnchor,
+    scrollIntoPlace,
+    type StreamLayout,
+    type StreamPlace,
+} from "./scroll-position";
 
 /** Obsidian autosaves as you type; one render per save is wasted work. */
 const MODIFY_DEBOUNCE_MS = 300;
@@ -38,6 +45,8 @@ export class NoteStream {
     // state and the service cache disagreeing.
     private queue: Promise<void> = Promise.resolve();
     private loadPending = false;
+    /** Lets go of the match last centred; a no-op once it has. */
+    private letGoOfCentred = () => {};
 
     /** Notes saved since the last flush, by path. */
     private readonly pendingModified = new Map<string, TFile>();
@@ -64,6 +73,7 @@ export class NoteStream {
     }
 
     close(): void {
+        this.letGoOfCentred();
         this.onDailyNoteSettingsChange.cancel();
         this.flushModified.cancel();
         this.scroll.detach();
@@ -86,8 +96,15 @@ export class NoteStream {
         this.scrollBoxes.onScroll();
     }
 
+    /** A touch is the reader's own: a match held in place is let go. */
     onTouch(target: EventTarget | null): void {
+        this.letGoOfCentred();
         this.window.onTouch(target);
+    }
+
+    /** The reader scrolls the pane themselves. */
+    onWheel(): void {
+        this.letGoOfCentred();
     }
 
     onFileModify(file: TAbstractFile) {
@@ -216,6 +233,7 @@ export class NoteStream {
      * would desync state from the service cache.
      */
     private async revealIndex(index: number): Promise<HTMLElement | null> {
+        this.letGoOfCentred();
         let file: TFile | undefined;
         await this.enqueue(async () => {
             file = await this.loadThrough(index);
@@ -229,9 +247,14 @@ export class NoteStream {
         return block;
     }
 
-    /** Centres `el`, inside a note, on the pane, and keeps it there while the stream renders. */
-    centre(el: HTMLElement): Promise<void> {
-        return scrollIntoPlace(el, "center", this.scrollRoot, this.layout);
+    /**
+     * Centres `el`, inside a note, on the pane, and keeps it there while the
+     * stream renders and, once centred, while the Bases around it fill in.
+     */
+    async centre(el: HTMLElement): Promise<void> {
+        this.letGoOfCentred();
+        await scrollIntoPlace(el, "center", this.scrollRoot, this.layout);
+        this.letGoOfCentred = keepInPlace(el, "center", this.scrollRoot, this.blocks.el);
     }
 
     /** Whether `range` lies wholly inside the pane's visible area. */

@@ -143,9 +143,10 @@ export class Component {
     registerDomEvent<K extends keyof HTMLElementEventMap>(
         el: HTMLElement,
         type: K,
-        cb: (this: HTMLElement, ev: HTMLElementEventMap[K]) => unknown
+        cb: (this: HTMLElement, ev: HTMLElementEventMap[K]) => unknown,
+        options?: boolean | AddEventListenerOptions
     ) {
-        el.addEventListener(type, cb);
+        el.addEventListener(type, cb, options);
     }
 
     registerEvent(_ref: EventRef) {}

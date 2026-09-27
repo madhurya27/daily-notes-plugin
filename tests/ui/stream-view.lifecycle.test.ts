@@ -125,6 +125,14 @@ describe("DailyNotesStreamView — scroll", () => {
         touched.dispatchEvent(new Event("pointerdown", { bubbles: true }));
         expect(view["stream"]["window"].onTouch).toHaveBeenCalledWith(touched);
     });
+
+    // A search holds its match until the reader moves the pane.
+    it("tells the stream the reader wheeled", async () => {
+        const { view } = await makeViewSetup();
+        const onWheel = vi.spyOn(view["stream"], "onWheel");
+        view.contentEl.dispatchEvent(new Event("wheel"));
+        expect(onWheel).toHaveBeenCalled();
+    });
 });
 
 describe("DailyNotesStreamView — header title", () => {
