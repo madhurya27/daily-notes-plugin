@@ -68,7 +68,7 @@ type HoverView = Component & HoverParent & Pick<View, "getViewType">;
 /** Marks the values whose pills search, so a click can tell them apart. */
 const TAG_VALUE_CLASS = "daily-note-tags-value";
 
-/** The key Obsidian types as tags, so its pills take the tag colours; `tag` it dropped in 1.9.10. */
+/** The key Obsidian types as tags, so its pills take the tag colors; `tag` it dropped in 1.9.10. */
 const TAG_KEY = "tags";
 
 /**

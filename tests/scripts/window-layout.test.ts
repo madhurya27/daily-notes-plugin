@@ -96,7 +96,7 @@ describe("boundsFor", () => {
         expect(boundsFor({ size: null, position: { x: 900, y: 60 } })).toMatchObject({ x: 900, y: 60 });
     });
 
-    it("never restores a maximised window, whatever the saved bounds say", () => {
+    it("never restores a maximized window, whatever the saved bounds say", () => {
         expect(boundsFor({ saved: { isMaximized: true }, size: null }).isMaximized).toBe(false);
     });
 });

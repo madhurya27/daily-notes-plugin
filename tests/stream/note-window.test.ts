@@ -201,7 +201,7 @@ describe("NoteWindowManager.add", () => {
 
 /**
  * A placeholder reserves what its note last measured, in this session or an
- * earlier one (ADR 0010); a note never measured, what its neighbours did.
+ * earlier one (ADR 0010); a note never measured, what its neighbors did.
  */
 describe("NoteWindowManager remembered heights", () => {
     /** Renders a block for `file`, measuring `px`. */

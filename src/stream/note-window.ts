@@ -29,7 +29,7 @@ interface NoteWindow {
     /**
      * The block left while its render was queued or in flight. An observer
      * reports changes, so this is the only unload it will get until it comes
-     * back into view — honouring it later is what keeps a fast scroll from
+     * back into view — honoring it later is what keeps a fast scroll from
      * leaving rendered notes behind.
      */
     unloadWanted: boolean;
@@ -258,7 +258,7 @@ export class NoteWindowManager {
         const window = this.windows.get(block);
         if (!window || window.component) return;
         if (window.rendering) {
-            // Back in view before its render finished: honouring the unload it
+            // Back in view before its render finished: honoring the unload it
             // asked for would leave it blank, and an observer reports changes,
             // so no second event would ever come to fill it.
             window.unloadWanted = false;

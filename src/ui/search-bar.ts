@@ -4,7 +4,7 @@ import { Component, debounce, setIcon } from "obsidian";
 export const SEARCH_DEBOUNCE_MS = 250;
 
 /** An icon control, named for screen readers and tooltips. */
-function labelled(el: HTMLElement, icon: string, label: string): HTMLElement {
+function labeled(el: HTMLElement, icon: string, label: string): HTMLElement {
     setIcon(el, icon);
     el.setAttribute("aria-label", label);
     return el;
@@ -41,9 +41,9 @@ export class SearchBar {
 
         const buttons = search.createDiv({ cls: "document-search-buttons" });
         const button = () => buttons.createEl("button", { cls: "clickable-icon document-search-button" });
-        const previous = labelled(button(), "arrow-up", "Previous");
-        const next = labelled(button(), "arrow-down", "Next");
-        const exit = labelled(
+        const previous = labeled(button(), "arrow-up", "Previous");
+        const next = labeled(button(), "arrow-down", "Next");
+        const exit = labeled(
             search.createDiv({ cls: "clickable-icon document-search-close-button" }),
             "x",
             "Exit search"

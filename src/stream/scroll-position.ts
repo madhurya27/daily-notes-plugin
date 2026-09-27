@@ -92,7 +92,7 @@ export interface StreamLayout {
     drain(): Promise<void>;
 }
 
-/** Where in the pane an element is brought: its top to the pane's top, or centre to centre. */
+/** Where in the pane an element is brought: its top to the pane's top, or center to center. */
 export type Placement = "start" | "center";
 
 /** How far `el` sits from its place in `scrollEl`. */

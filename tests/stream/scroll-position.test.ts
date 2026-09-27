@@ -175,20 +175,20 @@ describe("scrollIntoPlace", () => {
         expect(block.scrollIntoView).toHaveBeenCalledTimes(8); // MAX_SCROLL_PASSES
     });
 
-    /** An element 20px tall whose centre follows `centres`. */
-    function elementCentredAt(centres: number[]) {
+    /** An element 20px tall whose center follows `centers`. */
+    function elementCenteredAt(centers: number[]) {
         const el = document.createElement("span");
         el.scrollIntoView = scrolling(false);
         let pass = 0;
         el.getBoundingClientRect = vi.fn(() => {
-            const centre = centres[Math.min(pass++, centres.length - 1)]!;
-            return { top: centre - 10, bottom: centre + 10 } as DOMRect;
+            const center = centers[Math.min(pass++, centers.length - 1)]!;
+            return { top: center - 10, bottom: center + 10 } as DOMRect;
         });
         return el;
     }
 
-    it("centres an element on the pane", async () => {
-        const el = elementCentredAt([400]);
+    it("centers an element on the pane", async () => {
+        const el = elementCenteredAt([400]);
 
         await scrollIntoPlace(el, "center", pane, layoutCounting());
 
@@ -196,8 +196,8 @@ describe("scrollIntoPlace", () => {
         expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
     });
 
-    it("centres it again once the stream around it shifts it", async () => {
-        const el = elementCentredAt([1400, 400]);
+    it("centers it again once the stream around it shifts it", async () => {
+        const el = elementCenteredAt([1400, 400]);
 
         await scrollIntoPlace(el, "center", pane, layoutCounting());
 
@@ -245,12 +245,12 @@ describe("keepInPlace", () => {
     pane.appendChild(stream);
     document.body.appendChild(pane);
 
-    /** A match 20px tall, centred at `centre.at`, which a test moves. */
-    function match(centre: { at: number }) {
+    /** A match 20px tall, centered at `center.at`, which a test moves. */
+    function match(center: { at: number }) {
         const el = document.createElement("span");
         stream.appendChild(el);
         el.scrollIntoView = vi.fn();
-        el.getBoundingClientRect = () => ({ top: centre.at - 10, bottom: centre.at + 10 }) as DOMRect;
+        el.getBoundingClientRect = () => ({ top: center.at - 10, bottom: center.at + 10 }) as DOMRect;
         return el;
     }
 
@@ -263,13 +263,13 @@ describe("keepInPlace", () => {
         vi.unstubAllGlobals();
     });
 
-    // A Base above the match fills in after it was centred.
-    it("centres it again when the stream grows above it", () => {
-        const centre = { at: 400 };
-        const el = match(centre);
+    // A Base above the match fills in after it was centered.
+    it("centers it again when the stream grows above it", () => {
+        const center = { at: 400 };
+        const el = match(center);
         keepInPlace(el, "center", pane, stream);
 
-        centre.at = 6400;
+        center.at = 6400;
         resized();
 
         expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
@@ -311,12 +311,12 @@ describe("keepInPlace", () => {
     });
 
     it("lets go of an element no longer in the stream", () => {
-        const centre = { at: 400 };
-        const el = match(centre);
+        const center = { at: 400 };
+        const el = match(center);
         keepInPlace(el, "center", pane, stream);
 
         el.remove();
-        centre.at = 6400;
+        center.at = 6400;
         resized();
 
         expect(el.scrollIntoView).not.toHaveBeenCalled();

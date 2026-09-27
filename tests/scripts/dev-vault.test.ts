@@ -138,7 +138,7 @@ describe("createChangeFilter", () => {
         expect(changed("main.js")).toBe(false);
     });
 
-    it("keeps a file's history apart from its neighbours", () => {
+    it("keeps a file's history apart from its neighbors", () => {
         const mtimes = new Map([
             ["main.js", 100],
             ["styles.css", 100],

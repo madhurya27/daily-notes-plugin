@@ -17,8 +17,8 @@ export interface SearchTarget {
     blockOf(file: TFile): HTMLElement | null;
     /** The note at the top of the pane, where a search starts from. */
     firstVisibleNote(): TFile | null;
-    /** Centres `el` in the pane, and keeps it there while the stream renders. */
-    centre(el: HTMLElement): Promise<void>;
+    /** Centers `el` in the pane, and keeps it there while the stream renders. */
+    center(el: HTMLElement): Promise<void>;
     /** Whether `range` lies wholly inside the pane's visible area. */
     isOnScreen(range: Range): boolean;
 }
@@ -156,7 +156,7 @@ export class StreamSearch {
         if (range && !this.isShown(range)) this.folds.unfold(range.startContainer);
         this.highlighter.setCurrent(range);
         const el = range?.startContainer.parentElement;
-        if (el) await this.target.centre(el);
+        if (el) await this.target.center(el);
     }
 
     /** Highlights on screen, or behind a fold a step can open. */

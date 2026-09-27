@@ -1077,8 +1077,8 @@ describe("NoteRenderer renderProperties", () => {
         expect(el.querySelector(".multi-select-pill > .multi-select-pill-content")).not.toBeNull();
     });
 
-    // Obsidian colours a pill as a tag off the value's type, not its key.
-    it("types a tags property so its pills take the tag colours", async () => {
+    // Obsidian colors a pill as a tag off the value's type, not its key.
+    it("types a tags property so its pills take the tag colors", async () => {
         const app = makeApp({ fileCache: { frontmatter: { tags: ["work"], aliases: ["w"] } } });
         const renderer = new NoteRenderer(
             asApp(app),
@@ -1280,7 +1280,7 @@ describe("NoteRenderer renderProperties", () => {
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         const heading = el.querySelector(".metadata-properties-heading")!;
 
-        // The grey box is `.metadata-content`; the heading is its sibling above.
+        // The gray box is `.metadata-content`; the heading is its sibling above.
         expect(heading.parentElement!.className).toBe("metadata-container");
         expect(heading.nextElementSibling!.className).toBe("metadata-content");
     });

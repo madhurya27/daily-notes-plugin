@@ -114,7 +114,7 @@
    and `.metadata-input-text` — element selectors a read-only span cannot match.
    Its variables carry the typography across. */
 .daily-notes-stream-container .metadata-property-key-input {
-    /* An input centres its text in the field; a span drew it against the top,
+    /* An input centers its text in the field; a span drew it against the top,
        leaving the key a row's-worth above the value beside it. */
     display: flex;
     align-items: center;
@@ -251,7 +251,7 @@
 /* List Item Collapse Alignment
 
    Reading view gives the indicator the whole line box: a line box and its text
-   share a centre, so centring the icon in it centres it on the words. `top`
+   share a center, so centering the icon in it centers it on the words. `top`
    clears the item's padding, which absolute positioning measures from inside. */
 .daily-note-content li.is-collapsible > .collapse-indicator {
     position: absolute;
@@ -285,7 +285,7 @@
     margin-block-end: calc(var(--p-spacing) * 0.25);
 }
 
-/* Centred on the first line by offset, so a heading stays one run of text: a
+/* Centered on the first line by offset, so a heading stays one run of text: a
    flex heading lays a link and the words after it out as columns. The box
    stays square, as the chevron turns in it. */
 .daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible > .collapse-indicator {
@@ -518,7 +518,7 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
 
 /* Search. The bar is Obsidian's own find bar, drawn by its stylesheet; only
    closing it is ours. Matches paint through the CSS highlight API, in the
-   colours Obsidian's editor search uses; the current one is a selection. */
+   colors Obsidian's editor search uses; the current one is a selection. */
 .daily-notes-search.is-closed {
     display: none;
 }

@@ -18,7 +18,7 @@ describe("StreamSearch", () => {
     let highlighter: SearchHighlighter;
     let status: string;
     let revealed: TFile[];
-    let centred: HTMLElement[];
+    let centered: HTMLElement[];
     let top: TFile | null;
     let shown: (range: Range) => boolean;
     let onScreen: (range: Range) => boolean;
@@ -43,7 +43,7 @@ describe("StreamSearch", () => {
         );
         status = "";
         revealed = [];
-        centred = [];
+        centered = [];
         top = notes[0]!;
         shown = () => true;
         onScreen = () => false;
@@ -61,8 +61,8 @@ describe("StreamSearch", () => {
                 },
                 blockOf: (file) => blocks.get(file) ?? null,
                 firstVisibleNote: () => top,
-                centre: (el) => {
-                    centred.push(el);
+                center: (el) => {
+                    centered.push(el);
                     return Promise.resolve();
                 },
                 isOnScreen: (range) => onScreen(range),
@@ -105,7 +105,7 @@ describe("StreamSearch", () => {
         expect(currentNote()).toBe(notes[0]);
         expect(status).toBe("1 / 3");
         expect(revealed).toEqual([]);
-        expect(centred).toEqual([]);
+        expect(centered).toEqual([]);
     });
 
     it("steps on from the match it marked", async () => {
@@ -178,14 +178,14 @@ describe("StreamSearch", () => {
         expect(status).toBe("2 / 3");
     });
 
-    it("centres the current highlight in the pane", async () => {
+    it("centers the current highlight in the pane", async () => {
         await search.search("milk");
 
         await search.next();
         await search.next();
 
         const paragraph = blocks.get(notes[0]!)!.firstChild;
-        expect(centred).toEqual([paragraph, paragraph]);
+        expect(centered).toEqual([paragraph, paragraph]);
     });
 
     it("wraps from the last note to the first", async () => {
@@ -270,7 +270,7 @@ describe("StreamSearch", () => {
                     reveal: (file) => Promise.resolve(blocks.get(file)!),
                     blockOf: () => null,
                     firstVisibleNote: () => null,
-                    centre: () => Promise.resolve(),
+                    center: () => Promise.resolve(),
                     isOnScreen: () => false,
                 },
                 highlighter,

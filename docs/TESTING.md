@@ -160,7 +160,7 @@ a reading-list Base every Sunday. Each note is seeded by its date, so a retake s
 - Collapsed leaves the heading alone, with no empty box beneath it and no jump in its position. **[e2e]**
 - The panel matches the one Obsidian draws for the same note: text size, row height, icons. **[e2e]**
 - Each icon follows the key's type, as Obsidian's panel does: `aliases` an arrow, text lines, tags a tag. **[e2e]**
-- List properties are pills: tags in the tag colours, one per tag. A tag Obsidian's panel calls invalid —
+- List properties are pills: tags in the tag colors, one per tag. A tag Obsidian's panel calls invalid —
   `tags: a, b` included — is struck through the same way, and searches nothing. A legacy `tag:` key is plain
   text, as Obsidian draws it. **[e2e]**
 - Clicking a tag — inline in a note or as a pill — opens search on `tag:#name`. **[e2e]**
@@ -209,7 +209,7 @@ Checks:
 - Tap a note's title, then Back: the stream comes back at the same place and does not move after. Try it with
   a Base at the top of the screen, and near the end of the 10th or 20th note (a batch's last). **[e2e]** for
   Chromium's timing; iOS hands the place over a frame later, so only the phone shows its failures.
-- Search a word: every match on screen is highlighted, the current one in the selection colour. A long-press
+- Search a word: every match on screen is highlighted, the current one in the selection color. A long-press
   selects text in a note.
 - Chevrons on headers, list items and the properties row are tappable without zooming, and a tap on heading
   *text* still selects.

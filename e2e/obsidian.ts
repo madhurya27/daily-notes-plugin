@@ -157,10 +157,10 @@ async function launch(extraArgs: string[]): Promise<{
         })
     );
 
-    // Bounds are per vault. Fully off-screen is rejected (centred 1024x800
+    // Bounds are per vault. Fully off-screen is rejected (centered 1024x800
     // instead); a corner is clamped to fit, which is what we want.
     if (!SHOW_WINDOW) {
-        // The corner must be a point some display contains, or Obsidian centres
+        // The corner must be a point some display contains, or Obsidian centers
         // a full-size window over the user's work. An extended desktop is where
         // a "past the edge" guess stops being clamped.
         const screen = secondaryScreen() ?? mainScreen();

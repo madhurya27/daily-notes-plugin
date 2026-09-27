@@ -62,7 +62,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(nested).toBeVisible();
         await heading.locator(".collapse-indicator").click();
 
-        // Hiding is a class the stylesheet has to honour: a heading carries the
+        // Hiding is a class the stylesheet has to honor: a heading carries the
         // collapsible rule's own display, which a bare .is-hidden cannot outrank.
         await expect(nested).toHaveClass(/is-hidden/);
         await expect(nested).toBeHidden();
@@ -108,7 +108,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(chevronBox!.x + chevronBox!.width).toBeLessThanOrEqual(checkboxBox!.x);
     });
 
-    test("centres a list chevron on its label", async ({ obsidian }) => {
+    test("centers a list chevron on its label", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
 
@@ -131,7 +131,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         }
     });
 
-    test("centres a task's checkbox on its label", async ({ obsidian }) => {
+    test("centers a task's checkbox on its label", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
         const task = container.locator(".daily-note-content li.task-list-item", { hasText: "Parent task" }).first();
@@ -228,12 +228,12 @@ test.describe("daily notes stream in real Obsidian", () => {
             expect(stream).toBe(await reading.evaluate(height));
         });
 
-        test("centres its chevron on the first line", async ({ obsidian }) => {
+        test("centers its chevron on the first line", async ({ obsidian }) => {
             const heading = (await openStream(obsidian.page)).locator(".daily-note-block").first().locator("h2");
             const [chevron, line] = await heading.evaluate((h) => {
-                const centre = (r: DOMRect) => r.top + r.height / 2;
+                const center = (r: DOMRect) => r.top + r.height / 2;
                 const svg = h.querySelector(".collapse-indicator svg")!.getBoundingClientRect();
-                return [centre(svg), centre(h.querySelector("a")!.getClientRects()[0]!)];
+                return [center(svg), center(h.querySelector("a")!.getClientRects()[0]!)];
             });
             expect(Math.abs(chevron - line)).toBeLessThanOrEqual(1);
         });
@@ -725,7 +725,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(Math.abs(titleBox!.x - rowsBox!.x)).toBeLessThan(1);
     });
 
-    test("keeps the properties box centred on the note", async ({ obsidian }) => {
+    test("keeps the properties box centered on the note", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
             const plugin = window.app.plugins.plugins["daily-notes-stream"];
@@ -1120,7 +1120,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         });
     });
 
-    test("centres a property's icon on the words in its row", async ({ obsidian }) => {
+    test("centers a property's icon on the words in its row", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {
             const plugin = window.app.plugins.plugins["daily-notes-stream"];
@@ -1136,9 +1136,9 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(panel.locator(".metadata-property").first()).toBeVisible();
 
         // Where the glyphs land, not where their boxes do: the key fills the
-        // row's height, so its box was centred while the word inside it sat
+        // row's height, so its box was centered while the word inside it sat
         // against the top — a phone's taller row especially.
-        const centres = await panel
+        const centers = await panel
             .locator(".metadata-property")
             .first()
             .evaluate((el) => {
@@ -1156,8 +1156,8 @@ test.describe("daily notes stream in real Obsidian", () => {
                 };
             });
 
-        expect(Math.abs(centres.icon - centres.key)).toBeLessThanOrEqual(1);
-        expect(Math.abs(centres.icon - centres.value)).toBeLessThanOrEqual(1);
+        expect(Math.abs(centers.icon - centers.key)).toBeLessThanOrEqual(1);
+        expect(Math.abs(centers.icon - centers.value)).toBeLessThanOrEqual(1);
     });
 
     test("collapses the properties box away entirely", async ({ obsidian }) => {

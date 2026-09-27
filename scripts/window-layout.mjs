@@ -49,7 +49,7 @@ const MARGIN = 40;
 
 /**
  * Where the window opens and how big. Saved bounds carry the rest of the file —
- * Obsidian keeps zoom there too — but never a maximised state, which would
+ * Obsidian keeps zoom there too — but never a maximized state, which would
  * swallow the size just asked for. A window too big for the screen needs no
  * clamping: macOS shrinks it to fit.
  *

@@ -1,6 +1,6 @@
 import { test, expect, LAYOUT_VIEWPORT } from "./obsidian";
 
-test("the test window follows the system colour scheme", async ({ obsidian }) => {
+test("the test window follows the system color scheme", async ({ obsidian }) => {
     const { page } = obsidian;
     const prefersDark = await page.evaluate(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
 
@@ -31,7 +31,7 @@ test("shrinks the window to Obsidian's minimum", async ({ obsidian }) => {
     test.skip(process.env.E2E_SHOW_WINDOW === "1", "the window is deliberately a normal one");
 
     // Bounds landing on no display at all are rejected outright, and Obsidian
-    // falls back to a centred full-size window — which then flashes over the
+    // falls back to a centered full-size window — which then flashes over the
     // user's screen before the hide lands. An extended desktop makes that easy
     // to hit, so the corner has to be a point some display actually contains.
     const bounds = obsidian.windowBounds();

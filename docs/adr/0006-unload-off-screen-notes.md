@@ -40,7 +40,7 @@ DOM per note, which is what keeps a jump to a distant date (`docs/IMPROVEMENTS.m
   observer fills it in — but only because the block always exists.
 - A flick can carry a block through both margins between frames. An observer
   reports changes, so that unload is the only one the block gets until it
-  returns: a render in flight records it and honours it on landing, and a
+  returns: a render in flight records it and honors it on landing, and a
   render still queued is skipped outright rather than holding the queue.
 - jsdom lays nothing out, so unloading is provable only in `e2e/` (ADR 0002).
 

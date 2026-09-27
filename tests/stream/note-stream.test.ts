@@ -780,16 +780,16 @@ describe("what a search moves through", () => {
         expect(rendered).toBe(true);
     });
 
-    it("centres an element and keeps it there while the stream renders", async () => {
+    it("centers an element and keeps it there while the stream renders", async () => {
         const el = document.createElement("span");
         el.scrollIntoView = vi.fn();
 
-        await stream.centre(el);
+        await stream.center(el);
 
         expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
     });
 
-    describe("a centred match, as the stream settles around it", () => {
+    describe("a centered match, as the stream settles around it", () => {
         let el: HTMLElement;
 
         beforeEach(async () => {
@@ -799,14 +799,14 @@ describe("what a search moves through", () => {
             el = container.createSpan();
             el.scrollIntoView = vi.fn();
             el.getBoundingClientRect = () => rect(390, 410);
-            await stream.centre(el);
+            await stream.center(el);
             // A Base above it fills in.
             el.getBoundingClientRect = () => rect(6390, 6410);
             vi.mocked(el.scrollIntoView).mockClear();
         });
         afterEach(() => pane.remove());
 
-        it("is centred again when a Base above it fills in", () => {
+        it("is centered again when a Base above it fills in", () => {
             resized();
 
             expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
@@ -819,10 +819,10 @@ describe("what a search moves through", () => {
             expect(el.scrollIntoView).not.toHaveBeenCalled();
         });
 
-        it("is let go once another is centred", async () => {
+        it("is let go once another is centered", async () => {
             const next = container.createSpan();
             next.getBoundingClientRect = () => rect(390, 410);
-            await stream.centre(next);
+            await stream.center(next);
             resized();
 
             expect(el.scrollIntoView).not.toHaveBeenCalled();

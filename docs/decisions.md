@@ -213,7 +213,7 @@ stream opens like Obsidian's other views.
 **Rejected:**
 - Revealing an open stream instead — the graph opens a second one, and each
   view owns its service (CLAUDE.md, Invariants), so a second is safe.
-- A new tab every time — tabs pile up; the previous behaviour.
+- A new tab every time — tabs pile up; the previous behavior.
 
 ## 2026-09-25 — Release tags are annotated from 1.0.0
 
@@ -433,7 +433,7 @@ that old raises a notice and moves nothing.
 common case is a half-remembered date. Batches are cheap under
 [ADR 0006](adr/0006-unload-off-screen-notes.md): what is passed over stays
 placeholders. The suggester above makes the fallback visible before it happens;
-this stays the behaviour behind it.
+this stays the behavior behind it.
 
 **Rejected:** an error rather than the older note.
 
@@ -445,7 +445,7 @@ pagination invariant.
 **Decision:** up to eight passes, ending when the target is at the top of the
 pane *and* `NoteWindowManager.layoutChanges` held still across the pass — or
 when a scroll moves nothing and nothing changed since the last pass. Search
-centres a match the same way (`scrollIntoPlace`).
+centers a match the same way (`scrollIntoPlace`).
 
 **Why:** a note above it outgrows its placeholder estimate and pushes it down.
 One `scrollIntoView` left the target 1600–1850px short in e2e, desktop and
@@ -530,10 +530,10 @@ the whole pane stylesheet, padding and line width included.
 
 **Decision:** the indicator takes `height: calc(var(--line-height-normal) * 1em)`
 at `top: var(--list-spacing)`, as reading view does, rather than a 16px box
-centred by hand.
+centered by hand.
 
-**Why:** a line box and its text share a centre, so centring on the line box
-centres on the words; `top` clears the list item's padding, which absolute
+**Why:** a line box and its text share a center, so centering on the line box
+centers on the words; `top` clears the list item's padding, which absolute
 positioning measures from the inside of.
 
 **Rejected:** halving the difference between line height and icon size — it
@@ -625,7 +625,7 @@ copying and re-signing 1GB to save one 150ms blip per launch.
 
 **Decision:** `tags` and other list properties render the `multi-select-pill`
 markup, with `data-property-type="tags"` on a tag value so its pills take the
-tag colours. A tag pill whose text is no tag name — a scalar `tags: a, b`
+tag colors. A tag pill whose text is no tag name — a scalar `tags: a, b`
 included — is `is-invalid`, struck through, and searches nothing, as in
 Obsidian's own panel. Only `tags` is typed as tags: Obsidian 1.9.10 dropped
 the singular `tag`, and draws it as text.
@@ -745,7 +745,7 @@ are unchanged. `tests/repo/compliance.test.ts` enforces the case.
 
 **Why:** Obsidian's plugin guidelines ask for folders once there is more than
 one `.ts` file, and the official sample plugin and Minimal Settings name files
-in kebab-case. A single case needs no judgement to follow, so a test can hold it.
+in kebab-case. A single case needs no judgment to follow, so a test can hold it.
 
 **Rejected:** PascalCase for files exporting a class — nothing can check it,
 and it had already drifted. A lint plugin for the rule — the compliance test
@@ -875,12 +875,12 @@ photograph as scaffolding. Seeding by date lets a recording be retaken.
 encodes the frames with macOS's ImageIO and writes the APNG chunks itself, each
 frame only the rectangle that changed.
 
-**Why:** an animated PNG keeps every colour, so text stays crisp, and plays in
+**Why:** an animated PNG keeps every color, so text stays crisp, and plays in
 GitHub's image tags. ImageIO ships with macOS: nothing to install. Its own APNG
 writer stores whole frames — typing a sentence cost 8 MB, changed rectangles 2.5.
 
 **Rejected:**
-- GIF — 256 colours rough up anti-aliased text.
+- GIF — 256 colors rough up anti-aliased text.
 - MP4 — GitHub plays only videos uploaded by hand, not ones in the repo.
 - ffmpeg or gifski — an install for what the OS already does.
 
@@ -924,7 +924,7 @@ to the note's width (`src/render/wide-equations.ts`).
 
 ## 2026-09-27 — A search holds its match while the Bases around it fill in
 
-**Decision:** once centred, a match is re-centred whenever the stream resizes,
+**Decision:** once centered, a match is re-centered whenever the stream resizes,
 until it is still for `SETTLE_MS` or the reader touches or wheels the pane
 (`keepInPlace`, `src/stream/scroll-position.ts`).
 

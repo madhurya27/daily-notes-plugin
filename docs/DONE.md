@@ -47,7 +47,7 @@
 - [x] Two open streams stay in step
 - [x] Stale collapse state is pruned a day after the note's last write
 - [x] Typecheck and lint `tests/`, against mocks typed by the real API
-- [x] Pruned the unit suite: duplicates dropped, vacuous tests made to assert, names say behaviour
+- [x] Pruned the unit suite: duplicates dropped, vacuous tests made to assert, names say behavior
 - [x] `NoteStream` has its own tests; the view's tests cover only its wiring
 - [x] Search the stream on the vault's own find hotkey, counted per note, stepping through highlights
 - [x] Search opens collapsed sections, unsaved, and labels a match it cannot show `· hidden`

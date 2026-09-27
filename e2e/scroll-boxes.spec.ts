@@ -226,7 +226,7 @@ test.describe("on desktop, wide content scrolls inside its own box", () => {
         await expect(note.locator(".bases-cards-item")).toHaveCount(0);
     });
 
-    test("keeps a table a table, unlabelled", async ({ obsidian }) => {
+    test("keeps a table a table, unlabeled", async ({ obsidian }) => {
         const container = await openStream(obsidian.page);
         const table = container.locator(".daily-note-block").first().locator("table").first();
         await expect(table).toBeVisible();

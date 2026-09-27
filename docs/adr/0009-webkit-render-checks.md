@@ -23,7 +23,7 @@ the engines disagree on: what paints, what the cascade computes.
 ## Consequences
 
 - Covers CSS parsing, the cascade and painting in iOS's engine; not
-  behaviour. The page is a still: no scripts, events, scrolling or glides —
+  behavior. The page is a still: no scripts, events, scrolling or glides —
   those stay on a real phone (`docs/TESTING.md`).
 - macOS WebKit, not iOS: iOS-only paths (momentum scrolling, touch handling,
   tiling) are out of reach.

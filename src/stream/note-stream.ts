@@ -45,8 +45,8 @@ export class NoteStream {
     // state and the service cache disagreeing.
     private queue: Promise<void> = Promise.resolve();
     private loadPending = false;
-    /** Lets go of the match last centred; a no-op once it has. */
-    private letGoOfCentred = () => {};
+    /** Lets go of the match last centered; a no-op once it has. */
+    private letGoOfCentered = () => {};
 
     /** Notes saved since the last flush, by path. */
     private readonly pendingModified = new Map<string, TFile>();
@@ -73,7 +73,7 @@ export class NoteStream {
     }
 
     close(): void {
-        this.letGoOfCentred();
+        this.letGoOfCentered();
         this.onDailyNoteSettingsChange.cancel();
         this.flushModified.cancel();
         this.scroll.detach();
@@ -98,13 +98,13 @@ export class NoteStream {
 
     /** A touch is the reader's own: a match held in place is let go. */
     onTouch(target: EventTarget | null): void {
-        this.letGoOfCentred();
+        this.letGoOfCentered();
         this.window.onTouch(target);
     }
 
     /** The reader scrolls the pane themselves. */
     onWheel(): void {
-        this.letGoOfCentred();
+        this.letGoOfCentered();
     }
 
     onFileModify(file: TAbstractFile) {
@@ -233,7 +233,7 @@ export class NoteStream {
      * would desync state from the service cache.
      */
     private async revealIndex(index: number): Promise<HTMLElement | null> {
-        this.letGoOfCentred();
+        this.letGoOfCentered();
         let file: TFile | undefined;
         await this.enqueue(async () => {
             file = await this.loadThrough(index);
@@ -248,13 +248,13 @@ export class NoteStream {
     }
 
     /**
-     * Centres `el`, inside a note, on the pane, and keeps it there while the
-     * stream renders and, once centred, while the Bases around it fill in.
+     * Centers `el`, inside a note, on the pane, and keeps it there while the
+     * stream renders and, once centered, while the Bases around it fill in.
      */
-    async centre(el: HTMLElement): Promise<void> {
-        this.letGoOfCentred();
+    async center(el: HTMLElement): Promise<void> {
+        this.letGoOfCentered();
         await scrollIntoPlace(el, "center", this.scrollRoot, this.layout);
-        this.letGoOfCentred = keepInPlace(el, "center", this.scrollRoot, this.blocks.el);
+        this.letGoOfCentered = keepInPlace(el, "center", this.scrollRoot, this.blocks.el);
     }
 
     /** Whether `range` lies wholly inside the pane's visible area. */

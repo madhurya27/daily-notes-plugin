@@ -25,7 +25,7 @@ real events, or what is visible on screen belongs in e2e.
 
 ## Consequences
 
-- Two suites with different contracts, and the split has to be honoured: a
+- Two suites with different contracts, and the split has to be honored: a
   visibility assertion in jsdom proves nothing.
 - E2E needs Obsidian installed and is slower (~50s), so it is a task gate rather
   than a per-save one.

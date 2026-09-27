@@ -52,7 +52,7 @@ const READING = Object.entries(BOOKS)
 const PEOPLE = ["Priya", "Sam", "Jonah", "Mara"];
 const PROJECTS = ["Project Atlas", "Kitchen renovation"];
 
-const MOODS = ["focused", "calm", "tired", "energised", "scattered", "content", "restless"];
+const MOODS = ["focused", "calm", "tired", "energized", "scattered", "content", "restless"];
 
 const MORNINGS = [
     "Up at 6:40 without the alarm. Coffee on the balcony while the street was still quiet.",

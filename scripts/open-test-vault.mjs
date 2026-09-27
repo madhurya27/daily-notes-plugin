@@ -167,7 +167,7 @@ spawn(OBSIDIAN, [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${po
 
 const browser = await connect(port);
 const page = browser.contexts()[0].pages()[0];
-// Attaching over CDP makes Playwright emulate a light colour scheme, so the
+// Attaching over CDP makes Playwright emulate a light color scheme, so the
 // window opens light and only returns to the system theme when this script
 // detaches. null hands the preference back immediately.
 await page.emulateMedia({ colorScheme: null });

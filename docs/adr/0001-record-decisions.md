@@ -25,7 +25,7 @@ for the why. Commit messages stay scoped to their own change.
 
 - The cost of a decision is one page, written while the reasoning is fresh.
 - Two places to update when a decision changes: the ADR (superseded) and the
-  docs that describe current behaviour.
+  docs that describe current behavior.
 - Not everything qualifies. A decision with one plausible option is not an ADR;
   formatting, naming and library choices the ecosystem already settles are not
   either.

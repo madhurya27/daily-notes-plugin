@@ -11,7 +11,7 @@ markdown, reading files). Interleaved, they corrupted each other: a delete
 arriving during an in-flight batch was undone by that batch's `state.reset`, and
 a note created mid-load could be dropped entirely. The invariant that
 `state.notes` equals `service._sorted.slice(0, state.length)` broke, which
-desynchronises pagination — notes skipped or repeated on further scroll.
+desynchronizes pagination — notes skipped or repeated on further scroll.
 
 ## Decision
 

@@ -161,7 +161,7 @@ describe("plugin submission compliance", () => {
         }
     });
 
-    it("ships the licence the directory requires", () => {
+    it("ships the license the directory requires", () => {
         expect(existsSync(resolve(repoRoot, "LICENSE"))).toBe(true);
         expect(readFileSync(resolve(repoRoot, "LICENSE"), "utf8").trim().length).toBeGreaterThan(0);
     });
