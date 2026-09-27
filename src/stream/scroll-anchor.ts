@@ -3,6 +3,9 @@ import { Platform, debounce } from "obsidian";
 /** How long the scroll is still before the stream counts it stopped (docs/decisions.md, 2026-09-23). */
 export const SCROLL_IDLE_MS = 300;
 
+/** From a block down to an element, each where it was drawn. */
+type Place = { el: Element; top: number }[];
+
 /**
  * Holds the reader's place where the platform does not: Chromium anchors the
  * scroll itself, iOS WebKit not at all. The place is the element at the pane's
@@ -22,9 +25,23 @@ export class ScrollAnchor {
      * From a block down to the element at the pane's top, each where it was
      * drawn. A re-render may replace the deeper ones: the deepest left stands in.
      */
-    private place: { el: Element; top: number }[] = [];
+    private place: Place = [];
+    /**
+     * The same from the first element starting inside the pane, held instead
+     * once the pane's width changes: the text crossing the top reflows then,
+     * and holding its top moves everything the reader sees below it. Otherwise
+     * a change there is the reader's own, as a chevron tapped in it.
+     */
+    private reflowPlace: Place = [];
     /** The scroll `place` was read at: a script may move it before a resize reports. */
     private placeScroll = 0;
+    /** The pane's width `place` was read at. */
+    private placeWidth = 0;
+    /**
+     * The width changed since the last hand-over: the text reflows over
+     * several frames, and `reflowPlace` is held through all of them.
+     */
+    private reflowing = false;
     /** What the scroll owes the content, drawn as a shift until the scroll stops. */
     private owed = 0;
     /** The blocks' parent, shifted while `owed` is. */
@@ -39,6 +56,7 @@ export class ScrollAnchor {
         // anchors nothing: a phone's trace showed this never switched on.
         if (!Platform.isIosApp && CSS.supports("overflow-anchor", "auto")) return;
         this.scrollRoot = scrollRoot;
+        this.placeWidth = scrollRoot.clientWidth;
         // styles.css: overflow-anchor none, so no half-working native anchoring
         // corrects a second time.
         scrollRoot.addClass("is-scroll-anchored");
@@ -113,7 +131,12 @@ export class ScrollAnchor {
      * before every re-read: its layout may hold a change no resize reported yet.
      */
     private owe(): boolean {
-        const point = [...this.place].reverse().find(({ el }) => this.scrollRoot!.contains(el));
+        if (this.scrollRoot!.clientWidth !== this.placeWidth && !this.reflowing) {
+            this.reflowing = true;
+            this.settleOnceStill();
+        }
+        const place = this.reflowing ? this.reflowPlace : this.place;
+        const point = [...place].reverse().find(({ el }) => this.scrollRoot!.contains(el));
         const scrolled = this.scrollRoot!.scrollTop - this.placeScroll;
         const moved = point ? point.el.getBoundingClientRect().top + scrolled - point.top : 0;
         if (moved === 0) return false;
@@ -128,22 +151,58 @@ export class ScrollAnchor {
      */
     private pick(): void {
         this.place = [];
+        this.reflowPlace = [];
         const stream = this.stream();
         if (!stream) return;
         const pane = this.scrollRoot!.getBoundingClientRect();
         this.placeScroll = this.scrollRoot!.scrollTop;
+        this.placeWidth = this.scrollRoot!.clientWidth;
         const drawn = document
             .elementsFromPoint(pane.left + pane.width / 2, pane.top + 1)
             .find((el) => el !== stream && stream.contains(el));
+        const crossing = drawn ?? this.blockAt(stream, pane.top);
+        if (!crossing) return;
 
+        this.place = this.placeOf(stream, crossing);
+        const starting = this.startingIn(pane, stream, crossing);
+        this.reflowPlace = starting === crossing ? this.place : this.placeOf(stream, starting);
+    }
+
+    /** From `el`'s block down to it, each where it is drawn, stopping at anything held. */
+    private placeOf(stream: HTMLElement, el: Element): Place {
         const path: Element[] = [];
-        for (let el = drawn ?? this.blockAt(stream, pane.top); el && el !== stream; el = el.parentElement) {
-            path.unshift(el);
+        for (let at: Element | null = el; at && at !== stream; at = at.parentElement) path.unshift(at);
+        const place: Place = [];
+        for (const at of path) {
+            place.push({ el: at, top: at.getBoundingClientRect().top });
+            if ((at as HTMLElement).style.getPropertyValue("--daily-note-held-height")) break;
         }
-        for (const el of path) {
-            this.place.push({ el, top: el.getBoundingClientRect().top });
-            if ((el as HTMLElement).style.getPropertyValue("--daily-note-held-height")) break;
+        return place;
+    }
+
+    /**
+     * The first block after `crossing`, or after an ancestor, that starts
+     * inside the pane: the paragraph or note title below the text crossing the
+     * top. Not a span inside text, which reflows with it. `crossing` when the
+     * next one starts past the pane.
+     */
+    private startingIn(pane: DOMRect, stream: HTMLElement, crossing: Element): Element {
+        for (let el: Element | null = crossing; el && el !== stream; el = el.parentElement) {
+            if (getComputedStyle(el).display.startsWith("inline")) continue;
+            const next = this.nextDrawn(el);
+            if (!next) continue;
+            const { top } = next.getBoundingClientRect();
+            if (top >= pane.bottom) return crossing;
+            if (top >= pane.top) return next;
         }
+        return crossing;
+    }
+
+    /** The next sibling that takes up space: a collapsed section's does not. */
+    private nextDrawn(el: Element): Element | null {
+        let next = el.nextElementSibling;
+        while (next && next.getBoundingClientRect().height === 0) next = next.nextElementSibling;
+        return next;
     }
 
     /** The block `paneTop` crosses, by halving: blocks stack, and a stream holds thousands. */
@@ -189,7 +248,9 @@ export class ScrollAnchor {
         content.style.setProperty("--daily-notes-scroll-shift", `${-this.owed}px`);
     }
 
+    /** Drops the debt, and the reflow it came from. */
     private unshift(): void {
+        this.reflowing = false;
         this.owed = 0;
         this.shifted?.removeClass("is-scroll-shifted");
         this.shifted?.style.removeProperty("--daily-notes-scroll-shift");

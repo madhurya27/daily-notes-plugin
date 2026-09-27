@@ -3,6 +3,24 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-27 — A reflow holds the block starting in the pane
+
+**Decision:** once the pane's width changes, `ScrollAnchor` holds the first
+block starting inside the pane below the text crossing its top — climbing past
+inline text, anything beside it, anything taking no space — until the shift is
+handed to the scroll. Otherwise it holds the text crossing the top, as before.
+
+**Why:** a turned phone reflows the text crossing the top, and holding its top
+moved a title just below it out of view. Native anchoring prefers what is fully
+visible for the same reason. A width only reflows; a chevron tapped in the text
+crossing the top is the reader's own change, and must not move it.
+
+**Rejected:**
+- Always the block starting in the pane — a chevron tapped there scrolls away.
+- The next element in document order — a span in the reflowing text, and
+  dozens of reads in a highlighted code block.
+- Only the first report after the width changes — the text reflows over frames.
+
 ## 2026-09-26 — A new width changes no placeholder
 
 **Decision:** on a width change, an unloaded note keeps its placeholder until it

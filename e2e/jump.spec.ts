@@ -307,31 +307,45 @@ test.describe("jump to date", () => {
     });
 
     // iOS has no scroll anchoring: whatever changes height as the width
-    // changes, the stream alone must hold the place.
-    test("keeps the reader's place without native anchoring when the width changes", async ({ obsidian }, testInfo) => {
-        const { page } = obsidian;
-        await withoutScrollAnchoring(page);
-        try {
-            const container = await openStream(page);
-            await scrollThroughStream(container);
-            await jumpTo(page, seededDate(Math.floor(SEEDED_DAYS / 2)));
-            const before = await readingPoint(container);
-            expect(before.unloadedAbove).toBeGreaterThan(0);
-            const widthBefore = await container.evaluate((column) => column.clientWidth);
-
-            const width = testInfo.project.name === "mobile" ? await turnPhone(page) : await openRightSidebar(page);
+    // changes, the stream alone must hold the place. The title just below the
+    // pane's top leaves the note above straddling it, reflowing too.
+    for (const below of [0, 100]) {
+        test(`keeps a title ${below}px below the pane's top where it was when the width changes`, async ({
+            obsidian,
+        }, testInfo) => {
+            const { page } = obsidian;
+            await withoutScrollAnchoring(page);
             try {
-                await expect.poll(() => container.evaluate((column) => column.clientWidth)).not.toBe(widthBefore);
-                // Obsidian reports the resize late, and the scroll takes the shift once still.
+                const container = await openStream(page);
+                await scrollThroughStream(container);
+                const date = seededDate(Math.floor(SEEDED_DAYS / 2));
+                await jumpTo(page, date);
+                await container.evaluate((column, below) => column.parentElement!.scrollBy(0, -below), below);
+                // The scroll counts as still, and the anchor re-picks the place.
                 await page.waitForTimeout(1000);
-                const after = await readingPoint(container);
-                expect(after.path).toBe(before.path);
-                expect(after.offset).toBeCloseTo(before.offset, 0);
+                const title = container.locator(`.daily-note-block[data-source-path$="${date}.md"] .daily-note-title`);
+                const titleTop = () =>
+                    title.evaluate((el) => {
+                        const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                        return el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+                    });
+                const before = await titleTop();
+                expect(before).toBeGreaterThan(-1);
+                expect((await readingPoint(container)).unloadedAbove).toBeGreaterThan(0);
+                const widthBefore = await container.evaluate((column) => column.clientWidth);
+
+                const width = testInfo.project.name === "mobile" ? await turnPhone(page) : await openRightSidebar(page);
+                try {
+                    await expect.poll(() => container.evaluate((column) => column.clientWidth)).not.toBe(widthBefore);
+                    // Obsidian reports the resize late, and the scroll takes the shift once still.
+                    await page.waitForTimeout(1000);
+                    expect(await titleTop()).toBeCloseTo(before, 0);
+                } finally {
+                    await width.restore();
+                }
             } finally {
-                await width.restore();
+                await restoreScrollAnchoring(page);
             }
-        } finally {
-            await restoreScrollAnchoring(page);
-        }
-    });
+        });
+    }
 });

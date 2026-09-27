@@ -44,7 +44,13 @@ function makePane(layout: (number | number[])[]) {
         get: () => scrollTop,
         set: (value: number) => (scrollTop = value),
     });
-    pane.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+    /** The pane's height, which the anchor looks for text starting in. */
+    const PANE_HEIGHT = 600;
+    pane.getBoundingClientRect = () => ({ top: 0, bottom: PANE_HEIGHT }) as DOMRect;
+    let width = 400;
+    Object.defineProperty(pane, "clientWidth", { configurable: true, get: () => width });
+    /** The pane turned wider, as a phone on its side. */
+    const turn = () => (width = 700);
     const content = pane.createDiv();
 
     const heightOf = (el: Element): number =>
@@ -90,7 +96,7 @@ function makePane(layout: (number | number[])[]) {
     };
     vi.spyOn(document, "elementsFromPoint").mockImplementation((_x, y) => drawnAt(y));
     const resize = (el: Element, height: number) => ((el as HTMLElement).dataset.height = String(height));
-    return { pane, content, blocks, resize, add };
+    return { pane, content, blocks, resize, add, turn };
 }
 
 describe("ScrollAnchor", () => {
@@ -265,6 +271,91 @@ describe("ScrollAnchor", () => {
             expect(shift(content)).toBe(0);
         });
 
+        // A turned phone reflows the text crossing the pane's top: holding its
+        // top would move everything the reader sees below it.
+        it("holds the text starting just below the pane's top when the pane's width changes", () => {
+            const { content, blocks, resize, turn } = watch([[400, 400, 400], 400], 500);
+
+            turn();
+            resize(blocks[0]!.children[1]!, 200);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(200);
+            expect(blocks[0]!.children[2]!.getBoundingClientRect().top).toBe(300);
+        });
+
+        // The text reflows over several frames, each reported apart.
+        it("holds the text below the pane's top until the reflow is handed to the scroll", () => {
+            const { pane, content, blocks, resize, turn } = watch([[400, 400, 400], 400], 500);
+
+            turn();
+            resize(blocks[0]!.children[1]!, 300);
+            observer().resized(blocks[0]!);
+            resize(blocks[0]!.children[1]!, 200);
+            observer().resized(blocks[0]!);
+            expect(blocks[0]!.children[2]!.getBoundingClientRect().top).toBe(300);
+
+            vi.advanceTimersByTime(SCROLL_IDLE_MS);
+            expect(pane.scrollTop).toBe(300);
+            resize(blocks[0]!.children[1]!, 1000);
+            observer().resized(blocks[0]!);
+            expect(shift(content)).toBe(0);
+        });
+
+        it("holds the block below text crossing the pane's top, not a span inside that text", () => {
+            const { pane, content, blocks, resize, add, turn } = watch([[400, 400, 400], 400], 0);
+            const text = blocks[0]!.children[1] as HTMLElement;
+            add(text, 200).style.display = "inline";
+            const after = add(text, 200);
+            pane.scrollTop = 500;
+            anchor.onScroll();
+
+            turn();
+            resize(after, 100);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(100);
+            expect(blocks[0]!.children[2]!.getBoundingClientRect().top).toBe(300);
+        });
+
+        it("climbs past what sits beside the text crossing the pane's top, as cards in a row", () => {
+            const { pane, content, blocks, resize, add, turn } = watch([[400, 400, 400], 400], 0);
+            const row = blocks[0]!.children[1] as HTMLElement;
+            const card = add(row, 200);
+            add(row, 200).getBoundingClientRect = () => card.getBoundingClientRect();
+            pane.scrollTop = 500;
+            anchor.onScroll();
+
+            turn();
+            resize(card, 100);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(100);
+        });
+
+        // A collapsed section's body is display: none, drawn at no place.
+        it("passes over what takes up no space to the block after it", () => {
+            const { content, blocks, resize, turn } = watch([[400, 400, 0, 400], 400], 500);
+            blocks[0]!.children[2]!.getBoundingClientRect = () => ({ top: 0, height: 0, bottom: 0 }) as DOMRect;
+            anchor.onScroll();
+
+            turn();
+            resize(blocks[0]!.children[1]!, 200);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(200);
+        });
+
+        it("holds the text crossing the pane's top when nothing starts below it in the pane", () => {
+            const { content, blocks, resize, turn } = watch([[400, 1200, 400]], 500);
+
+            turn();
+            resize(blocks[0]!.children[1]!, 1300);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(0);
+        });
+
         it("follows the reader as they scroll", () => {
             const { pane, content, blocks, resize } = watch([[400, 400, 400], 400], 500);
 
@@ -338,14 +429,14 @@ describe("ScrollAnchor", () => {
             expect(shift(content)).toBe(0);
         });
 
-        it("asks what is drawn there, reading no other element's place", () => {
+        it("asks what is drawn there, reading only it and what starts after it", () => {
             const long = Array.from({ length: 100 }, () => 40);
             const { blocks } = watch([400, long], 500);
             const reads = [...blocks[1]!.children].map((el) => vi.spyOn(el, "getBoundingClientRect"));
 
             anchor.onScroll();
 
-            expect(reads.filter((read) => read.mock.calls.length > 0)).toHaveLength(1);
+            expect(reads.filter((read) => read.mock.calls.length > 0)).toHaveLength(2);
         });
 
         it("looks past anything drawn over the stream, as the search bar is", () => {
