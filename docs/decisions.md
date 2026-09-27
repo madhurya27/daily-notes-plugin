@@ -3,6 +3,21 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
+## 2026-09-26 — A new width changes no placeholder
+
+**Decision:** on a width change, an unloaded note keeps its placeholder until it
+renders; only the height it is held at on rendering comes from the new width.
+The scroll anchor survives the margins' rebuild.
+
+**Why:** shrinking placeholders shortens the stream under the scroll. The
+browser clamps the scroll at once, `ScrollAnchor` counts the clamp as the
+reader's, and a phone turned mid-stream landed notes away. A new anchor has no
+place to hold while the notes on screen reflow: 120 px off, on `main` too.
+
+**Rejected:**
+- Re-reserving every unloaded note — the clamp above.
+- Only those above the pane — clamps once they shrink by more than lies below.
+
 ## 2026-09-26 — The scroll anchor is the element at the pane's top
 
 **Decision:** where `ScrollAnchor` runs, it offsets however far the element at

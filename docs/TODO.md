@@ -8,8 +8,6 @@ Ordered by priority, from the 2026-09 comparison against
   `5da0863`); keep that branch when deleting the other experiments.
 - [ ] PDF, iframe, canvas, Dataview: check for scroll boxes; give what cannot fit a preview that opens on tap.
 - [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on `post-processor-change`.
-- [ ] Rotation: prove in e2e that the reader's place holds on a width change. Native anchoring and `ScrollAnchor`
-  should keep it; `e2e/jump.spec.ts` already changes the width.
 - [x] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop. Likely the hidden window's
   frame rate; loading is not the cost, so preloading would not help.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps in `docs/IMPROVEMENTS.md`:

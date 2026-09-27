@@ -1,20 +1,27 @@
-import { test, expect, openStream, scrollThroughStream, seededDate, LAYOUT_VIEWPORT, SEEDED_DAYS } from "./obsidian";
+import {
+    test,
+    expect,
+    openStream,
+    scrollThroughStream,
+    seededDate,
+    LAYOUT_VIEWPORT,
+    SEEDED_DAYS,
+    withoutScrollAnchoring,
+    restoreScrollAnchoring,
+} from "./obsidian";
 
-/** The layout heights are remembered under, as the plugin reads it. */
-function layoutOf(column: HTMLElement): string {
-    return `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-text-size").trim()}`;
-}
-
-/** What each unloaded note reserves, in whole pixels, by path. */
-function reservedHeights(container: import("@playwright/test").Locator): Promise<Record<string, number>> {
-    return container.evaluate((column) =>
-        Object.fromEntries(
-            [...column.querySelectorAll<HTMLElement>(".daily-note-block.is-unloaded")].map((el) => [
-                el.dataset.sourcePath!,
-                Math.round(parseFloat(el.style.getPropertyValue("--daily-note-placeholder-height"))),
-            ])
-        )
-    );
+/** The note at the pane's top, how far it starts above it, and how many unloaded notes lie above. */
+function readingPoint(container: import("@playwright/test").Locator) {
+    return container.evaluate((column) => {
+        const pane = column.parentElement!.getBoundingClientRect();
+        const blocks = [...column.querySelectorAll<HTMLElement>(".daily-note-block")];
+        const i = blocks.findIndex((block) => block.getBoundingClientRect().bottom > pane.top + 1);
+        return {
+            path: blocks[i]!.dataset.sourcePath,
+            offset: blocks[i]!.getBoundingClientRect().top - pane.top,
+            unloadedAbove: blocks.slice(0, i).filter((block) => block.classList.contains("is-unloaded")).length,
+        };
+    });
 }
 
 /** Turns the phone on its side, as a reader does. */
@@ -299,41 +306,32 @@ test.describe("jump to date", () => {
         for (const [path, height] of reserved) expect(Math.round(parseFloat(height!)), path).toBe(remembered[path!]);
     });
 
-    // A height is true only at the width it was measured at: the notes above
-    // the reader reserve the new width's, not what they measured before.
-    test("reserves the new width's heights when the pane's width changes", async ({ obsidian }, testInfo) => {
+    // iOS has no scroll anchoring: whatever changes height as the width
+    // changes, the stream alone must hold the place.
+    test("keeps the reader's place without native anchoring when the width changes", async ({ obsidian }, testInfo) => {
         const { page } = obsidian;
-        const container = await openStream(page);
-        await scrollThroughStream(container);
-        await jumpTo(page, seededDate(SEEDED_DAYS - 1));
-        const reservedBefore = await reservedHeights(container);
-        expect(Object.keys(reservedBefore).length).toBeGreaterThan(0);
-        const layoutBefore = await container.evaluate(layoutOf);
-
-        const width = testInfo.project.name === "mobile" ? await turnPhone(page) : await openRightSidebar(page);
+        await withoutScrollAnchoring(page);
         try {
-            await expect.poll(() => container.evaluate(layoutOf)).not.toBe(layoutBefore);
+            const container = await openStream(page);
+            await scrollThroughStream(container);
+            await jumpTo(page, seededDate(Math.floor(SEEDED_DAYS / 2)));
+            const before = await readingPoint(container);
+            expect(before.unloadedAbove).toBeGreaterThan(0);
+            const widthBefore = await container.evaluate((column) => column.clientWidth);
 
-            // Obsidian reports the resize a moment after the layout changes.
-            await expect
-                .poll(async () => {
-                    const layout = await container.evaluate(layoutOf);
-                    const reserved = await reservedHeights(container);
-                    const remembered = await page.evaluate(
-                        ([layout, paths]) => {
-                            const notes = window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes;
-                            return paths.map((path) => notes.heightOf(layout, path) ?? null);
-                        },
-                        [layout, Object.keys(reserved)] as const
-                    );
-                    // Measured at the new width, that height; never measured there, anything but the old one.
-                    return Object.entries(reserved).filter(([path, height], i) =>
-                        remembered[i] != null ? height !== remembered[i] : height === reservedBefore[path]
-                    );
-                })
-                .toEqual([]);
+            const width = testInfo.project.name === "mobile" ? await turnPhone(page) : await openRightSidebar(page);
+            try {
+                await expect.poll(() => container.evaluate((column) => column.clientWidth)).not.toBe(widthBefore);
+                // Obsidian reports the resize late, and the scroll takes the shift once still.
+                await page.waitForTimeout(1000);
+                const after = await readingPoint(container);
+                expect(after.path).toBe(before.path);
+                expect(after.offset).toBeCloseTo(before.offset, 0);
+            } finally {
+                await width.restore();
+            }
         } finally {
-            await width.restore();
+            await restoreScrollAnchoring(page);
         }
     });
 });

@@ -481,26 +481,31 @@ describe("NoteWindowManager after the pane's width changes", () => {
 
     afterEach(() => document.body.empty());
 
-    it("reserves what an unloaded note measured at the new width", async () => {
+    // Shrinking a placeholder shortens the stream under the scroll, and the
+    // browser pulls the reader down before the anchor can hold the place.
+    it("keeps an unloaded note's placeholder, and holds it at what it measured at the new width", async () => {
         const { manager, heights, narrow } = makeResizable();
         heights.keep(NARROW, FILE.path, 1200);
         const block = manager.add(FILE);
+        document.body.appendChild(block);
 
         await narrow();
+        expect(placeholderHeight(block)).toBe("812px");
 
-        expect(placeholderHeight(block)).toBe("1200px");
+        fire(observers.render, block, true);
+        await settle();
+        expect(heldHeight(block)).toBe("1200px");
     });
 
-    it("reserves the estimate for a note never measured at the new width, and holds nothing on it", async () => {
+    it("holds nothing on a note never measured at the new width", async () => {
         const { manager, narrow } = makeResizable();
         const block = manager.add(FILE);
         document.body.appendChild(block);
 
         await narrow();
-        expect(placeholderHeight(block)).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
-
         fire(observers.render, block, true);
         await settle();
+
         expect(heldHeight(block)).toBe("");
     });
 
@@ -519,15 +524,18 @@ describe("NoteWindowManager after the pane's width changes", () => {
     });
 
     // Dragging a split resizes on every frame: thousands of blocks are not rewritten each time.
-    it("leaves the placeholders alone when the width did not change", async () => {
+    it("rereads no heights when the width did not change", async () => {
         const { manager, heights } = makeResizable();
         const block = manager.add(FILE);
+        document.body.appendChild(block);
         heights.keep(LAYOUT, FILE.path, 900);
 
         await settle();
         manager.onResize();
+        fire(observers.render, block, true);
+        await settle();
 
-        expect(placeholderHeight(block)).toBe("812px");
+        expect(heldHeight(block)).toBe("812px");
     });
 });
 
@@ -571,6 +579,19 @@ describe("NoteWindowManager margins", () => {
         manager.onResize();
 
         expect(marginsPx()).toEqual([2400, 6400]);
+    });
+
+    // Turning a phone changes the height: a new anchor would have no place to
+    // hold while the notes on screen reflow at the new width.
+    it("keeps the scroll anchor when the pane is resized", () => {
+        const root = makeScrollRoot(800);
+        const { manager } = makeManager(makeRenderer(), () => 500, root);
+        const detach = vi.spyOn(ScrollAnchor.prototype, "detach");
+
+        Object.defineProperty(root, "clientHeight", { value: 1600, configurable: true });
+        manager.onResize();
+
+        expect(detach).not.toHaveBeenCalled();
     });
 
     it("leaves the observers alone when a resize did not change the height", () => {

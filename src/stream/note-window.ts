@@ -65,8 +65,8 @@ export class NoteWindowManager {
     private scrollRoot: HTMLElement | null = null;
     /** The layout heights are read and kept in, until the task reading it ends. */
     private currentLayout: string | null = null;
-    /** The layout the unloaded blocks reserve heights for. */
-    private reservedIn: string | null = null;
+    /** The layout the unloaded blocks expect heights in. */
+    private expectedIn: string | null = null;
     /** The height the current margins were computed from. */
     private rootHeight = 0;
     /** Rendered blocks past the unload margin, waiting for the scroll to be still. */
@@ -93,6 +93,20 @@ export class NoteWindowManager {
     attach(scrollRoot: HTMLElement): void {
         this.detachObservers();
         this.scrollRoot = scrollRoot;
+        this.observeMargins(scrollRoot);
+        this.anchor.attach(scrollRoot);
+        this.resizes = new ResizeObserver((entries) => {
+            for (const entry of entries) this.windowOf(entry.target)?.keepOnceSettled?.();
+        });
+
+        for (const [block, window] of this.windows) {
+            this.observe(block);
+            this.watch(window.watched);
+        }
+    }
+
+    /** The margins are viewports of the pane's height, taken now. */
+    private observeMargins(scrollRoot: HTMLElement): void {
         this.rootHeight = Math.max(scrollRoot.clientHeight, MIN_VIEWPORT_PX);
 
         this.renderObserver = new IntersectionObserver(
@@ -114,31 +128,29 @@ export class NoteWindowManager {
             },
             { root: scrollRoot, rootMargin: `${Math.round(this.rootHeight * UNLOAD_VIEWPORTS)}px` }
         );
-        this.anchor.attach(scrollRoot);
-        this.resizes = new ResizeObserver((entries) => {
-            for (const entry of entries) this.windowOf(entry.target)?.keepOnceSettled?.();
-        });
-
-        for (const [block, window] of this.windows) {
-            this.observe(block);
-            this.watch(window.watched);
-        }
     }
 
     /** Obsidian reports a pane dragged or a device turned. */
     onResize(): void {
         this.refreshMargins();
-        this.reserveForLayout();
+        this.expectLayout();
     }
 
     /**
-     * Rebuilds the observers against the pane's new height. A no-op when the
-     * height did not change, so dragging a split costs nothing.
+     * Rebuilds the margins against the pane's new height. A no-op when the
+     * height did not change, so dragging a split costs nothing. The anchor
+     * stays: a new one would have no place to hold while the notes reflow.
      */
     private refreshMargins(): void {
         if (!this.scrollRoot) return;
         if (Math.max(this.scrollRoot.clientHeight, MIN_VIEWPORT_PX) === this.rootHeight) return;
-        this.attach(this.scrollRoot);
+        this.renderObserver?.disconnect();
+        this.unloadObserver?.disconnect();
+        this.observeMargins(this.scrollRoot);
+        for (const block of this.windows.keys()) {
+            this.renderObserver!.observe(block);
+            this.unloadObserver!.observe(block);
+        }
     }
 
     /** A scroll restarts the wait on any block that left the margin. */
@@ -174,8 +186,9 @@ export class NoteWindowManager {
             keepOnceSettled: null,
         };
         this.windows.set(block, window);
-        this.reservedIn = this.layout();
-        this.reserve(block, window, this.reservedIn);
+        this.expectedIn = this.layout();
+        this.expect(window, this.expectedIn);
+        this.markUnloaded(block, window.height);
         this.observe(block);
         return block;
     }
@@ -328,24 +341,27 @@ export class NoteWindowManager {
 
     /**
      * A height is true only at the width it was measured at: on a new one,
-     * every unloaded block reserves what it measured there, and nothing is
-     * held at the old one. The same width rewrites nothing.
+     * nothing is held at the old one, and a note rendering again is held at
+     * what it measured at the new one. Placeholders keep their heights until
+     * they render: shrinking them shortens the stream under the scroll, and
+     * the browser pulls the reader down before the anchor can hold the place.
+     * The same width rereads nothing.
      */
-    private reserveForLayout(): void {
+    private expectLayout(): void {
         const layout = this.layout();
-        if (layout === this.reservedIn) return;
-        this.reservedIn = layout;
-        for (const [block, window] of this.windows) {
+        if (layout === this.expectedIn) return;
+        this.expectedIn = layout;
+        for (const window of this.windows.values()) {
             this.releaseHold(window);
-            if (!window.component) this.reserve(block, window, layout);
+            if (!window.component) this.expect(window, layout);
         }
     }
 
-    private reserve(block: HTMLElement, window: NoteWindow, layout: string): void {
+    /** What `window` last measured in `layout`, or the estimate. */
+    private expect(window: NoteWindow, layout: string): void {
         const remembered = this.heights.heightOf(layout, window.file.path);
         window.height = remembered ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
         window.measured = remembered !== undefined;
-        this.markUnloaded(block, window.height);
     }
 
     /** Held, the block cannot shrink: a dip shows only in what was rendered in it. */
