@@ -55,8 +55,6 @@ changing it; the linked-mentions footer sets the pattern (docs/decisions.md, 202
 waits, the `HeightHold` does.
 - [ ] Bases off the queue: `renderInto` awaits `bases.render` on mobile, so every vault event waits on a
   Base's definition read and fill.
-- [ ] Stream search: every query and every vault change re-reads every note at once (`findNotes`'
-  `Promise.all`). Cache sources per path, invalidated on `modify`; drop a search a newer one replaced.
 - [ ] Wide tables and equations: `stackWideTables` / `fitWideEquations` read widths right after each
   render, forcing a layout per note. Batch the reads in one `requestAnimationFrame`.
 - [ ] First open of a large vault: `buildSorted` parses every file's date in one go. Yield in chunks only if

@@ -1050,3 +1050,15 @@ navbar right under the header; one icon for two searches reads as a duplicate.
 - `text-search` on mobile only — a platform branch for an icon.
 - `scan-search`, a magnifier in a viewfinder — reads as search faster, but
   says less about what it searches.
+
+## 2026-09-28 — Search reads through `cachedRead`, with no cache of its own
+
+**Decision:** stream search keeps reading every note per query and refresh.
+
+**Why:** `vault.cachedRead` already holds each note until it changes. Across
+1,095 notes (`pnpm run test:memory`) a query takes 1 ms, the first after
+open 43 ms; a refresh after an edit, 1 ms.
+
+**Rejected:**
+- A source cache per path, invalidated on `modify` — duplicates Obsidian's.
+- Dropping a search a newer one replaced — at 1 ms there is nothing to save.

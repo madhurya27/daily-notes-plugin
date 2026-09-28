@@ -1,4 +1,4 @@
-import { test, expect, openStream, SEEDED_DAYS } from "./obsidian";
+import { test, expect, openStream, seededDate, SEEDED_DAYS } from "./obsidian";
 
 /**
  * The ceiling ADR 0006 exists to remove: a vault of several years, scrolled to
@@ -116,5 +116,43 @@ test.describe("a multi-year vault scrolled to the end", () => {
         const top = container.locator(".daily-note-block").first();
         await expect(top).not.toHaveClass(/is-unloaded/);
         await expect(top.locator(".daily-note-content")).toBeVisible();
+    });
+
+    // Every query and every refresh reads every note. Obsidian's cachedRead
+    // already keeps each note's text until it changes (docs/decisions.md, 2026-09-28).
+    test("searches the whole vault, and again after an edit, in well under a second", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+
+        const result = await page.evaluate(async (newest) => {
+            const { app } = window;
+            const search = app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view.search as {
+                matches: unknown[];
+                search(query: string): Promise<void>;
+                refresh(): Promise<void>;
+            };
+            const timed = async (run: () => Promise<void>) => {
+                const start = performance.now();
+                await run();
+                return { ms: Math.round(performance.now() - start), found: search.matches.length };
+            };
+            const first = await timed(() => search.search("the"));
+            const unmatched = await timed(() => search.search("zzqx"));
+            await app.vault.append(app.vault.getAbstractFileByPath(`Notes/${newest}.md`), "\nzzqx");
+            const refresh = await timed(() => search.refresh());
+            await search.search("");
+            return { first, unmatched, refresh };
+        }, seededDate(0));
+
+        // eslint-disable-next-line no-console -- the number this test exists to report
+        console.log(
+            `[memory] search across ${SEEDED_DAYS} notes: first ${result.first.ms} ms | ` +
+                `again ${result.unmatched.ms} ms | refresh after an edit ${result.refresh.ms} ms`
+        );
+
+        expect(result.first.found).toBe(SEEDED_DAYS);
+        expect(result.unmatched.found).toBe(0);
+        expect(result.refresh.found).toBe(1);
+        for (const { ms } of Object.values(result)) expect(ms).toBeLessThan(500);
     });
 });
