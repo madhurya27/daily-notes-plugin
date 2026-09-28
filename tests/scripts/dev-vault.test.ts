@@ -162,11 +162,10 @@ describe("createChangeFilter", () => {
 });
 
 describe("stepsFor", () => {
-    it("builds and seeds only what is missing, then always links, opens and watches", () => {
-        expect(stepsFor({ built: true, seeded: true })).toEqual(["link", "open", "watch"]);
-        expect(stepsFor({ built: false, seeded: true })).toEqual(["build", "link", "open", "watch"]);
-        expect(stepsFor({ built: true, seeded: false })).toEqual(["seed", "link", "open", "watch"]);
-        expect(stepsFor({ built: false, seeded: false })).toEqual(["build", "seed", "link", "open", "watch"]);
+    // The vaults are disposable: a fresh seed each run keeps their notes current with the script and the date.
+    it("builds only when there is no build, and always seeds, links, opens and watches", () => {
+        expect(stepsFor({ built: true })).toEqual(["seed", "link", "open", "watch"]);
+        expect(stepsFor({ built: false })).toEqual(["build", "seed", "link", "open", "watch"]);
     });
 });
 

@@ -26,7 +26,7 @@ const USAGE = `pnpm run demo [options] [vault]
 
 Opens .dev/demo-vault/ in its own Obsidian with the plugin enabled, the stream
 view showing and mobile emulation on, then reloads the plugin on every save
-until Ctrl-C. Builds and seeds the vault first if either is missing.
+until Ctrl-C. Reseeds the vault first, and builds if there is no build.
 
 Vault (default: the demo vault)
   --test          the test vault, .dev/vault/, that docs/TESTING.md uses

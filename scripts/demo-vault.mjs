@@ -374,7 +374,6 @@ export function main() {
     for (const asset of assets) copyFileSync(join(REPO, asset), join(pluginDir, asset));
 
     console.log(`Wrote ${days} journal entries up to ${until.toISOString().slice(0, 10)} into ${vault}`);
-    console.log(`Open it: pnpm run demo${vault === DEMO_VAULT ? "" : ` ${vault}`}`);
 }
 
 if (isMain(import.meta.url)) main();

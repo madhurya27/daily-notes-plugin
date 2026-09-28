@@ -1,6 +1,6 @@
 /**
- * The one command for working against a vault: builds and seeds what is
- * missing, links the build into the vault, opens it in its own Obsidian, then
+ * The one command for working against a vault: builds if there is no build,
+ * reseeds the vault, links the build into it, opens it in its own Obsidian, then
  * rebuilds on every save and reloads the plugin in that window. Demo vault by
  * default, the test vault with --test; layout flags go to the window.
  *
@@ -90,12 +90,13 @@ export function createReloader(reload, delay) {
 }
 
 /**
- * What a run does, in order: a build and a seed only when missing, so the
- * vault's notes survive between runs (`pnpm run seed` rewrites them).
- * @param {{ built: boolean, seeded: boolean }} state
+ * What a run does, in order: a build only when there is none. The seed runs
+ * every time: the vaults are disposable, and a fresh seed keeps their notes
+ * current with the seed script and the date.
+ * @param {{ built: boolean }} state
  */
-export function stepsFor({ built, seeded }) {
-    return [...(built ? [] : ["build"]), ...(seeded ? [] : ["seed"]), "link", "open", "watch"];
+export function stepsFor({ built }) {
+    return [...(built ? [] : ["build"]), "seed", "link", "open", "watch"];
 }
 
 /** Flags of `open` that take a value, which is not the vault path. */
@@ -153,8 +154,7 @@ function main() {
         watch: watchAndReload,
     };
     const built = ASSETS.every((asset) => existsSync(join(REPO, asset)));
-    const seeded = existsSync(join(vault, ".obsidian", "plugins", PLUGIN_ID));
-    for (const step of stepsFor({ built, seeded })) actions[step]();
+    for (const step of stepsFor({ built })) actions[step]();
 }
 
 if (isMain(import.meta.url)) main();

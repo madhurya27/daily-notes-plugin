@@ -1007,16 +1007,19 @@ checklist's edge cases.
 
 ## 2026-09-28 — One command opens a vault and keeps it current
 
-**Decision:** `pnpm run demo` builds and seeds only what is missing, links the
-build in, opens the window and reloads the plugin on every save
+**Decision:** `pnpm run demo` builds if there is no build, reseeds the vault,
+links the build in, opens the window and reloads the plugin on every save
 (`scripts/dev-vault.mjs`). It replaces `dev:vault`, `open` and `reload`, which
 had to be run in the right order. The seed scripts still install a copy of the
 build: the phone's iCloud vault needs files, not links.
 
-**Why:** the edit-reload loop took three commands in the right order.
+**Why:** the edit-reload loop took three commands in the right order. The
+vaults are disposable, so a reseed each run costs nothing and keeps their notes
+current with the seed script and the date.
 
 **Rejected:**
-- Reseeding every run — it would throw away notes written while trying things.
+- Seeding only when the seed script or the date changed — a fingerprint to
+  protect notes nobody keeps.
 - Keeping `dev:vault`, `open` and `reload` beside it — four commands for one
   loop.
 

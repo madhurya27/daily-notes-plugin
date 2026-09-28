@@ -7,8 +7,7 @@ pnpm test                          # unit
 pnpm run test:e2e                  # every spec twice, desktop and mobile
 pnpm run test:e2e --project=mobile      # just one project
 pnpm run test:e2e webkit.spec.ts   # the phone layout in iOS's engine (ADR 0009)
-pnpm run demo --test               # seed .dev/vault/ if missing, open it, reload on every save
-pnpm run build && pnpm run seed --test   # rewrite its notes; --help on demo lists every option
+pnpm run demo --test               # reseed .dev/vault/, open it, reload on every save; --help lists every option
 ```
 
 `seed --test` writes 123 daily notes in `Notes/` plus everything the checklist names: the three dated notes, nested
@@ -27,8 +26,9 @@ survives.
 display — it is meant to be watched, unlike the hidden e2e window. Phone mode has no draggable region, so
 `--position` is how that window moves.
 
-It builds and seeds only what is missing, then reloads the plugin on every save until Ctrl-C. It links the vault's plugin files to the repo's build; re-seeding copies over the links, and the next
-`demo` puts them back. It leaves the notes alone: `seed --test` rewrites them.
+It builds if there is no build and reseeds the vault every run, so its notes always match the seed script;
+anything typed into them lasts until the next run. Then it links the vault's plugin files to the repo's build
+and reloads the plugin on every save until Ctrl-C.
 
 Without `--test`, each of these acts on `.dev/demo-vault/`: 60 days of a journal that reads like a real one — properties, links to people and projects,
 tasks, callouts, run logs, a sketch, a reading-list Base every Sunday, and project logs linking the newest
