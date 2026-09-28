@@ -1023,3 +1023,17 @@ current with the seed script and the date.
 - Keeping `dev:vault`, `open` and `reload` beside it — four commands for one
   loop.
 
+
+## 2026-09-28 — The demo vault deals its lines from decks
+
+**Decision:** each list of lines is a deck, shuffled per pass and dealt by day
+or week, so no line returns until its deck is spent, nor within three days
+across a reshuffle. Each week has one piece of news, told once and recalled on
+Sunday. The default run is 90 days.
+
+**Why:** independent picks put one line in 16 of 60 notes, some on consecutive
+days, and repeated one-off events.
+
+**Rejected:**
+- Longer lists alone — picks still cluster.
+- Tracking what earlier days used — a date's note would depend on the run.
