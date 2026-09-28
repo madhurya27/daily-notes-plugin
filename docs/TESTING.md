@@ -3,37 +3,44 @@
 ## Setup
 
 ```bash
-pnpm test                          # unit
-pnpm run test:e2e                  # every spec twice, desktop and mobile
-pnpm run test:e2e --project=mobile      # just one project
-pnpm run test:e2e webkit.spec.ts   # the phone layout in iOS's engine (ADR 0009)
-pnpm run demo --test               # reseed .dev/vault/, open it, reload on every save; --help lists every option
+pnpm test                            # unit
+pnpm run test:e2e                    # every spec twice, desktop and mobile
+pnpm run test:e2e --project=mobile   # one project
+pnpm run test:e2e webkit.spec.ts     # the phone layout in iOS's engine (ADR 0009)
+pnpm run demo --test                 # the test vault, below; --help lists every option
 ```
 
-`seed --test` writes 123 daily notes in `Notes/` plus everything the checklist names: the three dated notes, nested
-lists, repeated headings, a heading holding a link, `test-image.svg`, and a dated `.png` and out-of-folder
-dated note that must *not* appear. The newest, **2026-08-30**, holds one of each embed the e2e tests cover:
-Bases wide, narrow, too wide only in their values, resized by hand, a named view and inline, plus embedded
-notes, display math, Mermaid and a wide table; the Bases live in `Bases/`. The newest filler note,
-**2026-08-29**, has linked mentions of every kind: from a nested list item, a paragraph, a wide table and a
-property, and a link in `Projects/Plan.md` that must open `Projects/Agenda.md`, not `Notes/Agenda.md`. Filler notes cycle eight shapes —
-long notes, a wide code block, a wide table, tasks and a blockquote, H1–H6 nesting, one with no frontmatter,
-so the properties panel is tested by its absence too, and Bases, so they recur all the way down. `--days N` changes the count (`400` for deep history, `12` for barely past one batch), and
-a path argument seeds elsewhere. Re-seeding rewrites the notes but leaves `.obsidian` alone, so your layout
-survives.
+`pnpm run demo` runs its own Obsidian against `.dev/obsidian-userdata`, beside your real one, on the main
+display: it is meant to be watched, unlike the hidden e2e window. Each run builds if there is no build,
+reseeds the vault, links its plugin files to the repo's build, and reloads the plugin on every save until
+Ctrl-C. Anything typed into the vault lasts until the next run; `.obsidian` is kept, so your layout survives.
+Phone mode has no draggable region, so `--position` moves the window.
 
-`demo --test` runs its own Obsidian against `.dev/obsidian-userdata`, beside your real one. It opens on the main
-display — it is meant to be watched, unlike the hidden e2e window. Phone mode has no draggable region, so
-`--position` is how that window moves.
+### Test vault: `--test`, `.dev/vault/`
 
-It builds if there is no build and reseeds the vault every run, so its notes always match the seed script;
-anything typed into them lasts until the next run. Then it links the vault's plugin files to the repo's build
-and reloads the plugin on every save until Ctrl-C.
+What the checklist below is written against. `pnpm run seed --test` alone takes `--days N` for the filler
+count (`400` for deep history, `12` for barely past one batch) and a path to seed elsewhere.
 
-Without `--test`, each of these acts on `.dev/demo-vault/`: 60 days of a journal that reads like a real one — properties, links to people and projects,
-tasks, callouts, run logs, a sketch, a reading-list Base every Sunday, and project logs linking the newest
-days. Each note is seeded by its date, so a retake shows the same content; `seed`'s `--days N` and
-`--until YYYY-MM-DD` change the range. Screenshots and recordings come from it.
+- 123 daily notes in `Notes/`: 120 filler notes and the three the checklist names by date.
+- Filler cycles eight shapes, among them long notes, a wide code block, a wide table, tasks and a blockquote,
+  H1–H6 nesting, no frontmatter (so the properties panel is tested by its absence), and Bases (so they recur
+  all the way down).
+- **2026-08-30**, the newest: one of each embed the e2e tests cover. Bases wide, narrow, too wide only in
+  their values, resized by hand, a named view and inline (the Bases live in `Bases/`), plus embedded notes,
+  display math, Mermaid and a wide table.
+- **2026-08-29**, the newest filler note: linked mentions of every kind, from a nested list item, a paragraph,
+  a wide table and a property. `[[Agenda]]` in `Projects/Plan.md` must open `Projects/Agenda.md`, not
+  `Notes/Agenda.md`.
+- **2026-02-01**: nested lists, repeated headings, a heading holding a link and `test-image.svg`. It and
+  **2026-01-15** carry the frontmatter listed under Properties.
+- A dated `.png` and a dated note outside the daily-notes folder, which must *not* appear.
+
+### Demo vault: the default, `.dev/demo-vault/`
+
+60 days of a journal that reads like a real one: properties, links to people and projects, tasks, callouts,
+run logs, a sketch, a reading-list Base every Sunday, and project logs linking the newest days. Each note is
+seeded by its date, so a retake shows the same content; `pnpm run seed` alone takes `--days N` and
+`--until YYYY-MM-DD`. Screenshots and recordings come from it.
 
 ## Verification
 
@@ -45,14 +52,14 @@ days. Each note is seeded by its date, so a retake shows the same content; `seed
   it keeps its place. **[e2e]**
 - Mod-click on the ribbon icon opens it in a new tab. **[e2e]** desktop; mod-alt-click splits.
 - Notes newest-first, date headers correct. **[e2e]**
-- Clicking a header opens the original file in the stream's tab; Back returns to the stream. **[e2e]**
-- Mod-click opens a new tab, keeping the stream; mod-alt-click splits. **[e2e]**
-- Middle-click on a header opens a new tab.
-- Right-click on a header shows the file menu, "Open in new window" once. **[e2e]**
+- Clicking a header opens its file in the stream's tab; Back returns to the stream. Mod-click opens a new tab,
+  keeping the stream; mod-alt-click splits; right-click shows the file menu, "Open in new window" once.
+  **[e2e]** Middle-click opens a new tab.
 - `test-image.svg` renders in **2026-02-01**; `[[2026-01-15]]` navigates there and back.
 - A link opens in the stream's tab even when another tab shows its note; `[[note#heading]]` opens at the
   heading. **[e2e]**
-- A link inside a note (**2026-02-01**, Evening) takes the header's gestures: mod-click, mod-alt-click, middle-click, right-click. **[e2e]**
+- A link inside a note (**2026-02-01**, Evening) takes the header's gestures: mod-click, mod-alt-click,
+  middle-click, right-click. **[e2e]**
 - Mod-hovering a link previews it **[e2e]**; Settings → Page preview lists "Daily notes stream", and turning
   its Mod requirement off previews on plain hover.
 - `[[Someday]]` is faded; opening it creates the note and unfades it, deleting the note fades it again.
@@ -68,7 +75,8 @@ days. Each note is seeded by its date, so a retake shows the same content; `seed
   the glide stops on the newest note, and nothing jumps once it stops. **[e2e]** with anchoring off.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled. **[e2e]** for the wait; the
   glide by hand.
-- Tall window, short notes → loading continues past the first batch.
+- Tall window, short notes: loading continues past the first batch.
+- Toggling any setting refreshes the view but keeps the scroll position.
 - A table or Base too wide for the note scrolls in its own box, as in reading view; the page never scrolls
   sideways. **[e2e]** Each case is in **2026-08-30**.
 
@@ -116,10 +124,6 @@ days. Each note is seeded by its date, so a retake shows the same content; `seed
 
 - Tab reaches note titles and every chevron; Enter or Space toggles without scrolling the stream. **[e2e]**
 - A screen reader announces each chevron as a button, with its expanded state.
-
-### Scroll preservation
-
-- Toggling any setting refreshes the view but keeps scroll position.
 
 ### Off-screen notes
 
@@ -177,18 +181,18 @@ days. Each note is seeded by its date, so a retake shows the same content; `seed
 - Collapsed, it stays collapsed across reopens. **[e2e]**
 - Scrolled back to, a note never draws shorter while its mentions load. **[e2e]**
 - On a phone, a quoted table stacks or clips; nothing in the footer scrolls. **[e2e]**
-- With Better Search Views installed, the footer is unchanged: it is the stream's own, not Obsidian's
-  backlinks pane (docs/decisions.md, 2026-09-28).
+- Better Search Views leaves the footer unchanged: it is the stream's own, not Obsidian's backlinks pane
+  (docs/decisions.md, 2026-09-28).
 
 ### Mobile
 
 Run before a release: `isDesktopOnly: false` is a promise no static check keeps.
 
-Emulate first — `pnpm run demo` gives `is-mobile` and `is-phone`, `--ipad` the tablet layout without
-`is-phone`, `--landscape` either on its side. This loads the mobile CSS, so it catches layout and touch-target
-problems in seconds, but it keeps Electron's Chromium and cannot reproduce a WKWebView bug.
-
-Re-run it to switch — about three seconds, and each flag sizes the window to match, `--desktop` included.
+Emulate first. `pnpm run demo` gives `is-mobile` and `is-phone`, `--ipad` the tablet layout without
+`is-phone`, `--landscape` either on its side, and `--desktop` neither. Re-run it to switch: each flag sizes
+the window to match.
+The mobile CSS catches layout and touch-target problems in seconds, but Electron's Chromium cannot reproduce a
+WKWebView bug.
 
 Then a real device:
 
@@ -203,8 +207,8 @@ Checks:
 
 - Nothing scrolls sideways: code and URLs wrap, wide tables stack, wide Bases draw as cards, wide equations
   shrink to fit. **[e2e]** Each case is in **2026-08-30**.
-- Rotate with a Base on screen: a wide one turns to cards or back to a table. A wide equation grows or shrinks
-  with the note.
+- Rotation reflows without clipping. With a Base on screen, a wide one turns to cards or back to a table; a
+  wide equation grows or shrinks with the note.
 - Turn the phone both ways with a title just below the screen's top, then with the top on a Base's last card
   and a heading below: what was at the top stays there, and no note is skipped. **[e2e]** with anchoring off,
   but Chromium redraws a Base in another order: only the device proves it.
@@ -227,7 +231,6 @@ Checks:
 - A hard flick to the bottom loads the next batch without duplicates or a stall; repeated flicks keep loading.
 - Backgrounding and returning keeps position and keeps scrolling.
 - Editing a visible note elsewhere re-renders it in place.
-- Rotation reflows without clipping or losing position.
 - Long-press on a date header opens the file menu; "Open to the right" does something sensible on a phone.
 - No console errors (iOS: Safari → Develop; Android: `chrome://inspect`).
 
