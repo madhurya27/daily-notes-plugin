@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import { Component, TFile } from "obsidian";
-import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "../../src/render/collapsible";
+import { CollapsibleManager, LINKED_MENTIONS_SECTION_KEY, PROPERTIES_SECTION_KEY } from "../../src/render/collapsible";
 import type { CollapsibleStateStore } from "../../src/render/collapse-store";
 import { fake } from "../stream-view-fixture";
 
@@ -610,10 +610,13 @@ describe("CollapsibleManager — stale sections", () => {
         expect(manager.makeCollapsible(content, "file.md")).toEqual(["notes", "notes-2", "li-1-task"]);
     });
 
-    it("forgets the sections a settled note no longer has, keeping the properties panel's", () => {
+    it("forgets the sections a settled note no longer has, keeping the properties panel's and the footer's", () => {
         manager.forgetRemovedSections(noteWritten(25), ["notes"]);
 
-        expect(store.retainOnly).toHaveBeenCalledWith("file.md", new Set(["notes", PROPERTIES_SECTION_KEY]));
+        expect(store.retainOnly).toHaveBeenCalledWith(
+            "file.md",
+            new Set(["notes", PROPERTIES_SECTION_KEY, LINKED_MENTIONS_SECTION_KEY])
+        );
     });
 
     it("forgets nothing of a note written in the last day: a heading may be mid-edit", () => {

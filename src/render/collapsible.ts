@@ -11,6 +11,9 @@ function slugify(text: string): string {
 /** Reserved key for the properties panel; a heading slug can never contain ":". */
 export const PROPERTIES_SECTION_KEY = ":properties";
 
+/** Reserved key for the linked mentions footer. */
+export const LINKED_MENTIONS_SECTION_KEY = ":linked-mentions";
+
 /** Unwritten this long, a note's missing sections are gone, not mid-edit (docs/decisions.md, 2026-09-23). */
 const SETTLED_AFTER_MS = 24 * 60 * 60 * 1000;
 
@@ -155,10 +158,13 @@ export class CollapsibleManager {
         ];
     }
 
-    /** Drops saved sections `file` no longer has. Properties stay: a hidden panel renders no key. */
+    /** Drops saved sections `file` no longer has. The panels stay: a hidden one renders no key. */
     forgetRemovedSections(file: TFile, sectionKeys: readonly string[]): void {
         if (Date.now() - file.stat.mtime < SETTLED_AFTER_MS) return;
-        this.store.retainOnly(file.path, new Set([...sectionKeys, PROPERTIES_SECTION_KEY]));
+        this.store.retainOnly(
+            file.path,
+            new Set([...sectionKeys, PROPERTIES_SECTION_KEY, LINKED_MENTIONS_SECTION_KEY])
+        );
     }
 
     /**
