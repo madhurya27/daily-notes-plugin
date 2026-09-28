@@ -935,3 +935,16 @@ one above the match pushed it off screen, leaving the reader on the Base.
 - Counting Base fills as layout changes — `scrollIntoPlace` would wait on them,
   and every step with it.
 - Scroll anchoring — it holds the note's top, not the match.
+
+## 2026-09-27 — Submission rules live in ESLint where a rule can say them
+
+**Decision:** `eslint.config.mts` enforces the submission rules a lint rule can
+express, `manifest.json` included; `tests/repo/compliance.test.ts` keeps only
+the rest (file names, the license, an error's prefix, sentence case).
+
+**Why:** a rule reads the syntax, where a test's regex matched comments too,
+and the editor shows it as it is typed.
+
+**Rejected:**
+- Both — two places to update, one failing after the other.
+- Tests only — they grep text and fail only when the suite runs.

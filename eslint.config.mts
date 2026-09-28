@@ -28,6 +28,46 @@ export default tseslint.config(
         files: ["package.json"],
         rules: { "depend/ban-dependencies": ["error", { allowed: ["moment"] }] },
     },
+    // Submission rules the recommended config leaves out, for the shipped code.
+    {
+        files: ["src/**/*.ts"],
+        rules: {
+            "no-console": ["error", { allow: ["error"] }],
+            // The global app exists for debugging and may be withdrawn.
+            "no-restricted-properties": ["error", { object: "window", property: "app", message: "Use this.app." }],
+            "no-restricted-syntax": [
+                "error",
+                {
+                    selector: "ImportDeclaration[source.value='electron']",
+                    message: "Electron is desktop-only; the manifest promises mobile.",
+                },
+                // A placeholder's height is measured at runtime, so custom
+                // properties may be set from code (docs/decisions.md, 2026-09-20).
+                {
+                    selector:
+                        "CallExpression[callee.property.name=/^(setProperty|removeProperty)$/][callee.object.property.name='style'][arguments.0.value!=/^--/]",
+                    message: "Style through CSS classes; only custom properties may be set from code.",
+                },
+                {
+                    selector: "CallExpression[callee.property.name='setCssStyles']",
+                    message: "Style through CSS classes; only custom properties may be set from code.",
+                },
+                // Rebuilt elements would pile registrations on the view; delegate
+                // to one listener on the container instead.
+                {
+                    selector: "CallExpression[callee.property.name=/^(addEventListener|onClickEvent)$/]",
+                    message: "Register listeners through the owning component (registerDomEvent).",
+                },
+            ],
+        },
+    },
+    // manifest.json, for validate-manifest; parsed as JSON by the TS parser.
+    {
+        files: ["manifest.json"],
+        languageOptions: { parser: tseslint.parser },
+        plugins: { obsidianmd },
+        rules: { "obsidianmd/validate-manifest": "error" },
+    },
     // Node scripts, not plugin code: Node globals, and no typed linting to
     // configure since they sit outside every tsconfig.
     {
