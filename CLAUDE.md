@@ -16,11 +16,9 @@ pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
 pnpm run test:memory    # e2e/memory.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
 
 pnpm run demo                     # open .dev/demo-vault/ (gitignored) and reload the plugin on every save, until Ctrl-C;
-                                  # builds and seeds first if missing; --desktop, --ipad as for open
+                                  # builds and seeds first if missing; --desktop, --ipad; --help lists the flags
 pnpm run build && pnpm run seed   # reseed .dev/demo-vault/, a realistic journal, and install the build into it
-pnpm run open                     # launch Obsidian on it, once; --help lists the flags
-pnpm run reload                   # reload the plugin in the open window, once
-# --test on demo, seed and open: .dev/vault/ instead, the edge cases docs/TESTING.md is written against
+# --test on demo and seed: .dev/vault/ instead, the edge cases docs/TESTING.md is written against
 
 pnpm run capture:screenshots   # rewrite the README's stills in docs/images/, from the demo vault
 pnpm run capture:recording     # rewrite only docs/images/demo-desktop.png, the README's recording

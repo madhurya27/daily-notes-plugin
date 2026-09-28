@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, writeFileSync } from "fs";
+import { lstatSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join, resolve } from "path";
 import { debugPort } from "../../scripts/reload-plugin.mjs";
@@ -63,11 +63,6 @@ describe("linkAssets", () => {
         linkAssets(repoRoot, vault);
         linkAssets(repoRoot, vault);
         expect(lstatSync(join(pluginDir(), "styles.css")).isSymbolicLink()).toBe(true);
-    });
-
-    it("refuses a vault that holds no plugin data, rather than seeding one", () => {
-        expect(() => linkAssets(repoRoot, join(vault, "nope"))).toThrow(/pnpm run seed/);
-        expect(existsSync(join(vault, "nope"))).toBe(false);
     });
 });
 

@@ -1,5 +1,5 @@
 /**
- * What `pnpm run open`'s layout flags mean: the window to open, where, and the
+ * What `pnpm run demo`'s layout flags mean: the window to open, where, and the
  * emulation to apply once it is up.
  *
  * `is-mobile` comes from emulateMobile, `is-phone` from either dimension under

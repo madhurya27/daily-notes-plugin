@@ -16,8 +16,6 @@
         "version": "node scripts/version-bump.mjs && git add manifest.json versions.json",
         "seed": "node scripts/seed.mjs",
         "demo": "node scripts/dev-vault.mjs",
-        "reload": "node scripts/reload-plugin.mjs",
-        "open": "node scripts/open-vault.mjs",
         "lint": "eslint .",
         "format": "prettier --write .",
         "format:check": "prettier --check .",

@@ -14,10 +14,9 @@ import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { isMain } from "./reload-plugin.mjs";
-import { DEMO_VAULT } from "./vaults.mjs";
+import { DEMO_VAULT, PLUGIN_ID } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const PLUGIN_ID = "daily-notes-stream";
 const JOURNAL = "Journal";
 const DAY_MS = 86_400_000;
 
@@ -375,7 +374,7 @@ export function main() {
     for (const asset of assets) copyFileSync(join(REPO, asset), join(pluginDir, asset));
 
     console.log(`Wrote ${days} journal entries up to ${until.toISOString().slice(0, 10)} into ${vault}`);
-    console.log(`Open it: pnpm run open${vault === DEMO_VAULT ? "" : ` ${vault}`}`);
+    console.log(`Open it: pnpm run demo${vault === DEMO_VAULT ? "" : ` ${vault}`}`);
 }
 
 if (isMain(import.meta.url)) main();

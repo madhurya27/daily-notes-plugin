@@ -1009,12 +1009,14 @@ checklist's edge cases.
 
 **Decision:** `pnpm run demo` builds and seeds only what is missing, links the
 build in, opens the window and reloads the plugin on every save
-(`scripts/dev-vault.mjs`). It replaces `dev:vault`, which needed `open` run
-first.
+(`scripts/dev-vault.mjs`). It replaces `dev:vault`, `open` and `reload`, which
+had to be run in the right order. The seed scripts still install a copy of the
+build: the phone's iCloud vault needs files, not links.
 
 **Why:** the edit-reload loop took three commands in the right order.
 
 **Rejected:**
 - Reseeding every run — it would throw away notes written while trying things.
-- Keeping `dev:vault` beside it — two commands for one loop.
+- Keeping `dev:vault`, `open` and `reload` beside it — four commands for one
+  loop.
 

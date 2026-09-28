@@ -1,8 +1,7 @@
 /**
  * Opens the demo vault, or the test vault with --test, in Obsidian, plugin
  * enabled and mobile emulation on, then detaches and leaves the window running.
- *
- *   node scripts/open-vault.mjs [options] [vault]   (--help lists the options)
+ * The step of `pnpm run demo` that opens the window; its options are these.
  *
  * Own instance against `.dev/obsidian-userdata`, so your real config and vaults
  * are untouched and both can run at once. That directory persists — settings and
@@ -15,19 +14,19 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { boundsFor, emulateDevice, layoutFrom } from "./window-layout.mjs";
-import { vaultFrom } from "./vaults.mjs";
+import { PLUGIN_ID, vaultFrom } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
-const PLUGIN_ID = "daily-notes-stream";
 const VIEW_TYPE = "daily-notes-stream-view";
 const VAULT_ID = "dev00000000000001";
 const args = process.argv.slice(2);
 
-const USAGE = `pnpm run open [options] [vault]
+const USAGE = `pnpm run demo [options] [vault]
 
 Opens .dev/demo-vault/ in its own Obsidian with the plugin enabled, the stream
-view showing and mobile emulation on, then detaches and leaves the window up.
+view showing and mobile emulation on, then reloads the plugin on every save
+until Ctrl-C. Builds and seeds the vault first if either is missing.
 
 Vault (default: the demo vault)
   --test          the test vault, .dev/vault/, that docs/TESTING.md uses
@@ -58,7 +57,7 @@ if (args.includes("--help") || args.includes("-h")) {
 const KNOWN_FLAGS = new Set(["--test", "--desktop", "--ipad", "--landscape", "--keep-size", "--position"]);
 const unknown = args.filter((arg) => arg.startsWith("--") && !KNOWN_FLAGS.has(arg.split("=")[0]));
 if (unknown.length) {
-    console.error(`Unknown option${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}\nRun: pnpm run open --help`);
+    console.error(`Unknown option${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}\nRun: pnpm run demo --help`);
     process.exit(1);
 }
 
@@ -88,13 +87,6 @@ const consumed = new Set(["--position"]);
 const positional = args.filter((arg, index) => !arg.startsWith("--") && !consumed.has(args[index - 1]));
 const vault = vaultFrom(positional[0], args);
 const userDataDir = join(REPO, ".dev", "obsidian-userdata");
-
-if (!existsSync(join(vault, ".obsidian", "plugins", PLUGIN_ID, "main.js"))) {
-    console.error(
-        `No plugin build in ${vault}. Run: pnpm run build && pnpm run seed${args.includes("--test") ? " --test" : ""}`
-    );
-    process.exit(1);
-}
 
 const freePort = () =>
     new Promise((res, rej) => {
@@ -237,5 +229,5 @@ const classes = [shown.mobile && "is-mobile", shown.phone && "is-phone"].filter(
 console.log(
     `Obsidian is open on ${vault} with the stream view showing.\n` +
         `Layout: ${classes || "desktop"}${windowSize ? ` in a ${windowSize.width}x${windowSize.height} window` : ""}, ${shown.theme}.\n` +
-        "Other sizes and placement: pnpm run open --help"
+        "Other sizes and placement: pnpm run demo --help"
 );

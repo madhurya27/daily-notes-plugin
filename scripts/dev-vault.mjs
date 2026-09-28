@@ -15,10 +15,9 @@ import { existsSync, rmSync, statSync, symlinkSync, watch } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { isMain, reloadPlugin } from "./reload-plugin.mjs";
-import { vaultFrom } from "./vaults.mjs";
+import { PLUGIN_ID, vaultFrom } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const PLUGIN_ID = "daily-notes-stream";
 
 /** What the vault needs from the repo. `main.js` first: esbuild rewrites it. */
 export const ASSETS = ["main.js", "styles.css", "manifest.json"];
@@ -26,9 +25,6 @@ export const ASSETS = ["main.js", "styles.css", "manifest.json"];
 /** Points a seeded vault's plugin folder at the repo's own files. */
 export function linkAssets(repo, vault) {
     const pluginDir = join(vault, ".obsidian", "plugins", PLUGIN_ID);
-    if (!existsSync(pluginDir)) {
-        throw new Error(`No plugin installed in ${vault} — seed it first: pnpm run seed (--test for the test vault)`);
-    }
     for (const asset of ASSETS) {
         const target = join(pluginDir, asset);
         rmSync(target, { force: true });
@@ -142,6 +138,11 @@ function watchAndReload() {
 
 function main() {
     const args = process.argv.slice(2);
+    // The options are the window's; answered before anything is built or seeded.
+    if (args.includes("--help") || args.includes("-h")) {
+        run("node", [join(REPO, "scripts", "open-vault.mjs"), "--help"]);
+        return;
+    }
     const { named, seedArgs, openArgs } = optionsFrom(args);
     const vault = vaultFrom(named, args);
     const actions = {

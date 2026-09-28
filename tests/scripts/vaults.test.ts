@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { join, resolve } from "path";
-import { DEMO_VAULT, TEST_VAULT, vaultFrom } from "../../scripts/vaults.mjs";
+import { readFileSync } from "fs";
+import { DEMO_VAULT, PLUGIN_ID, TEST_VAULT, vaultFrom } from "../../scripts/vaults.mjs";
 
 const repoRoot = resolve(__dirname, "../..");
 
@@ -17,5 +18,12 @@ describe("vaultFrom", () => {
 
     it("acts on a vault named on the command line, whatever else is asked", () => {
         expect(vaultFrom("elsewhere", ["--test"])).toBe(resolve("elsewhere"));
+    });
+});
+
+describe("PLUGIN_ID", () => {
+    it("is the id the manifest gives the plugin, which names its folder in a vault", () => {
+        const manifest = JSON.parse(readFileSync(join(repoRoot, "manifest.json"), "utf8")) as { id: string };
+        expect(PLUGIN_ID).toBe(manifest.id);
     });
 });

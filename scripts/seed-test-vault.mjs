@@ -12,11 +12,10 @@ import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { isMain } from "./reload-plugin.mjs";
-import { TEST_VAULT } from "./vaults.mjs";
+import { PLUGIN_ID, TEST_VAULT } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const NOTES = "Notes";
-const PLUGIN_ID = "daily-notes-stream";
 const ASSETS = ["main.js", "manifest.json", "styles.css"];
 
 const body = (...lines) => lines.join("\n") + "\n";

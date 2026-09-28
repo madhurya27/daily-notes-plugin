@@ -7,8 +7,8 @@ pnpm test                          # unit
 pnpm run test:e2e                  # every spec twice, desktop and mobile
 pnpm run test:e2e --project=mobile      # just one project
 pnpm run test:e2e webkit.spec.ts   # the phone layout in iOS's engine (ADR 0009)
-pnpm run build && pnpm run seed --test   # write .dev/vault/ and install the build into it
-pnpm run open --test                     # open it; --help lists every option, with its default
+pnpm run demo --test               # seed .dev/vault/ if missing, open it, reload on every save
+pnpm run build && pnpm run seed --test   # rewrite its notes; --help on demo lists every option
 ```
 
 `seed --test` writes 123 daily notes in `Notes/` plus everything the checklist names: the three dated notes, nested
@@ -23,18 +23,11 @@ so the properties panel is tested by its absence too, and Bases, so they recur a
 a path argument seeds elsewhere. Re-seeding rewrites the notes but leaves `.obsidian` alone, so your layout
 survives.
 
-`open --test` runs its own Obsidian against `.dev/obsidian-userdata`, beside your real one. It opens on the main
+`demo --test` runs its own Obsidian against `.dev/obsidian-userdata`, beside your real one. It opens on the main
 display — it is meant to be watched, unlike the hidden e2e window. Phone mode has no draggable region, so
 `--position` is how that window moves.
 
-One command keeps that window current:
-
-```bash
-pnpm run demo --test   # builds and seeds if missing, opens the window, reloads the plugin on every save
-pnpm run reload        # a reload, once, by hand
-```
-
-It links the vault's plugin files to the repo's build; re-seeding copies over the links, and the next
+It builds and seeds only what is missing, then reloads the plugin on every save until Ctrl-C. It links the vault's plugin files to the repo's build; re-seeding copies over the links, and the next
 `demo` puts them back. It leaves the notes alone: `seed --test` rewrites them.
 
 Without `--test`, each of these acts on `.dev/demo-vault/`: 60 days of a journal that reads like a real one — properties, links to people and projects,
@@ -191,7 +184,7 @@ days. Each note is seeded by its date, so a retake shows the same content; `seed
 
 Run before a release: `isDesktopOnly: false` is a promise no static check keeps.
 
-Emulate first — `pnpm run open` gives `is-mobile` and `is-phone`, `--ipad` the tablet layout without
+Emulate first — `pnpm run demo` gives `is-mobile` and `is-phone`, `--ipad` the tablet layout without
 `is-phone`, `--landscape` either on its side. This loads the mobile CSS, so it catches layout and touch-target
 problems in seconds, but it keeps Electron's Chromium and cannot reproduce a WKWebView bug.
 

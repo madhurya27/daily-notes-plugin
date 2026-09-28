@@ -1,11 +1,15 @@
 /**
  * The two local vaults every command acts on: the demo vault by default, the
- * test vault docs/TESTING.md is written against with `--test`.
+ * test vault docs/TESTING.md is written against with `--test`. And the
+ * plugin's id, which names its folder in either.
  */
+import { readFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+export const PLUGIN_ID = JSON.parse(readFileSync(join(REPO, "manifest.json"), "utf8")).id;
 
 export const DEMO_VAULT = join(REPO, ".dev", "demo-vault");
 export const TEST_VAULT = join(REPO, ".dev", "vault");
