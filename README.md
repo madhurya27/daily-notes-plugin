@@ -12,10 +12,10 @@ stream is for reading; click a note's date to open it for editing.
 - **[Search](#search).** Find text across every note with Ctrl/Cmd+F.
 - **[Jump to a date](#move-around).** Pick any day that has a note.
 - **[Fold sections](#fold-sections).** Collapse any heading or nested list.
-- **[Linked mentions](#linked-mentions).** Each note ends with the notes that link to it.
-- **[Full notes](#open-the-stream).** Properties, images, embeds, links, tasks and Bases, shown just as Obsidian
-  shows them.
-- **[Your theme](#settings).** Light or dark, the stream matches it.
+- **Properties.** Each note's properties show at its top; hide or collapse them in [settings](#settings).
+- **[Linked mentions](#linked-mentions).** Each note ends with the notes that link to it; hide or collapse them in
+  [settings](#settings).
+- **[Full notes](#open-the-stream).** Images, embeds, links, tasks and Bases, shown just as Obsidian shows them.
 - **[Phone and tablet](#phone-and-tablet).** Tables and Bases too wide for the screen become cards.
 
 ## Install
