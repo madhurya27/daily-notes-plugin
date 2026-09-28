@@ -734,6 +734,19 @@ describe("NoteRenderer internal links", () => {
         expect(event.defaultPrevented).toBe(true);
     });
 
+    // A linked mention's excerpt was written in another note: `[[Reading list]]` resolves from there.
+    it("opens a link in a linked mention from the note the excerpt came from", async () => {
+        const app = makeApp();
+        const { el } = await renderLink(app);
+        const group = el.createDiv({ cls: "daily-note-mention" });
+        group.dataset.linkSource = "Ideas/a.md";
+        const link = group.createEl("a", { cls: "internal-link", attr: { "data-href": "Reading list" } });
+
+        link.click();
+
+        expect(app.workspace.openLinkText).toHaveBeenCalledWith("Reading list", "Ideas/a.md", false);
+    });
+
     it("opens it there even when another tab shows the linked note", async () => {
         const target = new TFile("Reading list.md");
         const app = makeApp({ leaves: [{ view: makeMarkdownView(target) }] });

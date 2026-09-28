@@ -334,11 +334,16 @@ export class NoteRenderer {
         };
     }
 
-    /** An internal link, and the note it was written in, which resolves it. */
+    /**
+     * An internal link, and the note it was written in, which resolves it: a
+     * linked mention's excerpt was written in its source, not the daily note.
+     */
     private linkAt(target: HTMLElement): { el: HTMLElement; linktext: string; sourcePath: string } | null {
         const el = target.closest<HTMLElement>(".internal-link");
         const linktext = el?.getAttribute("data-href");
-        const sourcePath = el?.closest<HTMLElement>(".daily-note-block")?.dataset.sourcePath;
+        const sourcePath =
+            el?.closest<HTMLElement>("[data-link-source]")?.dataset.linkSource ??
+            el?.closest<HTMLElement>(".daily-note-block")?.dataset.sourcePath;
         if (!el || !linktext || !sourcePath) return null;
         return { el, linktext, sourcePath };
     }
