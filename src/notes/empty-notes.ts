@@ -2,6 +2,8 @@ import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 import { moment, type TFile } from "obsidian";
 import type { Moment, NoteFilter } from "./daily-note-service";
 import { isTemplateOnly, templatePattern } from "./template-match";
+import type { BacklinkIndex } from "./backlink-index";
+import type { DailyNotesStreamSettings } from "../settings";
 
 /** How much a note may outgrow its template and still be read: more is writing. */
 const READ_MARGIN_BYTES = 1024;
@@ -95,13 +97,22 @@ export class EmptyNotes {
 }
 
 /**
- * The stream's filter: an empty note is hidden while `enabled`, except
- * today's, which is about to be written in.
+ * The stream's filter: an empty note is hidden while the setting is on, except
+ * today's, which is about to be written in, and one with linked mentions to show.
  */
-export function hideEmptyNotes(notes: EmptyNotes, enabled: () => boolean): NoteFilter {
+export function hideEmptyNotes(
+    notes: EmptyNotes,
+    backlinks: BacklinkIndex,
+    settings: () => Pick<DailyNotesStreamSettings, "hideEmptyNotes" | "showLinkedMentions">
+): NoteFilter {
+    const hasMentions = (file: TFile) => settings().showLinkedMentions && backlinks.sourcesOf(file.path).length > 0;
     return {
-        prepare: (files) => (enabled() ? notes.refresh(files) : Promise.resolve()),
-        isHidden: (file: TFile, date: Moment) => enabled() && !date.isSame(moment(), "day") && notes.isEmpty(file),
-        signature: () => `${enabled()}\u0000${notes.templatePath()}`,
+        prepare: (files) => (settings().hideEmptyNotes ? notes.refresh(files) : Promise.resolve()),
+        isHidden: (file: TFile, date: Moment) =>
+            settings().hideEmptyNotes && !date.isSame(moment(), "day") && notes.isEmpty(file) && !hasMentions(file),
+        signature: () => {
+            const { hideEmptyNotes, showLinkedMentions } = settings();
+            return `${hideEmptyNotes}\u0000${showLinkedMentions}\u0000${notes.templatePath()}`;
+        },
     };
 }

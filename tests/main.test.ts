@@ -28,6 +28,7 @@ function makeApp() {
             on: vi.fn().mockReturnValue({}),
             getFileCache: vi.fn().mockReturnValue(null),
             getFirstLinkpathDest: vi.fn().mockReturnValue(null),
+            resolvedLinks: {} as Record<string, Record<string, number>>,
         },
         loadLocalStorage: vi.fn().mockReturnValue(null),
         saveLocalStorage: vi.fn(),
@@ -181,6 +182,13 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
         await listed(plugin, app);
 
         expect(app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith("Templates/Daily", "");
+    });
+
+    it("keeps an empty note another note links to, for its linked mentions", async () => {
+        const { plugin, app } = await loadPlugin();
+        app.metadataCache.resolvedLinks = { "Meeting.md": { "Notes/2025-01-01.md": 1 } };
+
+        expect(await listed(plugin, app)).toEqual(["Notes/2025-01-01.md"]);
     });
 
     it("leaves out nothing with the setting off", async () => {

@@ -42,8 +42,8 @@ Each note looks just as it does in Obsidian: properties, images, embeds, links, 
 ### Empty notes
 
 A daily note that holds only your daily-notes template, or nothing, is left out of the stream. Once you write in
-it, or change one of its properties, it appears. Today's note always shows. A note made from an older version of
-the template counts as written.
+it, or change one of its properties, it appears. Today's note always shows, and so does one another note links to,
+for its linked mentions. A note made from an older version of the template counts as written.
 
 ### Move around
 

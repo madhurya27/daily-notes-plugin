@@ -157,6 +157,8 @@ Set a daily-notes template, and make a past note from it without writing in it.
 - The note is absent; today's note, just as empty, shows. **[e2e]**
 - Writing a line in it, or adding a property, brings it in at its date; emptying it again hides it. **[e2e]**
 - Turning off "Hide empty notes" shows it without reopening the stream. **[e2e]**
+- Link to it from another note and reopen the stream: it shows, with the link under it. **[e2e]** With linked
+  mentions turned off, it is hidden again.
 - With every daily note empty, the empty state says they are hidden.
 - Point the template setting at another file: the stream reloads by the new template.
 

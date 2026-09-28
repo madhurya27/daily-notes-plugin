@@ -36,7 +36,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         // Each view owns its service (CLAUDE.md, Invariants); they share only the parsed dates and verdicts.
         const parsedDates = new ParsedDates();
         const markdownFiles = () => this.app.vault.getMarkdownFiles();
-        const filter = hideEmptyNotes(this.emptyNotes, () => this.settings.hideEmptyNotes);
+        const filter = hideEmptyNotes(this.emptyNotes, this.backlinks, () => this.settings);
         this.registerView(
             VIEW_TYPE_DAILY_NOTES_STREAM,
             (leaf) => new DailyNotesStreamView(leaf, this, new DailyNoteService(markdownFiles, parsedDates, filter))

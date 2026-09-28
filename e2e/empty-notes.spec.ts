@@ -9,6 +9,8 @@ const TEMPLATE = "---\ntags: daily\n---\n# {{date:dddd, MMMM D}}\n\n## Log\n- \n
 /** A day after the newest seeded note, holding only its template. */
 const EMPTY_DAY = "2026-03-15";
 const EMPTY_NOTE = `Notes/${EMPTY_DAY}.md`;
+/** Not a daily note: it links to the empty one. */
+const MENTIONING_NOTE = "Meeting.md";
 const EMPTY_TEXT = "---\ntags: daily\n---\n# Sunday, March 15\n\n## Log\n- \n";
 
 function writeDailyNotesConfig(vaultPath: string, config: Record<string, string>) {
@@ -64,7 +66,7 @@ test.describe("empty daily notes", () => {
         const { page, vaultPath } = obsidian;
         await setHideEmptyNotes(page, true);
         writeDailyNotesConfig(vaultPath, CONFIG);
-        const paths = [TEMPLATE_PATH, EMPTY_NOTE, await todayNote(page)];
+        const paths = [TEMPLATE_PATH, EMPTY_NOTE, MENTIONING_NOTE, await todayNote(page)];
         await page.evaluate(async (paths) => {
             for (const path of paths) {
                 const file = window.app.vault.getAbstractFileByPath(path);
@@ -122,6 +124,19 @@ test.describe("empty daily notes", () => {
         await write(page, EMPTY_NOTE, EMPTY_TEXT);
 
         await expect(shown.nth(1)).toHaveText(seededDate(0));
+    });
+
+    test("shows the note, with its linked mentions, when another note links to it", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await write(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
+        await expect
+            .poll(() => page.evaluate((path) => path in window.app.metadataCache.resolvedLinks, MENTIONING_NOTE))
+            .toBe(true);
+
+        const shown = await titles(page);
+
+        await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
+        await expect(page.locator(`[data-source-path="${EMPTY_NOTE}"]`)).toContainText("Planned on");
     });
 
     test("shows every note with the setting off", async ({ obsidian }) => {

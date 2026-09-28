@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { TFile, moment } from "../mocks/obsidian";
 import { __setMockSettings } from "../mocks/daily-notes-interface";
 import { EmptyNotes, hideEmptyNotes } from "../../src/notes/empty-notes";
+import { BacklinkIndex } from "../../src/notes/backlink-index";
 
 const TEMPLATE = "## Log\n- \n";
 
@@ -144,11 +145,13 @@ describe("EmptyNotes", () => {
 });
 
 describe("hideEmptyNotes", () => {
-    let enabled: boolean;
+    let settings: { hideEmptyNotes: boolean; showLinkedMentions: boolean };
+    let links: Record<string, Record<string, number>>;
     const today = moment("2026-09-28", "YYYY-MM-DD");
 
     beforeEach(() => {
-        enabled = true;
+        settings = { hideEmptyNotes: true, showLinkedMentions: true };
+        links = {};
         vi.useFakeTimers({ now: new Date(2026, 8, 28, 12) });
         __setMockSettings({ format: "YYYY-MM-DD", folder: "", template: "Templates/Daily" });
     });
@@ -158,7 +161,7 @@ describe("hideEmptyNotes", () => {
     /** A filter over a vault holding an empty note of yesterday's and today's. */
     async function filterOver() {
         const vault = vaultOf({ "Templates/Daily.md": TEMPLATE, "2026-09-27.md": "", "2026-09-28.md": "" });
-        const filter = hideEmptyNotes(vault.notes, () => enabled);
+        const filter = hideEmptyNotes(vault.notes, new BacklinkIndex(() => links), () => settings);
         const files = [vault.fileAt("2026-09-27.md"), vault.fileAt("2026-09-28.md")] as const;
         await filter.prepare([...files]);
         return { vault, filter, files };
@@ -172,21 +175,40 @@ describe("hideEmptyNotes", () => {
     });
 
     it("hides nothing, and reads nothing, when turned off", async () => {
-        enabled = false;
+        settings.hideEmptyNotes = false;
         const { vault, filter, files } = await filterOver();
 
         expect(filter.isHidden(files[0], today.clone().subtract(1, "day"))).toBe(false);
         expect(vault.read).not.toHaveBeenCalled();
     });
 
-    it("signs the setting and the template path, which change what is hidden wholesale", async () => {
+    // Its linked mentions are content the stream would show under it.
+    it("shows an empty note another note links to", async () => {
+        links = { "Meeting.md": { "2026-09-27.md": 1 } };
+        const { filter, files } = await filterOver();
+
+        expect(filter.isHidden(files[0], today.clone().subtract(1, "day"))).toBe(false);
+    });
+
+    it("hides an empty note linked to when linked mentions are off, as nothing would show under it", async () => {
+        links = { "Meeting.md": { "2026-09-27.md": 1 } };
+        settings.showLinkedMentions = false;
+        const { filter, files } = await filterOver();
+
+        expect(filter.isHidden(files[0], today.clone().subtract(1, "day"))).toBe(true);
+    });
+
+    it("signs the settings and the template path, which change what is hidden wholesale", async () => {
         const { filter } = await filterOver();
-        const on = filter.signature();
+        const signatures = [filter.signature()];
 
-        enabled = false;
-        const off = filter.signature();
+        settings.showLinkedMentions = false;
+        signatures.push(filter.signature());
+        settings.hideEmptyNotes = false;
+        signatures.push(filter.signature());
         __setMockSettings({ format: "YYYY-MM-DD", folder: "", template: "Templates/Journal" });
+        signatures.push(filter.signature());
 
-        expect(new Set([on, off, filter.signature()]).size).toBe(3);
+        expect(new Set(signatures).size).toBe(4);
     });
 });
