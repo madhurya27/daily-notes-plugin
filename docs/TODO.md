@@ -49,19 +49,6 @@ Out of scope: random note (core ships it), task rollup (Tasks owns it, and read-
 folder/tag modes (dilutes what the plugin is), a tag/header filter (search does it),
 sticky date header (`docs/decisions.md`, 2026-09-21).
 
-## Async
-Work that blocks the render queue or the main thread. Time each with `test:memory` or a trace before
-changing it; the linked-mentions footer sets the pattern (docs/decisions.md, 2026-09-28): the queue never
-waits, the `HeightHold` does.
-- [ ] Bases off the queue: `renderInto` awaits `bases.render` on mobile, so every vault event waits on a
-  Base's definition read and fill.
-- [ ] Stream search: every query and every vault change re-reads every note at once (`findNotes`'
-  `Promise.all`). Cache sources per path, invalidated on `modify`; drop a search a newer one replaced.
-- [ ] Wide tables and equations: `stackWideTables` / `fitWideEquations` read widths right after each
-  render, forcing a layout per note. Batch the reads in one `requestAnimationFrame`.
-- [ ] First open of a large vault: `buildSorted` parses every file's date in one go. Yield in chunks only if
-  the seeded three-year vault shows a long task.
-
 ## Deferred, contingent on how unloading behaves in real use
 Only worth doing if jumps show up on a phone. Chromium's scroll anchoring
 absorbs them on desktop; iOS WebKit has none

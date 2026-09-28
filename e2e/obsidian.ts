@@ -618,6 +618,23 @@ export async function restoreScrollAnchoring(page: Page) {
     });
 }
 
+/** Lighthouse's mobile preset: a laptop's CPU slowed to a phone's. */
+const PHONE_CPU_SLOWDOWN = 4;
+
+/**
+ * Slows the CPU to a phone's for timings taken in the mobile project, whose
+ * Chromium otherwise runs at laptop speed. Returns the undo: tests share the
+ * instance.
+ */
+export async function emulatePhoneCpu(page: Page): Promise<() => Promise<void>> {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: PHONE_CPU_SLOWDOWN });
+    return async () => {
+        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+        await cdp.detach();
+    };
+}
+
 /**
  * Detaches every search pane. Tests share one Obsidian instance, so a search
  * opened by an earlier test would still be on screen for this one to match.
