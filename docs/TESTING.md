@@ -199,6 +199,8 @@ Checks:
 - Turn the phone both ways with a title just below the screen's top, then with the top on a Base's last card
   and a heading below: what was at the top stays there, and no note is skipped. **[e2e]** with anchoring off,
   but Chromium redraws a Base in another order: only the device proves it.
+- Scroll through a Base table with summaries: its header and summary row move with it, never floating over
+  the page. **[e2e]**
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides out.
 - A Base on screen gains a row from another pane: the text below never jumps and returns.
 - Jump to an old date, then flick up: the text under your finger does not jump as the notes above render, and

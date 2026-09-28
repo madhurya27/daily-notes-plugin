@@ -158,7 +158,11 @@ const MIDDLE = ["file.name", "file.path", "file.folder", "file.ext", "file.size"
 const BASES = {
     "Wide.base": ["views:", ...tableView("Wide", WIDE)],
     "Middle.base": ["views:", ...tableView("Middle", MIDDLE)],
-    "Narrow.base": ["views:", ...tableView("Narrow", ["file.name"])],
+    // With a summary row, for the check that it stays on its table.
+    "Narrow.base": [
+        "views:",
+        ...tableView("Narrow", ["file.name", "file.size"], "    summaries:", "      file.size: Sum"),
+    ],
     // A hand-sized column: drawn as a table, it is cut at the note's edge.
     "Resized.base": [
         "views:",

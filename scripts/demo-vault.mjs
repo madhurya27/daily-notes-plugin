@@ -254,6 +254,8 @@ const READING_BASE = [
     "      - author",
     "      - status",
     "      - rating",
+    "    summaries:",
+    "      rating: Average",
 ];
 
 const WIREFRAME = [

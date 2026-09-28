@@ -948,3 +948,15 @@ and the editor shows it as it is typed.
 **Rejected:**
 - Both — two places to update, one failing after the other.
 - Tests only — they grep text and fail only when the suite runs.
+
+## 2026-09-27 — A Base's header and summaries scroll with it, on mobile
+
+**Decision:** on mobile, a Base table's header and summary row are
+`position: static` (`styles.css`).
+
+**Why:** Bases pins both to its own scroll box. ADR 0008 clips that box away,
+so they pinned to the stream's instead and floated over the notes.
+
+**Rejected:**
+- Leaving them pinned to the stream — they cover other notes' text.
+- Giving the Base its scroll box back — ADR 0008.
