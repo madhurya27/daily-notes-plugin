@@ -15,18 +15,38 @@ import {
 const repoRoot = resolve(__dirname, "../..");
 
 describe("debugPort", () => {
-    it("reads the port Obsidian was launched with", () => {
-        const ps =
-            "/Applications/Obsidian.app/Contents/MacOS/Obsidian --user-data-dir=/x --remote-debugging-port=63416";
-        expect(debugPort(ps)).toBe(63416);
+    const DEV = "/repo/.dev/obsidian-userdata";
+    const obsidian = (dir: string, port?: number) =>
+        `/Applications/Obsidian.app/Contents/MacOS/Obsidian --user-data-dir=${dir}` +
+        (port ? ` --remote-debugging-port=${port}` : "");
+
+    it("reads the port the dev instance was launched with", () => {
+        expect(debugPort(obsidian(DEV, 63416), DEV)).toBe(63416);
     });
 
-    it("returns null when no window carries one", () => {
-        expect(debugPort("/Applications/Obsidian.app/Contents/MacOS/Obsidian --user-data-dir=/x")).toBeNull();
+    it("returns null when the dev instance has none", () => {
+        expect(debugPort(obsidian(DEV), DEV)).toBeNull();
     });
 
-    it("takes the first port when several windows are open", () => {
-        expect(debugPort("a --remote-debugging-port=1000\nb --remote-debugging-port=2000")).toBe(1000);
+    // A save during an e2e run must not reload the plugin inside a test's window.
+    it("passes over e2e instances, whatever order ps lists them in", () => {
+        const ps = [obsidian("/tmp/dns-userdata-a1", 1000), obsidian(DEV, 2000)].join("\n");
+        expect(debugPort(ps, DEV)).toBe(2000);
+        expect(debugPort(obsidian("/tmp/dns-userdata-a1", 1000), DEV)).toBeNull();
+    });
+
+    it("reads it from the main process, past helpers that carry the directory but no port", () => {
+        const helper = `/Applications/Obsidian.app/Contents/Frameworks/Obsidian Helper --type=renderer --user-data-dir=${DEV}`;
+        expect(debugPort([helper, obsidian(DEV, 2000)].join("\n"), DEV)).toBe(2000);
+    });
+
+    it("finds a directory whose path holds a space", () => {
+        const spaced = "/Users/me/Mobile Documents/repo/.dev/obsidian-userdata";
+        expect(debugPort(obsidian(spaced, 4000), spaced)).toBe(4000);
+    });
+
+    it("matches the directory whole, not one it prefixes", () => {
+        expect(debugPort(obsidian(`${DEV}-old`, 3000), DEV)).toBeNull();
     });
 });
 

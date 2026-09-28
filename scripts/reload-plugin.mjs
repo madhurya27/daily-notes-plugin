@@ -9,22 +9,27 @@ import { chromium } from "@playwright/test";
 import { execSync } from "child_process";
 import { resolve } from "path";
 import { fileURLToPath } from "url";
-import { PLUGIN_ID } from "./vaults.mjs";
+import { PLUGIN_ID, USER_DATA_DIR } from "./vaults.mjs";
 
 const VIEW_TYPE = "daily-notes-stream-view";
 
-/** The port in a `ps` listing, or null when no window carries one. */
-export function debugPort(psOutput) {
-    const match = /--remote-debugging-port=(\d+)/.exec(psOutput);
-    return match ? Number(match[1]) : null;
+/**
+ * The debugging port of the Obsidian launched with `userDataDir`, from a `ps`
+ * listing, or null when it has none. Only that one: e2e runs launch their own,
+ * each with a port, and a reload there would break a test. Its helper processes
+ * carry the directory without the port.
+ */
+export function debugPort(psOutput, userDataDir) {
+    for (const args of psOutput.split("\n")) {
+        const port = /--remote-debugging-port=(\d+)/.exec(args);
+        // The flag and a space after it, so a path holding spaces matches and a longer one does not.
+        if (port && `${args} `.includes(`--user-data-dir=${userDataDir} `)) return Number(port[1]);
+    }
+    return null;
 }
 
 function runningPort() {
-    const listing = execSync("ps -Ao args", { encoding: "utf8" })
-        .split("\n")
-        .filter((line) => line.includes("--remote-debugging-port="))
-        .join("\n");
-    return debugPort(listing);
+    return debugPort(execSync("ps -Ao args", { encoding: "utf8" }), USER_DATA_DIR);
 }
 
 /**
