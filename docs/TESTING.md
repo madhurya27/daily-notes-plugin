@@ -13,7 +13,7 @@ pnpm run demo --test                 # the test vault, below; --help lists every
 `pnpm run demo` runs its own Obsidian against `.dev/obsidian-userdata`, beside your real one, on the main
 display: it is meant to be watched, unlike the hidden e2e window. Each run builds if there is no build,
 reseeds the vault, links its plugin files to the repo's build, and reloads the plugin on every save until
-Ctrl-C. Anything typed into the vault lasts until the next run; `.obsidian` is kept, so your layout survives.
+Ctrl-C, which closes the window. Anything typed into the vault lasts until the next run; `.obsidian` is kept, so your layout survives.
 Phone mode has no draggable region, so `--position` moves the window.
 
 ### Test vault: `--test`, `.dev/vault/`

@@ -15,7 +15,7 @@ pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
 pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
 pnpm run test:memory    # e2e/memory.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
 
-pnpm run demo                     # open .dev/demo-vault/ (gitignored) and reload the plugin on every save, until Ctrl-C;
+pnpm run demo                     # open .dev/demo-vault/ (gitignored) and reload the plugin on every save; Ctrl-C closes it;
                                   # reseeds it each run, builds if missing; --desktop, --ipad; --help lists the flags
 pnpm run build && pnpm run seed   # reseed .dev/demo-vault/, a realistic journal, and install the build into it
 # --test on demo and seed: .dev/vault/ instead, the edge cases docs/TESTING.md is written against

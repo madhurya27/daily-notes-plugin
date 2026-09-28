@@ -15,7 +15,7 @@ import { existsSync, rmSync, statSync, symlinkSync, watch } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { isMain, reloadPlugin } from "./reload-plugin.mjs";
-import { PLUGIN_ID, vaultFrom } from "./vaults.mjs";
+import { PLUGIN_ID, stopObsidian, vaultFrom } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -119,10 +119,17 @@ function run(command, commandArgs) {
     if (status !== 0) process.exit(status ?? 1);
 }
 
-/** Rebuilds on every save and reloads the plugin after each, until Ctrl-C. */
+/**
+ * Rebuilds on every save and reloads the plugin after each, until Ctrl-C,
+ * which also closes the window. Ctrl-C reaches esbuild too, so its exit, not
+ * the signal, is what ends the run: whichever arrives first, the window goes.
+ */
 function watchAndReload() {
     const esbuild = spawn("node", [join(REPO, "esbuild.config.mjs")], { stdio: "inherit" });
-    esbuild.on("exit", (code) => process.exit(code ?? 0));
+    esbuild.on("exit", (code) => {
+        stopObsidian();
+        process.exit(code ?? 0);
+    });
     process.on("SIGINT", () => esbuild.kill());
 
     const schedule = createReloader(reloadPlugin, 250);
@@ -134,7 +141,7 @@ function watchAndReload() {
             if (changed(path)) schedule();
         });
     }
-    console.log("Watching for changes; every save reloads the plugin in the window. Ctrl-C to stop.");
+    console.log("Watching for changes; every save reloads the plugin in the window. Ctrl-C closes it.");
 }
 
 function main() {

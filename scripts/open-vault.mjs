@@ -8,15 +8,13 @@
  * the trust prompt stay put; delete it for a clean slate.
  */
 import { chromium } from "@playwright/test";
-import { execFileSync, spawn } from "child_process";
+import { spawn } from "child_process";
 import { createServer } from "net";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
 import { boundsFor, emulateDevice, layoutFrom } from "./window-layout.mjs";
-import { PLUGIN_ID, vaultFrom } from "./vaults.mjs";
+import { PLUGIN_ID, USER_DATA_DIR, stopObsidian, vaultFrom } from "./vaults.mjs";
 
-const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
 const VIEW_TYPE = "daily-notes-stream-view";
 const VAULT_ID = "dev00000000000001";
@@ -26,7 +24,7 @@ const USAGE = `pnpm run demo [options] [vault]
 
 Opens .dev/demo-vault/ in its own Obsidian with the plugin enabled, the stream
 view showing and mobile emulation on, then reloads the plugin on every save
-until Ctrl-C. Reseeds the vault first, and builds if there is no build.
+until Ctrl-C, which closes the window. Reseeds the vault first, and builds if there is no build.
 
 Vault (default: the demo vault)
   --test          the test vault, .dev/vault/, that docs/TESTING.md uses
@@ -86,7 +84,7 @@ const position = parsePosition(flagValue("--position"));
 const consumed = new Set(["--position"]);
 const positional = args.filter((arg, index) => !arg.startsWith("--") && !consumed.has(args[index - 1]));
 const vault = vaultFrom(positional[0], args);
-const userDataDir = join(REPO, ".dev", "obsidian-userdata");
+const userDataDir = USER_DATA_DIR;
 
 const freePort = () =>
     new Promise((res, rej) => {
@@ -110,32 +108,8 @@ const connect = async (port) => {
     }
 };
 
-/**
- * A surviving Electron helper holds the single-instance lock, and the next launch
- * then exits silently without opening its debugging port. Clear the whole group.
- */
-const stopExisting = () => {
-    const running = () => {
-        try {
-            return (
-                execFileSync("pgrep", ["-f", `user-data-dir=${userDataDir}`], { encoding: "utf8" }).trim().length > 0
-            );
-        } catch {
-            return false; // pgrep exits 1 when nothing matches.
-        }
-    };
-    if (!running()) return;
-    try {
-        execFileSync("pkill", ["-f", `user-data-dir=${userDataDir}`]);
-    } catch {
-        // Already gone between the check and the kill.
-    }
-    const deadline = Date.now() + 10_000;
-    while (running() && Date.now() < deadline) execFileSync("sleep", ["0.2"]);
-};
-
 mkdirSync(userDataDir, { recursive: true });
-stopExisting();
+stopObsidian();
 writeFileSync(
     join(userDataDir, "obsidian.json"),
     JSON.stringify({ vaults: { [VAULT_ID]: { path: vault, ts: Date.now(), open: true } }, updateDisabled: true })
