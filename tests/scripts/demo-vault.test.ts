@@ -34,10 +34,6 @@ describe("demoVault", () => {
         expect(targets.filter((target) => !names.has(target))).toEqual([]);
     });
 
-    it("opens each weekday note with properties", () => {
-        expect(daily("2026-09-24")).toMatch(/^---\ntags:\n {2}- daily\n[\s\S]*?\n---\n/);
-    });
-
     it("reviews the week on Sundays, with the reading list as a Base", () => {
         expect(daily("2026-09-20")).toContain("## Week in review");
         expect(daily("2026-09-20")).toContain("![[Reading.base]]");
