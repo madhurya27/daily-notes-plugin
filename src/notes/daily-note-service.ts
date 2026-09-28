@@ -15,6 +15,15 @@ interface DateFormat {
 /** `obsidian` exports moment as a value, so the type comes from its return. */
 export type Moment = ReturnType<typeof moment>;
 
+/** Which daily notes the stream leaves out. */
+export interface NoteFilter {
+    /** Makes `isHidden` current for `files`. */
+    prepare(files: TFile[]): Promise<void>;
+    isHidden(file: TFile, date: Moment): boolean;
+    /** Changes when what is hidden may have changed wholesale, so the notes are listed again. */
+    signature(): string;
+}
+
 /** A daily note and the date its name was parsed to, once. */
 interface DatedNote {
     file: TFile;

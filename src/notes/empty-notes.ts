@@ -1,0 +1,107 @@
+import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
+import { moment, type TFile } from "obsidian";
+import type { Moment, NoteFilter } from "./daily-note-service";
+import { isTemplateOnly, templatePattern } from "./template-match";
+
+/** How much a note may outgrow its template and still be read: more is writing. */
+const READ_MARGIN_BYTES = 1024;
+
+/** The vault, as far as the index reaches into it. */
+export interface NoteReader {
+    read(file: TFile): Promise<string>;
+    /** The file a link to `linkpath` opens, as the daily-notes template is found. */
+    resolve(linkpath: string): TFile | null;
+}
+
+/** The daily-notes template as last read. */
+interface Template {
+    /** Its setting, the file it resolved to and that file's mtime: any change reads it again. */
+    key: string;
+    pattern: RegExp;
+    /** The biggest note worth reading. */
+    maxBytes: number;
+}
+
+interface Verdict {
+    mtime: number;
+    empty: boolean;
+}
+
+/**
+ * Which daily notes hold only their template (ADR 0011), one per plugin. A
+ * verdict is kept per path for the mtime it was read at, so only a note
+ * changed since is read again; a changed template drops them all.
+ */
+export class EmptyNotes {
+    private template: Template | null = null;
+    private verdicts = new Map<string, Verdict>();
+
+    constructor(private readonly reader: NoteReader) {}
+
+    /** The template path the daily-notes settings name. */
+    templatePath(): string {
+        return getDailyNoteSettings().template ?? "";
+    }
+
+    /** Reads, of `files`, the ones changed since their verdict and small enough to be empty. */
+    async refresh(files: TFile[]): Promise<void> {
+        const template = await this.readTemplate();
+        // A template change mid-read replaces the map; these verdicts land in the old one.
+        const verdicts = this.verdicts;
+        const stale = files.filter((file) => verdicts.get(file.path)?.mtime !== file.stat.mtime);
+        await Promise.all(
+            stale.map(async (file) => {
+                const empty =
+                    file.stat.size <= template.maxBytes &&
+                    isTemplateOnly(await this.reader.read(file), template.pattern);
+                verdicts.set(file.path, { mtime: file.stat.mtime, empty });
+            })
+        );
+    }
+
+    /** Whether `file` held only its template when last read; false when unread or changed since. */
+    isEmpty(file: TFile): boolean {
+        const verdict = this.verdicts.get(file.path);
+        return verdict?.mtime === file.stat.mtime && verdict.empty;
+    }
+
+    rename(oldPath: string, newPath: string): void {
+        const verdict = this.verdicts.get(oldPath);
+        if (!verdict) return;
+        this.verdicts.delete(oldPath);
+        this.verdicts.set(newPath, verdict);
+    }
+
+    forget(path: string): void {
+        this.verdicts.delete(path);
+    }
+
+    /** Resolved as `obsidian-daily-notes-interface` resolves it; read again only once changed. */
+    private async readTemplate(): Promise<Template> {
+        const path = this.templatePath();
+        const file = path ? this.reader.resolve(path) : null;
+        const key = `${path}\u0000${file?.path}\u0000${file?.stat.mtime}`;
+        if (this.template?.key === key) return this.template;
+
+        const text = file ? await this.reader.read(file) : null;
+        this.template = {
+            key,
+            pattern: templatePattern(text),
+            maxBytes: (file?.stat.size ?? 0) + READ_MARGIN_BYTES,
+        };
+        this.verdicts = new Map();
+        return this.template;
+    }
+}
+
+/**
+ * The stream's filter: an empty note is hidden while `enabled`, except
+ * today's, which is about to be written in.
+ */
+export function hideEmptyNotes(notes: EmptyNotes, enabled: () => boolean): NoteFilter {
+    return {
+        prepare: (files) => (enabled() ? notes.refresh(files) : Promise.resolve()),
+        isHidden: (file: TFile, date: Moment) => enabled() && !date.isSame(moment(), "day") && notes.isEmpty(file),
+        signature: () => `${enabled()}\u0000${notes.templatePath()}`,
+    };
+}
