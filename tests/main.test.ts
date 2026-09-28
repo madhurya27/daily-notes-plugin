@@ -129,6 +129,23 @@ describe("DailyNotesStreamPlugin — onload", () => {
         const { plugin } = await loadPlugin();
         expect(plugin.layoutMemory.bases).toBeInstanceOf(BaseMeasurements);
     });
+
+    it("keeps one backlink index for every view, inverted from the cache's resolved links", async () => {
+        const { plugin, app } = await loadPlugin();
+        Object.assign(app.metadataCache, { resolvedLinks: { "Notes/a.md": { "Notes/2025-01-01.md": 1 } } });
+
+        expect(plugin.backlinks.sourcesOf("Notes/2025-01-01.md")).toEqual(["Notes/a.md"]);
+    });
+
+    it("inverts the links afresh once the cache has resolved again", async () => {
+        const { plugin, app } = await loadPlugin();
+        const invalidate = vi.spyOn(plugin.backlinks, "invalidate");
+        const resolved = app.metadataCache.on.mock.calls.find(([event]) => event === "resolved")![1] as () => void;
+
+        resolved();
+
+        expect(invalidate).toHaveBeenCalledOnce();
+    });
 });
 
 describe("DailyNotesStreamPlugin — layout memory", () => {
