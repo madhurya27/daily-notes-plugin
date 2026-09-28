@@ -26,10 +26,13 @@ export function asApp(stub: object): App {
 export function makeService(): DailyNoteService {
     return fake<DailyNoteService>({
         getBatch: vi.fn().mockReturnValue([]),
-        initialize: vi.fn(),
-        refreshIfSettingsChanged: vi.fn().mockReturnValue(false),
+        initialize: vi.fn().mockResolvedValue(undefined),
+        refreshIfSettingsChanged: vi.fn().mockResolvedValue(false),
         insertSorted: vi.fn().mockReturnValue(-1),
         removeSorted: vi.fn().mockReturnValue(-1),
+        indexOf: vi.fn().mockReturnValue(-1),
+        belongs: vi.fn().mockResolvedValue(false),
+        hidesAny: vi.fn().mockReturnValue(false),
         indexForDate: vi.fn().mockReturnValue(-1),
         dates: vi.fn().mockReturnValue([]),
         formatDate: vi.fn().mockReturnValue(""),
@@ -47,6 +50,7 @@ export function makePlugin(): DailyNotesStreamPlugin {
             propertiesCollapsed: false,
             showLinkedMentions: false,
             linkedMentionsCollapsed: false,
+            hideEmptyNotes: false,
         },
         collapseStore: new CollapsibleStateStore(asApp(app)),
         layoutMemory: new LayoutMemory(asApp(app)),

@@ -24,6 +24,7 @@ describe("DailyNotesStreamSettingTab", () => {
         plugin.settings.propertiesCollapsed = true;
         plugin.settings.showLinkedMentions = false;
         plugin.settings.linkedMentionsCollapsed = true;
+        plugin.settings.hideEmptyNotes = false;
 
         makeTab(plugin).display();
 
@@ -32,9 +33,10 @@ describe("DailyNotesStreamSettingTab", () => {
             "Collapse properties by default",
             "Show linked mentions",
             "Collapse linked mentions by default",
+            "Hide empty notes",
         ]);
         expect(Setting.created.every((s) => s.desc.length > 0)).toBe(true);
-        expect(Setting.created.map((s) => s.toggles[0]?.value)).toEqual([true, true, false, true]);
+        expect(Setting.created.map((s) => s.toggles[0]?.value)).toEqual([true, true, false, true, false]);
     });
 
     it.each([
@@ -42,6 +44,7 @@ describe("DailyNotesStreamSettingTab", () => {
         ["propertiesCollapsed", 1],
         ["showLinkedMentions", 2],
         ["linkedMentionsCollapsed", 3],
+        ["hideEmptyNotes", 4],
     ] as const)("writes and saves %s alone when its toggle changes", async (key, position) => {
         const plugin = makePlugin();
         makeTab(plugin).display();

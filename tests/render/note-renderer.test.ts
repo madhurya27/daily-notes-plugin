@@ -106,6 +106,7 @@ function makeSettings(overrides: Partial<DailyNotesStreamSettings> = {}): () => 
         propertiesCollapsed: false,
         showLinkedMentions: false,
         linkedMentionsCollapsed: false,
+        hideEmptyNotes: false,
         ...overrides,
     };
     return () => settings;
@@ -182,6 +183,7 @@ describe("NoteRenderer.renderInto", () => {
             propertiesCollapsed: false,
             showLinkedMentions: false,
             linkedMentionsCollapsed: false,
+            hideEmptyNotes: false,
         };
         app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { title: "Test" } });
         renderer = new NoteRenderer(
@@ -199,6 +201,7 @@ describe("NoteRenderer.renderInto", () => {
             propertiesCollapsed: false,
             showLinkedMentions: false,
             linkedMentionsCollapsed: false,
+            hideEmptyNotes: false,
         }; // as loadSettings() would
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 

@@ -120,8 +120,9 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
             })
         );
 
-        // Not in onload(): the vault may not have indexed its files yet.
-        this.service.initialize();
+        // Not in onload(): the vault may not have indexed its files yet. Awaited:
+        // the first batch must already leave out what is hidden (ADR 0011).
+        await this.service.initialize();
 
         this.collapsible.delegate(this, streamContainerEl);
         this.renderer.delegate(this, streamContainerEl);

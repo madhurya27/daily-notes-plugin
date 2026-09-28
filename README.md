@@ -39,6 +39,12 @@ Each note looks just as it does in Obsidian: properties, images, embeds, links, 
 
 <img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="440">
 
+### Empty notes
+
+A daily note that holds only your daily-notes template, or nothing, is left out of the stream. Once you write in
+it, or change one of its properties, it appears. Today's note always shows. A note made from an older version of
+the template counts as written.
+
 ### Move around
 
 | To | Do |
@@ -126,6 +132,7 @@ On desktop, wide tables and code blocks scroll sideways in their own box, as the
 - **Collapse properties by default** (off): start with the properties folded.
 - **Show linked mentions** (on): show or hide the notes linking to each note.
 - **Collapse linked mentions by default** (off): start with them folded.
+- **Hide empty notes** (on): leave out daily notes you never wrote in. See [Empty notes](#empty-notes).
 
 The stream follows Obsidian's theme, light or dark.
 

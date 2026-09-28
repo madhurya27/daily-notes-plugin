@@ -1,5 +1,3 @@
-const NO_NOTES = "No daily notes found. Please check your daily notes settings.";
-
 /**
  * Where the stream's blocks sit: in note order, ahead of the infinite-scroll
  * sentinel, and indexed by the path each was rendered under. A block's
@@ -67,9 +65,11 @@ export class StreamBlocks {
         this.clear();
     }
 
-    showEmptyState(): void {
-        if (this.findEmptyState()) return;
-        this.insertBeforeSentinel(this.container.createDiv({ cls: "daily-notes-empty-state", text: NO_NOTES }));
+    /** Shows `text` as the one message, in place of the stream's notes. */
+    showEmptyState(text: string): void {
+        const shown = this.findEmptyState();
+        if (shown) shown.setText(text);
+        else this.insertBeforeSentinel(this.container.createDiv({ cls: "daily-notes-empty-state", text }));
     }
 
     hideEmptyState(): void {

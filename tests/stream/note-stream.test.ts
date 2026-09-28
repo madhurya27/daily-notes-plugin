@@ -146,6 +146,17 @@ describe("loading a batch", () => {
         expect(emptyState()).not.toBeNull();
     });
 
+    it("says so when there are daily notes, but every one is hidden", async () => {
+        service.hidesAny.mockReturnValue(true);
+        await load();
+        expect(emptyState()?.textContent).toMatch(/hidden/);
+    });
+
+    it("says there are no daily notes when none is hidden", async () => {
+        await load();
+        expect(emptyState()?.textContent).toMatch(/No daily notes found/);
+    });
+
     it("shows no empty state when the stream simply ran out", async () => {
         await load(note("2025-01-01"));
         await load();
@@ -451,6 +462,48 @@ describe("a note modified", () => {
         expect(stream.blockOf(file)).toBe(block);
     });
 
+    it("takes out a loaded note that is hidden now", async () => {
+        const [kept, hidden] = [note("2025-01-02"), note("2025-01-01")];
+        await load(kept, hidden);
+        service.indexOf.mockReturnValue(1);
+        service.belongs.mockResolvedValue(false);
+        service.removeSorted.mockReturnValue(1);
+        Object.assign(service, { length: 1 });
+
+        stream.onFileModify(hidden);
+        await vi.runAllTimersAsync();
+
+        expect(service.belongs).toHaveBeenCalledWith(hidden);
+        expect(shown()).toEqual([kept.path]);
+        expect(noteWindow.refresh).not.toHaveBeenCalled();
+        expect(await loadedCount()).toBe(1);
+    });
+
+    it("says every note is hidden once the last one is", async () => {
+        const file = note("2025-01-01");
+        await load(file);
+        service.indexOf.mockReturnValue(0);
+        service.removeSorted.mockReturnValue(0);
+        service.hidesAny.mockReturnValue(true);
+
+        stream.onFileModify(file);
+        await vi.runAllTimersAsync();
+
+        expect(emptyState()?.textContent).toMatch(/hidden/);
+    });
+
+    it("puts back a note no longer hidden, in its place", async () => {
+        await load(note("2025-01-03"), note("2025-01-01"));
+        service.belongs.mockResolvedValue(true);
+        service.insertSorted.mockReturnValue(1);
+
+        stream.onFileModify(note("2025-01-02"));
+        await vi.runAllTimersAsync();
+
+        expect(shown()).toEqual(["Notes/2025-01-03.md", "Notes/2025-01-02.md", "Notes/2025-01-01.md"]);
+        expect(await loadedCount()).toBe(3);
+    });
+
     it("logs when the re-render rejects", async () => {
         const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
         await load(note("2025-01-01"));
@@ -504,6 +557,16 @@ describe("refresh", () => {
         await stream.refresh();
 
         expect(pane.scrollTop).toBe(50);
+    });
+
+    it("reloads the stream instead when what the service lists changed", async () => {
+        await load(note("2025-01-03"), note("2025-01-01"));
+        service.refreshIfSettingsChanged.mockResolvedValue(true);
+        service.getBatch.mockReturnValueOnce([note("2025-01-02")]);
+
+        await stream.refresh();
+
+        expect(shown()).toEqual(["Notes/2025-01-02.md"]);
     });
 
     it("re-arms the sentinel against the rebuilt stream", async () => {
@@ -583,7 +646,7 @@ describe("Obsidian's daily-notes settings changed", () => {
 
     it("reloads the stream when the format or folder changed", async () => {
         await load(note("2025-01-01"));
-        service.refreshIfSettingsChanged.mockReturnValue(true);
+        service.refreshIfSettingsChanged.mockResolvedValue(true);
         service.getBatch.mockReturnValueOnce([new TFile("Journal/2025-01-01.md")]);
 
         await settingsChanged();
@@ -606,7 +669,7 @@ describe("Obsidian's daily-notes settings changed", () => {
 
     it("drops notes loaded under the old format before loading the new ones", async () => {
         await load(note("2025-01-01"));
-        service.refreshIfSettingsChanged.mockReturnValue(true);
+        service.refreshIfSettingsChanged.mockResolvedValue(true);
 
         await settingsChanged();
 
@@ -615,7 +678,7 @@ describe("Obsidian's daily-notes settings changed", () => {
     });
 
     it("re-arms infinite scroll against the reloaded stream", async () => {
-        service.refreshIfSettingsChanged.mockReturnValue(true);
+        service.refreshIfSettingsChanged.mockResolvedValue(true);
         await settingsChanged();
 
         const [, , onTrigger] = infiniteScroll.attach.mock.calls.at(-1)!;
@@ -627,9 +690,7 @@ describe("Obsidian's daily-notes settings changed", () => {
 
     it("logs, and keeps the stream working, when rebuilding the cache throws", async () => {
         const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-        service.refreshIfSettingsChanged.mockImplementation(() => {
-            throw new Error("daily notes folder missing");
-        });
+        service.refreshIfSettingsChanged.mockRejectedValue(new Error("daily notes folder missing"));
 
         await settingsChanged();
         expect(consoleSpy).toHaveBeenCalled();

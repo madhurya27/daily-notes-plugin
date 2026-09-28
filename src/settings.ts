@@ -6,6 +6,7 @@ export interface DailyNotesStreamSettings {
     propertiesCollapsed: boolean;
     showLinkedMentions: boolean;
     linkedMentionsCollapsed: boolean;
+    hideEmptyNotes: boolean;
 }
 
 export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
@@ -13,6 +14,7 @@ export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
     propertiesCollapsed: false,
     showLinkedMentions: true,
     linkedMentionsCollapsed: false,
+    hideEmptyNotes: true,
 };
 
 export class DailyNotesStreamSettingTab extends PluginSettingTab {
@@ -41,6 +43,11 @@ export class DailyNotesStreamSettingTab extends PluginSettingTab {
             "linkedMentionsCollapsed",
             "Collapse linked mentions by default",
             "Whether the linked mentions should be collapsed by default."
+        );
+        this.addToggle(
+            "hideEmptyNotes",
+            "Hide empty notes",
+            "Leave out daily notes that hold only their template. Today's note always shows."
         );
     }
 

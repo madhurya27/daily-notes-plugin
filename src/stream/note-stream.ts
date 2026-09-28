@@ -26,6 +26,11 @@ const CONFIG_DEBOUNCE_MS = 1000;
 
 const BATCH_SIZE = 10;
 
+const NO_NOTES = "No daily notes found. Please check your daily notes settings.";
+
+const ALL_HIDDEN =
+    'Every daily note is hidden: each holds only its template. Turn off "Hide empty notes" to show them.';
+
 const NO_NOTE_FOR_DATE = "No daily note on or before that date.";
 
 /**
@@ -119,34 +124,44 @@ export class NoteStream {
         () => {
             const files = [...this.pendingModified.values()];
             this.pendingModified.clear();
-            for (const file of files) {
-                void this.enqueue(async () => {
-                    const el = this.blocks.get(file.path);
-                    if (!el) return;
-                    await this.window.refresh(el);
-                });
-            }
+            for (const file of files) void this.enqueue(() => this.applyModify(file));
         },
         MODIFY_DEBOUNCE_MS,
         true
     );
 
+    /** A save may hide a note, or show one again (ADR 0011); otherwise it re-renders. */
+    private async applyModify(file: TFile): Promise<void> {
+        const listed = this.service.indexOf(file.path) !== -1;
+        const belongs = await this.service.belongs(file);
+        if (listed && !belongs) {
+            this.removeNote(file, file.path);
+        } else if (!listed && belongs) {
+            this.insertNote(file);
+        } else {
+            const el = this.blocks.get(file.path);
+            if (el) await this.window.refresh(el);
+        }
+    }
+
     onFileCreate(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => {
-            // Single source of truth for sort order, and what keeps the service
-            // cache aligned with `this.state.length`. -1 when not a daily note.
-            const globalIndex = this.service.insertSorted(file);
-            if (globalIndex === -1) return;
-            if (globalIndex >= this.state.length) {
-                // Beyond the loaded range — a visible sentinel loads it now.
-                this.scroll.recheck();
-                return;
-            }
+        void this.enqueue(async () => this.insertNote(file));
+    }
 
-            this.blocks.insertBefore(file.path, this.window.add(file), this.state.notes[globalIndex]?.path);
-            this.state.insert(globalIndex, file);
-        });
+    private insertNote(file: TFile): void {
+        // Single source of truth for sort order, and what keeps the service
+        // cache aligned with `this.state.length`. -1 when not a daily note.
+        const globalIndex = this.service.insertSorted(file);
+        if (globalIndex === -1) return;
+        if (globalIndex >= this.state.length) {
+            // Beyond the loaded range — a visible sentinel loads it now.
+            this.scroll.recheck();
+            return;
+        }
+
+        this.blocks.insertBefore(file.path, this.window.add(file), this.state.notes[globalIndex]?.path);
+        this.state.insert(globalIndex, file);
     }
 
     /**
@@ -162,7 +177,7 @@ export class NoteStream {
         if (globalIndex !== -1 && globalIndex < this.state.length) {
             this.state.remove(file.path);
         }
-        if (this.service.length === 0) this.blocks.showEmptyState();
+        if (this.service.length === 0) this.showEmptyState();
     }
 
     onFileDelete(file: TAbstractFile) {
@@ -198,7 +213,7 @@ export class NoteStream {
         const batch = this.service.getBatch(this.state.length, BATCH_SIZE);
         if (batch.length === 0) {
             // No recheck: re-triggering on an empty batch spins forever.
-            if (this.state.length === 0) this.blocks.showEmptyState();
+            if (this.state.length === 0) this.showEmptyState();
             return;
         }
 
@@ -210,6 +225,10 @@ export class NoteStream {
         this.state.append(batch);
 
         this.scroll.recheck();
+    }
+
+    private showEmptyState(): void {
+        this.blocks.showEmptyState(this.service.hidesAny() ? ALL_HIDDEN : NO_NOTES);
     }
 
     /**
@@ -341,8 +360,12 @@ export class NoteStream {
         return this.state.notes[index];
     }
 
+    /** Re-renders every note; reloads instead when what the service lists changed, a setting toggled. */
     refresh(): Promise<void> {
-        return this.enqueue(() => this.rerenderAll());
+        return this.enqueue(async () => {
+            if (await this.service.refreshIfSettingsChanged()) await this.reload();
+            else await this.rerenderAll();
+        });
     }
 
     /**
@@ -352,7 +375,7 @@ export class NoteStream {
     onDailyNoteSettingsChange: Debouncer<[], void> = debounce(
         () => {
             void this.enqueue(async () => {
-                if (!this.service.refreshIfSettingsChanged()) return;
+                if (!(await this.service.refreshIfSettingsChanged())) return;
                 await this.reload();
             });
         },

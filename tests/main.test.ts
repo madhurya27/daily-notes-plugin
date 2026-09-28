@@ -24,7 +24,11 @@ function makeApp() {
             revealLeaf: vi.fn().mockResolvedValue(undefined),
             onLayoutReady: vi.fn((callback: () => unknown) => void callback()),
         },
-        metadataCache: { on: vi.fn().mockReturnValue({}), getFileCache: vi.fn().mockReturnValue(null) },
+        metadataCache: {
+            on: vi.fn().mockReturnValue({}),
+            getFileCache: vi.fn().mockReturnValue(null),
+            getFirstLinkpathDest: vi.fn().mockReturnValue(null),
+        },
         loadLocalStorage: vi.fn().mockReturnValue(null),
         saveLocalStorage: vi.fn(),
     };
@@ -87,16 +91,16 @@ describe("DailyNotesStreamPlugin — onload", () => {
         const { plugin, app } = await loadPlugin();
         const open = () => {
             const view = plugin.views[VIEW_TYPE_DAILY_NOTES_STREAM]!(new WorkspaceLeaf(asApp(app)));
-            (view as DailyNotesStreamView)["service"].initialize();
+            return (view as DailyNotesStreamView)["service"].initialize();
         };
-        open();
+        await open();
         let reads = 0;
         for (const file of __mockMarkdownFiles()) {
             const { basename } = file;
             Object.defineProperty(file, "basename", { get: () => (reads++, basename) });
         }
 
-        open();
+        await open();
 
         expect(reads).toBe(0);
     });
@@ -145,6 +149,61 @@ describe("DailyNotesStreamPlugin — onload", () => {
         resolved();
 
         expect(invalidate).toHaveBeenCalledOnce();
+    });
+});
+
+describe("DailyNotesStreamPlugin — empty notes", () => {
+    /** The daily notes a newly opened view lists. */
+    async function listed(plugin: DailyNotesStreamPlugin, app: ReturnType<typeof makeApp>) {
+        const view = plugin.views[VIEW_TYPE_DAILY_NOTES_STREAM]!(new WorkspaceLeaf(asApp(app)));
+        const service = (view as DailyNotesStreamView)["service"];
+        await service.initialize();
+        return service.getBatch(0, service.length).map((file) => file.path);
+    }
+
+    beforeEach(() => __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]));
+
+    it("leaves out of every view a daily note holding only its template", async () => {
+        const { plugin, app } = await loadPlugin();
+        app.vault.cachedRead.mockImplementation((file: TFile) =>
+            Promise.resolve(file.path === "Notes/2025-01-02.md" ? "Written." : "")
+        );
+
+        expect(await listed(plugin, app)).toEqual(["Notes/2025-01-02.md"]);
+        expect(await listed(plugin, app)).toEqual(["Notes/2025-01-02.md"]);
+        expect(app.vault.cachedRead).toHaveBeenCalledTimes(2);
+    });
+
+    it("finds the template as the daily-notes plugin does", async () => {
+        __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes", template: "Templates/Daily" });
+        const { plugin, app } = await loadPlugin();
+
+        await listed(plugin, app);
+
+        expect(app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith("Templates/Daily", "");
+    });
+
+    it("leaves out nothing with the setting off", async () => {
+        const { plugin, app } = await loadPlugin({ hideEmptyNotes: false });
+
+        expect(await listed(plugin, app)).toEqual(["Notes/2025-01-02.md", "Notes/2025-01-01.md"]);
+        expect(app.vault.cachedRead).not.toHaveBeenCalled();
+    });
+
+    it("carries a note's verdict across a rename, and forgets a deleted note's", async () => {
+        const { plugin, app } = await loadPlugin();
+        const rename = vi.spyOn(plugin.emptyNotes, "rename");
+        const forget = vi.spyOn(plugin.emptyNotes, "forget");
+        const handlers = (name: string) =>
+            app.vault.on.mock.calls
+                .filter(([event]) => event === name)
+                .map(([, callback]) => callback as (...args: unknown[]) => void);
+
+        for (const handler of handlers("rename")) handler({ path: "Notes/new.md" }, "Notes/old.md");
+        for (const handler of handlers("delete")) handler({ path: "Notes/gone.md" });
+
+        expect(rename).toHaveBeenCalledWith("Notes/old.md", "Notes/new.md");
+        expect(forget).toHaveBeenCalledWith("Notes/gone.md");
     });
 });
 
@@ -424,6 +483,7 @@ describe("DailyNotesStreamPlugin — two open streams", () => {
     /** Two views of one plugin, each opened with its first batch loaded. */
     async function openTwoViews() {
         const { plugin, app } = await loadPlugin();
+        app.vault.cachedRead.mockResolvedValue("Written.");
         const factory = plugin.views[VIEW_TYPE_DAILY_NOTES_STREAM]!;
         const views = [factory(new WorkspaceLeaf(asApp(app))), factory(new WorkspaceLeaf(asApp(app)))];
         const streams = views.map((view) => (view as DailyNotesStreamView)["stream"]);

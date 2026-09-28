@@ -24,6 +24,13 @@ export interface NoteFilter {
     signature(): string;
 }
 
+/** Hides nothing. */
+const SHOW_ALL: NoteFilter = {
+    prepare: () => Promise.resolve(),
+    isHidden: () => false,
+    signature: () => "",
+};
+
 /** A daily note and the date its name was parsed to, once. */
 interface DatedNote {
     file: TFile;
@@ -37,28 +44,31 @@ export class DailyNoteService {
 
     /**
      * `markdownFiles`: the vault's, daily notes among them. `parsedDates`: shared
-     * across views, so a later open parses only what is new.
+     * across views, so a later open parses only what is new. `filter`: the
+     * notes left out.
      */
     constructor(
         private readonly markdownFiles: () => TFile[],
-        private readonly parsedDates = new ParsedDates()
+        private readonly parsedDates = new ParsedDates(),
+        private readonly filter = SHOW_ALL
     ) {}
 
     /** Call once per view, on open. */
-    initialize(): void {
+    async initialize(): Promise<void> {
         const format = this.readFormat();
-        this._sorted = this.buildSorted(format);
+        this._sorted = await this.buildSorted(format);
         this.builtFrom = this.signature(format);
     }
 
     /**
      * Rebuilds the cache when Obsidian's daily-notes format or folder changed,
-     * which redefines what counts as a daily note. Returns whether it rebuilt.
+     * which redefines what counts as a daily note, or the filter's signature
+     * did. Returns whether it rebuilt.
      */
-    refreshIfSettingsChanged(): boolean {
+    async refreshIfSettingsChanged(): Promise<boolean> {
         const format = this.readFormat();
         if (this.signature(format) === this.builtFrom) return false;
-        this._sorted = this.buildSorted(format);
+        this._sorted = await this.buildSorted(format);
         this.builtFrom = this.signature(format);
         return true;
     }
@@ -68,11 +78,11 @@ export class DailyNoteService {
         return this._sorted.slice(offset, offset + limit).map((note) => note.file);
     }
 
-    /** Returns the insertion index, or -1 when not a daily note or already present. */
+    /** Returns the insertion index, or -1 when not a daily note, hidden, or already present. */
     insertSorted(file: TFile): number {
         const format = this.readFormat();
         const date = this.parseDate(file, format);
-        if (!date) return -1;
+        if (!date || this.filter.isHidden(file, date)) return -1;
 
         const lo = this.firstIndexOnOrBefore(date.valueOf());
         // A date maps to exactly one path, so the search lands on the duplicate.
@@ -80,6 +90,19 @@ export class DailyNoteService {
 
         this._sorted.splice(lo, 0, { file, date });
         return lo;
+    }
+
+    /** Whether `file` belongs in the list: a daily note the filter, prepared for it afresh, keeps. */
+    async belongs(file: TFile): Promise<boolean> {
+        const date = this.parseDate(file, this.readFormat());
+        if (!date) return false;
+        await this.filter.prepare([file]);
+        return !this.filter.isHidden(file, date);
+    }
+
+    /** Whether the filter leaves out any daily note. Walks the vault: for an empty stream only. */
+    hidesAny(): boolean {
+        return this.datedNotes(this.readFormat()).some((note) => this.filter.isHidden(note.file, note.date));
     }
 
     /** Returns the removed index, or -1 when absent. */
@@ -141,19 +164,34 @@ export class DailyNoteService {
         return lo;
     }
 
+    /** What the list was built from: the date format, and what the filter hides. */
     private signature(format: DateFormat): string {
+        return `${this.dateSignature(format)}\u0000${this.filter.signature()}`;
+    }
+
+    /** What decides which files are daily notes, and their dates. */
+    private dateSignature(format: DateFormat): string {
         return `${format.folder}\u0000${format.path}`;
     }
 
-    private buildSorted(format: DateFormat): DatedNote[] {
+    private async buildSorted(format: DateFormat): Promise<DatedNote[]> {
+        const notes = this.datedNotes(format);
+        await this.filter.prepare(notes.map((note) => note.file));
+        return notes
+            .filter((note) => !this.filter.isHidden(note.file, note.date))
+            .sort((a, b) => b.date.valueOf() - a.date.valueOf());
+    }
+
+    /** Every daily note in the vault, in no order. */
+    private datedNotes(format: DateFormat): DatedNote[] {
         // parseDate, as a live create (docs/decisions.md, 2026-09-23).
         const files = this.markdownFiles();
-        const dates = this.parsedDates.datesOf(files, this.signature(format), (file) => this.parseDate(file, format));
-        const notes = files
+        const dates = this.parsedDates.datesOf(files, this.dateSignature(format), (file) =>
+            this.parseDate(file, format)
+        );
+        return files
             .map((file, i) => ({ file, date: dates[i] ?? null }))
             .filter((note): note is DatedNote => note.date !== null);
-
-        return notes.sort((a, b) => b.date.valueOf() - a.date.valueOf());
     }
 
     private readFormat(): DateFormat {
