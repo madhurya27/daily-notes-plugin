@@ -22,7 +22,7 @@ test.describe("README recording", () => {
         const { page } = obsidian;
         const container = await openStream(page);
         const pause = (ms: number) => page.waitForTimeout(ms);
-        const addition = " Bought an extra loaf for Mara.";
+        const addition = " Two coffees on the balcony helped.";
 
         // The hand already on the mouse, resting over the stream, from the first frame.
         // The stream is as tall as its notes; the pane scrolling it is what shows.
@@ -40,7 +40,7 @@ test.describe("README recording", () => {
             await expect(editor).toBeVisible();
             await pause(1500);
             // Just past the full stop, where a person clicks to add to the sentence.
-            const end = await editor.locator(".cm-line", { hasText: "which made my week." }).evaluate((line) => {
+            const end = await editor.locator(".cm-line", { hasText: "let the day start slowly." }).evaluate((line) => {
                 const range = document.createRange();
                 range.selectNodeContents(line);
                 const rects = range.getClientRects();
@@ -51,7 +51,7 @@ test.describe("README recording", () => {
             await pause(700);
             await typeLikeAPerson(page, addition);
             // The stream redraws once Obsidian saves, about two seconds after the last key.
-            await expect(container.getByText(`which made my week.${addition}`)).toBeVisible({ timeout: 10_000 });
+            await expect(container.getByText(`let the day start slowly.${addition}`)).toBeVisible({ timeout: 10_000 });
             await pause(2000);
             const tab = page.locator(".workspace-tab-header", { hasText: "2026-09-25" });
             await clickLikeAPerson(page, tab.locator(".workspace-tab-header-inner-close-button"));
@@ -68,7 +68,7 @@ test.describe("README recording", () => {
             await clickLikeAPerson(page, page.locator('.view-action[aria-label="Search"]'));
             // The hand leaves the mouse for the keyboard.
             await pause(1000);
-            await typeLikeAPerson(page, "Priya");
+            await typeLikeAPerson(page, "Mara");
             await pause(700);
             for (let step = 0; step < 2; step++) {
                 await page.keyboard.press("Enter");
