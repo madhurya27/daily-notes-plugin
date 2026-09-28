@@ -21,7 +21,8 @@ describe("testVault", () => {
     });
 
     it("writes the Bases the notes embed", () => {
-        for (const base of ["Wide", "Middle", "Narrow", "Resized", "Two"]) expect(paths).toContain(`Bases/${base}.base`);
+        for (const base of ["Wide", "Middle", "Narrow", "Resized", "Two"])
+            expect(paths).toContain(`Bases/${base}.base`);
     });
 
     it("gives 2026-02-01 the frontmatter the checklist lists", () => {
@@ -34,5 +35,32 @@ describe("testVault", () => {
             [...body.matchAll(/!?\[\[([^\]|#]+)/g)].map((match) => match[1]!)
         );
         expect(targets.filter((target) => !names.has(target))).toEqual(["Someday"]);
+    });
+
+    // One note of each case docs/TESTING.md's linked mentions checks, all on the newest note.
+    describe("links to the newest note, for its linked mentions", () => {
+        const newest = "[[2026-08-29]]";
+        const linking = paths.filter((path) => !path.startsWith("Notes/") && note(path).includes(newest));
+
+        it("from several notes, one outside any folder", () => {
+            expect(linking.length).toBeGreaterThanOrEqual(3);
+            expect(linking.some((path) => !path.includes("/"))).toBe(true);
+        });
+
+        it("from a nested list item, a paragraph, a property and a wide table", () => {
+            const bodies = linking.map(note).join("\n");
+            expect(bodies).toMatch(new RegExp(`^ {4}- .*\\[\\[2026-08-29\\]\\]`, "m"));
+            expect(bodies).toMatch(new RegExp(`^\\w[^|\\n-].*\\[\\[2026-08-29\\]\\]`, "m"));
+            expect(bodies).toMatch(/^\w+: "\[\[2026-08-29\]\]"$/m);
+            expect(bodies).toMatch(/^\|.*\[\[2026-08-29\]\].*\|$/m);
+        });
+
+        it("from a note whose own link resolves beside it, not beside the daily note", () => {
+            expect(paths).toContain("Projects/Agenda.md");
+            expect(paths).toContain("Notes/Agenda.md");
+            expect(linking.some((path) => path.startsWith("Projects/") && note(path).includes("[[Agenda]]"))).toBe(
+                true
+            );
+        });
     });
 });

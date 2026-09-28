@@ -319,6 +319,27 @@ export function testVault({ days }) {
     // Neither of these is a daily note; neither may appear in the stream.
     vault[`${NOTES}/2026-01-20.png`] = "not really a png";
     vault["Elsewhere/2026-01-21.md"] = body("Dated, but outside the daily-notes folder.");
+
+    // The newest note's linked mentions, one of each case docs/TESTING.md checks.
+    // Agenda exists twice: Plan's [[Agenda]] must open the one beside Plan.
+    const newest = `[[${fillerDate(0)}]]`;
+    vault["Projects/Plan.md"] = body(
+        "# Plan",
+        "",
+        "- Launch",
+        `    - Review ${newest} with the team at the [[Agenda]]`,
+        "- Only this item shows under the newest note, not the whole list",
+        "",
+        `A paragraph that mentions ${newest} in the middle of a sentence long enough to wrap on a phone.`,
+        "",
+        "| Column one | Column two | Column three | Column four | Column five | Column six | Column seven |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        `| ${newest} | b | c | d | e | f | g |`
+    );
+    vault["Projects/Agenda.md"] = body("# Projects agenda", "", "The link in Plan opens this one.");
+    vault[`${NOTES}/Agenda.md`] = body("# Notes agenda", "", "Not a daily note: the stream leaves it out.");
+    vault["Trip.md"] = body("---", `started: "${newest}"`, "---", "", "Packed.");
+    vault["Inbox.md"] = body(`Follow up on ${newest}.`);
     return vault;
 }
 
