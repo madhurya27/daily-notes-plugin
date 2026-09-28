@@ -1,7 +1,7 @@
 # Daily notes stream
 
-Read all your daily notes on one page, newest first. Scroll down for older days. The stream is read-only: to edit
-a note, open it.
+Read your daily notes like a journal: every day on one page, newest at the top, older days as you scroll. The
+stream is for reading; click a note's date to open it for editing.
 
 <p><img src="docs/images/demo-desktop.png" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Mara, and it glides back to the top" width="800"></p>
 
@@ -98,7 +98,20 @@ to preview it. To preview without holding the key, open **Settings → Page prev
 
 ### Phone and tablet
 
-Tables and Bases too wide for the screen become cards; wide equations shrink to fit.
+On a phone or tablet, nothing inside a note scrolls on its own, so one swipe moves the whole stream. Content that
+would need its own scrolling is reshaped instead:
+
+| Content | Becomes |
+| --- | --- |
+| Table | A card per row, each value under its column's name |
+| Base | Narrower columns; if that isn't enough, a card per note, using Bases' own card view |
+| Equation | Smaller, to fit the width |
+| Code block | Long lines wrap |
+| Diagram | Smaller, to fit the width (on desktop too) |
+| Embedded note | Shown in full, not in a box of its own that scrolls |
+| Any other embed that scrolls | Cut off at its edge |
+
+On desktop, wide tables and code blocks scroll sideways in their own box, as they do in Obsidian.
 
 <details>
 <summary>Phone layout</summary>
