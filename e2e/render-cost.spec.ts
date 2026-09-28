@@ -1,9 +1,9 @@
 import { test, expect, openStream, emulatePhoneCpu, seededDate, SEEDED_DAYS } from "./obsidian";
 
 /**
- * The Async list's Bases and wide-content items (docs/TODO.md): on mobile, a
- * render awaits each Base, then measures tables and equations. Needs the
- * three-year vault, so it runs under `pnpm run test:memory`.
+ * On mobile a render awaits each Base, then measures tables and equations
+ * (docs/decisions.md, 2026-09-28). Needs the three-year vault, so it runs
+ * under `pnpm run test:memory`.
  */
 
 /** Notes given a Base and equations; the scroll crosses all of them. */

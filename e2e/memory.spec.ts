@@ -170,3 +170,75 @@ test.describe("search across a multi-year vault", () => {
         expect(result.refresh.ms).toBeLessThan(100);
     });
 });
+
+// A session's first open parses every markdown file's name, in one task,
+// before any note draws (docs/decisions.md, 2026-09-28).
+test.describe("opening a multi-year vault", () => {
+    test.skip(SEEDED_DAYS < YEARS * 365, "run via pnpm run test:memory");
+    test.setTimeout(300_000);
+
+    /** Notes that are not daily notes, as a real vault holds beside its journal. */
+    const OTHER_NOTES = 3000;
+
+    test("parses every file's date, and draws the first note, quickly", async ({ obsidian, mobileLayout }) => {
+        const { page } = obsidian;
+        await page.evaluate(async (count) => {
+            const { vault } = window.app;
+            if (!vault.getAbstractFileByPath("Other")) await vault.createFolder("Other");
+            for (let i = 0; i < count; i++) {
+                const path = `Other/Note ${i}.md`;
+                if (!vault.getAbstractFileByPath(path)) await vault.create(path, `Note ${i}`);
+            }
+        }, OTHER_NOTES);
+        await openStream(page);
+
+        const restoreCpu = mobileLayout ? await emulatePhoneCpu(page) : async () => {};
+        // A fresh service and date cache: what the plugin's first open does.
+        const parse = await page.evaluate(() => {
+            const { app } = window;
+            const service = app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view.service;
+            const Service = service.constructor;
+            const Dates = service.parsedDates.constructor;
+            const time = () => {
+                const fresh = new Service(() => app.vault.getMarkdownFiles(), new Dates());
+                const start = performance.now();
+                fresh.initialize();
+                return { ms: Math.round(performance.now() - start), notes: fresh.length as number };
+            };
+            const options = app.internalPlugins.getPluginById("daily-notes").instance.options;
+            const folder = options.folder;
+            const inFolder = time();
+            // Unset, every file's name goes through the date parse.
+            options.folder = "";
+            try {
+                return { inFolder, noFolder: time(), files: app.vault.getMarkdownFiles().length as number };
+            } finally {
+                options.folder = folder;
+            }
+        });
+
+        // Open to the first note's content, in the page: openStream's own waits would dwarf it.
+        await page.evaluate(() => window.app.workspace.detachLeavesOfType("daily-notes-stream-view"));
+        await page.waitForTimeout(1000);
+        const open = await page.evaluate(async () => {
+            const start = performance.now();
+            await window.app.commands.executeCommandById("daily-notes-stream:open-stream");
+            while (!document.querySelector(".daily-notes-stream-container .daily-note-content"))
+                await new Promise((resolve) => setTimeout(resolve, 5));
+            return Math.round(performance.now() - start);
+        });
+        await restoreCpu();
+
+        // eslint-disable-next-line no-console -- the numbers this test exists to report
+        console.log(
+            `[memory] ${mobileLayout ? "phone speed" : "laptop"}: first open over ${parse.files} files: parse ${parse.inFolder.ms} ms ` +
+                `(${parse.inFolder.notes} daily notes), folder unset ${parse.noFolder.ms} ms | ` +
+                `open to first note ${open} ms`
+        );
+
+        expect(parse.inFolder.notes).toBe(SEEDED_DAYS);
+        // About 3x phone speed's worst (docs/decisions.md, 2026-09-28).
+        expect(parse.noFolder.ms).toBeLessThan(100);
+        expect(open).toBeLessThan(300);
+    });
+});

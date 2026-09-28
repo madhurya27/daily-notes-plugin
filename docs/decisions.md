@@ -1079,3 +1079,15 @@ the plugin forced came to 55–60 ms in all, about 1.5 ms a note.
 **Rejected:**
 - Bases off the queue, held by a `HeightHold` — 16 ms a Base, for a hold per Base.
 - Batching width reads in one `requestAnimationFrame` — saves part of 1.5 ms a note.
+
+## 2026-09-28 — A first open parses every date in one task
+
+**Decision:** `buildSorted` keeps parsing every markdown file's name at once.
+
+**Why:** over 4,096 files, 1,095 of them daily notes, with the CPU slowed 4x
+to a phone's (`pnpm run test:memory`): the cold parse takes 17–20 ms, 30–36 ms
+with no daily-notes folder set; open to the first note, 50–88 ms. Under the
+50 ms of a long task.
+
+**Rejected:**
+- Parsing in chunks, yielding between — splits a task that is not long.
