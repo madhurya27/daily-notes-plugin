@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { TFile } from "../mocks/obsidian";
-import { makeApp, makeViewSetup } from "../stream-view-fixture";
+import { makeApp, makeStubbedView, makeViewSetup } from "../stream-view-fixture";
+import { LinkChanges } from "../../src/notes/link-changes";
 
 // What each event does to the stream is note-stream.test.ts's; this is the wiring.
 describe("DailyNotesStreamView — vault events", () => {
@@ -60,5 +61,53 @@ describe("DailyNotesStreamView — vault events", () => {
         const file = new TFile("Notes/2025-01-01.md");
         callbacks["rename"]?.(file, "Notes/old-name.md");
         expect(spy).toHaveBeenCalledWith(file, "Notes/old-name.md");
+    });
+});
+
+describe("DailyNotesStreamView — links to daily notes", () => {
+    /** A view opened on the plugin's link changes, and a way to make `source` link to `targets`. */
+    async function openLinked(existing: (path: string) => boolean = () => true) {
+        const app = makeApp();
+        app.vault.getFileByPath.mockImplementation((path: string) => (existing(path) ? new TFile(path) : null));
+        const { view, plugin } = makeStubbedView(app);
+        const links: Record<string, Record<string, number>> = {};
+        plugin.linkChanges = new LinkChanges(
+            () => links,
+            () => "Notes"
+        );
+        view.load();
+        await view.onOpen();
+        const onLinksChanged = vi.spyOn(view["stream"], "onLinksChanged").mockResolvedValue();
+        const link = (source: string, ...targets: string[]) => {
+            links[source] = Object.fromEntries(targets.map((target) => [target, 1]));
+            plugin.linkChanges.onResolve(source);
+            plugin.linkChanges.onResolved();
+        };
+        return { view, onLinksChanged, link };
+    }
+
+    it("hands the stream the notes whose links changed, as files", async () => {
+        const { onLinksChanged, link } = await openLinked();
+
+        link("Meeting.md", "Notes/2025-01-01.md");
+
+        expect(onLinksChanged.mock.calls[0]![0].map((file) => file.path)).toEqual(["Notes/2025-01-01.md"]);
+    });
+
+    it("leaves out a note no longer in the vault", async () => {
+        const { onLinksChanged, link } = await openLinked((path) => path !== "Notes/2025-01-02.md");
+
+        link("Meeting.md", "Notes/2025-01-01.md", "Notes/2025-01-02.md");
+
+        expect(onLinksChanged.mock.calls[0]![0].map((file) => file.path)).toEqual(["Notes/2025-01-01.md"]);
+    });
+
+    it("stops listening once the view unloads", async () => {
+        const { view, onLinksChanged, link } = await openLinked();
+
+        view.unload();
+        link("Meeting.md", "Notes/2025-01-01.md");
+
+        expect(onLinksChanged).not.toHaveBeenCalled();
     });
 });

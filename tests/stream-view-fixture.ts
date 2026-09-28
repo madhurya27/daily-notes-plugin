@@ -10,6 +10,7 @@ import { Component, WorkspaceLeaf, type App, type EventRef, type TFile } from ".
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import { BacklinkIndex } from "../src/notes/backlink-index";
+import { LinkChanges } from "../src/notes/link-changes";
 import { LayoutMemory } from "../src/stream/layout-memory";
 
 /** A stand-in for `T`, holding only the members a test reaches. */
@@ -55,6 +56,10 @@ export function makePlugin(): DailyNotesStreamPlugin {
         collapseStore: new CollapsibleStateStore(asApp(app)),
         layoutMemory: new LayoutMemory(asApp(app)),
         backlinks: new BacklinkIndex(() => ({})),
+        linkChanges: new LinkChanges(
+            () => ({}),
+            () => ""
+        ),
     });
 }
 
@@ -68,6 +73,7 @@ export function makeApp() {
             configDir: ".obsidian",
             on: events(),
             cachedRead: vi.fn((_file: TFile) => Promise.resolve("")),
+            getFileByPath: vi.fn((_path: string): TFile | null => null),
         },
         workspace: {
             on: events(),

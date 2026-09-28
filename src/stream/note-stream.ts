@@ -132,16 +132,29 @@ export class NoteStream {
 
     /** A save may hide a note, or show one again (ADR 0011); otherwise it re-renders. */
     private async applyModify(file: TFile): Promise<void> {
+        if (await this.reconsider(file)) return;
+        const el = this.blocks.get(file.path);
+        if (el) await this.window.refresh(el);
+    }
+
+    /**
+     * Links to `files` came or went, which may hide or show them (ADR 0011).
+     * One that stays is left alone: its linked mentions redraw themselves.
+     */
+    onLinksChanged(files: TFile[]): Promise<void> {
+        return this.enqueue(async () => {
+            for (const file of files) await this.reconsider(file);
+        });
+    }
+
+    /** Takes `file` out, or puts it back, when whether it belongs changed; whether it did. */
+    private async reconsider(file: TFile): Promise<boolean> {
         const listed = this.service.indexOf(file.path) !== -1;
         const belongs = await this.service.belongs(file);
-        if (listed && !belongs) {
-            this.removeNote(file, file.path);
-        } else if (!listed && belongs) {
-            this.insertNote(file);
-        } else {
-            const el = this.blocks.get(file.path);
-            if (el) await this.window.refresh(el);
-        }
+        if (listed && !belongs) this.removeNote(file, file.path);
+        else if (!listed && belongs) this.insertNote(file);
+        else return false;
+        return true;
     }
 
     onFileCreate(file: TAbstractFile) {

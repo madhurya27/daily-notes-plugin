@@ -252,3 +252,75 @@ test.describe("opening a multi-year vault", () => {
         expect(open.ms).toBeLessThan(300);
     });
 });
+
+// Obsidian resolves every file's links at launch, one `resolve` each: a stream
+// already open compares each file's links, then re-checks what changed once.
+test.describe("links resolved across a multi-year vault", () => {
+    test.skip(SEEDED_DAYS < YEARS * 365, "run via pnpm run test:memory");
+    test.setTimeout(300_000);
+
+    /** Notes linking to a daily note each, as meeting notes and projects do. */
+    const LINKING_NOTES = 1000;
+
+    test("follows a launch's worth of resolves, and re-checks the linked days, quickly", async ({
+        obsidian,
+        mobileLayout,
+    }) => {
+        const { page } = obsidian;
+        await page.evaluate(
+            async ({ count, dates }) => {
+                const { vault } = window.app;
+                if (!vault.getAbstractFileByPath("Linking")) await vault.createFolder("Linking");
+                for (let i = 0; i < count; i++) {
+                    const path = `Linking/Meeting ${i}.md`;
+                    if (!vault.getAbstractFileByPath(path)) await vault.create(path, `On [[${dates[i]}]].`);
+                }
+            },
+            { count: LINKING_NOTES, dates: Array.from({ length: LINKING_NOTES }, (_, i) => seededDate(i)) }
+        );
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    (count) =>
+                        Object.keys(window.app.metadataCache.resolvedLinks).filter((path) =>
+                            path.startsWith("Linking/")
+                        ).length,
+                    LINKING_NOTES
+                )
+            )
+            .toBe(LINKING_NOTES);
+        await openStream(page);
+
+        const restoreCpu = mobileLayout ? await emulatePhoneCpu(page) : async () => {};
+        // A fresh tracker, as at launch: every file's links are new to it.
+        const result = await page.evaluate(async () => {
+            const { app } = window;
+            const plugin = app.plugins.plugins["daily-notes-stream"];
+            const view = app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view;
+            const current = plugin.linkChanges;
+            const fresh = new current.constructor(current.links, current.folder);
+            let rechecked = 0;
+            fresh.subscribe((paths: string[]) => {
+                rechecked = paths.length;
+                void view.stream.onLinksChanged(paths.map((path) => app.vault.getFileByPath(path)).filter(Boolean));
+            });
+            const files = app.vault.getMarkdownFiles();
+            const start = performance.now();
+            for (const file of files) fresh.onResolve(file.path);
+            const resolves = Math.round(performance.now() - start);
+            fresh.onResolved();
+            await view.stream.queue;
+            return { files: files.length as number, resolves, total: Math.round(performance.now() - start), rechecked };
+        });
+        await restoreCpu();
+
+        // eslint-disable-next-line no-console -- the numbers this test exists to report
+        console.log(
+            `[memory] ${mobileLayout ? "phone speed" : "laptop"}: ${result.files} resolves ${result.resolves} ms | ` +
+                `with ${result.rechecked} linked days re-checked ${result.total} ms`
+        );
+
+        expect(result.rechecked).toBe(LINKING_NOTES);
+        expect(result.total).toBeLessThan(300);
+    });
+});

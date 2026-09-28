@@ -7,6 +7,8 @@ import { ParsedDates } from "./notes/parsed-dates";
 import { LayoutMemory } from "./stream/layout-memory";
 import { BacklinkIndex } from "./notes/backlink-index";
 import { EmptyNotes, hideEmptyNotes } from "./notes/empty-notes";
+import { LinkChanges } from "./notes/link-changes";
+import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 
 /** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
 declare const BUILD_LABEL: string;
@@ -22,6 +24,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
     layoutMemory!: LayoutMemory;
     backlinks!: BacklinkIndex;
     emptyNotes!: EmptyNotes;
+    linkChanges!: LinkChanges;
 
     async onload() {
         // Unit tests run the source unbundled, where nothing defines it.
@@ -32,6 +35,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.rememberLayout();
         this.indexBacklinks();
         this.indexEmptyNotes();
+        this.followLinkChanges();
 
         // Each view owns its service (CLAUDE.md, Invariants); they share only the parsed dates and verdicts.
         const parsedDates = new ParsedDates();
@@ -101,6 +105,19 @@ export default class DailyNotesStreamPlugin extends Plugin {
     }
 
     /** Registered before any view opens, so a renamed note's verdict has moved by the time a view looks. */
+    /** Registered after `indexBacklinks`, so a view told of a change reads a current index. */
+    private followLinkChanges(): void {
+        const { vault, metadataCache } = this.app;
+        const changes = (this.linkChanges = new LinkChanges(
+            () => metadataCache.resolvedLinks,
+            () => getDailyNoteSettings().folder ?? ""
+        ));
+        this.registerEvent(metadataCache.on("resolve", (file) => changes.onResolve(file.path)));
+        this.registerEvent(metadataCache.on("resolved", () => changes.onResolved()));
+        this.registerEvent(vault.on("delete", (file) => changes.onDelete(file.path)));
+        this.registerEvent(vault.on("rename", (file, oldPath) => changes.onRename(oldPath, file.path)));
+    }
+
     private indexEmptyNotes(): void {
         const { vault, metadataCache } = this.app;
         const notes = (this.emptyNotes = new EmptyNotes({

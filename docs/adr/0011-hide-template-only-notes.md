@@ -22,8 +22,10 @@ Only notes no bigger than the template plus 1 KB are read. `EmptyNotes`, one per
 plugin, keeps each path's verdict keyed by `mtime`, filled before the first
 batch and updated on `metadataCache` `changed`. Each view's service filters
 through it synchronously. Today's note always shows, and so does a note another
-note links to while linked mentions are shown: those are content under it. A
-setting, on by default, turns hiding off.
+note links to while linked mentions are shown: those are content under it.
+`LinkChanges`, one per plugin, compares each note's links into the daily-notes
+folder on every `resolve` and, once `resolved`, has each view re-check the
+notes that gained or lost one. A setting, on by default, turns hiding off.
 
 ## Consequences
 
@@ -32,8 +34,8 @@ setting, on by default, turns hiding off.
 - Emptiness changes on edit, so a note enters or leaves `_sorted` on
   `changed`, through `insertSorted` / `removeSorted`.
 - A stream left open past midnight keeps yesterday's empty note until a rebuild.
-- Backlinks are checked when the list is built and when the note itself
-  changes: a new link to a hidden note shows it on the next open or rebuild.
+- A stream open at launch hides a linked empty note until the links resolve,
+  then shows it.
 
 ## Rejected alternatives
 
@@ -43,4 +45,5 @@ setting, on by default, turns hiding off.
 - **Reading every note** — thousands of reads at open for a few hundred candidates.
 - **Hiding after render** — notes flash in, then vanish, shifting the scroll.
 - **A list of past templates** — configuration for a rare case.
-- **Re-checking hidden notes on `resolved`** — live, but the service must track what it hid; deferred.
+- **Re-checking every hidden note on `resolved`** — the service must track what it hid, for the same answer.
+- **Checking backlinks only at open** — a new link waits for the next open.

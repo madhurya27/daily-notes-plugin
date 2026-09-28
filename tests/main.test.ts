@@ -215,6 +215,72 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
     });
 });
 
+describe("DailyNotesStreamPlugin — link changes", () => {
+    /** Every callback onload() gave `source.on(name)`. */
+    function handlers(source: { on: { mock: { calls: unknown[][] } } }, name: string) {
+        return source.on.mock.calls
+            .filter(([event]) => event === name)
+            .map(([, callback]) => callback as (...args: unknown[]) => void);
+    }
+
+    it("follows the cache's resolves, and the vault's deletes and renames, for every view", async () => {
+        const { plugin, app } = await loadPlugin();
+        const changes = plugin.linkChanges;
+        const spies = (["onResolve", "onResolved", "onDelete", "onRename"] as const).map((name) =>
+            vi.spyOn(changes, name)
+        );
+
+        for (const handler of handlers(app.metadataCache, "resolve")) handler({ path: "Meeting.md" });
+        for (const handler of handlers(app.metadataCache, "resolved")) handler();
+        for (const handler of handlers(app.vault, "delete")) handler({ path: "Gone.md" });
+        for (const handler of handlers(app.vault, "rename")) handler({ path: "New.md" }, "Old.md");
+
+        expect(spies.map((spy) => spy.mock.calls)).toEqual([
+            [["Meeting.md"]],
+            [[]],
+            [["Gone.md"]],
+            [["Old.md", "New.md"]],
+        ]);
+    });
+
+    // A view's footers and hidden notes both read the backlink index on `resolved`.
+    it("tells the views only after the backlink index is told the links changed", async () => {
+        const { plugin, app } = await loadPlugin();
+        const order: string[] = [];
+        vi.spyOn(plugin.backlinks, "invalidate").mockImplementation(() => void order.push("index"));
+        vi.spyOn(plugin.linkChanges, "onResolved").mockImplementation(() => void order.push("views"));
+
+        for (const handler of handlers(app.metadataCache, "resolved")) handler();
+
+        expect(order).toEqual(["index", "views"]);
+    });
+
+    it("follows links to every note when no daily-notes folder is set", async () => {
+        __setMockSettings({ format: "YYYY-MM-DD" });
+        const { plugin, app } = await loadPlugin();
+        const heard: string[][] = [];
+        plugin.linkChanges.subscribe((paths) => heard.push(paths));
+        app.metadataCache.resolvedLinks = { "Meeting.md": { "2025-01-01.md": 1 } };
+
+        plugin.linkChanges.onResolve("Meeting.md");
+        plugin.linkChanges.onResolved();
+
+        expect(heard).toEqual([["2025-01-01.md"]]);
+    });
+
+    it("follows links into the daily-notes folder", async () => {
+        const { plugin, app } = await loadPlugin();
+        const heard: string[][] = [];
+        plugin.linkChanges.subscribe((paths) => heard.push(paths));
+        app.metadataCache.resolvedLinks = { "Meeting.md": { "Notes/2025-01-01.md": 1, "Elsewhere/2025-01-01.md": 1 } };
+
+        plugin.linkChanges.onResolve("Meeting.md");
+        plugin.linkChanges.onResolved();
+
+        expect(heard).toEqual([["Notes/2025-01-01.md"]]);
+    });
+});
+
 describe("DailyNotesStreamPlugin — layout memory", () => {
     /** The callback onload() gave `vault.on(name)`. */
     function vaultEvent(app: ReturnType<typeof makeApp>, name: string): (...args: unknown[]) => void {

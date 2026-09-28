@@ -139,6 +139,39 @@ test.describe("empty daily notes", () => {
         await expect(page.locator(`[data-source-path="${EMPTY_NOTE}"]`)).toContainText("Planned on");
     });
 
+    test("shows the note as soon as another note links to it", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const shown = await titles(page);
+        await expect(shown.nth(1)).toHaveText(seededDate(0));
+
+        await write(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
+
+        await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
+        await expect(page.locator(`[data-source-path="${EMPTY_NOTE}"]`)).toContainText("Planned on");
+    });
+
+    test("hides the note again once its last link is removed", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await write(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
+        const shown = await titles(page);
+        await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
+
+        await write(page, MENTIONING_NOTE, "Planned on another day.\n");
+
+        await expect(shown.nth(1)).toHaveText(seededDate(0));
+    });
+
+    test("hides the note again once the note linking to it is deleted", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await write(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
+        const shown = await titles(page);
+        await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
+
+        await page.evaluate((path) => window.app.vault.delete(window.app.vault.getFileByPath(path)), MENTIONING_NOTE);
+
+        await expect(shown.nth(1)).toHaveText(seededDate(0));
+    });
+
     test("shows every note with the setting off", async ({ obsidian }) => {
         const { page } = obsidian;
         const shown = await titles(page);

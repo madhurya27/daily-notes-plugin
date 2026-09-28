@@ -517,6 +517,45 @@ describe("a note modified", () => {
     });
 });
 
+describe("links to daily notes changed", () => {
+    it("takes out a loaded note that is hidden now, rendering nothing", async () => {
+        const [kept, unlinked] = [note("2025-01-02"), note("2025-01-01")];
+        await load(kept, unlinked);
+        service.indexOf.mockReturnValue(1);
+        service.removeSorted.mockReturnValue(1);
+        Object.assign(service, { length: 1 });
+
+        await stream.onLinksChanged([unlinked]);
+
+        expect(service.belongs).toHaveBeenCalledWith(unlinked);
+        expect(shown()).toEqual([kept.path]);
+        expect(await loadedCount()).toBe(1);
+    });
+
+    it("puts back a note no longer hidden, in its place", async () => {
+        await load(note("2025-01-03"), note("2025-01-01"));
+        service.belongs.mockResolvedValue(true);
+        service.insertSorted.mockReturnValue(1);
+
+        await stream.onLinksChanged([note("2025-01-02")]);
+
+        expect(shown()).toEqual(["Notes/2025-01-03.md", "Notes/2025-01-02.md", "Notes/2025-01-01.md"]);
+    });
+
+    // Its linked mentions redraw themselves on `resolved`.
+    it("leaves a note that stays alone", async () => {
+        const file = note("2025-01-01");
+        await load(file);
+        service.indexOf.mockReturnValue(0);
+        service.belongs.mockResolvedValue(true);
+
+        await stream.onLinksChanged([file]);
+
+        expect(noteWindow.refresh).not.toHaveBeenCalled();
+        expect(shown()).toEqual([file.path]);
+    });
+});
+
 describe("refresh", () => {
     it("rebuilds a placeholder for every loaded note, keeping them loaded", async () => {
         const files = [note("2025-01-03"), note("2025-01-01")];
