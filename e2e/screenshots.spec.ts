@@ -60,7 +60,7 @@ test.describe("README screenshots", () => {
         await openStream(page);
         await page.locator('.view-action[aria-label="Search"]').click();
         const bar = page.locator(".daily-notes-search");
-        await bar.locator("input").fill("Priya");
+        await bar.locator("input").fill("Mara");
         await page.keyboard.press("Enter");
         await expect(bar.locator(".document-search-count")).toHaveText(/^1 \/ \d+$/);
         await capture(page, "search", testInfo);
