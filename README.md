@@ -14,9 +14,12 @@ a note, open it.
   <img src="docs/images/collapse-desktop.png" alt="A note with every section folded to its heading" width="440">
 
 - **Linked mentions.** Each note ends with the notes that link to it, quoting the line around each link.
+
+  <img src="docs/images/mentions-desktop.png" alt="A note's linked mentions: a project note and a project log, each quoting the line that links to it" width="440">
+
 - **Search.** Find text across every note with your usual find hotkey.
 
-  <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Priya" width="440">
+  <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Mara" width="440">
 
 - **Jump to a date.** Pick any day that has a note.
 
@@ -35,7 +38,7 @@ a note, open it.
 <details>
 <summary>Phone layout</summary>
 
-<p><img src="docs/images/stream-phone.png" alt="The stream in Obsidian's phone layout" width="150"> <img src="docs/images/search-phone.png" alt="Search in the phone layout" width="150"> <img src="docs/images/jump-phone.png" alt="Jump to date in the phone layout" width="150"> <img src="docs/images/collapse-phone.png" alt="Collapsed sections in the phone layout" width="150"> <img src="docs/images/bases-phone.png" alt="A Base drawn as cards in the phone layout" width="150"> <img src="docs/images/stream-dark-phone.png" alt="The stream in the dark theme, phone layout" width="150"></p>
+<p><img src="docs/images/stream-phone.png" alt="The stream in Obsidian's phone layout" width="150"> <img src="docs/images/search-phone.png" alt="Search in the phone layout" width="150"> <img src="docs/images/jump-phone.png" alt="Jump to date in the phone layout" width="150"> <img src="docs/images/collapse-phone.png" alt="Collapsed sections in the phone layout" width="150"> <img src="docs/images/mentions-phone.png" alt="Linked mentions in the phone layout" width="150"> <img src="docs/images/bases-phone.png" alt="A Base drawn as cards in the phone layout" width="150"> <img src="docs/images/stream-dark-phone.png" alt="The stream in the dark theme, phone layout" width="150"></p>
 
 </details>
 

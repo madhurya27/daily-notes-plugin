@@ -6,8 +6,9 @@
  *
  *   pnpm run seed [vault] [--days N] [--until YYYY-MM-DD]
  *
- * Each note is drawn from a generator seeded by its own date, so a date reads
- * the same on every run and a recording can be retaken. Destructive like `seed --test`:
+ * Each note is drawn from a generator seeded by its own date, and its lines are
+ * dealt from decks keyed by its day or week, so a date reads the same on every
+ * run and a recording can be retaken. Destructive like `seed --test`:
  * the notes are rewritten, `.obsidian` is written only when absent.
  */
 import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
@@ -20,9 +21,8 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const JOURNAL = "Journal";
 const DAY_MS = 86_400_000;
 
-/** mulberry32, seeded by the date's digits: stable per date, varied across dates. */
-const randomFor = (date) => {
-    let seed = Number(date.replaceAll("-", ""));
+/** mulberry32: stable per seed, varied across seeds. */
+const seeded = (seed) => {
     return () => {
         seed = (seed + 0x6d2b79f5) | 0;
         let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
@@ -37,6 +37,39 @@ const picker = (random) => ({
     chance: (odds) => random() < odds,
     between: (low, high) => low + Math.floor(random() * (high - low + 1)),
 });
+
+/** Days a line is kept from returning, across a reshuffle; within one, it never does. */
+const GAP = 3;
+
+const hash = (text) => [...text].reduce((sum, char) => (Math.imul(sum, 31) + char.charCodeAt(0)) | 0, 0);
+const shuffled = (pool, seed) => picker(seeded(seed)).some(pool, pool.length);
+
+/**
+ * The `count` lines at `slot` (a day or a week) of `pool`, dealt from a deck
+ * reshuffled each time through it, so no line returns until the deck is spent.
+ * A deck's first GAP slots trade away any line the previous deck dealt in its
+ * last GAP, swapping only with lines between the two, which keeps every deck
+ * computable from its own seed: a date deals the same lines on every run.
+ */
+const deal = (pool, slot, count) => {
+    const slots = Math.floor(pool.length / count);
+    const cycle = Math.floor(slot / slots);
+    const seed = hash(JSON.stringify(pool));
+    const deck = shuffled(pool, seed + cycle);
+    const end = slots * count;
+    const gap = Math.min(GAP, Math.floor(slots / 3)) * count;
+    const previous = new Set(shuffled(pool, seed + cycle - 1).slice(end - gap, end));
+    const spare = deck
+        .map((_, index) => index)
+        .filter((index) => ((index >= gap && index < end - gap) || index >= end) && !previous.has(deck[index]));
+    for (let index = 0; index < gap; index++) {
+        if (!previous.has(deck[index])) continue;
+        const swap = spare.shift();
+        [deck[index], deck[swap]] = [deck[swap], deck[index]];
+    }
+    const start = (slot - cycle * slots) * count;
+    return deck.slice(start, start + count);
+};
 
 const BOOKS = {
     "The Dispossessed": { author: "Ursula K. Le Guin", status: "reading", rating: 5 },
@@ -62,6 +95,14 @@ const MORNINGS = [
     "Woke up with the whole [[Project Atlas]] navigation problem already rearranged in my head. Sketched it before it evaporated.",
     "Yoga, badly. Twenty minutes, most of it in child's pose.",
     "Walked to the bakery for sourdough. The owner remembered my order, which made my week.",
+    "Alarm at seven, snoozed twice. Toast eaten standing up at the counter.",
+    "Cycled the long way in, along the river. Mist on the water the whole way.",
+    "Ten minutes of stretching, then a very strong coffee. Both necessary.",
+    "Early train, empty carriage. Got through my inbox before the second stop.",
+    "Grey and still outside. Made eggs and listened to the news without really hearing it.",
+    "The neighbour's cat was on the balcony again, waiting to be let in. It is not my cat.",
+    "Journalled for fifteen minutes before anyone else was awake.",
+    "Slept badly, too warm. Opened every window and let the day start slowly.",
 ];
 
 const RUNS = [
@@ -71,17 +112,82 @@ const RUNS = [
     ["Old town circuit", "Clear and cold"],
 ];
 
-const STANDUPS = [
-    "Walked [[Priya]] through the new onboarding flow. She wants fewer steps; she's right.",
-    "Pairing with [[Jonah]] on the sync bug — it's a race between two retries, not the cache.",
-    "Design review for [[Project Atlas]]: the sidebar survives, the tab bar does not.",
-    "Wrote up the research synthesis. Five interviews, one clear theme: people don't trust autosave.",
-    "Cleared the review queue before lunch for the first time this month.",
-    "Roadmap sync with [[Mara]]. We cut the export feature from this quarter, and everyone looked relieved.",
-    "Shipped the settings redesign behind a flag. Watching the error dashboard like a hawk.",
-    "Prototyped the empty states. Three variations, the plainest one tested best.",
-    "Long 1:1 with [[Sam]] about career growth. Promised to find them a project with more ownership.",
+/** The everyday of work: lines that can come round again. */
+const WORK = [
+    "Weekly 1:1 with [[Sam]]. Talked through their priorities and what to drop.",
+    "Pairing with [[Jonah]] on the sync code. Slow going, good conversation.",
+    "Cleared the review queue before lunch, then went for a walk.",
+    "Design crit for [[Project Atlas]]. Many opinions about spacing, few about anything else.",
+    "Afternoon of deep work on the [[Project Atlas]] prototype, notifications off.",
+    "Ran a user interview. Wrote up the notes while they were still fresh.",
+    "Standup ran long again. Suggested we timebox it; everyone nodded, nobody meant it.",
+    "Worked through a backlog of questions from [[Priya]]'s team.",
+    "Sprint planning with [[Mara]]. Moved three tickets to later and felt lighter.",
+    "Reviewed [[Jonah]]'s pull request. Mostly naming, one real bug.",
+    "Spent the morning tidying design components nobody else will notice.",
+    "Wrote the weekly update for the team. Kept it to five bullets.",
+    "Lunch-and-learn on accessibility. Took more notes than I expected.",
+    "Quiet day. Worked through small bugs and felt oddly satisfied.",
+    "Too many meetings. Got an hour of real work done, right at the end of the day.",
+    "Coffee walk with [[Priya]] instead of a meeting room. Better ideas that way.",
+    "Triaged support tickets with [[Mara]]. Mostly the same three problems.",
+    "Updated the [[Project Atlas]] research doc with this week's findings.",
+    "Tried a new approach to the list view. Threw half of it away by five.",
+    "Helped a new contractor set up. Realised how much of our setup lives only in my head.",
 ];
+
+/** Each week's one piece of news: told on a weekday, recalled in Sunday's review. */
+const NEWS = [
+    [
+        "Design review for [[Project Atlas]]: the sidebar survives, the tab bar does not.",
+        "Settled the sidebar question",
+    ],
+    ["Found the sync bug with [[Jonah]]: a race between two retries, not the cache.", "Finally found the sync bug"],
+    [
+        "Wrote up the research synthesis. Five interviews, one clear theme: people don't trust autosave.",
+        "Research synthesis shared",
+    ],
+    [
+        "Roadmap sync with [[Mara]]. We cut the export feature from this quarter, and everyone looked relieved.",
+        "Cut export from the quarter",
+    ],
+    [
+        "Shipped the settings redesign behind a flag. Watching the error dashboard like a hawk.",
+        "Settings redesign shipped quietly",
+    ],
+    ["Prototyped the empty states. Three variations, the plainest one tested best.", "Empty states tested well"],
+    [
+        "Long 1:1 with [[Sam]] about career growth. Promised to find them a project with more ownership.",
+        "Good career talk with [[Sam]]",
+    ],
+    [
+        "Walked [[Priya]] through the new onboarding flow. She wants fewer steps; she's right.",
+        "Onboarding down to three steps",
+    ],
+    [
+        "Presented the [[Project Atlas]] prototype to leadership. They asked the right questions for once.",
+        "The Atlas demo landed",
+    ],
+    [
+        "Outage at 11am: a certificate expired. Back up in forty minutes, postmortem booked.",
+        "Stayed calm through the outage",
+    ],
+    ["[[Jonah]] is leaving at the end of next month. Happy for them, sad for us.", "Planned [[Jonah]]'s handover"],
+    [
+        "Offer accepted by the new designer. [[Priya]] ran the final interview and called it early.",
+        "Hiring done for the year",
+    ],
+    [
+        "Accessibility audit came back: forty-one issues, most of them colour contrast.",
+        "Started on the accessibility fixes",
+    ],
+    ["Offsite planning with [[Mara]]. We are going to a lake, apparently.", "Offsite booked"],
+    ["Deleted two thousand lines of dead code. Nothing broke. Suspicious.", "Big cleanup merged"],
+    [
+        "First usability test of the new navigation. Four of five found settings without help.",
+        "Navigation passed its first test",
+    ],
+].map(([news, review]) => ({ news, review }));
 
 const TASKS = [
     "Reply to the landlord about the boiler",
@@ -96,16 +202,35 @@ const TASKS = [
     "Write feedback for [[Sam]]",
     "Call Mum",
     "Back up the laptop",
+    "Pay the council tax",
+    "Return the library books",
+    "Fix the bike light",
+    "Book train tickets for the offsite",
+    "Update the [[Project Atlas]] roadmap",
+    "Clean out the fridge",
+    "Reply to [[Mara]] about the offsite",
+    "Cancel the streaming subscription",
+    "Get a haircut",
+    "Sort the recycling",
+    "Get quotes from two plumbers",
+    "Buy a birthday card",
 ];
 
 const EVENINGS = [
-    () => `Read forty pages of [[${READING[0]}]] and fell asleep with the lamp on.`,
-    () => "Cooked the miso aubergine from the green book. Too much miso, will do it again anyway.",
-    () => `Dinner with [[Mara]] at the Georgian place. We talked about everything except work.`,
-    () => "Watched half a film, gave up, went to bed early. No regrets.",
-    () => `Couple of chapters of [[${READING[1]}]] — slower going, but every page earns its place.`,
-    () => "Long phone call with my sister. The kids have discovered knock-knock jokes.",
-    () => "Played guitar for an hour. Finally got the barre chord in the bridge clean.",
+    `Read forty pages of [[${READING[0]}]] and fell asleep with the lamp on.`,
+    "Cooked the miso aubergine from the green book. Too much miso, will do it again anyway.",
+    "Dinner with [[Mara]] at the Georgian place. We talked about everything except work.",
+    "Watched half a film, gave up, went to bed early. No regrets.",
+    `Couple of chapters of [[${READING[1]}]]: slower going, but every page earns its place.`,
+    "Long phone call with my sister. The kids have discovered knock-knock jokes.",
+    "Played guitar for an hour. Finally got the barre chord in the bridge clean.",
+    "Made a big pot of dal for the week. The flat smells wonderful.",
+    "Evening swim. Thirty lengths and a long time in the sauna.",
+    "Tidied the flat with a podcast on. Found three pens and a missing sock.",
+    "Board games at [[Sam]]'s. Lost at everything, had a great time.",
+    "Wrote a letter to my grandmother. Real paper, real stamp.",
+    "Takeaway and a documentary about octopuses. Everything is octopuses now.",
+    "Walked along the river until it got dark. Phone stayed in my pocket.",
 ];
 
 const CALLOUTS = [
@@ -113,6 +238,15 @@ const CALLOUTS = [
     ["quote", "Quote", "“How we spend our days is, of course, how we spend our lives.” — Annie Dillard"],
     ["tip", "Note to self", "Block the first ninety minutes. Meetings can have the afternoon."],
     ["question", "Open question", "Is [[Project Atlas]] a redesign, or two products wearing one coat?"],
+    ["tip", "Note to self", "No agenda, no meeting. Politely, but say it."],
+    [
+        "quote",
+        "Quote",
+        "“Nothing is less productive than to make more efficient what should not be done at all.” — Peter Drucker",
+    ],
+    ["idea", "Idea", "A weekly note that gathers every task left unchecked the week before."],
+    ["question", "Open question", "Would I still do this work if nobody saw the results?"],
+    ["tip", "Note to self", "When stuck, write the problem down as a question to someone else."],
 ];
 
 const GRATITUDE = [
@@ -123,6 +257,14 @@ const GRATITUDE = [
     "[[Priya]]'s patience in a long meeting",
     "A quiet train home",
     "The first cold, clear morning of autumn",
+    "A long lunch with nowhere to be",
+    "Clean sheets",
+    "The bus arriving just as I did",
+    "A good book on a rainy afternoon",
+    "Leftovers that were better the second day",
+    "Laughing until it hurt at dinner",
+    "The dog next door, who likes me",
+    "[[Mara]] checking in after a hard day",
 ];
 
 const WEEKEND = [
@@ -132,14 +274,45 @@ const WEEKEND = [
     "Lazy one. Read in the park until the light went.",
     "Helped [[Sam]] move flat. Four flights of stairs, one sofa, zero lifts.",
     "Went to the museum's new photography exhibition. Stood in front of one print for ten minutes.",
+    "Cycled out to the coast with [[Jonah]]. Chips on the harbour wall, headwind all the way home.",
+    "Painted a sample of green on the wall for the [[Kitchen renovation]]. Hated it by evening.",
+    "Did absolutely nothing until noon. Then a long bath and a longer nap.",
+    "Car boot sale: a lamp, a teapot and a box of records I will never play.",
 ];
 
-const RECIPE = [
-    "### Sunday pasta",
-    "",
-    "1. Soften two shallots and a lot of garlic in butter",
-    "2. Add a tin of tomatoes and a pinch of chilli, cook down for 20 min",
-    "3. Finish with cream and parmesan, loosen with pasta water",
+const SHORTFALLS = [
+    "Too many late nights",
+    "Skipped two runs",
+    "Said yes to one meeting too many",
+    "Barely read",
+    "Ate lunch at my desk every day",
+    "Checked email in bed",
+    "Forgot to call Mum back",
+    "Let the to-do list grow again",
+];
+
+const RECIPES = [
+    [
+        "### Sunday pasta",
+        "",
+        "1. Soften two shallots and a lot of garlic in butter",
+        "2. Add a tin of tomatoes and a pinch of chilli, cook down for 20 min",
+        "3. Finish with cream and parmesan, loosen with pasta water",
+    ],
+    [
+        "### Roast squash soup",
+        "",
+        "1. Roast a squash with garlic and chilli until the edges catch",
+        "2. Blend with stock and a spoon of miso",
+        "3. Finish with yoghurt and toasted seeds",
+    ],
+    [
+        "### Weekend flatbreads",
+        "",
+        "1. Flour, yoghurt, salt and baking powder, no rising",
+        "2. Roll thin and cook in a dry pan",
+        "3. Brush with garlic butter while hot",
+    ],
 ];
 
 const frontmatter = (properties) => [
@@ -151,8 +324,19 @@ const frontmatter = (properties) => [
     "",
 ];
 
-const tasks = (pick) =>
-    pick.some(TASKS, pick.between(2, 4)).map((task) => `- [${pick.chance(0.55) ? "x" : " "}] ${task}`);
+/** Where a date falls: its day since 1970, its week (from Monday) and its place in it, Monday 0. */
+const calendar = (date) => {
+    const day = Date.parse(`${date}T00:00:00Z`) / DAY_MS;
+    return { day, week: Math.floor((day + 3) / 7), weekday: (day + 3) % 7 };
+};
+
+/** The week's news, and the weekday it happens on. */
+const newsOf = (week) => ({ ...deal(NEWS, week, 1)[0], weekday: picker(seeded(week)).between(0, 4) });
+
+const tasks = ({ day }, pick) =>
+    deal(TASKS, day, 4)
+        .slice(0, pick.between(2, 4))
+        .map((task) => `- [${pick.chance(0.55) ? "x" : " "}] ${task}`);
 
 const runTable = (pick) => {
     const [route, weather] = pick.one(RUNS);
@@ -168,78 +352,82 @@ const runTable = (pick) => {
 };
 
 /** A quarter of weekdays get a line or two: a real journal has thin days, and several fit one screen. */
-const weekday = (date, pick) => {
+const weekday = (date, when, pick) => {
     const properties = frontmatter({
         tags: ["daily", "work"],
         mood: pick.one(MOODS),
         sleep: pick.between(10, 17) / 2,
     });
     const sketch = date.endsWith("-16") ? ["### Sketch", "", "![[atlas-wireframe.svg]]", ""] : [];
+    const news = newsOf(when.week);
+    const work = [...(news.weekday === when.weekday ? [news.news] : []), ...deal(WORK, when.day, 2)];
+    const evening = deal(EVENINGS, when.day, 1)[0];
     if (pick.chance(0.25)) {
-        return [...properties, "## Notes", "", `- ${pick.one(STANDUPS)}`, "", ...sketch, pick.one(EVENINGS)()];
+        return [...properties, "## Notes", "", `- ${work[0]}`, "", ...sketch, evening];
     }
-    const callout = pick.chance(0.35) ? pick.one(CALLOUTS) : null;
+    const callout = pick.chance(0.35) ? deal(CALLOUTS, when.day, 1)[0] : null;
     return [
         ...properties,
         "## Morning",
         "",
-        pick.one(MORNINGS),
+        deal(MORNINGS, when.day, 1)[0],
         "",
         ...(pick.chance(0.3) ? [...runTable(pick), ""] : []),
         "## Work",
         "",
-        ...pick.some(STANDUPS, pick.between(1, 2)).map((line) => `- ${line}`),
+        ...work.slice(0, pick.between(1, 2)).map((line) => `- ${line}`),
         "",
         ...sketch,
         "### To do",
         "",
-        ...tasks(pick),
+        ...tasks(when, pick),
         "",
         ...(callout ? [`> [!${callout[0]}] ${callout[1]}`, `> ${callout[2]}`, ""] : []),
         "## Evening",
         "",
-        pick.one(EVENINGS)(),
+        evening,
     ];
 };
 
-const saturday = (pick) => [
+const saturday = ({ week }, pick) => [
     ...frontmatter({ tags: ["daily", "weekend"], mood: pick.one(MOODS) }),
     "## Saturday",
     "",
-    pick.one(WEEKEND),
+    deal(WEEKEND, week, 1)[0],
     "",
     ...(pick.chance(0.5) ? [...runTable(pick), ""] : []),
     "## Grateful for",
     "",
-    ...pick.some(GRATITUDE, 3).map((line, index) => `${index + 1}. ${line}`),
+    ...deal(GRATITUDE, week, 3).map((line, index) => `${index + 1}. ${line}`),
 ];
 
-const sunday = (pick) => [
+const sunday = (when, pick) => [
     ...frontmatter({ tags: ["daily", "weekend", "review"], mood: pick.one(MOODS) }),
     "## Week in review",
     "",
     "### Went well",
     "",
-    ...pick.some(STANDUPS, 2).map((line) => `- ${line}`),
+    `- ${newsOf(when.week).review}`,
     "",
     "### Could be better",
     "",
-    `- ${pick.one(["Too many late nights", "Skipped two runs", "Said yes to one meeting too many", "Barely read"])}`,
+    `- ${deal(SHORTFALLS, when.week, 1)[0]}`,
     "",
     "### Reading",
     "",
     "![[Reading.base]]",
     "",
-    ...(pick.chance(0.5) ? [...RECIPE, ""] : []),
+    ...(pick.chance(0.5) ? [...deal(RECIPES, when.week, 1)[0], ""] : []),
     "## Next week",
     "",
-    ...tasks(pick),
+    ...tasks(when, pick),
 ];
 
 const dailyNote = (date) => {
-    const pick = picker(randomFor(date));
-    const day = new Date(`${date}T00:00:00Z`).getUTCDay();
-    const lines = day === 0 ? sunday(pick) : day === 6 ? saturday(pick) : weekday(date, pick);
+    const pick = picker(seeded(Number(date.replaceAll("-", ""))));
+    const when = calendar(date);
+    const lines =
+        when.weekday === 6 ? sunday(when, pick) : when.weekday === 5 ? saturday(when, pick) : weekday(date, when, pick);
     return lines.join("\n") + "\n";
 };
 
@@ -334,7 +522,7 @@ export function main() {
     };
     const positional = args.filter((arg, index) => !arg.startsWith("--") && !args[index - 1]?.startsWith("--"));
     const vault = resolve(positional[0] ?? DEMO_VAULT);
-    const days = Number(flag("--days") ?? 60);
+    const days = Number(flag("--days") ?? 90);
     const now = new Date();
     const until = flag("--until")
         ? new Date(`${flag("--until")}T00:00:00Z`)

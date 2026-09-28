@@ -37,7 +37,7 @@ count (`400` for deep history, `12` for barely past one batch) and a path to see
 
 ### Demo vault: the default, `.dev/demo-vault/`
 
-60 days of a journal that reads like a real one: properties, links to people and projects, tasks, callouts,
+90 days of a journal that reads like a real one: properties, links to people and projects, tasks, callouts,
 run logs, a sketch, a reading-list Base every Sunday, and project logs linking the newest days. Each note is
 seeded by its date, so a retake shows the same content; `pnpm run seed` alone takes `--days N` and
 `--until YYYY-MM-DD`. Screenshots and recordings come from it.

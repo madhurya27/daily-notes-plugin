@@ -10,13 +10,16 @@ import { OUT, prepareDemo, showLightTheme } from "./demo";
  * rewrite files in docs/.
  */
 
-/** Opens the stream with a note boundary mid-screen: that is what makes it read as a stream. */
+/**
+ * Opens the stream with a note boundary mid-screen: that is what makes it read as a stream. The boundary sits
+ * below 2026-09-23, the newest note nothing links to, so linked mentions show only in the collapse still.
+ */
 async function showStream(page: Page): Promise<void> {
     const container = await openStream(page);
-    await container
-        .locator(".daily-note-block")
-        .nth(1)
-        .evaluate((block) => block.firstElementChild?.scrollIntoView({ block: "center" }));
+    const below = container.locator('[data-source-path="Notes/2026-09-22.md"]');
+    await below.scrollIntoViewIfNeeded();
+    await expect(below.locator(".daily-note-content")).toBeVisible();
+    await below.evaluate((block) => block.firstElementChild?.scrollIntoView({ block: "center" }));
 }
 
 async function capture(page: Page, name: string, testInfo: TestInfo): Promise<void> {
@@ -60,7 +63,7 @@ test.describe("README screenshots", () => {
         await openStream(page);
         await page.locator('.view-action[aria-label="Search"]').click();
         const bar = page.locator(".daily-notes-search");
-        await bar.locator("input").fill("Priya");
+        await bar.locator("input").fill("Mara");
         await page.keyboard.press("Enter");
         await expect(bar.locator(".document-search-count")).toHaveText(/^1 \/ \d+$/);
         await capture(page, "search", testInfo);
@@ -76,16 +79,30 @@ test.describe("README screenshots", () => {
         await capture(page, "jump", testInfo);
     });
 
+    // Before the collapse still, which folds these footers and leaves them folded.
+    test("linked mentions", async ({ obsidian }, testInfo) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const mentions = container.locator(".daily-note-block").first().locator(".daily-note-mentions");
+        await expect(mentions.locator(".daily-note-mention").first()).toBeVisible();
+        await mentions.evaluate((footer) => footer.scrollIntoView({ block: "center" }));
+        await capture(page, "mentions", testInfo);
+    });
+
     test("collapsed sections", async ({ obsidian }, testInfo) => {
         const { page } = obsidian;
         const container = await openStream(page);
-        // Every section of the first two notes folded: the chevrons show, and more dates fit.
+        // Every section of the first two notes folded, linked mentions too: the chevrons show, and more dates fit.
         for (const index of [0, 1]) {
-            const headings = container.locator(".daily-note-block").nth(index).locator(".daily-note-content h2");
+            const block = container.locator(".daily-note-block").nth(index);
+            const mentions = block.locator(".daily-note-mentions");
+            const headings = block.locator(".daily-note-content h2");
             for (const heading of await headings.all()) {
                 await heading.locator(".collapse-indicator").click();
                 await expect(heading).toHaveClass(/is-collapsed/);
             }
+            await mentions.locator(".daily-note-mentions-heading .collapse-indicator").click();
+            await expect(mentions).toHaveClass(/is-collapsed/);
         }
         // Folding shifts the page under the scroll anchor; start from the newest note again.
         await container
