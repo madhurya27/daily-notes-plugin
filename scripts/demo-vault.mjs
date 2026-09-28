@@ -1,18 +1,20 @@
 /**
  * Writes `.dev/demo-vault/` — a journal that reads like someone's real one, for
- * screenshots and screen recordings. `seed` is for testing: its notes are shaped
- * around edge cases and photograph as scaffolding.
+ * trying the plugin, screenshots and screen recordings. The test vault
+ * (`seed --test`) is for the checklist: its notes are shaped around edge cases
+ * and photograph as scaffolding.
  *
- *   node scripts/demo-vault.mjs [vault] [--days N] [--until YYYY-MM-DD]
+ *   pnpm run seed [vault] [--days N] [--until YYYY-MM-DD]
  *
  * Each note is drawn from a generator seeded by its own date, so a date reads
- * the same on every run and a recording can be retaken. Destructive like `seed`:
+ * the same on every run and a recording can be retaken. Destructive like `seed --test`:
  * the notes are rewritten, `.obsidian` is written only when absent.
  */
 import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { isMain } from "./reload-plugin.mjs";
+import { DEMO_VAULT } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PLUGIN_ID = "daily-notes-stream";
@@ -325,21 +327,21 @@ export function demoVault({ until, days }) {
     return vault;
 }
 
-function main() {
+export function main() {
     const args = process.argv.slice(2);
     const flag = (name) => {
         const index = args.indexOf(name);
         return index === -1 ? undefined : args[index + 1];
     };
     const positional = args.filter((arg, index) => !arg.startsWith("--") && !args[index - 1]?.startsWith("--"));
-    const vault = resolve(positional[0] ?? join(REPO, ".dev", "demo-vault"));
+    const vault = resolve(positional[0] ?? DEMO_VAULT);
     const days = Number(flag("--days") ?? 60);
     const now = new Date();
     const until = flag("--until")
         ? new Date(`${flag("--until")}T00:00:00Z`)
         : new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
     if (!Number.isInteger(days) || days < 1 || Number.isNaN(until.getTime())) {
-        console.error("Usage: pnpm run seed:demo [vault] [--days N] [--until YYYY-MM-DD]");
+        console.error("Usage: pnpm run seed [vault] [--days N] [--until YYYY-MM-DD]");
         process.exit(1);
     }
 
@@ -373,7 +375,7 @@ function main() {
     for (const asset of assets) copyFileSync(join(REPO, asset), join(pluginDir, asset));
 
     console.log(`Wrote ${days} journal entries up to ${until.toISOString().slice(0, 10)} into ${vault}`);
-    console.log(`Open it: pnpm run open ${vault}`);
+    console.log(`Open it: pnpm run open${vault === DEMO_VAULT ? "" : ` ${vault}`}`);
 }
 
 if (isMain(import.meta.url)) main();

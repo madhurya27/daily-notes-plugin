@@ -1,8 +1,8 @@
 /**
- * Opens .dev/vault/ in Obsidian, plugin enabled and mobile emulation on, then
- * detaches and leaves the window running.
+ * Opens the demo vault, or the test vault with --test, in Obsidian, plugin
+ * enabled and mobile emulation on, then detaches and leaves the window running.
  *
- *   node scripts/open-test-vault.mjs [options] [vault]   (--help lists the options)
+ *   node scripts/open-vault.mjs [options] [vault]   (--help lists the options)
  *
  * Own instance against `.dev/obsidian-userdata`, so your real config and vaults
  * are untouched and both can run at once. That directory persists — settings and
@@ -15,6 +15,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { boundsFor, emulateDevice, layoutFrom } from "./window-layout.mjs";
+import { vaultFrom } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
@@ -25,8 +26,12 @@ const args = process.argv.slice(2);
 
 const USAGE = `pnpm run open [options] [vault]
 
-Opens .dev/vault/ in its own Obsidian with the plugin enabled, the stream view
-showing and mobile emulation on, then detaches and leaves the window up.
+Opens .dev/demo-vault/ in its own Obsidian with the plugin enabled, the stream
+view showing and mobile emulation on, then detaches and leaves the window up.
+
+Vault (default: the demo vault)
+  --test          the test vault, .dev/vault/, that docs/TESTING.md uses
+  [vault]         any other vault, by path
 
 Size and layout (default: phone portrait)
   --ipad          tablet window, 820x1180 — is-mobile without is-phone
@@ -50,7 +55,7 @@ if (args.includes("--help") || args.includes("-h")) {
 }
 
 // A silently ignored typo (--ipad2) opens the wrong layout and looks like a bug.
-const KNOWN_FLAGS = new Set(["--desktop", "--ipad", "--landscape", "--keep-size", "--position"]);
+const KNOWN_FLAGS = new Set(["--test", "--desktop", "--ipad", "--landscape", "--keep-size", "--position"]);
 const unknown = args.filter((arg) => arg.startsWith("--") && !KNOWN_FLAGS.has(arg.split("=")[0]));
 if (unknown.length) {
     console.error(`Unknown option${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}\nRun: pnpm run open --help`);
@@ -81,11 +86,13 @@ const position = parsePosition(flagValue("--position"));
 // A value consumed by a flag is not the vault path.
 const consumed = new Set(["--position"]);
 const positional = args.filter((arg, index) => !arg.startsWith("--") && !consumed.has(args[index - 1]));
-const vault = resolve(positional[0] ?? join(REPO, ".dev", "vault"));
+const vault = vaultFrom(positional[0], args);
 const userDataDir = join(REPO, ".dev", "obsidian-userdata");
 
 if (!existsSync(join(vault, ".obsidian", "plugins", PLUGIN_ID, "main.js"))) {
-    console.error(`No plugin build in ${vault}. Run: pnpm run build && pnpm run seed`);
+    console.error(
+        `No plugin build in ${vault}. Run: pnpm run build && pnpm run seed${args.includes("--test") ? " --test" : ""}`
+    );
     process.exit(1);
 }
 

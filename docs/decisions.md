@@ -993,3 +993,16 @@ notes; settling before it draws let a returning note dip, which jumps on iOS.
 - Queuing footer redraws through the view (ADR 0004) — a footer touches no
   stream state, and unloading its note already stops it.
 
+## 2026-09-28 — The demo vault is the default; the test vault takes `--test`
+
+**Decision:** `seed`, `open` and `dev:vault` act on `.dev/demo-vault/`, and
+on `.dev/vault/` with `--test` (`scripts/vaults.mjs`). `pnpm run demo` builds,
+seeds and opens the demo vault.
+
+**Why:** the demo vault is the one used day to day; the test vault is for the
+checklist's edge cases.
+
+**Rejected:**
+- Separate `seed:demo` and `seed:test` scripts — `open` and `dev:vault` would
+  need a pair each; one flag reads the same on all three.
+

@@ -7,38 +7,41 @@ pnpm test                          # unit
 pnpm run test:e2e                  # every spec twice, desktop and mobile
 pnpm run test:e2e --project=mobile      # just one project
 pnpm run test:e2e webkit.spec.ts   # the phone layout in iOS's engine (ADR 0009)
-pnpm run build && pnpm run seed    # write .dev/vault/ and install the build into it
-pnpm run open --help               # every option, with its default
+pnpm run build && pnpm run seed --test   # write .dev/vault/ and install the build into it
+pnpm run open --test                     # open it; --help lists every option, with its default
 ```
 
-`seed` writes 123 daily notes in `Notes/` plus everything the checklist names: the three dated notes, nested
+`seed --test` writes 123 daily notes in `Notes/` plus everything the checklist names: the three dated notes, nested
 lists, repeated headings, a heading holding a link, `test-image.svg`, and a dated `.png` and out-of-folder
 dated note that must *not* appear. The newest, **2026-08-30**, holds one of each embed the e2e tests cover:
 Bases wide, narrow, too wide only in their values, resized by hand, a named view and inline, plus embedded
-notes, display math, Mermaid and a wide table; the Bases live in `Bases/`. Filler notes cycle eight shapes —
+notes, display math, Mermaid and a wide table; the Bases live in `Bases/`. The newest filler note,
+**2026-08-29**, has linked mentions of every kind: from a nested list item, a paragraph, a wide table and a
+property, and a link in `Projects/Plan.md` that must open `Projects/Agenda.md`, not `Notes/Agenda.md`. Filler notes cycle eight shapes —
 long notes, a wide code block, a wide table, tasks and a blockquote, H1–H6 nesting, one with no frontmatter,
 so the properties panel is tested by its absence too, and Bases, so they recur all the way down. `--days N` changes the count (`400` for deep history, `12` for barely past one batch), and
 a path argument seeds elsewhere. Re-seeding rewrites the notes but leaves `.obsidian` alone, so your layout
 survives.
 
-`open` runs its own Obsidian against `.dev/obsidian-userdata`, beside your real one. It opens on the main
+`open --test` runs its own Obsidian against `.dev/obsidian-userdata`, beside your real one. It opens on the main
 display — it is meant to be watched, unlike the hidden e2e window. Phone mode has no draggable region, so
 `--position` is how that window moves.
 
-Deploying a new build is the same `build && seed`, then **Reload app without saving** — or skip both:
+Deploying a new build is the same `build && seed --test`, then **Reload app without saving** — or skip both:
 
 ```bash
-pnpm run open        # the window to work against
-pnpm run dev:vault   # links the build in, watches it, reloads the plugin on every save
-pnpm run reload      # that reload, once, by hand
+pnpm run open --test        # the window to work against
+pnpm run dev:vault --test   # links the build in, watches it, reloads the plugin on every save
+pnpm run reload             # that reload, once, by hand
 ```
 
 Re-seeding copies over the links; `dev:vault` puts them back.
 
-For screenshots and recordings, `pnpm run seed:demo` writes `.dev/demo-vault/` instead: 60 days of a journal
-that reads like a real one — properties, links to people and projects, tasks, callouts, run logs, a sketch, and
-a reading-list Base every Sunday. Each note is seeded by its date, so a retake shows the same content;
-`--days N` and `--until YYYY-MM-DD` change the range. Open it with `pnpm run open .dev/demo-vault`.
+Without `--test`, each of these acts on `.dev/demo-vault/`, and `pnpm run demo` builds, seeds and opens it
+in one step: 60 days of a journal that reads like a real one — properties, links to people and projects,
+tasks, callouts, run logs, a sketch, a reading-list Base every Sunday, and project logs linking the newest
+days. Each note is seeded by its date, so a retake shows the same content; `seed`'s `--days N` and
+`--until YYYY-MM-DD` change the range. Screenshots and recordings come from it.
 
 ## Verification
 

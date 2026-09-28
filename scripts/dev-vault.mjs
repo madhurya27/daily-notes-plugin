@@ -1,8 +1,9 @@
 /**
- * The edit-reload loop: links the build into .dev/vault/, watches it, and
- * reloads the plugin in the open window after every change.
+ * The edit-reload loop: links the build into the demo vault, or the test vault
+ * with --test, watches it, and reloads the plugin in the open window after
+ * every change.
  *
- *   node scripts/dev-vault.mjs [vault]
+ *   pnpm run dev:vault [--test] [vault]
  *
  * Why links and a reload: docs/decisions.md. Watching the linked files covers a
  * TypeScript change without knowing anything about the build — `main.js` is
@@ -13,6 +14,7 @@ import { existsSync, rmSync, statSync, symlinkSync, watch } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { isMain, reloadPlugin } from "./reload-plugin.mjs";
+import { vaultFrom } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PLUGIN_ID = "daily-notes-stream";
@@ -24,7 +26,9 @@ export const ASSETS = ["main.js", "styles.css", "manifest.json"];
 export function linkAssets(repo, vault) {
     const pluginDir = join(vault, ".obsidian", "plugins", PLUGIN_ID);
     if (!existsSync(pluginDir)) {
-        throw new Error(`No plugin installed in ${vault} — seed it first: pnpm run build && pnpm run seed`);
+        throw new Error(
+            `No plugin installed in ${vault} — seed it first: pnpm run build && pnpm run seed (--test for the test vault)`
+        );
     }
     for (const asset of ASSETS) {
         const target = join(pluginDir, asset);
@@ -91,7 +95,11 @@ export function createReloader(reload, delay) {
 }
 
 function main() {
-    const vault = resolve(process.argv[2] ?? join(REPO, ".dev", "vault"));
+    const args = process.argv.slice(2);
+    const vault = vaultFrom(
+        args.find((arg) => !arg.startsWith("--")),
+        args
+    );
     const missing = ASSETS.filter((asset) => !existsSync(join(REPO, asset)));
     if (missing.length > 0) {
         console.error(`Build first — missing ${missing.join(", ")}. Run: pnpm run build`);

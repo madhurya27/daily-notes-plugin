@@ -2,7 +2,7 @@
  * Rebuilds `.dev/vault/` — the local vault docs/TESTING.md's checklist is
  * written against — and installs the current build into it.
  *
- *   node scripts/seed-test-vault.mjs [target-vault]
+ *   pnpm run seed --test [target-vault] [--days N]
  *
  * Destructive: it removes the vault's notes and rewrites them. Obsidian's own
  * config (.obsidian) is written only when absent, so a vault you have already
@@ -12,6 +12,7 @@ import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { isMain } from "./reload-plugin.mjs";
+import { TEST_VAULT } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const NOTES = "Notes";
@@ -343,7 +344,7 @@ export function testVault({ days }) {
     return vault;
 }
 
-function main() {
+export function main() {
     const args = process.argv.slice(2);
     /** Reads `--flag value` and `--flag=value` alike. */
     const flagValue = (name) => {
@@ -353,7 +354,7 @@ function main() {
         return index === -1 ? undefined : args[index + 1];
     };
     const positional = args.filter((arg, index) => !arg.startsWith("--") && args[index - 1] !== "--days");
-    const vault = resolve(positional[0] ?? join(REPO, ".dev", "vault"));
+    const vault = resolve(positional[0] ?? TEST_VAULT);
     const days = Number(flagValue("--days") ?? DEFAULT_DAYS);
     if (!Number.isInteger(days) || days < 1) {
         console.error(`--days wants a positive whole number, got: ${flagValue("--days")}`);
