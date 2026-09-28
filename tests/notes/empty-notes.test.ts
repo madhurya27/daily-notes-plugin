@@ -6,8 +6,14 @@ import { BacklinkIndex } from "../../src/notes/backlink-index";
 
 const TEMPLATE = "## Log\n- \n";
 
-/** A vault of `texts` by path, each file's size its text's length. */
-function vaultOf(texts: Record<string, string>) {
+/** What localStorage would hold between sessions. */
+function storeOf() {
+    let saved: unknown = null;
+    return { load: vi.fn(() => saved), save: vi.fn((value: unknown) => void (saved = structuredClone(value))) };
+}
+
+/** A vault of `texts` by path, each file's size its text's length, its verdicts kept in `store`. */
+function vaultOf(texts: Record<string, string>, store = storeOf()) {
     const files = new Map<string, TFile>();
     const fileAt = (path: string) => {
         let file = files.get(path);
@@ -20,7 +26,7 @@ function vaultOf(texts: Record<string, string>) {
     };
     const read = vi.fn((file: TFile) => Promise.resolve(texts[file.path] ?? ""));
     const resolve = vi.fn((linkpath: string) => (`${linkpath}.md` in texts ? fileAt(`${linkpath}.md`) : null));
-    return { texts, fileAt, read, resolve, notes: new EmptyNotes({ read, resolve }) };
+    return { texts, fileAt, read, resolve, store, notes: new EmptyNotes({ read, resolve }, store) };
 }
 
 /** Rewrites `path`, as a save does: new text, new mtime. */
@@ -182,6 +188,27 @@ describe("hideEmptyNotes", () => {
         expect(vault.read).not.toHaveBeenCalled();
     });
 
+    it("checks every note when the list is built, and one when it changes", async () => {
+        const { vault, filter, files } = await filterOver();
+        const checkAll = vi.spyOn(vault.notes, "checkAll");
+        const refresh = vi.spyOn(vault.notes, "refresh");
+
+        await filter.prepare([...files]);
+        await filter.recheck(files[0]);
+
+        expect(checkAll).toHaveBeenCalledExactlyOnceWith([...files]);
+        expect(refresh.mock.calls.at(-1)).toEqual([[files[0]]]);
+    });
+
+    it("rechecks nothing when turned off", async () => {
+        settings.hideEmptyNotes = false;
+        const { vault, filter, files } = await filterOver();
+
+        await filter.recheck(files[0]);
+
+        expect(vault.read).not.toHaveBeenCalled();
+    });
+
     // Its linked mentions are content the stream would show under it.
     it("shows an empty note another note links to", async () => {
         links = { "Meeting.md": { "2026-09-27.md": 1 } };
@@ -210,5 +237,162 @@ describe("hideEmptyNotes", () => {
         signatures.push(filter.signature());
 
         expect(new Set(signatures).size).toBe(4);
+    });
+});
+
+describe("EmptyNotes across sessions", () => {
+    const TEXTS = { "Templates/Daily.md": TEMPLATE, "empty.md": TEMPLATE, "written.md": "## Log\n- ran\n" };
+
+    beforeEach(() => {
+        __setMockSettings({ format: "YYYY-MM-DD", folder: "", template: "Templates/Daily" });
+        vi.useFakeTimers({ now: 1_000 });
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    /** A session that checked every note at `now`, then closed; the next session's vault, sharing its store. */
+    async function afterASession(texts: Record<string, string> = TEXTS) {
+        const first = vaultOf({ ...texts });
+        await first.notes.checkAll(Object.keys(texts).slice(1).map(first.fileAt));
+        first.notes.flush();
+        vi.setSystemTime(5_000);
+        const next = vaultOf({ ...texts }, first.store);
+        return { first, next, files: () => Object.keys(texts).slice(1).map(next.fileAt) };
+    }
+
+    /** The notes, not the template, the vault read. */
+    const notesRead = (vault: ReturnType<typeof vaultOf>) =>
+        vault.read.mock.calls.map(([file]) => file.path).filter((path) => !path.startsWith("Templates/"));
+
+    it("keeps only the empty notes, and when every note was last checked", async () => {
+        const { first } = await afterASession();
+
+        expect(first.store.save).toHaveBeenCalledOnce();
+        expect(first.store.save.mock.calls[0]![0]).toMatchObject({ checkedAt: 1_000, empty: [["empty.md", 0]] });
+    });
+
+    it("trusts every note unchanged since, reading none", async () => {
+        const { next, files } = await afterASession();
+        const [empty, written] = files();
+
+        await next.notes.checkAll(files());
+
+        expect(notesRead(next)).toEqual([]);
+        expect(next.notes.isEmpty(empty!)).toBe(true);
+        expect(next.notes.isEmpty(written!)).toBe(false);
+    });
+
+    it("reads a note saved empty whose mtime moved, even back in time, as a synced edit's may", async () => {
+        const { next, files } = await afterASession();
+        next.texts["empty.md"] = "## Log\n- ran\n";
+        next.fileAt("empty.md").stat.mtime = 500;
+
+        await next.notes.checkAll(files());
+
+        expect(notesRead(next)).toEqual(["empty.md"]);
+        expect(next.notes.isEmpty(next.fileAt("empty.md"))).toBe(false);
+    });
+
+    it("reads a note changed since the last check", async () => {
+        const { next, files } = await afterASession();
+        next.texts["written.md"] = TEMPLATE;
+        next.fileAt("written.md").stat.mtime = 2_000;
+
+        await next.notes.checkAll(files());
+
+        expect(notesRead(next)).toEqual(["written.md"]);
+        expect(next.notes.isEmpty(next.fileAt("written.md"))).toBe(true);
+    });
+
+    it("reads every note under a changed template", async () => {
+        const { next, files } = await afterASession();
+        next.fileAt("Templates/Daily.md").stat.mtime = 2_000;
+
+        await next.notes.checkAll(files());
+
+        expect(notesRead(next).sort()).toEqual(["empty.md", "written.md"]);
+    });
+
+    it("dates a check from when it began, so a note saved during its reads is read next time", async () => {
+        const vault = vaultOf({ ...TEXTS });
+        vault.read.mockImplementation((file: TFile) => {
+            vi.setSystemTime(3_000);
+            return Promise.resolve(vault.texts[file.path] ?? "");
+        });
+
+        await vault.notes.checkAll([vault.fileAt("empty.md")]);
+        vault.notes.flush();
+
+        expect(vault.store.save.mock.calls[0]![0]).toMatchObject({ checkedAt: 1_000 });
+    });
+
+    it("saves a verdict one note's re-check changed, a second after", async () => {
+        const { next, files } = await afterASession();
+        await next.notes.checkAll(files());
+        next.store.save.mockClear();
+
+        const written = next.fileAt("empty.md");
+        next.texts["empty.md"] = "## Log\n- ran\n";
+        written.stat.mtime = 6_000;
+        await next.notes.refresh([written]);
+        expect(next.store.save).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(1_000);
+
+        expect(next.store.save.mock.calls[0]![0]).toMatchObject({ checkedAt: 5_000, empty: [] });
+    });
+
+    it("saves nothing before every note has been checked this session", async () => {
+        const { next } = await afterASession();
+        next.store.save.mockClear();
+
+        await next.notes.refresh([next.fileAt("empty.md")]);
+        next.notes.rename("empty.md", "moved.md");
+        next.notes.forget("written.md");
+        next.notes.flush();
+
+        expect(next.store.save).not.toHaveBeenCalled();
+    });
+
+    it("carries a saved empty note across a rename before the check", async () => {
+        const { next } = await afterASession();
+        next.notes.rename("empty.md", "moved.md");
+        next.texts["moved.md"] = TEMPLATE;
+
+        await next.notes.checkAll([next.fileAt("moved.md")]);
+
+        expect(notesRead(next)).toEqual([]);
+        expect(next.notes.isEmpty(next.fileAt("moved.md"))).toBe(true);
+    });
+
+    it.each([
+        ["nothing saved", null],
+        ["another version", { version: 0, template: "", checkedAt: 9_999, empty: [] }],
+        ["something else", "garbage"],
+        ["no list of empty notes", { version: 1, template: "", checkedAt: 9_999, empty: "none" }],
+    ])("reads every note over %s", async (_, saved) => {
+        const vault = vaultOf({ ...TEXTS });
+        vault.store.load.mockReturnValue(saved);
+        const notes = new EmptyNotes({ read: vault.read, resolve: vault.resolve }, vault.store);
+
+        await notes.checkAll([vault.fileAt("empty.md"), vault.fileAt("written.md")]);
+
+        expect(notesRead(vault).sort()).toEqual(["empty.md", "written.md"]);
+    });
+
+    it("logs a refused save once, and keeps working", async () => {
+        const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+        const vault = vaultOf({ ...TEXTS });
+        vault.store.save.mockImplementation(() => {
+            throw new Error("quota");
+        });
+
+        await vault.notes.checkAll([vault.fileAt("empty.md")]);
+        vault.notes.flush();
+        await vault.notes.checkAll([vault.fileAt("written.md")]);
+        vault.notes.flush();
+
+        expect(errors).toHaveBeenCalledOnce();
+        expect(vault.notes.isEmpty(vault.fileAt("empty.md"))).toBe(true);
+        errors.mockRestore();
     });
 });

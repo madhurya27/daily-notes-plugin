@@ -565,8 +565,13 @@ describe("DailyNoteService: hidden notes", () => {
     /** A filter hiding `hidden`, recording what it was prepared with. */
     function filterHiding(hidden: string[]) {
         const prepared: string[][] = [];
+        const rechecked: string[] = [];
         let signature = "a";
         const filter: NoteFilter = {
+            recheck: (file) => {
+                rechecked.push(file.path);
+                return Promise.resolve();
+            },
             prepare: (files) => {
                 prepared.push(files.map((file) => file.path));
                 return Promise.resolve();
@@ -574,7 +579,7 @@ describe("DailyNoteService: hidden notes", () => {
             isHidden: (file) => hidden.includes(file.path),
             signature: () => signature,
         };
-        return { filter, prepared, hidden, resign: (next: string) => (signature = next) };
+        return { filter, prepared, rechecked, hidden, resign: (next: string) => (signature = next) };
     }
 
     beforeEach(() => {
@@ -618,7 +623,7 @@ describe("DailyNoteService: hidden notes", () => {
     });
 
     it("tells whether a note belongs in the list, preparing the filter for a daily note alone", async () => {
-        const { filter, prepared, hidden } = filterHiding([]);
+        const { filter, prepared, rechecked, hidden } = filterHiding([]);
         const svc = new DailyNoteService(__mockMarkdownFiles, new ParsedDates(), filter);
         await svc.initialize();
         hidden.push("Notes/2025-01-02.md");
@@ -626,7 +631,15 @@ describe("DailyNoteService: hidden notes", () => {
         expect(await svc.belongs(new TFile("Notes/2025-01-02.md"))).toBe(false);
         expect(await svc.belongs(new TFile("Notes/2025-01-01.md"))).toBe(true);
         expect(await svc.belongs(new TFile("Notes/Ideas.md"))).toBe(false);
-        expect(prepared.slice(1)).toEqual([["Notes/2025-01-02.md"], ["Notes/2025-01-01.md"]]);
+        expect(prepared).toHaveLength(1);
+        expect(rechecked).toEqual(["Notes/2025-01-02.md", "Notes/2025-01-01.md"]);
+    });
+
+    it("with no filter, finds every daily note belongs", async () => {
+        const svc = new DailyNoteService(__mockMarkdownFiles);
+        await svc.initialize();
+
+        expect(await svc.belongs(new TFile("Notes/2025-01-02.md"))).toBe(true);
     });
 
     it("tells whether it hides any daily note", async () => {

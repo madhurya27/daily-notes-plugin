@@ -6,7 +6,7 @@ import { DailyNoteService } from "./notes/daily-note-service";
 import { ParsedDates } from "./notes/parsed-dates";
 import { LayoutMemory } from "./stream/layout-memory";
 import { BacklinkIndex } from "./notes/backlink-index";
-import { EmptyNotes, hideEmptyNotes } from "./notes/empty-notes";
+import { EMPTY_NOTES_KEY, EmptyNotes, hideEmptyNotes } from "./notes/empty-notes";
 import { LinkChanges } from "./notes/link-changes";
 import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 
@@ -83,6 +83,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
 
     onunload() {
         this.layoutMemory.flush();
+        this.emptyNotes.flush();
     }
 
     /** What the stream measured; a note's measurements follow it across a rename, and out with a delete. */
@@ -120,10 +121,16 @@ export default class DailyNotesStreamPlugin extends Plugin {
 
     private indexEmptyNotes(): void {
         const { vault, metadataCache } = this.app;
-        const notes = (this.emptyNotes = new EmptyNotes({
-            read: (file) => vault.cachedRead(file),
-            resolve: (linkpath) => metadataCache.getFirstLinkpathDest(linkpath, ""),
-        }));
+        const notes = (this.emptyNotes = new EmptyNotes(
+            {
+                read: (file) => vault.cachedRead(file),
+                resolve: (linkpath) => metadataCache.getFirstLinkpathDest(linkpath, ""),
+            },
+            {
+                load: (): unknown => this.app.loadLocalStorage(EMPTY_NOTES_KEY),
+                save: (value) => this.app.saveLocalStorage(EMPTY_NOTES_KEY, value),
+            }
+        ));
         this.registerEvent(vault.on("rename", (file, oldPath) => notes.rename(oldPath, file.path)));
         this.registerEvent(vault.on("delete", (file) => notes.forget(file.path)));
     }

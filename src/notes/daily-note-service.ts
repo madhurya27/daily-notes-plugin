@@ -17,8 +17,10 @@ export type Moment = ReturnType<typeof moment>;
 
 /** Which daily notes the stream leaves out. */
 export interface NoteFilter {
-    /** Makes `isHidden` current for `files`. */
+    /** Makes `isHidden` current for every daily note in `files`: the list is being built. */
     prepare(files: TFile[]): Promise<void>;
+    /** Makes `isHidden` current for `file` alone: it, or a link to it, changed. */
+    recheck(file: TFile): Promise<void>;
     isHidden(file: TFile, date: Moment): boolean;
     /** Changes when what is hidden may have changed wholesale, so the notes are listed again. */
     signature(): string;
@@ -27,6 +29,7 @@ export interface NoteFilter {
 /** Hides nothing. */
 const SHOW_ALL: NoteFilter = {
     prepare: () => Promise.resolve(),
+    recheck: () => Promise.resolve(),
     isHidden: () => false,
     signature: () => "",
 };
@@ -96,7 +99,7 @@ export class DailyNoteService {
     async belongs(file: TFile): Promise<boolean> {
         const date = this.parseDate(file, this.readFormat());
         if (!date) return false;
-        await this.filter.prepare([file]);
+        await this.filter.recheck(file);
         return !this.filter.isHidden(file, date);
     }
 

@@ -172,6 +172,39 @@ test.describe("empty daily notes", () => {
         await expect(shown.nth(1)).toHaveText(seededDate(0));
     });
 
+    // Each note's check is saved on this device (ADR 0011).
+    test("reads no unchanged note after the plugin reloads, and still hides the empty one", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await titles(page);
+        const read = await page.evaluate(async () => {
+            const { app } = window;
+            await app.plugins.disablePlugin("daily-notes-stream");
+            const { vault } = app;
+            const cachedRead = vault.cachedRead;
+            const read: string[] = [];
+            vault.cachedRead = (file: { path: string }) => (read.push(file.path), cachedRead.call(vault, file));
+            try {
+                await app.plugins.enablePlugin("daily-notes-stream");
+                await app.commands.executeCommandById("daily-notes-stream:open-stream");
+                while (!document.querySelector(".daily-notes-stream-container .daily-note-content"))
+                    await new Promise((resolve) => setTimeout(resolve, 5));
+            } finally {
+                vault.cachedRead = cachedRead;
+            }
+            // What the stream drew reads each note too; only the check is under test.
+            const drawn = new Set(
+                [...document.querySelectorAll<HTMLElement>(".daily-note-block:not(.is-unloaded)")].map(
+                    (el) => el.dataset.sourcePath
+                )
+            );
+            return read.filter((path) => path.startsWith("Notes/") && !drawn.has(path));
+        });
+
+        expect(read).toEqual([]);
+        const shown = (await openStream(page)).locator(".daily-note-title");
+        await expect(shown.nth(1)).toHaveText(seededDate(0));
+    });
+
     test("shows every note with the setting off", async ({ obsidian }) => {
         const { page } = obsidian;
         const shown = await titles(page);

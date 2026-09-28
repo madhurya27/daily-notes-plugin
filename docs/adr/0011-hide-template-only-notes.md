@@ -20,7 +20,11 @@ changed property is writing, so the note shows.
 
 Only notes no bigger than the template plus 1 KB are read. `EmptyNotes`, one per
 plugin, keeps each path's verdict keyed by `mtime`, filled before the first
-batch and updated on `metadataCache` `changed`. Each view's service filters
+batch and updated on `metadataCache` `changed`. It saves, in the vault's
+localStorage on this device, the template it checked against, when its last
+check of every note began, and each empty note's `mtime`. The next session
+trusts a note unchanged since: empty if saved with that `mtime`, else written.
+Each view's service filters
 through it synchronously. Today's note always shows, and so does a note another
 note links to while linked mentions are shown: those are content under it.
 `LinkChanges`, one per plugin, compares each note's links into the daily-notes
@@ -34,6 +38,9 @@ notes that gained or lost one. A setting, on by default, turns hiding off.
 - Emptiness changes on edit, so a note enters or leaves `_sorted` on
   `changed`, through `insertSorted` / `removeSorted`.
 - A stream left open past midnight keeps yesterday's empty note until a rebuild.
+- A written note costs nothing to save; an empty one about 40 bytes.
+- A note emptied on another device, synced with an `mtime` older than the last
+  check, shows until it next changes.
 - A stream open at launch hides a linked empty note until the links resolve,
   then shows it.
 
@@ -43,6 +50,8 @@ notes that gained or lost one. A setting, on by default, turns hiding off.
 - **Section shapes (headings and blank list items only)** — guesses; a template of prompts reads as prose.
 - **Body only, ignoring frontmatter** — hides a note whose only entry is a property.
 - **Reading every note** — thousands of reads at open for a few hundred candidates.
+- **Saving every note's verdict** — the check's start time vouches for the written ones.
+- **Trusting a saved empty note by the check's start time** — a synced edit can carry an older `mtime`, and a written note would stay hidden.
 - **Hiding after render** — notes flash in, then vanish, shifting the scroll.
 - **A list of past templates** — configuration for a rare case.
 - **Re-checking every hidden note on `resolved`** — the service must track what it hid, for the same answer.

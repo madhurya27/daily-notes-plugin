@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import DailyNotesStreamPlugin from "../src/main";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/ui/stream-view";
+import { EMPTY_NOTES_KEY } from "../src/notes/empty-notes";
 import { DEFAULT_SETTINGS } from "../src/settings";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import { BaseMeasurements } from "../src/render/bases/base-measurements";
@@ -189,6 +190,39 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
         app.metadataCache.resolvedLinks = { "Meeting.md": { "Notes/2025-01-01.md": 1 } };
 
         expect(await listed(plugin, app)).toEqual(["Notes/2025-01-01.md"]);
+    });
+
+    // A later session reads only what changed since (ADR 0011).
+    it("keeps which notes are empty on this device, saving them as the plugin unloads", async () => {
+        const { plugin, app } = await loadPlugin();
+        await listed(plugin, app);
+
+        plugin.onunload();
+
+        expect(app.saveLocalStorage).toHaveBeenCalledWith(
+            EMPTY_NOTES_KEY,
+            expect.objectContaining({
+                empty: [
+                    ["Notes/2025-01-01.md", 0],
+                    ["Notes/2025-01-02.md", 0],
+                ],
+            })
+        );
+    });
+
+    it("reads no note unchanged since the last session", async () => {
+        const first = await loadPlugin();
+        await listed(first.plugin, first.app);
+        first.plugin.onunload();
+        const saved: unknown = first.app.saveLocalStorage.mock.calls.find(([key]) => key === EMPTY_NOTES_KEY)![1];
+
+        const app = makeApp();
+        app.loadLocalStorage.mockImplementation((key: string) => (key === EMPTY_NOTES_KEY ? saved : null));
+        const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
+        await plugin.onload();
+
+        expect(await listed(plugin, app)).toEqual([]);
+        expect(app.vault.cachedRead).not.toHaveBeenCalled();
     });
 
     it("leaves out nothing with the setting off", async () => {

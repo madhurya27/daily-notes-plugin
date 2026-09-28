@@ -236,13 +236,28 @@ test.describe("opening a multi-year vault", () => {
             const ms = Math.round(performance.now() - start);
             return { ms, reads: window.app.plugins.plugins["daily-notes-stream"].emptyNotes.reads as number };
         });
+        // A later session: what this one saved, restored into a fresh index.
+        const later = await page.evaluate(async () => {
+            const { app } = window;
+            const notes = app.plugins.plugins["daily-notes-stream"].emptyNotes;
+            notes.flush();
+            const fresh = new notes.constructor(notes.reader, notes.store);
+            const daily = app.vault
+                .getMarkdownFiles()
+                .filter((file: { path: string }) => file.path.startsWith("Notes/"));
+            notes.reads = 0;
+            const start = performance.now();
+            await fresh.checkAll(daily);
+            return { ms: Math.round(performance.now() - start), reads: notes.reads as number };
+        });
         await restoreCpu();
 
         // eslint-disable-next-line no-console -- the numbers this test exists to report
         console.log(
             `[memory] ${mobileLayout ? "phone speed" : "laptop"}: first open over ${parse.files} files: parse ${parse.inFolder.ms} ms ` +
                 `(${parse.inFolder.notes} daily notes), folder unset ${parse.noFolder.ms} ms | ` +
-                `open to first note ${open.ms} ms, reading ${open.reads} notes for emptiness`
+                `open to first note ${open.ms} ms, reading ${open.reads} notes for emptiness | ` +
+                `a later session's check ${later.ms} ms, reading ${later.reads}`
         );
 
         expect(parse.inFolder.notes).toBe(SEEDED_DAYS);
@@ -250,6 +265,8 @@ test.describe("opening a multi-year vault", () => {
         expect(parse.noFolder.ms).toBeLessThan(100);
         expect(open.reads).toBe(SEEDED_DAYS);
         expect(open.ms).toBeLessThan(300);
+        // Every note is unchanged since the saved check, and this vault sets no template.
+        expect(later.reads).toBe(0);
     });
 });
 
