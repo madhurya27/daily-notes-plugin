@@ -995,14 +995,26 @@ notes; settling before it draws let a returning note dip, which jumps on iOS.
 
 ## 2026-09-28 — The demo vault is the default; the test vault takes `--test`
 
-**Decision:** `seed`, `open` and `dev:vault` act on `.dev/demo-vault/`, and
-on `.dev/vault/` with `--test` (`scripts/vaults.mjs`). `pnpm run demo` builds,
-seeds and opens the demo vault.
+**Decision:** `seed`, `open` and `demo` act on `.dev/demo-vault/`, and on
+`.dev/vault/` with `--test` (`scripts/vaults.mjs`).
 
 **Why:** the demo vault is the one used day to day; the test vault is for the
 checklist's edge cases.
 
 **Rejected:**
-- Separate `seed:demo` and `seed:test` scripts — `open` and `dev:vault` would
-  need a pair each; one flag reads the same on all three.
+- Separate `seed:demo` and `seed:test` scripts — `open` and `demo` would need
+  a pair each; one flag reads the same on all three.
+
+## 2026-09-28 — One command opens a vault and keeps it current
+
+**Decision:** `pnpm run demo` builds and seeds only what is missing, links the
+build in, opens the window and reloads the plugin on every save
+(`scripts/dev-vault.mjs`). It replaces `dev:vault`, which needed `open` run
+first.
+
+**Why:** the edit-reload loop took three commands in the right order.
+
+**Rejected:**
+- Reseeding every run — it would throw away notes written while trying things.
+- Keeping `dev:vault` beside it — two commands for one loop.
 

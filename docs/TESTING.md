@@ -27,18 +27,17 @@ survives.
 display — it is meant to be watched, unlike the hidden e2e window. Phone mode has no draggable region, so
 `--position` is how that window moves.
 
-Deploying a new build is the same `build && seed --test`, then **Reload app without saving** — or skip both:
+One command keeps that window current:
 
 ```bash
-pnpm run open --test        # the window to work against
-pnpm run dev:vault --test   # links the build in, watches it, reloads the plugin on every save
-pnpm run reload             # that reload, once, by hand
+pnpm run demo --test   # builds and seeds if missing, opens the window, reloads the plugin on every save
+pnpm run reload        # a reload, once, by hand
 ```
 
-Re-seeding copies over the links; `dev:vault` puts them back.
+It links the vault's plugin files to the repo's build; re-seeding copies over the links, and the next
+`demo` puts them back. It leaves the notes alone: `seed --test` rewrites them.
 
-Without `--test`, each of these acts on `.dev/demo-vault/`, and `pnpm run demo` builds, seeds and opens it
-in one step: 60 days of a journal that reads like a real one — properties, links to people and projects,
+Without `--test`, each of these acts on `.dev/demo-vault/`: 60 days of a journal that reads like a real one — properties, links to people and projects,
 tasks, callouts, run logs, a sketch, a reading-list Base every Sunday, and project logs linking the newest
 days. Each note is seeded by its date, so a retake shows the same content; `seed`'s `--days N` and
 `--until YYYY-MM-DD` change the range. Screenshots and recordings come from it.

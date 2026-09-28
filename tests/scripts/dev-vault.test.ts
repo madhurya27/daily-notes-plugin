@@ -3,7 +3,14 @@ import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, wr
 import { tmpdir } from "os";
 import { join, resolve } from "path";
 import { debugPort } from "../../scripts/reload-plugin.mjs";
-import { ASSETS, createChangeFilter, createReloader, linkAssets } from "../../scripts/dev-vault.mjs";
+import {
+    ASSETS,
+    createChangeFilter,
+    createReloader,
+    linkAssets,
+    optionsFrom,
+    stepsFor,
+} from "../../scripts/dev-vault.mjs";
 
 const repoRoot = resolve(__dirname, "../..");
 
@@ -156,5 +163,32 @@ describe("createChangeFilter", () => {
         });
 
         expect(changed("gone.js")).toBe(false);
+    });
+});
+
+describe("stepsFor", () => {
+    it("builds and seeds only what is missing, then always links, opens and watches", () => {
+        expect(stepsFor({ built: true, seeded: true })).toEqual(["link", "open", "watch"]);
+        expect(stepsFor({ built: false, seeded: true })).toEqual(["build", "link", "open", "watch"]);
+        expect(stepsFor({ built: true, seeded: false })).toEqual(["seed", "link", "open", "watch"]);
+        expect(stepsFor({ built: false, seeded: false })).toEqual(["build", "seed", "link", "open", "watch"]);
+    });
+});
+
+describe("optionsFrom", () => {
+    it("picks the vault named, not a flag's value", () => {
+        expect(optionsFrom(["--position", "900,60", "elsewhere", "--desktop"])).toEqual({
+            named: "elsewhere",
+            seedArgs: ["elsewhere"],
+            openArgs: ["--position", "900,60", "elsewhere", "--desktop"],
+        });
+    });
+
+    it("hands --test to the seed and the window, and layout flags to the window alone", () => {
+        expect(optionsFrom(["--test", "--ipad"])).toEqual({
+            named: undefined,
+            seedArgs: ["--test"],
+            openArgs: ["--test", "--ipad"],
+        });
     });
 });
