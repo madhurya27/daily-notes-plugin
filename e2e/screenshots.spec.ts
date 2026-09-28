@@ -79,16 +79,30 @@ test.describe("README screenshots", () => {
         await capture(page, "jump", testInfo);
     });
 
+    // Before the collapse still, which folds these footers and leaves them folded.
+    test("linked mentions", async ({ obsidian }, testInfo) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const mentions = container.locator(".daily-note-block").first().locator(".daily-note-mentions");
+        await expect(mentions.locator(".daily-note-mention").first()).toBeVisible();
+        await mentions.evaluate((footer) => footer.scrollIntoView({ block: "center" }));
+        await capture(page, "mentions", testInfo);
+    });
+
     test("collapsed sections", async ({ obsidian }, testInfo) => {
         const { page } = obsidian;
         const container = await openStream(page);
-        // Every section of the first two notes folded: the chevrons show, and more dates fit.
+        // Every section of the first two notes folded, linked mentions too: the chevrons show, and more dates fit.
         for (const index of [0, 1]) {
-            const headings = container.locator(".daily-note-block").nth(index).locator(".daily-note-content h2");
+            const block = container.locator(".daily-note-block").nth(index);
+            const mentions = block.locator(".daily-note-mentions");
+            const headings = block.locator(".daily-note-content h2");
             for (const heading of await headings.all()) {
                 await heading.locator(".collapse-indicator").click();
                 await expect(heading).toHaveClass(/is-collapsed/);
             }
+            await mentions.locator(".daily-note-mentions-heading .collapse-indicator").click();
+            await expect(mentions).toHaveClass(/is-collapsed/);
         }
         // Folding shifts the page under the scroll anchor; start from the newest note again.
         await container
