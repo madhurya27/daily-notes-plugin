@@ -205,11 +205,10 @@
 }
 
 /* Linked mentions: under the note, where Obsidian puts a note's backlinks.
-   Empty until a note links here. */
+   Empty until a note links here. No rule above, unlike Obsidian's: the note's
+   own bottom border follows, and two lines read as two note ends. */
 .daily-note-mentions:not(:empty) {
     margin-top: var(--size-4-8);
-    padding-top: var(--size-4-3);
-    border-top: var(--border-width) solid var(--background-modifier-border);
 }
 
 /* In the note's margin like the properties heading, so its chevron shares the

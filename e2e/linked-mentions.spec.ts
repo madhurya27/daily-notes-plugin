@@ -87,6 +87,13 @@ test.describe("linked mentions", () => {
         await expect(footer.locator('[data-link-source="Trip.md"] .daily-note-mention-excerpt')).toHaveText(/^day: /);
     });
 
+    // The note's own bottom border is the stream's one divider; a second line above the footer read as a note ending.
+    test("draws no line of its own, leaving the note's end the only one", async ({ obsidian }) => {
+        const footer = await footerOfNewest(obsidian.page);
+
+        await expect(footer).toHaveCSS("border-top-style", "none");
+    });
+
     test("opens a linking note from its title", async ({ obsidian }) => {
         const { page } = obsidian;
         const footer = await footerOfNewest(page);
