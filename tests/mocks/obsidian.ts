@@ -27,6 +27,7 @@ import type {
 } from "obsidian/obsidian";
 export type {
     App,
+    CachedMetadata,
     Debouncer,
     EventRef,
     Hotkey,
@@ -36,6 +37,7 @@ export type {
     Modifier,
     PaneType,
     PluginManifest,
+    Pos,
     View,
 } from "obsidian/obsidian";
 
