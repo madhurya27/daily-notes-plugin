@@ -98,16 +98,20 @@ to preview it. To preview without holding the key, open **Settings → Page prev
 
 ### Phone and tablet
 
-On a phone or tablet, nothing inside a note scrolls sideways, so one swipe moves the whole stream. Anything too
-wide for the screen is reshaped to fit:
+On a phone or tablet, nothing inside a note scrolls on its own, so one swipe moves the whole stream. Content that
+would need its own scrolling is reshaped instead:
 
-| Too wide | Becomes |
+| Content | Becomes |
 | --- | --- |
 | Table | A card per row, each value under its column's name |
 | Base | Narrower columns; if that isn't enough, a card per note, using Bases' own card view |
 | Equation | Smaller, to fit the width |
+| Code block | Long lines wrap |
+| Diagram | Smaller, to fit the width (on desktop too) |
+| Embedded note | Shown in full, not in a box of its own that scrolls |
+| Any other embed that scrolls | Cut off at its edge |
 
-On desktop, wide content scrolls sideways in its own box, as it does in Obsidian.
+On desktop, wide tables and code blocks scroll sideways in their own box, as they do in Obsidian.
 
 <details>
 <summary>Phone layout</summary>
