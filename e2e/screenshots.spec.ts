@@ -10,13 +10,16 @@ import { OUT, prepareDemo, showLightTheme } from "./demo";
  * rewrite files in docs/.
  */
 
-/** Opens the stream with a note boundary mid-screen: that is what makes it read as a stream. */
+/**
+ * Opens the stream with a note boundary mid-screen: that is what makes it read as a stream. The boundary sits
+ * below 2026-09-23, the newest note nothing links to, so linked mentions show only in the collapse still.
+ */
 async function showStream(page: Page): Promise<void> {
     const container = await openStream(page);
-    await container
-        .locator(".daily-note-block")
-        .nth(1)
-        .evaluate((block) => block.firstElementChild?.scrollIntoView({ block: "center" }));
+    const below = container.locator('[data-source-path="Notes/2026-09-22.md"]');
+    await below.scrollIntoViewIfNeeded();
+    await expect(below.locator(".daily-note-content")).toBeVisible();
+    await below.evaluate((block) => block.firstElementChild?.scrollIntoView({ block: "center" }));
 }
 
 async function capture(page: Page, name: string, testInfo: TestInfo): Promise<void> {

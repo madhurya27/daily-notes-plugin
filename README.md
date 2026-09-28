@@ -16,7 +16,7 @@ a note, open it.
 - **Linked mentions.** Each note ends with the notes that link to it, quoting the line around each link.
 - **Search.** Find text across every note with your usual find hotkey.
 
-  <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Priya" width="440">
+  <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Mara" width="440">
 
 - **Jump to a date.** Pick any day that has a note.
 
