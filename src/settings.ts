@@ -4,11 +4,15 @@ import DailyNotesStreamPlugin from "./main";
 export interface DailyNotesStreamSettings {
     showProperties: boolean;
     propertiesCollapsed: boolean;
+    showLinkedMentions: boolean;
+    linkedMentionsCollapsed: boolean;
 }
 
 export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
     showProperties: true,
     propertiesCollapsed: false,
+    showLinkedMentions: true,
+    linkedMentionsCollapsed: false,
 };
 
 export class DailyNotesStreamSettingTab extends PluginSettingTab {
@@ -20,26 +24,33 @@ export class DailyNotesStreamSettingTab extends PluginSettingTab {
     }
 
     display(): void {
-        const { containerEl } = this;
+        this.containerEl.empty();
 
-        containerEl.empty();
+        this.addToggle(
+            "showProperties",
+            "Show note properties",
+            "Display the frontmatter properties (metadata) for each daily note."
+        );
+        this.addToggle(
+            "propertiesCollapsed",
+            "Collapse properties by default",
+            "Whether the properties section should be collapsed by default."
+        );
+        this.addToggle("showLinkedMentions", "Show linked mentions", "List the notes that link to each daily note.");
+        this.addToggle(
+            "linkedMentionsCollapsed",
+            "Collapse linked mentions by default",
+            "Whether the linked mentions should be collapsed by default."
+        );
+    }
 
-        new Setting(containerEl)
-            .setName("Show note properties")
-            .setDesc("Display the frontmatter properties (metadata) for each daily note.")
+    private addToggle(key: keyof DailyNotesStreamSettings, name: string, desc: string): void {
+        new Setting(this.containerEl)
+            .setName(name)
+            .setDesc(desc)
             .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.showProperties).onChange(async (value) => {
-                    this.plugin.settings.showProperties = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-
-        new Setting(containerEl)
-            .setName("Collapse properties by default")
-            .setDesc("Whether the properties section should be collapsed by default.")
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.propertiesCollapsed).onChange(async (value) => {
-                    this.plugin.settings.propertiesCollapsed = value;
+                toggle.setValue(this.plugin.settings[key]).onChange(async (value) => {
+                    this.plugin.settings[key] = value;
                     await this.plugin.saveSettings();
                 })
             );

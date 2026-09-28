@@ -68,7 +68,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
 
     it("merges saved settings over the defaults", async () => {
         const { plugin } = await loadPlugin({ showProperties: true });
-        expect(plugin.settings).toEqual({ showProperties: true, propertiesCollapsed: false });
+        expect(plugin.settings).toEqual({ ...DEFAULT_SETTINGS, showProperties: true });
     });
 
     it("registers a view factory that builds a stream view", async () => {
@@ -364,11 +364,11 @@ describe("DailyNotesStreamPlugin — activateView", () => {
 describe("DailyNotesStreamPlugin — saveSettings", () => {
     it("persists the settings", async () => {
         const { plugin } = await loadPlugin();
-        plugin.settings.showProperties = true;
+        plugin.settings.showLinkedMentions = false;
 
         await plugin.saveSettings();
 
-        expect(plugin.data).toEqual({ showProperties: true, propertiesCollapsed: false });
+        expect(plugin.data).toEqual({ ...DEFAULT_SETTINGS, showLinkedMentions: false });
     });
 
     it("refreshes every open stream view", async () => {

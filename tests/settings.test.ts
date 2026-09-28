@@ -22,35 +22,33 @@ describe("DailyNotesStreamSettingTab", () => {
         const plugin = makePlugin();
         plugin.settings.showProperties = true;
         plugin.settings.propertiesCollapsed = true;
+        plugin.settings.showLinkedMentions = false;
+        plugin.settings.linkedMentionsCollapsed = true;
 
         makeTab(plugin).display();
 
-        expect(Setting.created.map((s) => s.name)).toEqual(["Show note properties", "Collapse properties by default"]);
+        expect(Setting.created.map((s) => s.name)).toEqual([
+            "Show note properties",
+            "Collapse properties by default",
+            "Show linked mentions",
+            "Collapse linked mentions by default",
+        ]);
         expect(Setting.created.every((s) => s.desc.length > 0)).toBe(true);
-        expect(Setting.created.map((s) => s.toggles[0]?.value)).toEqual([true, true]);
+        expect(Setting.created.map((s) => s.toggles[0]?.value)).toEqual([true, true, false, true]);
     });
 
-    it("writes and saves showProperties when its toggle changes", async () => {
-        const plugin = makePlugin();
-        // Started from off, so the toggle proves a write rather than the default.
-        plugin.settings.showProperties = false;
-        makeTab(plugin).display();
-
-        await Setting.created[0]!.toggles[0]!.change(true);
-
-        expect(plugin.settings.showProperties).toBe(true);
-        expect(plugin.settings.propertiesCollapsed).toBe(false);
-        expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
-    });
-
-    it("writes and saves propertiesCollapsed when its toggle changes", async () => {
+    it.each([
+        ["showProperties", 0],
+        ["propertiesCollapsed", 1],
+        ["showLinkedMentions", 2],
+        ["linkedMentionsCollapsed", 3],
+    ] as const)("writes and saves %s alone when its toggle changes", async (key, position) => {
         const plugin = makePlugin();
         makeTab(plugin).display();
 
-        await Setting.created[1]!.toggles[0]!.change(true);
+        await Setting.created[position]!.toggles[0]!.change(!DEFAULT_SETTINGS[key]);
 
-        expect(plugin.settings.propertiesCollapsed).toBe(true);
-        expect(plugin.settings.showProperties).toBe(true);
+        expect(plugin.settings).toEqual({ ...DEFAULT_SETTINGS, [key]: !DEFAULT_SETTINGS[key] });
         expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
     });
 

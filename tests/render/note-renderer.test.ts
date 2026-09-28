@@ -100,7 +100,13 @@ function makeCollapsible(store = makeStore()): CollapsibleManager {
 }
 
 function makeSettings(overrides: Partial<DailyNotesStreamSettings> = {}): () => DailyNotesStreamSettings {
-    const settings = { showProperties: false, propertiesCollapsed: false, ...overrides };
+    const settings = {
+        showProperties: false,
+        propertiesCollapsed: false,
+        showLinkedMentions: false,
+        linkedMentionsCollapsed: false,
+        ...overrides,
+    };
     return () => settings;
 }
 
@@ -168,7 +174,12 @@ describe("NoteRenderer.renderInto", () => {
     });
 
     it("reads the settings on each render, so a reloaded settings object is picked up", async () => {
-        let settings: DailyNotesStreamSettings = { showProperties: false, propertiesCollapsed: false };
+        let settings: DailyNotesStreamSettings = {
+            showProperties: false,
+            propertiesCollapsed: false,
+            showLinkedMentions: false,
+            linkedMentionsCollapsed: false,
+        };
         app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { title: "Test" } });
         renderer = new NoteRenderer(
             asApp(app),
@@ -179,7 +190,12 @@ describe("NoteRenderer.renderInto", () => {
             new BaseMeasurements()
         );
 
-        settings = { showProperties: true, propertiesCollapsed: false }; // as loadSettings() would
+        settings = {
+            showProperties: true,
+            propertiesCollapsed: false,
+            showLinkedMentions: false,
+            linkedMentionsCollapsed: false,
+        }; // as loadSettings() would
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 
         expect(el.querySelector(".metadata-container")).not.toBeNull();

@@ -91,7 +91,12 @@ describe("DailyNotesStreamView — view API", () => {
         app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { mood: "happy" } });
         const freshView = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, makeService());
 
-        plugin.settings = { showProperties: true, propertiesCollapsed: false }; // as loadSettings() would
+        plugin.settings = {
+            showProperties: true,
+            propertiesCollapsed: false,
+            showLinkedMentions: false,
+            linkedMentionsCollapsed: false,
+        }; // as loadSettings() would
         const file = new TFile("Notes/2025-01-01.md");
         const renderer = freshView["renderer"];
         const el = renderer.createBlock(file);

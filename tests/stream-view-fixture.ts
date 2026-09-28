@@ -41,7 +41,12 @@ export function makeService(): DailyNoteService {
 export function makePlugin(): DailyNotesStreamPlugin {
     const app = makeApp();
     return fake<DailyNotesStreamPlugin>({
-        settings: { showProperties: false, propertiesCollapsed: false },
+        settings: {
+            showProperties: false,
+            propertiesCollapsed: false,
+            showLinkedMentions: false,
+            linkedMentionsCollapsed: false,
+        },
         collapseStore: new CollapsibleStateStore(asApp(app)),
         layoutMemory: new LayoutMemory(asApp(app)),
     });
