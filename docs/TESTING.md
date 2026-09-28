@@ -171,6 +171,20 @@ a reading-list Base every Sunday. Each note is seeded by its date, so a retake s
   and reopens. **[e2e]**
 - Frontmatter is not duplicated in the body.
 
+### Linked mentions
+
+- A note something links to ends with "Linked mentions" and a count; a note nothing links to ends with
+  nothing. **[e2e]**
+- One group per linking note, sorted by path. A link in a list shows its own item, not the whole list; a
+  link in a property shows as `key: value`. **[e2e]**
+- A group's title opens its note; a link in an excerpt resolves from the note it was written in. **[e2e]**
+- A note that starts linking here, from another tab, joins the footer without a reload. **[e2e]**
+- Collapsed, it stays collapsed across reopens. **[e2e]**
+- Scrolled back to, a note never draws shorter while its mentions load. **[e2e]**
+- On a phone, a quoted table stacks or clips; nothing in the footer scrolls. **[e2e]**
+- With Better Search Views installed, the footer is unchanged: it is the stream's own, not Obsidian's
+  backlinks pane (docs/decisions.md, 2026-09-28).
+
 ### Mobile
 
 Run before a release: `isDesktopOnly: false` is a promise no static check keeps.

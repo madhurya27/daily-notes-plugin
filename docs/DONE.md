@@ -7,6 +7,7 @@
 - [x] Rich rendering: markdown, images, embeds, wikilinks, tasks
 - [x] Mobile: responsive layout, touch-friendly
 - [x] Note properties: collapsible frontmatter panel, native styling, icon decorations
+- [x] Linked mentions under each note, drawn off the render queue and held at their height until read
 - [x] Live updates: new/modified/renamed/deleted notes reflect instantly
 - [x] Titles and links open in the stream's tab, as Obsidian's links do; mod-click opens a new tab
 - [x] Links to missing notes fade as in reading view, and unfade once the note exists

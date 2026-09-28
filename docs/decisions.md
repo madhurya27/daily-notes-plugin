@@ -960,3 +960,36 @@ so they pinned to the stream's instead and floated over the notes.
 **Rejected:**
 - Leaving them pinned to the stream — they cover other notes' text.
 - Giving the Base its scroll box back — ADR 0008.
+
+## 2026-09-28 — Linked mentions are the stream's own, on the public API
+
+**Decision:** each note ends with a footer built from `resolvedLinks`, inverted
+once per `resolved` by a plugin-wide `BacklinkIndex`
+(`src/render/linked-mentions.ts`). Unlinked mentions are deferred.
+
+**Why:** our footer knows when it has drawn, so the note's height can be held
+until then; it needs no internals.
+
+**Rejected:**
+- Hosting Obsidian's internal backlinks component — brings Better Search Views
+  and unlinked mentions, but fills on its own schedule and is reached only
+  through internals.
+- Scanning every source's links per rendered note — the index answers from one
+  pass.
+
+## 2026-09-28 — A render never waits on its footer; the height hold does
+
+**Decision:** `renderInto` returns with the footer still reading its sources.
+`NoteWindow` keeps the note's `HeightHold` until the footer resolves, then
+settles as before. The footer redraws itself on `resolved`, per note, until
+the note unloads.
+
+**Why:** the render queue also applies vault events, and a footer reads other
+notes; settling before it draws let a returning note dip, which jumps on iOS.
+
+**Rejected:**
+- Awaiting the footer in the queue — every render and vault event waits on
+  other notes' reads.
+- Queuing footer redraws through the view (ADR 0004) — a footer touches no
+  stream state, and unloading its note already stops it.
+

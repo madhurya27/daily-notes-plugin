@@ -50,6 +50,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   `getSearchHotkeys`, a view's `titleEl` behind `getViewTitle`).
 - `notes/daily-note-service.ts` — the vault's daily notes, nested folders (`YYYY/MM/YYYY-MM-DD`) included,
   newest-first in batches.
+- `notes/backlink-index.ts` — which notes link to each path, inverted from `resolvedLinks`, one per plugin;
+  `notes/linked-mentions.ts` finds each link's list item or section in them.
 - `notes/parsed-dates.ts` — each path's parsed date, shared by every view's service, so a later open parses only
   what is new.
 - `ui/stream-view.ts` — `ItemView` subclass; wires vault events and header actions to the stream. It is the
@@ -75,7 +77,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
 - `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`), wide tables as
   cards (`wide-tables.ts`), wide equations shrunk to fit (`wide-equations.ts`), each Base in its own placeholder, as
   cards when too wide (`bases/`), collapsible sections (`collapsible.ts`) and their persisted state
-  (`collapse-store.ts`), bare text beside a block wrapped so WebKit paints highlights on it (`text-beside-blocks.ts`).
+  (`collapse-store.ts`), bare text beside a block wrapped so WebKit paints highlights on it (`text-beside-blocks.ts`),
+  the linked mentions footer, which draws after the note and redraws itself on `resolved` (`linked-mentions.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
 `obsidian-daily-notes-interface` from `tests/mocks/`. Tests typecheck against the mocks, which take their

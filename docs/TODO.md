@@ -51,7 +51,7 @@ sticky date header (`docs/decisions.md`, 2026-09-21).
 
 ## Async
 Work that blocks the render queue or the main thread. Time each with `test:memory` or a trace before
-changing it; the linked-mentions footer (`docs/plans/linked-mentions.md`) sets the pattern: the queue never
+changing it; the linked-mentions footer sets the pattern (docs/decisions.md, 2026-09-28): the queue never
 waits, the `HeightHold` does.
 - [ ] Bases off the queue: `renderInto` awaits `bases.render` on mobile, so every vault event waits on a
   Base's definition read and fill.
