@@ -54,4 +54,23 @@ describe("demoVault", () => {
         expect(all).toMatch(/^> \[!\w+\]/m);
         expect(all).toMatch(/^\| .+ \|$/m);
     });
+
+    // The newest days open the stream, so they are the ones worth a footer.
+    it("links the newest days from other notes, in the body and in a property", () => {
+        const others = paths.filter((path) => !dailyPaths.includes(path)).map((path) => vault[path]!);
+        const linking = (date: string) => others.filter((body) => body.includes(`[[${date}]]`));
+
+        expect(linking("2026-09-25").length).toBeGreaterThanOrEqual(2);
+        expect(linking("2026-09-24").length).toBeGreaterThanOrEqual(1);
+        expect(others.some((body) => /^\w+: "\[\[2026-09-\d\d\]\]"$/m.test(body))).toBe(true);
+    });
+
+    it("links only days it wrote, on a run shorter than the log", () => {
+        const short = demoVault({ until: UNTIL, days: 1 });
+        const projects = Object.entries(short).filter(([path]) => path.startsWith("Projects/"));
+        const targets = projects.flatMap(([, body]) => [...body.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1]));
+
+        expect(targets.length).toBeGreaterThan(0);
+        expect(new Set(targets)).toEqual(new Set(["2026-09-25"]));
+    });
 });

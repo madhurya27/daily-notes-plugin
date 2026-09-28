@@ -274,6 +274,34 @@ const WIREFRAME = [
 const personNote = (name) =>
     [...frontmatter({ tags: ["person"] }), `# ${name}`, "", "Works with me on [[Project Atlas]]."].join("\n") + "\n";
 
+/**
+ * Each project's log of the newest days, `dates[0]` the newest: what gives
+ * those days' notes linked mentions. The renovation starts from a property. A
+ * run shorter than the log links its oldest day in place of the days it lacks.
+ */
+const projectNote = (name, dates) => {
+    const recent = (daysBack) => dates[Math.min(daysBack, dates.length - 1)];
+    return (
+        {
+            "Project Atlas": [
+                "# Project Atlas",
+                "",
+                "## Log",
+                "",
+                `- [[${recent(0)}]] — the sidebar survives, the tab bar does not`,
+                `- [[${recent(1)}]] — sync bug is a race between two retries`,
+                `- [[${recent(3)}]] — onboarding down to three steps`,
+            ],
+            "Kitchen renovation": [
+                ...frontmatter({ started: `"[[${recent(4)}]]"` }),
+                "# Kitchen renovation",
+                "",
+                `Tiles ordered on [[${recent(0)}]]. None of the walls are square.`,
+            ],
+        }[name].join("\n") + "\n"
+    );
+};
+
 const bookNote = ([title, { author, status, rating }]) =>
     [...frontmatter({ author, status, rating: rating || "", tags: ["book"] }), `# ${title}`, ""].join("\n") + "\n";
 
@@ -285,13 +313,13 @@ const bookNote = ([title, { author, status, rating }]) =>
 export function demoVault({ until, days }) {
     /** @type {Record<string, string>} */
     const vault = {};
-    for (let index = 0; index < days; index++) {
-        const date = new Date(until.getTime() - index * DAY_MS).toISOString().slice(0, 10);
-        vault[`${JOURNAL}/${date}.md`] = dailyNote(date);
-    }
+    const dates = Array.from({ length: days }, (_, index) =>
+        new Date(until.getTime() - index * DAY_MS).toISOString().slice(0, 10)
+    );
+    for (const date of dates) vault[`${JOURNAL}/${date}.md`] = dailyNote(date);
     for (const book of Object.entries(BOOKS)) vault[`Books/${book[0]}.md`] = bookNote(book);
     for (const name of PEOPLE) vault[`People/${name}.md`] = personNote(name);
-    for (const name of PROJECTS) vault[`Projects/${name}.md`] = `# ${name}\n`;
+    for (const name of PROJECTS) vault[`Projects/${name}.md`] = projectNote(name, dates);
     vault["Reading.base"] = READING_BASE.join("\n") + "\n";
     vault["Attachments/atlas-wireframe.svg"] = WIREFRAME.join("\n") + "\n";
     return vault;
