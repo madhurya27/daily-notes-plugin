@@ -31,7 +31,6 @@ Surveyed 2026-09 against core and the community directory. **The filter: what op
 solved elsewhere; only what operates on *the stream* is ours.** ★ marks the recommended first two.
 
 - [ ] ★ Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing external reaches inside a view.
-- [ ] ★ Skip empty notes — unwritten template dailies are noise; frontmatter-only is visible in the cache.
 - [ ] On this day — one calendar date across years, a filter over `_sorted`.
   [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review) shows ~200-char excerpts; ours
   is the full note. Better, not new.

@@ -1,6 +1,6 @@
 # 0011. Hide daily notes that hold only their template
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-28
 
 ## Context

@@ -25,4 +25,4 @@ Rules:
 | [0008](0008-nothing-scrolls-on-mobile.md) | Nothing inside the stream scrolls, on mobile | Accepted |
 | [0009](0009-webkit-render-checks.md) | Check the phone layout in WebKit, from a snapshot of real Obsidian | Accepted |
 | [0010](0010-layout-memory.md) | Remember every measured height across sessions | Accepted |
-| [0011](0011-hide-template-only-notes.md) | Hide daily notes that hold only their template | Proposed |
+| [0011](0011-hide-template-only-notes.md) | Hide daily notes that hold only their template | Accepted |

@@ -150,6 +150,16 @@ seeded by its date, so a retake shows the same content; `pnpm run seed` alone ta
 - Changing the daily-note folder or date format in Obsidian's settings reloads the stream, without
   reopening the view. **[e2e]**
 
+### Empty notes
+
+Set a daily-notes template, and make a past note from it without writing in it.
+
+- The note is absent; today's note, just as empty, shows. **[e2e]**
+- Writing a line in it, or adding a property, brings it in at its date; emptying it again hides it. **[e2e]**
+- Turning off "Hide empty notes" shows it without reopening the stream. **[e2e]**
+- With every daily note empty, the empty state says they are hidden.
+- Point the template setting at another file: the stream reloads by the new template.
+
 ### Properties
 
 - **Show note properties ON** (the default): a "Properties" header appears for notes with frontmatter, icons

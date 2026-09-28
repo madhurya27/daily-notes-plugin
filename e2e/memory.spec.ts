@@ -194,24 +194,24 @@ test.describe("opening a multi-year vault", () => {
 
         const restoreCpu = mobileLayout ? await emulatePhoneCpu(page) : async () => {};
         // A fresh service and date cache: what the plugin's first open does.
-        const parse = await page.evaluate(() => {
+        const parse = await page.evaluate(async () => {
             const { app } = window;
             const service = app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view.service;
             const Service = service.constructor;
             const Dates = service.parsedDates.constructor;
-            const time = () => {
+            const time = async () => {
                 const fresh = new Service(() => app.vault.getMarkdownFiles(), new Dates());
                 const start = performance.now();
-                fresh.initialize();
+                await fresh.initialize();
                 return { ms: Math.round(performance.now() - start), notes: fresh.length as number };
             };
             const options = app.internalPlugins.getPluginById("daily-notes").instance.options;
             const folder = options.folder;
-            const inFolder = time();
+            const inFolder = await time();
             // Unset, every file's name goes through the date parse.
             options.folder = "";
             try {
-                return { inFolder, noFolder: time(), files: app.vault.getMarkdownFiles().length as number };
+                return { inFolder, noFolder: await time(), files: app.vault.getMarkdownFiles().length as number };
             } finally {
                 options.folder = folder;
             }
@@ -220,12 +220,21 @@ test.describe("opening a multi-year vault", () => {
         // Open to the first note's content, in the page: openStream's own waits would dwarf it.
         await page.evaluate(() => window.app.workspace.detachLeavesOfType("daily-notes-stream-view"));
         await page.waitForTimeout(1000);
+        // Every note unread, as on a session's first open; each seeded note is small enough to read (ADR 0011).
+        await page.evaluate(() => {
+            const notes = window.app.plugins.plugins["daily-notes-stream"].emptyNotes;
+            notes.template = null;
+            notes.reads = 0;
+            const { read } = notes.reader;
+            notes.reader.read = (file: unknown) => (notes.reads++, read(file));
+        });
         const open = await page.evaluate(async () => {
             const start = performance.now();
             await window.app.commands.executeCommandById("daily-notes-stream:open-stream");
             while (!document.querySelector(".daily-notes-stream-container .daily-note-content"))
                 await new Promise((resolve) => setTimeout(resolve, 5));
-            return Math.round(performance.now() - start);
+            const ms = Math.round(performance.now() - start);
+            return { ms, reads: window.app.plugins.plugins["daily-notes-stream"].emptyNotes.reads as number };
         });
         await restoreCpu();
 
@@ -233,12 +242,13 @@ test.describe("opening a multi-year vault", () => {
         console.log(
             `[memory] ${mobileLayout ? "phone speed" : "laptop"}: first open over ${parse.files} files: parse ${parse.inFolder.ms} ms ` +
                 `(${parse.inFolder.notes} daily notes), folder unset ${parse.noFolder.ms} ms | ` +
-                `open to first note ${open} ms`
+                `open to first note ${open.ms} ms, reading ${open.reads} notes for emptiness`
         );
 
         expect(parse.inFolder.notes).toBe(SEEDED_DAYS);
         // About 3x phone speed's worst (docs/decisions.md, 2026-09-28).
         expect(parse.noFolder.ms).toBeLessThan(100);
-        expect(open).toBeLessThan(300);
+        expect(open.reads).toBe(SEEDED_DAYS);
+        expect(open.ms).toBeLessThan(300);
     });
 });

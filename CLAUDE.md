@@ -50,6 +50,9 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   newest-first in batches.
 - `notes/backlink-index.ts` — which notes link to each path, inverted from `resolvedLinks`, one per plugin;
   `notes/linked-mentions.ts` finds each link's list item or section in them.
+- `notes/empty-notes.ts` — which daily notes hold only their template, one per plugin, and the filter each
+  view's service lists through ([ADR 0011](docs/adr/0011-hide-template-only-notes.md));
+  `notes/template-match.ts` reads the template as a pattern.
 - `notes/parsed-dates.ts` — each path's parsed date, shared by every view's service, so a later open parses only
   what is new.
 - `ui/stream-view.ts` — `ItemView` subclass; wires vault events and header actions to the stream. It is the

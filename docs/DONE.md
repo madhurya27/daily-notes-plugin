@@ -28,6 +28,7 @@
 - [x] E2E tests against the real Obsidian app (Playwright over CDP, throwaway vault)
 - [x] Empty state returns when the last daily note is deleted
 - [x] Reload the stream when Obsidian's daily-note format or folder changes
+- [x] Hide daily notes that hold only their template, except today's; a setting shows them
 - [x] Unload off-screen notes: only blocks near the viewport hold content, and a placeholder holds their space
 - [x] iOS flicks glide to a natural stop: unloads wait for the scroll to stop
 - [x] A turned or narrowed pane keeps the reader's place, and a note rendering again is held at the new width's height
