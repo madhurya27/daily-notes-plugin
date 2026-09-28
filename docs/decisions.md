@@ -1064,3 +1064,17 @@ guard.
 **Rejected:**
 - A source cache per path, invalidated on `modify` — duplicates Obsidian's.
 - Dropping a search a newer one replaced — at 1 ms there is nothing to save.
+
+## 2026-09-28 — Bases and wide content stay in the render
+
+**Decision:** on mobile a render still awaits each Base, then measures its
+tables and equations in place.
+
+**Why:** scrolling 40 notes, each embedding a Base over 1,095 notes plus
+equations and a wide table (`e2e/render-cost.spec.ts`, desktop CPU): a Base
+held the queue 4 ms median, 14 ms at most; every layout the plugin forced
+came to 11 ms, equations 3 ms of it, tables 1 ms.
+
+**Rejected:**
+- Bases off the queue, held by a `HeightHold` — saves a few ms per note.
+- Batching width reads in one `requestAnimationFrame` — saves under 4 ms.

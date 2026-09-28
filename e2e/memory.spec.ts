@@ -9,6 +9,7 @@ const YEARS = 3;
 
 test.describe("a multi-year vault scrolled to the end", () => {
     test.skip(SEEDED_DAYS < YEARS * 365, "run via pnpm run test:memory");
+    test.skip(({ mobileLayout }) => mobileLayout, "measured on desktop only");
     test.setTimeout(900_000);
 
     test("holds a bounded number of rendered notes, not the whole vault", async ({ obsidian }) => {
@@ -117,6 +118,10 @@ test.describe("a multi-year vault scrolled to the end", () => {
         await expect(top).not.toHaveClass(/is-unloaded/);
         await expect(top.locator(".daily-note-content")).toBeVisible();
     });
+});
+
+test.describe("search across a multi-year vault", () => {
+    test.skip(SEEDED_DAYS < YEARS * 365, "run via pnpm run test:memory");
 
     // Every query and every refresh reads every note. Obsidian's cachedRead
     // already keeps each note's text until it changes (docs/decisions.md, 2026-09-28).

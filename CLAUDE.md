@@ -13,7 +13,7 @@ pnpm test          # typecheck tests/ (tests/tsconfig.json), then vitest run
 pnpm run test:coverage  # the same, 100% coverage required
 pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
 pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
-pnpm run test:memory    # e2e/memory.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
+pnpm run test:memory    # memory.spec.ts and render-cost.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
 
 pnpm run demo                     # open .dev/demo-vault/ (gitignored) and reload the plugin on every save; Ctrl-C closes it;
                                   # reseeds it each run, builds if missing; --desktop, --ipad; --help lists the flags

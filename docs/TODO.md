@@ -53,10 +53,6 @@ sticky date header (`docs/decisions.md`, 2026-09-21).
 Work that blocks the render queue or the main thread. Time each with `test:memory` or a trace before
 changing it; the linked-mentions footer sets the pattern (docs/decisions.md, 2026-09-28): the queue never
 waits, the `HeightHold` does.
-- [ ] Bases off the queue: `renderInto` awaits `bases.render` on mobile, so every vault event waits on a
-  Base's definition read and fill.
-- [ ] Wide tables and equations: `stackWideTables` / `fitWideEquations` read widths right after each
-  render, forcing a layout per note. Batch the reads in one `requestAnimationFrame`.
 - [ ] First open of a large vault: `buildSorted` parses every file's date in one go. Yield in chunks only if
   the seeded three-year vault shows a long task.
 
