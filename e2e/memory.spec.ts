@@ -1,4 +1,4 @@
-import { test, expect, openStream, seededDate, SEEDED_DAYS } from "./obsidian";
+import { test, expect, openStream, emulatePhoneCpu, seededDate, SEEDED_DAYS } from "./obsidian";
 
 /**
  * The ceiling ADR 0006 exists to remove: a vault of several years, scrolled to
@@ -19,8 +19,9 @@ test.describe("a multi-year vault scrolled to the end", () => {
         const cdp = await page.context().newCDPSession(page);
         await cdp.send("Performance.enable");
 
-        /** JS heap and DOM nodes, as Chromium counts them. */
+        /** JS heap and DOM nodes, as Chromium counts them, after a collection: what is kept, not what awaits one. */
         const sample = async () => {
+            await cdp.send("HeapProfiler.collectGarbage");
             const { metrics } = await cdp.send("Performance.getMetrics");
             const by = (name: string) => metrics.find((m) => m.name === name)?.value ?? 0;
             return { heapMb: by("JSHeapUsedSize") / 1e6, nodes: by("Nodes") };
@@ -125,10 +126,14 @@ test.describe("search across a multi-year vault", () => {
 
     // Every query and every refresh reads every note. Obsidian's cachedRead
     // already keeps each note's text until it changes (docs/decisions.md, 2026-09-28).
-    test("searches the whole vault, and again after an edit, in well under a second", async ({ obsidian }) => {
+    test("searches the whole vault, and again after an edit, from memory after the first", async ({
+        obsidian,
+        mobileLayout,
+    }) => {
         const { page } = obsidian;
         await openStream(page);
 
+        const restoreCpu = mobileLayout ? await emulatePhoneCpu(page) : async () => {};
         const result = await page.evaluate(async (newest) => {
             const { app } = window;
             const search = app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view.search as {
@@ -148,6 +153,7 @@ test.describe("search across a multi-year vault", () => {
             await search.search("");
             return { first, unmatched, refresh };
         }, seededDate(0));
+        await restoreCpu();
 
         // eslint-disable-next-line no-console -- the number this test exists to report
         console.log(
@@ -158,6 +164,9 @@ test.describe("search across a multi-year vault", () => {
         expect(result.first.found).toBe(SEEDED_DAYS);
         expect(result.unmatched.found).toBe(0);
         expect(result.refresh.found).toBe(1);
-        for (const { ms } of Object.values(result)) expect(ms).toBeLessThan(500);
+        // The first query reads every note cold: 585–707 ms at phone speed. Later ones hit memory.
+        expect(result.first.ms).toBeLessThan(1500);
+        expect(result.unmatched.ms).toBeLessThan(100);
+        expect(result.refresh.ms).toBeLessThan(100);
     });
 });

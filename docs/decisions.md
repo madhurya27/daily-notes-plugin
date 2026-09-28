@@ -1055,15 +1055,16 @@ navbar right under the header; one icon for two searches reads as a duplicate.
 
 **Decision:** stream search keeps reading every note per query and refresh.
 
-**Why:** across 1,095 notes (`pnpm run test:memory`) a query takes 1 ms, the
-first after open 43 ms, and a refresh finds an edit in 1 ms; with 50 KB
-notes, 5 ms and 136 ms. So `cachedRead` answers from memory and sees the
-edit. Its docs promise only "better performance", so the timing test is the
+**Why:** across 1,095 notes (`pnpm run test:memory`), with the CPU slowed 4x
+to a phone's: the first query after open reads every note, 585–707 ms;
+later queries and a refresh after an edit, 5 ms. So `cachedRead` answers from
+memory once warm and sees the edit. A cache of our own would be as cold on
+open. Its docs promise only "better performance", so the timing test is the
 guard.
 
 **Rejected:**
 - A source cache per path, invalidated on `modify` — duplicates Obsidian's.
-- Dropping a search a newer one replaced — at 1 ms there is nothing to save.
+- Dropping a search a newer one replaced — at 5 ms there is nothing to save.
 
 ## 2026-09-28 — Bases and wide content stay in the render
 
@@ -1071,10 +1072,10 @@ guard.
 tables and equations in place.
 
 **Why:** scrolling 40 notes, each embedding a Base over 1,095 notes plus
-equations and a wide table (`e2e/render-cost.spec.ts`, desktop CPU): a Base
-held the queue 4 ms median, 14 ms at most; every layout the plugin forced
-came to 11 ms, equations 3 ms of it, tables 1 ms.
+equations and a wide table (`e2e/render-cost.spec.ts`, CPU slowed 4x to a
+phone's): a Base held the queue 16 ms median, 60–74 ms at most; every layout
+the plugin forced came to 55–60 ms in all, about 1.5 ms a note.
 
 **Rejected:**
-- Bases off the queue, held by a `HeightHold` — saves a few ms per note.
-- Batching width reads in one `requestAnimationFrame` — saves under 4 ms.
+- Bases off the queue, held by a `HeightHold` — 16 ms a Base, for a hold per Base.
+- Batching width reads in one `requestAnimationFrame` — saves part of 1.5 ms a note.

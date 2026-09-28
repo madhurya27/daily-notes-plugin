@@ -1,4 +1,4 @@
-import { test, expect, openStream, seededDate, SEEDED_DAYS } from "./obsidian";
+import { test, expect, openStream, emulatePhoneCpu, seededDate, SEEDED_DAYS } from "./obsidian";
 
 /**
  * The Async list's Bases and wide-content items (docs/TODO.md): on mobile, a
@@ -86,6 +86,7 @@ test.describe("render cost on mobile, a Base and equations per note", () => {
             };
         });
 
+        const restoreCpu = await emulatePhoneCpu(page);
         const cdp = await page.context().newCDPSession(page);
         const events: TraceEvent[] = [];
         cdp.on("Tracing.dataCollected", ({ value }) => events.push(...(value as unknown as TraceEvent[])));
@@ -127,6 +128,7 @@ test.describe("render cost on mobile, a Base and equations per note", () => {
         const done = new Promise((resolve) => cdp.once("Tracing.tracingComplete", resolve));
         await cdp.send("Tracing.end");
         await done;
+        await restoreCpu();
 
         const baseMs = await page.evaluate(() => (window as unknown as { baseMs: number[] }).baseMs);
         const layouts = events.filter((e) => e.name === "Layout" && e.ph === "X");
@@ -150,8 +152,8 @@ test.describe("render cost on mobile, a Base and equations per note", () => {
         expect(drawn.rows).toBeGreaterThan(0);
         expect(drawn.equations).toBe(2);
         expect(baseMs.length).toBeGreaterThanOrEqual(NOTES);
-        // About 7x what a laptop measured (docs/decisions.md, 2026-09-28).
-        expect(sorted.at(-1)).toBeLessThan(100);
-        expect(ms(ours)).toBeLessThan(100);
+        // About 4x what phone speed measured (docs/decisions.md, 2026-09-28).
+        expect(sorted.at(-1)).toBeLessThan(250);
+        expect(ms(ours)).toBeLessThan(250);
     });
 });
