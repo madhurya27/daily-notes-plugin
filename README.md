@@ -9,38 +9,14 @@ a note, open it.
 
 - **One stream.** Every daily note, newest first, including notes in nested folders like `2025/03/2025-03-04.md`.
 - **Always current.** New, edited, renamed and deleted notes show up straight away.
-- **Fold sections.** Collapse any heading or nested list.
-
-  <img src="docs/images/collapse-desktop.png" alt="A note with every section folded to its heading" width="440">
-
-- **Linked mentions.** Each note ends with the notes that link to it, quoting the line around each link.
-
-  <img src="docs/images/mentions-desktop.png" alt="A note's linked mentions: a project note and a project log, each quoting the line that links to it" width="440">
-
-- **Search.** Find text across every note with your usual find hotkey.
-
-  <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Mara" width="440">
-
-- **Jump to a date.** Pick any day that has a note.
-
-  <img src="docs/images/jump-desktop.png" alt="The jump-to-date prompt listing the vault's dates" width="440">
-
-- **Full notes.** Properties, images, embeds, links, tasks and Bases, drawn as Obsidian draws them.
-
-  <img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="440">
-
-- **Your theme.** Light or dark, the stream matches it.
-
-  <img src="docs/images/stream-dark-desktop.png" alt="The stream in Obsidian's dark theme" width="440">
-
-- **Phone and tablet.** Tables and Bases too wide for the screen become cards; wide equations shrink to fit.
-
-<details>
-<summary>Phone layout</summary>
-
-<p><img src="docs/images/stream-phone.png" alt="The stream in Obsidian's phone layout" width="150"> <img src="docs/images/search-phone.png" alt="Search in the phone layout" width="150"> <img src="docs/images/jump-phone.png" alt="Jump to date in the phone layout" width="150"> <img src="docs/images/collapse-phone.png" alt="Collapsed sections in the phone layout" width="150"> <img src="docs/images/mentions-phone.png" alt="Linked mentions in the phone layout" width="150"> <img src="docs/images/bases-phone.png" alt="A Base drawn as cards in the phone layout" width="150"> <img src="docs/images/stream-dark-phone.png" alt="The stream in the dark theme, phone layout" width="150"></p>
-
-</details>
+- **[Search](#search).** Find text across every note with your usual find hotkey.
+- **[Jump to a date](#move-around).** Pick any day that has a note.
+- **[Fold sections](#fold-sections).** Collapse any heading or nested list.
+- **[Linked mentions](#linked-mentions).** Each note ends with the notes that link to it.
+- **[Full notes](#open-the-stream).** Properties, images, embeds, links, tasks and Bases, drawn as Obsidian draws
+  them.
+- **[Your theme](#settings).** Light or dark, the stream matches it.
+- **[Phone and tablet](#phone-and-tablet).** Tables and Bases too wide for the screen become cards.
 
 ## Install
 
@@ -58,6 +34,10 @@ folder.
 Click the ribbon icon (a stack of cards) or run `Daily notes stream: Open stream`. It opens in the current tab;
 mod-click the icon for a new tab.
 
+Each note is drawn as Obsidian draws it: properties, images, embeds, links, tasks and Bases.
+
+<img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="440">
+
 ### Move around
 
 | To | Do |
@@ -68,6 +48,8 @@ mod-click the icon for a new tab.
 
 The list offers the days that have a note. Type a date in your daily-note format or as `YYYY-MM-DD`; a date with
 no note takes you to the nearest older one. The calendar button opens your device's date picker.
+
+<img src="docs/images/jump-desktop.png" alt="The jump-to-date prompt listing the vault's dates" width="440">
 
 ### Search
 
@@ -81,6 +63,20 @@ Press Obsidian's "Search current file" hotkey (Mod+F unless you changed it) or c
 
 Search opens collapsed sections to show a match. `· hidden` marks a match you can't see, such as one in the
 properties.
+
+<img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Mara" width="440">
+
+### Fold sections
+
+Click the chevron beside a heading or nested list to fold it; the stream remembers what you folded.
+
+<img src="docs/images/collapse-desktop.png" alt="A note with every section folded to its heading" width="440">
+
+### Linked mentions
+
+Each note ends with the notes that link to it, quoting the list item or section around each link.
+
+<img src="docs/images/mentions-desktop.png" alt="A note's linked mentions: a project note and a project log, each quoting the line that links to it" width="440">
 
 ### Open notes and links
 
@@ -96,12 +92,27 @@ Date headers, links inside notes, and the notes and links in linked mentions ope
 Click a tag to search for it; mod-click to search in a new pane. Mod-hover a link to preview it. To preview on a
 plain hover, open **Settings → Page preview** and turn off "Daily notes stream".
 
-### Settings
+### Phone and tablet
 
-- **Show note properties**: show or hide each note's properties.
-- **Collapse properties by default**: start with the properties folded.
-- **Show linked mentions**: show or hide the notes linking to each note.
-- **Collapse linked mentions by default**: start with them folded; folded, they read nothing.
+Tables and Bases too wide for the screen become cards; wide equations shrink to fit.
+
+<details>
+<summary>Phone layout</summary>
+
+<p><img src="docs/images/stream-phone.png" alt="The stream in Obsidian's phone layout" width="150"> <img src="docs/images/search-phone.png" alt="Search in the phone layout" width="150"> <img src="docs/images/jump-phone.png" alt="Jump to date in the phone layout" width="150"> <img src="docs/images/collapse-phone.png" alt="Collapsed sections in the phone layout" width="150"> <img src="docs/images/mentions-phone.png" alt="Linked mentions in the phone layout" width="150"> <img src="docs/images/bases-phone.png" alt="A Base drawn as cards in the phone layout" width="150"> <img src="docs/images/stream-dark-phone.png" alt="The stream in the dark theme, phone layout" width="150"></p>
+
+</details>
+
+## Settings
+
+- **Show note properties** (on): show or hide each note's properties.
+- **Collapse properties by default** (off): start with the properties folded.
+- **Show linked mentions** (on): show or hide the notes linking to each note.
+- **Collapse linked mentions by default** (off): start with them folded; folded, they read nothing.
+
+The stream follows Obsidian's theme, light or dark.
+
+<img src="docs/images/stream-dark-desktop.png" alt="The stream in Obsidian's dark theme" width="440">
 
 ## Development
 

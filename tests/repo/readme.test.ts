@@ -2,9 +2,10 @@ import { describe, it, expect, vi } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import DailyNotesStreamPlugin from "../../src/main";
+import { DailyNotesStreamSettingTab, DEFAULT_SETTINGS } from "../../src/settings";
 import { __setMockNotes, __setMockSettings } from "../mocks/daily-notes-interface";
-import type { PluginManifest } from "../mocks/obsidian";
-import { asApp } from "../stream-view-fixture";
+import { Setting, type PluginManifest } from "../mocks/obsidian";
+import { asApp, fake } from "../stream-view-fixture";
 
 const repoRoot = resolve(__dirname, "../..");
 const readme = readFileSync(resolve(repoRoot, "README.md"), "utf8");
@@ -58,6 +59,23 @@ describe("README", () => {
         expect(commands.length).toBeGreaterThan(0);
         for (const { name } of commands) {
             expect(readme).toContain(`${manifest.name}: ${name}`);
+        }
+    });
+
+    // Settings buried under Use went unnoticed; a section of their own is found by skimming the headings.
+    it("lists every setting, and its default, in a section of its own", () => {
+        const section = readme.split(/^## /m).find((part) => part.startsWith("Settings\n")) ?? "";
+        Setting.reset();
+        new DailyNotesStreamSettingTab(
+            asApp({}),
+            fake<DailyNotesStreamPlugin>({ settings: DEFAULT_SETTINGS })
+        ).display();
+
+        expect(Setting.created.length).toBeGreaterThan(0);
+        for (const { name, toggles } of Setting.created) {
+            const line = section.split("\n").find((text) => text.includes(`**${name}**`));
+            expect(line, `${name} is not under ## Settings`).toBeDefined();
+            expect(line).toContain(toggles[0]!.value ? "(on)" : "(off)");
         }
     });
 });
