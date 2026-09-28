@@ -3,7 +3,7 @@
 Read all your daily notes on one page, newest first. Scroll down for older days. The stream is read-only: to edit
 a note, open it.
 
-<p><img src="docs/images/demo-desktop.png" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Priya, and it glides back to the top" width="800"></p>
+<p><img src="docs/images/demo-desktop.png" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Mara, and it glides back to the top" width="800"></p>
 
 ## Features
 

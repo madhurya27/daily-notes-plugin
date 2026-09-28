@@ -1037,3 +1037,16 @@ days, and repeated one-off events.
 **Rejected:**
 - Longer lists alone — picks still cluster.
 - Tracking what earlier days used — a date's note would depend on the run.
+
+## 2026-09-28 — The search action draws `text-search`
+
+**Decision:** the header's Search action is lines of text with a magnifier.
+
+**Why:** on a phone Obsidian's own search, a plain magnifier, sits in the
+navbar right under the header; one icon for two searches reads as a duplicate.
+
+**Rejected:**
+- Search in the ⋯ menu, where Obsidian keeps Find — a second tap on the phone.
+- `text-search` on mobile only — a platform branch for an icon.
+- `scan-search`, a magnifier in a viewfinder — reads as search faster, but
+  says less about what it searches.

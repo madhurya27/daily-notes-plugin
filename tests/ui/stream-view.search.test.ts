@@ -42,6 +42,11 @@ describe("DailyNotesStreamView — search", () => {
     /** Past every debounce, with the reads and the queue behind them drained. */
     const settle = () => vi.advanceTimersByTimeAsync(1000);
 
+    // Obsidian's own search is a plain magnifier, in the phone's navbar right under the header.
+    it("draws its header action as text with a magnifier, not Obsidian's search icon", () => {
+        expect(view.actions.find((a) => a.title === "Search")?.icon).toBe("text-search");
+    });
+
     it("sits above the scrolling notes, not inside them", () => {
         expect(bar().nextElementSibling).toBe(view.contentEl);
     });
