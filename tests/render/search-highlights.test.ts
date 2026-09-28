@@ -32,6 +32,18 @@ describe("SearchHighlighter", () => {
         expect(highlighted("daily-notes-search-match")).toEqual(["km", "KM"]);
     });
 
+    // Stream search matches a note's own source; another note's excerpt is not a match in it.
+    it("highlights nothing in a note's linked mentions", () => {
+        const { block, component } = renderedBlock(
+            '<p>Ran 5 km.</p><div class="daily-note-mentions"><p>Ran 10 km.</p></div>'
+        );
+        highlighter.setQuery("km");
+
+        highlighter.track(block, component);
+
+        expect(highlighter.rangesIn(block).map((r) => r.toString())).toEqual(["km"]);
+    });
+
     it("re-highlights the rendered notes when the query changes", () => {
         const { block, component } = renderedBlock("<p>milk and bread</p>");
         highlighter.track(block, component);
