@@ -23,6 +23,8 @@ import type { BaseMeasurements } from "./bases/base-measurements";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
 import { wrapTextBesideBlocks } from "./text-beside-blocks";
 import type { DailyNotesStreamSettings } from "../settings";
+import type { BacklinkIndex } from "../notes/backlink-index";
+import { LinkedMentionsFooter } from "./linked-mentions";
 
 /** The fallback, for an Obsidian that resolves no property type. */
 const PROPERTY_ICONS: Record<string, string> = {
@@ -95,9 +97,17 @@ function displayValue(value: unknown): string {
     return "";
 }
 
+/** A rendered note: what frees it, and when its footer is drawn. */
+export interface RenderedNote {
+    component: Component;
+    /** Resolves once the linked mentions are drawn; the note itself already is. */
+    footer: Promise<void>;
+}
+
 export class NoteRenderer {
     /** Each view's own; what its Bases measured is shared, by layout. */
     private readonly bases: NoteBases;
+    private readonly mentions: LinkedMentionsFooter;
 
     constructor(
         private readonly app: App,
@@ -105,9 +115,13 @@ export class NoteRenderer {
         private readonly collapsible: CollapsibleManager,
         private readonly getSettings: () => DailyNotesStreamSettings,
         private readonly highlighter: SearchHighlighter,
-        baseMeasurements: BaseMeasurements
+        baseMeasurements: BaseMeasurements,
+        backlinks: BacklinkIndex
     ) {
         this.bases = new NoteBases(app, baseMeasurements);
+        this.mentions = new LinkedMentionsFooter(app, backlinks, collapsible, getSettings, (el) =>
+            this.markUnresolvedLinks(el)
+        );
     }
 
     /**
@@ -124,9 +138,10 @@ export class NoteRenderer {
     /**
      * Fills an empty block. The note renders into a child component, not the
      * view: what MarkdownRenderer registers lives until that child is
-     * discarded, and otherwise outlives the DOM it belongs to.
+     * discarded, and otherwise outlives the DOM it belongs to. The footer is
+     * left drawing: the render queue must not wait on other notes' reads.
      */
-    async renderInto(block: HTMLElement, file: TFile): Promise<Component> {
+    async renderInto(block: HTMLElement, file: TFile): Promise<RenderedNote> {
         const noteComponent = new Component();
         noteComponent.load();
         this.component.addChild(noteComponent);
@@ -176,8 +191,9 @@ export class NoteRenderer {
             contentEl.setText("Error rendering note");
         }
 
+        const footer = this.mentions.render(block, file, noteComponent);
         this.highlighter.track(block, noteComponent);
-        return noteComponent;
+        return { component: noteComponent, footer };
     }
 
     /** A Base file changed: the copies of it drawn as cards redraw. */
@@ -318,11 +334,16 @@ export class NoteRenderer {
         };
     }
 
-    /** An internal link, and the note it was written in, which resolves it. */
+    /**
+     * An internal link, and the note it was written in, which resolves it: a
+     * linked mention's excerpt was written in its source, not the daily note.
+     */
     private linkAt(target: HTMLElement): { el: HTMLElement; linktext: string; sourcePath: string } | null {
         const el = target.closest<HTMLElement>(".internal-link");
         const linktext = el?.getAttribute("data-href");
-        const sourcePath = el?.closest<HTMLElement>(".daily-note-block")?.dataset.sourcePath;
+        const sourcePath =
+            el?.closest<HTMLElement>("[data-link-source]")?.dataset.linkSource ??
+            el?.closest<HTMLElement>(".daily-note-block")?.dataset.sourcePath;
         if (!el || !linktext || !sourcePath) return null;
         return { el, linktext, sourcePath };
     }

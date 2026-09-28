@@ -223,8 +223,9 @@ export class NoteWindowManager {
         this.stopSettling(window);
         this.discard(window);
         block.empty();
-        window.component = await this.renderer.renderInto(block, window.file);
-        this.watchSettling(block, window);
+        const { component, footer } = await this.renderer.renderInto(block, window.file);
+        window.component = component;
+        this.watchSettling(block, window, footer);
     }
 
     remove(block: HTMLElement): void {
@@ -272,7 +273,7 @@ export class NoteWindowManager {
                 // queue — shared with every vault event — for nothing.
                 if (window.unloadWanted) return;
 
-                const component = await this.renderer.renderInto(block, window.file);
+                const { component, footer } = await this.renderer.renderInto(block, window.file);
                 // reload() and rerenderAll() empty the container mid-flight: the
                 // block that comes back from the await may be nobody's child.
                 if (!block.isConnected || !this.windows.has(block)) {
@@ -283,7 +284,7 @@ export class NoteWindowManager {
                 window.component = component;
                 block.removeClass("is-unloaded");
                 block.style.removeProperty("--daily-note-placeholder-height");
-                this.watchSettling(block, window);
+                this.watchSettling(block, window, footer);
 
                 if (window.unloadWanted) this.leave(block);
             } finally {
@@ -363,13 +364,22 @@ export class NoteWindowManager {
         window.measured = remembered !== undefined;
     }
 
-    /** Held, the block cannot shrink: a dip shows only in what was rendered in it. */
-    private watchSettling(block: HTMLElement, window: NoteWindow): void {
+    /**
+     * Held, the block cannot shrink: a dip shows only in what was rendered in
+     * it. Settling starts once `footer` is drawn: the linked mentions read
+     * other notes first, and a quiet spell while they do is not settled.
+     */
+    private watchSettling(block: HTMLElement, window: NoteWindow, footer: Promise<void>): void {
         if (window.measured) window.hold = new HeightHold(block, window.height);
-        window.keepOnceSettled = debounce(() => this.keepHeight(block, window), SETTLE_MS, true);
-        window.keepOnceSettled();
         window.watched = [block, ...Array.from(block.children)];
         this.watch(window.watched);
+        const { component } = window;
+        void footer.then(() => {
+            // Unloaded or re-rendered while the footer drew: that render settles itself.
+            if (window.component !== component) return;
+            window.keepOnceSettled = debounce(() => this.keepHeight(block, window), SETTLE_MS, true);
+            window.keepOnceSettled();
+        });
     }
 
     private watch([block, ...rendered]: Element[]): void {

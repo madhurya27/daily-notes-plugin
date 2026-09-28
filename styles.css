@@ -160,7 +160,7 @@
 
 /* The size and offset a content heading's chevron uses, in the margin the
    heading just opened: the two line up, the same step from their words. */
-.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator {
+.daily-notes-stream-container :is(.metadata-properties-heading, .daily-note-mentions-heading) > .collapse-indicator {
     position: absolute;
     display: flex;
     align-items: center;
@@ -177,23 +177,107 @@
     transform: translateY(-50%) rotate(90deg);
 }
 
-.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator svg {
+.daily-notes-stream-container
+    :is(.metadata-properties-heading, .daily-note-mentions-heading)
+    > .collapse-indicator
+    svg {
     width: var(--size-4-4, 1rem);
     height: var(--size-4-4, 1rem);
 }
 
 /* Obsidian fades the chevron in on hover; keyboard focus has to reveal it too,
    as it is the only thing here in the tab order. */
-.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator:focus-visible {
+.daily-notes-stream-container
+    :is(.metadata-properties-heading, .daily-note-mentions-heading)
+    > .collapse-indicator:focus-visible {
     opacity: 1;
 }
 
-.daily-notes-stream-container .metadata-properties-heading > .collapse-indicator:is(:hover, :active) {
+.daily-notes-stream-container
+    :is(.metadata-properties-heading, .daily-note-mentions-heading)
+    > .collapse-indicator:is(:hover, :active) {
     color: var(--text-muted);
 }
 
-.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading > .collapse-indicator {
+.daily-notes-stream-container .metadata-container.is-collapsed .metadata-properties-heading > .collapse-indicator,
+.daily-notes-stream-container .daily-note-mentions.is-collapsed .daily-note-mentions-heading > .collapse-indicator {
     transform: translateY(-50%) rotate(0deg);
+}
+
+/* Linked mentions: under the note, where Obsidian puts a note's backlinks.
+   Empty until a note links here. No rule above, unlike Obsidian's: the note's
+   own bottom border follows, and two lines read as two note ends. */
+.daily-note-mentions:not(:empty) {
+    margin-top: var(--size-4-8);
+}
+
+/* In the note's margin like the properties heading, so its chevron shares the
+   headings' column. */
+.daily-note-mentions-heading {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    width: fit-content;
+    margin-left: calc(-1 * var(--size-4-4));
+    padding-left: var(--size-4-4);
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+/* Obsidian's count beside a tree item. */
+.daily-note-mentions-count {
+    padding: 0 var(--size-4-1);
+    border-radius: var(--radius-s);
+    background-color: var(--background-modifier-hover);
+    color: var(--text-faint);
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-normal);
+}
+
+.daily-note-mentions.is-collapsed .daily-note-mentions-content {
+    display: none;
+}
+
+.daily-note-mention {
+    margin-top: var(--size-4-4);
+}
+
+.daily-note-mention-title {
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+    text-decoration: none;
+}
+
+.daily-note-mention-title:is(:hover, :active) {
+    color: var(--text-accent);
+    text-decoration: underline;
+}
+
+/* An excerpt as Obsidian's search results quote one: a panel per match. */
+.daily-note-mention-excerpt {
+    margin-top: var(--size-4-2);
+    padding: var(--size-4-2) var(--size-4-3);
+    border-radius: var(--radius-s);
+    background-color: var(--background-secondary);
+    font-family: var(--font-text);
+    font-size: var(--font-ui-small);
+    line-height: var(--line-height-normal);
+    overflow-wrap: break-word;
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.daily-note-mention-excerpt > :first-child {
+    margin-top: 0;
+}
+
+.daily-note-mention-excerpt > :last-child {
+    margin-bottom: 0;
 }
 
 /* Tablet breakpoint */
@@ -323,7 +407,7 @@
 
 /* Desktop: wide content scrolls inside its own box, as in Obsidian's reading
    view, rather than widen the stream. */
-body:not(.is-mobile) .daily-note-content :is(table, pre) {
+body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(table, pre) {
     display: block;
     max-width: 100%;
     overflow-x: auto;
@@ -333,7 +417,7 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
    stream's width, and what still does not fit is clipped. `clip`, never
    `hidden` or `auto`: those make a scroll container, and one inside the stream
    ends an iOS glide early. */
-.is-mobile .daily-note-content table {
+.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) table {
     width: 100%;
     /* Obsidian's floor on a column, which seven columns overrun on a phone. */
     --table-column-min-width: 0px;
@@ -342,44 +426,46 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
 
 /* A column is never narrower than its longest word, and nothing is cut to an
    ellipsis: a table that cannot fit that way is stacked instead. */
-.is-mobile .daily-note-content :is(td, th) {
+.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) :is(td, th) {
     overflow-wrap: normal;
     word-break: normal;
 }
 
 /* Specific enough to outrank .markdown-rendered's `overflow: hidden` on cells. */
-.is-mobile .daily-note-content.markdown-rendered :is(thead > tr > th, tbody > tr > td) {
+.is-mobile
+    :is(.daily-note-content, .daily-note-mention-excerpt).markdown-rendered
+    :is(thead > tr > th, tbody > tr > td) {
     overflow: clip;
     text-overflow: clip;
 }
 
 /* A table too wide for the note: each row a card, each cell under its column's
    name (src/render/wide-tables.ts). */
-.daily-note-content table.is-stacked,
-.daily-note-content table.is-stacked :is(tbody, tr, td) {
+:is(.daily-note-content, .daily-note-mention-excerpt) table.is-stacked,
+:is(.daily-note-content, .daily-note-mention-excerpt) table.is-stacked :is(tbody, tr, td) {
     display: block;
     width: auto;
 }
 
-.daily-note-content table.is-stacked thead {
+:is(.daily-note-content, .daily-note-mention-excerpt) table.is-stacked thead {
     display: none;
 }
 
-.daily-note-content table.is-stacked tr {
+:is(.daily-note-content, .daily-note-mention-excerpt) table.is-stacked tr {
     border: var(--table-border-width) solid var(--table-border-color);
     border-radius: var(--radius-m);
     padding: var(--size-4-2) var(--size-4-3);
     margin-block-end: var(--size-4-3);
 }
 
-.daily-note-content.markdown-rendered table.is-stacked tbody > tr > td {
+:is(.daily-note-content, .daily-note-mention-excerpt).markdown-rendered table.is-stacked tbody > tr > td {
     border: none;
     padding: var(--size-2-2) 0;
     max-width: none;
     min-width: 0;
 }
 
-.daily-note-content table.is-stacked td::before {
+:is(.daily-note-content, .daily-note-mention-excerpt) table.is-stacked td::before {
     content: attr(data-column);
     display: block;
     font-size: var(--font-ui-smaller);
@@ -387,28 +473,28 @@ body:not(.is-mobile) .daily-note-content :is(table, pre) {
     color: var(--text-muted);
 }
 
-.is-mobile .daily-note-content :is(pre, pre code) {
+.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) :is(pre, pre code) {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 
-.is-mobile .daily-note-content pre {
+.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) pre {
     overflow: clip;
 }
 
 /* A diagram scales down to the note rather than widen it. */
-.daily-note-content .mermaid svg {
+:is(.daily-note-content, .daily-note-mention-excerpt) .mermaid svg {
     max-width: 100%;
     height: auto;
 }
 
 /* An equation wider than the note shrinks to fit (src/render/wide-equations.ts). */
-.is-mobile .daily-note-content mjx-container[display="true"] > mjx-math {
+.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) mjx-container[display="true"] > mjx-math {
     zoom: var(--daily-note-equation-zoom, 1);
 }
 
 /* An embedded note grows instead of scrolling inside a capped height. */
-.is-mobile .daily-note-content .markdown-embed-content {
+.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) .markdown-embed-content {
     max-height: none;
 }
 

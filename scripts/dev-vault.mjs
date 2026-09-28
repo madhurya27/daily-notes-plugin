@@ -1,21 +1,23 @@
 /**
- * The edit-reload loop: links the build into .dev/vault/, watches it, and
- * reloads the plugin in the open window after every change.
+ * The one command for working against a vault: builds if there is no build,
+ * reseeds the vault, links the build into it, opens it in its own Obsidian, then
+ * rebuilds on every save and reloads the plugin in that window. Demo vault by
+ * default, the test vault with --test; layout flags go to the window.
  *
- *   node scripts/dev-vault.mjs [vault]
+ *   pnpm run demo [--test] [--desktop | --ipad | --landscape] [vault]
  *
  * Why links and a reload: docs/decisions.md. Watching the linked files covers a
  * TypeScript change without knowing anything about the build — `main.js` is
  * what esbuild rewrites — and `styles.css` needs no build at all.
  */
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { existsSync, rmSync, statSync, symlinkSync, watch } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { isMain, reloadPlugin } from "./reload-plugin.mjs";
+import { PLUGIN_ID, stopObsidian, vaultFrom } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const PLUGIN_ID = "daily-notes-stream";
 
 /** What the vault needs from the repo. `main.js` first: esbuild rewrites it. */
 export const ASSETS = ["main.js", "styles.css", "manifest.json"];
@@ -23,9 +25,6 @@ export const ASSETS = ["main.js", "styles.css", "manifest.json"];
 /** Points a seeded vault's plugin folder at the repo's own files. */
 export function linkAssets(repo, vault) {
     const pluginDir = join(vault, ".obsidian", "plugins", PLUGIN_ID);
-    if (!existsSync(pluginDir)) {
-        throw new Error(`No plugin installed in ${vault} — seed it first: pnpm run build && pnpm run seed`);
-    }
     for (const asset of ASSETS) {
         const target = join(pluginDir, asset);
         rmSync(target, { force: true });
@@ -90,30 +89,79 @@ export function createReloader(reload, delay) {
     return schedule;
 }
 
-function main() {
-    const vault = resolve(process.argv[2] ?? join(REPO, ".dev", "vault"));
-    const missing = ASSETS.filter((asset) => !existsSync(join(REPO, asset)));
-    if (missing.length > 0) {
-        console.error(`Build first — missing ${missing.join(", ")}. Run: pnpm run build`);
-        process.exit(1);
-    }
+/**
+ * What a run does, in order: a build only when there is none. The seed runs
+ * every time: the vaults are disposable, and a fresh seed keeps their notes
+ * current with the seed script and the date.
+ * @param {{ built: boolean }} state
+ */
+export function stepsFor({ built }) {
+    return [...(built ? [] : ["build"]), "seed", "link", "open", "watch"];
+}
 
-    console.log(`Linked ${ASSETS.join(", ")} into ${linkAssets(REPO, vault)}`);
+/** Flags of `open` that take a value, which is not the vault path. */
+const FLAG_VALUES = new Set(["--position"]);
 
+/**
+ * Splits the command line: the vault named, what the seed needs, and what the
+ * window does, which is everything.
+ * @param {readonly string[]} args
+ */
+export function optionsFrom(args) {
+    const named = args.find((arg, index) => !arg.startsWith("--") && !FLAG_VALUES.has(args[index - 1]));
+    const seedArgs = [...(args.includes("--test") ? ["--test"] : []), ...(named === undefined ? [] : [named])];
+    return { named, seedArgs, openArgs: [...args] };
+}
+
+/** Runs a step to completion, stopping here if it fails. */
+function run(command, commandArgs) {
+    const { status } = spawnSync(command, commandArgs, { stdio: "inherit", cwd: REPO });
+    if (status !== 0) process.exit(status ?? 1);
+}
+
+/**
+ * Rebuilds on every save and reloads the plugin after each, until Ctrl-C,
+ * which also closes the window. Ctrl-C reaches esbuild too, so its exit, not
+ * the signal, is what ends the run: whichever arrives first, the window goes.
+ */
+function watchAndReload() {
     const esbuild = spawn("node", [join(REPO, "esbuild.config.mjs")], { stdio: "inherit" });
-    esbuild.on("exit", (code) => process.exit(code ?? 0));
+    esbuild.on("exit", (code) => {
+        stopObsidian();
+        process.exit(code ?? 0);
+    });
     process.on("SIGINT", () => esbuild.kill());
 
     const schedule = createReloader(reloadPlugin, 250);
     const changed = createChangeFilter((path) => statSync(path).mtimeMs);
     for (const asset of ASSETS) {
         const path = join(REPO, asset);
-        changed(path); // the build that just ran is not a change to react to
+        changed(path); // what the window just loaded is not a change to react to
         watch(path, () => {
             if (changed(path)) schedule();
         });
     }
-    console.log("Watching for changes. The window to reload is the one from: pnpm run open");
+    console.log("Watching for changes; every save reloads the plugin in the window. Ctrl-C closes it.");
+}
+
+function main() {
+    const args = process.argv.slice(2);
+    // The options are the window's; answered before anything is built or seeded.
+    if (args.includes("--help") || args.includes("-h")) {
+        run("node", [join(REPO, "scripts", "open-vault.mjs"), "--help"]);
+        return;
+    }
+    const { named, seedArgs, openArgs } = optionsFrom(args);
+    const vault = vaultFrom(named, args);
+    const actions = {
+        build: () => run("pnpm", ["run", "build"]),
+        seed: () => run("node", [join(REPO, "scripts", "seed.mjs"), ...seedArgs]),
+        link: () => console.log(`Linked ${ASSETS.join(", ")} into ${linkAssets(REPO, vault)}`),
+        open: () => run("node", [join(REPO, "scripts", "open-vault.mjs"), ...openArgs]),
+        watch: watchAndReload,
+    };
+    const built = ASSETS.every((asset) => existsSync(join(REPO, asset)));
+    for (const step of stepsFor({ built })) actions[step]();
 }
 
 if (isMain(import.meta.url)) main();

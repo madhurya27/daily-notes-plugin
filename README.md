@@ -13,6 +13,7 @@ a note, open it.
 
   <img src="docs/images/collapse-desktop.png" alt="A note with every section folded to its heading" width="440">
 
+- **Linked mentions.** Each note ends with the notes that link to it, quoting the line around each link.
 - **Search.** Find text across every note with your usual find hotkey.
 
   <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Priya" width="440">
@@ -80,7 +81,7 @@ properties.
 
 ### Open notes and links
 
-Date headers and links inside notes open like any link in Obsidian:
+Date headers, links inside notes, and the notes and links in linked mentions open like any link in Obsidian:
 
 | Gesture | Opens |
 | --- | --- |
@@ -96,6 +97,8 @@ plain hover, open **Settings → Page preview** and turn off "Daily notes stream
 
 - **Show note properties**: show or hide each note's properties.
 - **Collapse properties by default**: start with the properties folded.
+- **Show linked mentions**: show or hide the notes linking to each note.
+- **Collapse linked mentions by default**: start with them folded; folded, they read nothing.
 
 ## Development
 

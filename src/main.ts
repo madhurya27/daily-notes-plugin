@@ -5,6 +5,7 @@ import { CollapsibleStateStore } from "./render/collapse-store";
 import { DailyNoteService } from "./notes/daily-note-service";
 import { ParsedDates } from "./notes/parsed-dates";
 import { LayoutMemory } from "./stream/layout-memory";
+import { BacklinkIndex } from "./notes/backlink-index";
 
 /** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
 declare const BUILD_LABEL: string;
@@ -18,6 +19,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
     settings!: DailyNotesStreamSettings;
     collapseStore!: CollapsibleStateStore;
     layoutMemory!: LayoutMemory;
+    backlinks!: BacklinkIndex;
 
     async onload() {
         // Unit tests run the source unbundled, where nothing defines it.
@@ -26,6 +28,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
 
         this.collapseStore = new CollapsibleStateStore(this.app);
         this.rememberLayout();
+        this.indexBacklinks();
 
         // Each view owns its service (CLAUDE.md, Invariants); they share only the parsed dates.
         const parsedDates = new ParsedDates();
@@ -81,6 +84,16 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.registerEvent(vault.on("rename", (file, oldPath) => memory.rename(oldPath, file.path)));
         this.registerEvent(vault.on("delete", (file) => memory.forget(file.path)));
         workspace.onLayoutReady(() => memory.retainOnly(new Set(vault.getMarkdownFiles().map((file) => file.path))));
+    }
+
+    /**
+     * Registered before any view opens, so a view's own `resolved` handler
+     * always looks up an index already told the links changed.
+     */
+    private indexBacklinks(): void {
+        const { metadataCache } = this.app;
+        this.backlinks = new BacklinkIndex(() => metadataCache.resolvedLinks);
+        this.registerEvent(metadataCache.on("resolved", () => this.backlinks.invalidate()));
     }
 
     /** The stream is the only place a jump means anything, so open it first. */

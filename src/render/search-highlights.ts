@@ -23,10 +23,15 @@ function registered(name: string): Highlight | null {
     return highlight;
 }
 
-/** Every occurrence of `pattern` inside one text node of `root`. */
+/** Search matches a note's own source; its linked mentions quote other notes. */
+const OUTSIDE_THE_NOTE = ".daily-note-mentions";
+
+/** Every occurrence of `pattern` inside one text node of `root`, its linked mentions left out. */
 function findRanges(root: HTMLElement, pattern: RegExp): Range[] {
     const ranges: Range[] = [];
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, (node) =>
+        node.parentElement?.closest(OUTSIDE_THE_NOTE) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+    );
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         for (const match of (node as Text).data.matchAll(pattern)) {
             const range = document.createRange();

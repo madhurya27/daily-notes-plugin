@@ -9,6 +9,7 @@ import type { InfiniteScrollController } from "../src/stream/infinite-scroll";
 import { Component, WorkspaceLeaf, type App, type EventRef, type TFile } from "./mocks/obsidian";
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
+import { BacklinkIndex } from "../src/notes/backlink-index";
 import { LayoutMemory } from "../src/stream/layout-memory";
 
 /** A stand-in for `T`, holding only the members a test reaches. */
@@ -41,9 +42,15 @@ export function makeService(): DailyNoteService {
 export function makePlugin(): DailyNotesStreamPlugin {
     const app = makeApp();
     return fake<DailyNotesStreamPlugin>({
-        settings: { showProperties: false, propertiesCollapsed: false },
+        settings: {
+            showProperties: false,
+            propertiesCollapsed: false,
+            showLinkedMentions: false,
+            linkedMentionsCollapsed: false,
+        },
         collapseStore: new CollapsibleStateStore(asApp(app)),
         layoutMemory: new LayoutMemory(asApp(app)),
+        backlinks: new BacklinkIndex(() => ({})),
     });
 }
 
@@ -89,7 +96,7 @@ export function makeStubbedView(app: object = makeApp()) {
     const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, service);
     view["renderer"] = fake<NoteRenderer>({
         createBlock: vi.fn(() => document.createElement("div")),
-        renderInto: vi.fn().mockResolvedValue(new Component()),
+        renderInto: vi.fn().mockResolvedValue({ component: new Component(), footer: Promise.resolve() }),
         discard: vi.fn(),
         delegate: vi.fn(),
         onBaseModified: vi.fn().mockResolvedValue(undefined),

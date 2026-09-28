@@ -2,7 +2,7 @@
  * Rebuilds `.dev/vault/` — the local vault docs/TESTING.md's checklist is
  * written against — and installs the current build into it.
  *
- *   node scripts/seed-test-vault.mjs [target-vault]
+ *   pnpm run seed --test [target-vault] [--days N]
  *
  * Destructive: it removes the vault's notes and rewrites them. Obsidian's own
  * config (.obsidian) is written only when absent, so a vault you have already
@@ -11,44 +11,17 @@
 import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { isMain } from "./reload-plugin.mjs";
+import { PLUGIN_ID, TEST_VAULT } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const args = process.argv.slice(2);
-
-/** Reads `--flag value` and `--flag=value` alike. */
-const flagValue = (name) => {
-    const inline = args.find((arg) => arg.startsWith(`${name}=`));
-    if (inline) return inline.slice(name.length + 1);
-    const index = args.indexOf(name);
-    return index === -1 ? undefined : args[index + 1];
-};
-
-const positional = args.filter((arg, index) => !arg.startsWith("--") && args[index - 1] !== "--days");
-const vault = resolve(positional[0] ?? join(REPO, ".dev", "vault"));
 const NOTES = "Notes";
-const PLUGIN_ID = "daily-notes-stream";
 const ASSETS = ["main.js", "manifest.json", "styles.css"];
-
-const write = (relative, contents) => {
-    const target = join(vault, relative);
-    mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, contents);
-};
-
-/** Writes Obsidian's own config only when it is missing, so a vault in use keeps its state. */
-const writeConfigOnce = (relative, contents) => {
-    if (!existsSync(join(vault, relative))) write(relative, contents);
-};
 
 const body = (...lines) => lines.join("\n") + "\n";
 
 /** The stream loads 10 at a time, so this is a dozen batches of scrolling. */
 const DEFAULT_DAYS = 120;
-const days = Number(flagValue("--days") ?? DEFAULT_DAYS);
-if (!Number.isInteger(days) || days < 1) {
-    console.error(`--days wants a positive whole number, got: ${flagValue("--days")}`);
-    process.exit(1);
-}
 
 const fillerDate = (index) => {
     const date = new Date(Date.UTC(2026, 7, 29) - index * 86_400_000);
@@ -200,20 +173,21 @@ SHAPES.push((index) => [
 
 const filler = (index) => body(...SHAPES[index % SHAPES.length](index));
 
-rmSync(join(vault, NOTES), { recursive: true, force: true });
-rmSync(join(vault, "Elsewhere"), { recursive: true, force: true });
-rmSync(join(vault, "Bases"), { recursive: true, force: true });
+/**
+ * The vault as `{ path: contents }`: `days` filler notes ending on 2026-08-29,
+ * and the notes, Bases and files docs/TESTING.md names.
+ * @param {{ days: number }} options
+ * @returns {Record<string, string>}
+ */
+export function testVault({ days }) {
+    /** @type {Record<string, string>} */
+    const vault = {};
+    for (let index = 0; index < days; index++) vault[`${NOTES}/${fillerDate(index)}.md`] = filler(index);
 
-for (let index = 0; index < days; index++) {
-    write(join(NOTES, `${fillerDate(index)}.md`), filler(index));
-}
+    for (const [name, lines] of Object.entries(BASES)) vault[`Bases/${name}`] = body(...lines);
 
-for (const [name, lines] of Object.entries(BASES)) write(join("Bases", name), body(...lines));
-
-// The newest note: one of each embed, each drawn so that nothing scrolls.
-write(
-    join(NOTES, "2026-08-30.md"),
-    body(
+    // The newest note: one of each embed, each drawn so that nothing scrolls.
+    vault[`${NOTES}/2026-08-30.md`] = body(
         "## Bases",
         "",
         "On a phone or tablet each is a table while it fits the note, and cards once it does not.",
@@ -265,13 +239,10 @@ write(
         "| Column one | Column two | Column three | Column four | Column five | Column six | Column seven |",
         "| --- | --- | --- | --- | --- | --- | --- |",
         "| a | b | c | d | e | f | g |"
-    )
-);
+    );
 
-// The two notes docs/TESTING.md names by date, with the frontmatter it lists.
-write(
-    join(NOTES, "2026-02-01.md"),
-    body(
+    // The two notes docs/TESTING.md names by date, with the frontmatter it lists.
+    vault[`${NOTES}/2026-02-01.md`] = body(
         "---",
         "tags:",
         "  - test",
@@ -304,12 +275,9 @@ write(
         "## A heading holding a [link](https://obsidian.md)",
         "",
         "Clicking that link must not collapse this section."
-    )
-);
+    );
 
-write(
-    join(NOTES, "2026-01-15.md"),
-    body(
+    vault[`${NOTES}/2026-01-15.md`] = body(
         "---",
         "tags:",
         "  - backlink",
@@ -327,24 +295,18 @@ write(
         "## Evening",
         "",
         "Nothing to report."
-    )
-);
+    );
 
-write(
-    join(NOTES, "test-image.svg"),
-    body(
+    vault[`${NOTES}/test-image.svg`] = body(
         '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="80" viewBox="0 0 240 80">',
         '    <rect width="240" height="80" rx="8" fill="#7c3aed" />',
         '    <text x="120" y="48" font-family="sans-serif" font-size="20" fill="#fff" text-anchor="middle">test-image.svg</text>',
         "</svg>"
-    )
-);
+    );
 
-// What 2026-02-01 links to. Long, so its #Later link has somewhere to scroll;
-// Someday.md is removed so that link stays unresolved even after a click made it.
-write(
-    "Reading list.md",
-    body(
+    // What 2026-02-01 links to. Long, so its #Later link has somewhere to scroll;
+    // main() removes Someday.md, so that link stays unresolved even after a click made it.
+    vault["Reading list.md"] = body(
         "# Reading list",
         "",
         ...Array.from({ length: 80 }, (_, i) => `- Book ${i + 1}`),
@@ -352,31 +314,88 @@ write(
         "## Later",
         "",
         "- Middlemarch"
-    )
-);
-rmSync(join(vault, "Someday.md"), { force: true });
+    );
 
-// Neither of these is a daily note; neither may appear in the stream.
-write(join(NOTES, "2026-01-20.png"), "not really a png");
-write(join("Elsewhere", "2026-01-21.md"), body("Dated, but outside the daily-notes folder."));
+    // Neither of these is a daily note; neither may appear in the stream.
+    vault[`${NOTES}/2026-01-20.png`] = "not really a png";
+    vault["Elsewhere/2026-01-21.md"] = body("Dated, but outside the daily-notes folder.");
 
-writeConfigOnce(".obsidian/daily-notes.json", JSON.stringify({ folder: NOTES, format: "YYYY-MM-DD" }, null, 2));
-writeConfigOnce(".obsidian/core-plugins.json", JSON.stringify({ "daily-notes": true }, null, 2));
-writeConfigOnce(".obsidian/community-plugins.json", JSON.stringify([PLUGIN_ID], null, 2));
-writeConfigOnce(".obsidian/appearance.json", JSON.stringify({ theme: "system" }, null, 2));
-
-const missing = ASSETS.filter((asset) => !existsSync(join(REPO, asset)));
-if (missing.length > 0) {
-    console.error(`Build first — missing ${missing.join(", ")}. Run: pnpm run build`);
-    process.exit(1);
+    // The newest note's linked mentions, one of each case docs/TESTING.md checks.
+    // Agenda exists twice: Plan's [[Agenda]] must open the one beside Plan.
+    const newest = `[[${fillerDate(0)}]]`;
+    vault["Projects/Plan.md"] = body(
+        "# Plan",
+        "",
+        "- Launch",
+        `    - Review ${newest} with the team at the [[Agenda]]`,
+        "- Only this item shows under the newest note, not the whole list",
+        "",
+        `A paragraph that mentions ${newest} in the middle of a sentence long enough to wrap on a phone.`,
+        "",
+        "| Column one | Column two | Column three | Column four | Column five | Column six | Column seven |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        `| ${newest} | b | c | d | e | f | g |`
+    );
+    vault["Projects/Agenda.md"] = body("# Projects agenda", "", "The link in Plan opens this one.");
+    vault[`${NOTES}/Agenda.md`] = body("# Notes agenda", "", "Not a daily note: the stream leaves it out.");
+    vault["Trip.md"] = body("---", `started: "${newest}"`, "---", "", "Packed.");
+    vault["Inbox.md"] = body(`Follow up on ${newest}.`);
+    return vault;
 }
-for (const asset of ASSETS) {
-    const target = join(vault, ".obsidian", "plugins", PLUGIN_ID, asset);
-    mkdirSync(dirname(target), { recursive: true });
-    copyFileSync(join(REPO, asset), target);
+
+export function main() {
+    const args = process.argv.slice(2);
+    /** Reads `--flag value` and `--flag=value` alike. */
+    const flagValue = (name) => {
+        const inline = args.find((arg) => arg.startsWith(`${name}=`));
+        if (inline) return inline.slice(name.length + 1);
+        const index = args.indexOf(name);
+        return index === -1 ? undefined : args[index + 1];
+    };
+    const positional = args.filter((arg, index) => !arg.startsWith("--") && args[index - 1] !== "--days");
+    const vault = resolve(positional[0] ?? TEST_VAULT);
+    const days = Number(flagValue("--days") ?? DEFAULT_DAYS);
+    if (!Number.isInteger(days) || days < 1) {
+        console.error(`--days wants a positive whole number, got: ${flagValue("--days")}`);
+        process.exit(1);
+    }
+
+    const write = (relative, contents) => {
+        const target = join(vault, relative);
+        mkdirSync(dirname(target), { recursive: true });
+        writeFileSync(target, contents);
+    };
+    /** Writes Obsidian's own config only when it is missing, so a vault in use keeps its state. */
+    const writeConfigOnce = (relative, contents) => {
+        if (!existsSync(join(vault, relative))) write(relative, contents);
+    };
+
+    rmSync(join(vault, NOTES), { recursive: true, force: true });
+    rmSync(join(vault, "Elsewhere"), { recursive: true, force: true });
+    rmSync(join(vault, "Bases"), { recursive: true, force: true });
+    for (const [relative, contents] of Object.entries(testVault({ days }))) write(relative, contents);
+    rmSync(join(vault, "Someday.md"), { force: true });
+
+    writeConfigOnce(".obsidian/daily-notes.json", JSON.stringify({ folder: NOTES, format: "YYYY-MM-DD" }, null, 2));
+    writeConfigOnce(".obsidian/core-plugins.json", JSON.stringify({ "daily-notes": true }, null, 2));
+    writeConfigOnce(".obsidian/community-plugins.json", JSON.stringify([PLUGIN_ID], null, 2));
+    writeConfigOnce(".obsidian/appearance.json", JSON.stringify({ theme: "system" }, null, 2));
+
+    const missing = ASSETS.filter((asset) => !existsSync(join(REPO, asset)));
+    if (missing.length > 0) {
+        console.error(`Build first — missing ${missing.join(", ")}. Run: pnpm run build`);
+        process.exit(1);
+    }
+    for (const asset of ASSETS) {
+        const target = join(vault, ".obsidian", "plugins", PLUGIN_ID, asset);
+        mkdirSync(dirname(target), { recursive: true });
+        copyFileSync(join(REPO, asset), target);
+    }
+
+    console.log(
+        `Seeded ${days + 3} daily notes (${fillerDate(days - 1)} to ${fillerDate(0)}, plus the three the docs name).`
+    );
+    console.log(`Installed the plugin into ${vault}`);
 }
 
-console.log(
-    `Seeded ${days + 3} daily notes (${fillerDate(days - 1)} to ${fillerDate(0)}, plus the three the docs name).`
-);
-console.log(`Installed the plugin into ${vault}`);
+if (isMain(import.meta.url)) main();

@@ -75,8 +75,10 @@ function fire(cb: IntersectionObserverCallback, block: HTMLElement, isIntersecti
     cb([{ target: block, isIntersecting } as unknown as IntersectionObserverEntry], {} as IntersectionObserver);
 }
 
-/** A renderer stub that records what it rendered and discarded. */
-function makeRenderer(opts: { render?: (block: HTMLElement) => void | Promise<void> } = {}) {
+/** A renderer stub that records what it rendered and discarded; `footer` stands in for the linked mentions. */
+function makeRenderer(
+    opts: { render?: (block: HTMLElement) => void | Promise<void>; footer?: () => Promise<void> } = {}
+) {
     const discarded: Component[] = [];
     return {
         createBlock: vi.fn((file: TFile) => {
@@ -88,7 +90,7 @@ function makeRenderer(opts: { render?: (block: HTMLElement) => void | Promise<vo
         renderInto: vi.fn(async (block: HTMLElement, _file: TFile) => {
             await opts.render?.(block);
             block.createDiv({ cls: "daily-note-content" });
-            return new Component();
+            return { component: new Component(), footer: opts.footer?.() ?? Promise.resolve() };
         }),
         discard: vi.fn((component: Component) => {
             discarded.push(component);
@@ -416,6 +418,61 @@ describe("NoteWindowManager holds a rendered note until it settles", () => {
         await manager.refresh(block);
 
         expect(heldHeight(block)).toBe("640px");
+    });
+
+    // The footer reads other notes before it draws: a quiet spell before then is not settled.
+    it("holds it until its linked mentions are drawn, then settles as before", async () => {
+        let drawn!: () => void;
+        const renderer = makeRenderer({ footer: () => new Promise((resolve) => (drawn = resolve)) });
+        const heights = new NoteHeights();
+        heights.keep(LAYOUT, FILE.path, 812);
+        const { manager } = makeManager(renderer, () => 640, undefined, heights);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+
+        resize(block);
+        await vi.advanceTimersByTimeAsync(SETTLE_MS * 2);
+        expect(heldHeight(block)).toBe("812px");
+
+        drawn();
+        await settle();
+        expect(heldHeight(block)).toBe("812px");
+        await vi.advanceTimersByTimeAsync(SETTLE_MS);
+        expect(heldHeight(block)).toBe("");
+        expect(heights.heightOf(LAYOUT, FILE.path)).toBe(640);
+    });
+
+    it("renders the next note while one's linked mentions are still drawing", async () => {
+        const renderer = makeRenderer({ footer: () => new Promise(() => {}) });
+        const { manager } = makeManager(renderer);
+        const first = manager.add(FILE);
+        const second = manager.add(new TFile("Notes/2025-01-02.md"));
+        document.body.append(first, second);
+
+        fire(observers.render, first, true);
+        fire(observers.render, second, true);
+        await settle();
+
+        expect(second.querySelector(".daily-note-content")).not.toBeNull();
+    });
+
+    it("settles nothing for a note unloaded before its linked mentions are drawn", async () => {
+        let drawn!: () => void;
+        const renderer = makeRenderer({ footer: () => new Promise((resolve) => (drawn = resolve)) });
+        const heights = new NoteHeights();
+        const { manager } = makeManager(renderer, () => 640, undefined, heights);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+
+        manager.remove(block);
+        drawn();
+        await vi.advanceTimersByTimeAsync(SETTLE_MS * 2);
+
+        expect(heights.heightOf(LAYOUT, FILE.path)).toBeUndefined();
     });
 
     // Collapsing a section is the reader's own change: holding it would leave a gap.
@@ -860,7 +917,7 @@ describe("NoteWindowManager while scrolling", () => {
         renderer.renderInto.mockImplementationOnce(async (el: HTMLElement) => {
             await new Promise((resolve) => setTimeout(resolve, SCROLL_IDLE_MS * 2));
             el.createDiv({ cls: "daily-note-content" });
-            return new Component();
+            return { component: new Component(), footer: Promise.resolve() };
         });
         void manager.refresh(block);
         await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS * 2);
@@ -896,7 +953,7 @@ describe("NoteWindowManager under a fast scroll", () => {
         renderer.renderInto = vi.fn(async (block: HTMLElement) => {
             await new Promise((resolve) => setTimeout(resolve, 10));
             block.createDiv({ cls: "daily-note-content" });
-            return new Component();
+            return { component: new Component(), footer: Promise.resolve() };
         });
         return renderer;
     }

@@ -68,7 +68,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
 
     it("merges saved settings over the defaults", async () => {
         const { plugin } = await loadPlugin({ showProperties: true });
-        expect(plugin.settings).toEqual({ showProperties: true, propertiesCollapsed: false });
+        expect(plugin.settings).toEqual({ ...DEFAULT_SETTINGS, showProperties: true });
     });
 
     it("registers a view factory that builds a stream view", async () => {
@@ -128,6 +128,23 @@ describe("DailyNotesStreamPlugin — onload", () => {
     it("keeps what Bases measured for every view", async () => {
         const { plugin } = await loadPlugin();
         expect(plugin.layoutMemory.bases).toBeInstanceOf(BaseMeasurements);
+    });
+
+    it("keeps one backlink index for every view, inverted from the cache's resolved links", async () => {
+        const { plugin, app } = await loadPlugin();
+        Object.assign(app.metadataCache, { resolvedLinks: { "Notes/a.md": { "Notes/2025-01-01.md": 1 } } });
+
+        expect(plugin.backlinks.sourcesOf("Notes/2025-01-01.md")).toEqual(["Notes/a.md"]);
+    });
+
+    it("inverts the links afresh once the cache has resolved again", async () => {
+        const { plugin, app } = await loadPlugin();
+        const invalidate = vi.spyOn(plugin.backlinks, "invalidate");
+        const resolved = app.metadataCache.on.mock.calls.find(([event]) => event === "resolved")![1] as () => void;
+
+        resolved();
+
+        expect(invalidate).toHaveBeenCalledOnce();
     });
 });
 
@@ -347,11 +364,11 @@ describe("DailyNotesStreamPlugin — activateView", () => {
 describe("DailyNotesStreamPlugin — saveSettings", () => {
     it("persists the settings", async () => {
         const { plugin } = await loadPlugin();
-        plugin.settings.showProperties = true;
+        plugin.settings.showLinkedMentions = false;
 
         await plugin.saveSettings();
 
-        expect(plugin.data).toEqual({ showProperties: true, propertiesCollapsed: false });
+        expect(plugin.data).toEqual({ ...DEFAULT_SETTINGS, showLinkedMentions: false });
     });
 
     it("refreshes every open stream view", async () => {

@@ -960,3 +960,66 @@ so they pinned to the stream's instead and floated over the notes.
 **Rejected:**
 - Leaving them pinned to the stream — they cover other notes' text.
 - Giving the Base its scroll box back — ADR 0008.
+
+## 2026-09-28 — Linked mentions are the stream's own, on the public API
+
+**Decision:** each note ends with a footer built from `resolvedLinks`, inverted
+once per `resolved` by a plugin-wide `BacklinkIndex`
+(`src/render/linked-mentions.ts`). Unlinked mentions are deferred.
+
+**Why:** our footer knows when it has drawn, so the note's height can be held
+until then; it needs no internals.
+
+**Rejected:**
+- Hosting Obsidian's internal backlinks component — brings Better Search Views
+  and unlinked mentions, but fills on its own schedule and is reached only
+  through internals.
+- Scanning every source's links per rendered note — the index answers from one
+  pass.
+
+## 2026-09-28 — A render never waits on its footer; the height hold does
+
+**Decision:** `renderInto` returns with the footer still reading its sources.
+`NoteWindow` keeps the note's `HeightHold` until the footer resolves, then
+settles as before. The footer redraws itself on `resolved`, per note, until
+the note unloads.
+
+**Why:** the render queue also applies vault events, and a footer reads other
+notes; settling before it draws let a returning note dip, which jumps on iOS.
+
+**Rejected:**
+- Awaiting the footer in the queue — every render and vault event waits on
+  other notes' reads.
+- Queuing footer redraws through the view (ADR 0004) — a footer touches no
+  stream state, and unloading its note already stops it.
+
+## 2026-09-28 — The demo vault is the default; the test vault takes `--test`
+
+**Decision:** `seed`, `open` and `demo` act on `.dev/demo-vault/`, and on
+`.dev/vault/` with `--test` (`scripts/vaults.mjs`).
+
+**Why:** the demo vault is the one used day to day; the test vault is for the
+checklist's edge cases.
+
+**Rejected:**
+- Separate `seed:demo` and `seed:test` scripts — `open` and `demo` would need
+  a pair each; one flag reads the same on all three.
+
+## 2026-09-28 — One command opens a vault and keeps it current
+
+**Decision:** `pnpm run demo` builds if there is no build, reseeds the vault,
+links the build in, opens the window and reloads the plugin on every save
+(`scripts/dev-vault.mjs`). It replaces `dev:vault`, `open` and `reload`, which
+had to be run in the right order. The seed scripts still install a copy of the
+build: the phone's iCloud vault needs files, not links.
+
+**Why:** the edit-reload loop took three commands in the right order. The
+vaults are disposable, so a reseed each run costs nothing and keeps their notes
+current with the seed script and the date.
+
+**Rejected:**
+- Seeding only when the seed script or the date changed — a fingerprint to
+  protect notes nobody keeps.
+- Keeping `dev:vault`, `open` and `reload` beside it — four commands for one
+  loop.
+

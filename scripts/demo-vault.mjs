@@ -1,21 +1,22 @@
 /**
  * Writes `.dev/demo-vault/` — a journal that reads like someone's real one, for
- * screenshots and screen recordings. `seed` is for testing: its notes are shaped
- * around edge cases and photograph as scaffolding.
+ * trying the plugin, screenshots and screen recordings. The test vault
+ * (`seed --test`) is for the checklist: its notes are shaped around edge cases
+ * and photograph as scaffolding.
  *
- *   node scripts/demo-vault.mjs [vault] [--days N] [--until YYYY-MM-DD]
+ *   pnpm run seed [vault] [--days N] [--until YYYY-MM-DD]
  *
  * Each note is drawn from a generator seeded by its own date, so a date reads
- * the same on every run and a recording can be retaken. Destructive like `seed`:
+ * the same on every run and a recording can be retaken. Destructive like `seed --test`:
  * the notes are rewritten, `.obsidian` is written only when absent.
  */
 import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { isMain } from "./reload-plugin.mjs";
+import { DEMO_VAULT, PLUGIN_ID } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const PLUGIN_ID = "daily-notes-stream";
 const JOURNAL = "Journal";
 const DAY_MS = 86_400_000;
 
@@ -274,6 +275,34 @@ const WIREFRAME = [
 const personNote = (name) =>
     [...frontmatter({ tags: ["person"] }), `# ${name}`, "", "Works with me on [[Project Atlas]]."].join("\n") + "\n";
 
+/**
+ * Each project's log of the newest days, `dates[0]` the newest: what gives
+ * those days' notes linked mentions. The renovation starts from a property. A
+ * run shorter than the log links its oldest day in place of the days it lacks.
+ */
+const projectNote = (name, dates) => {
+    const recent = (daysBack) => dates[Math.min(daysBack, dates.length - 1)];
+    return (
+        {
+            "Project Atlas": [
+                "# Project Atlas",
+                "",
+                "## Log",
+                "",
+                `- [[${recent(0)}]] — the sidebar survives, the tab bar does not`,
+                `- [[${recent(1)}]] — sync bug is a race between two retries`,
+                `- [[${recent(3)}]] — onboarding down to three steps`,
+            ],
+            "Kitchen renovation": [
+                ...frontmatter({ started: `"[[${recent(4)}]]"` }),
+                "# Kitchen renovation",
+                "",
+                `Tiles ordered on [[${recent(0)}]]. None of the walls are square.`,
+            ],
+        }[name].join("\n") + "\n"
+    );
+};
+
 const bookNote = ([title, { author, status, rating }]) =>
     [...frontmatter({ author, status, rating: rating || "", tags: ["book"] }), `# ${title}`, ""].join("\n") + "\n";
 
@@ -285,33 +314,33 @@ const bookNote = ([title, { author, status, rating }]) =>
 export function demoVault({ until, days }) {
     /** @type {Record<string, string>} */
     const vault = {};
-    for (let index = 0; index < days; index++) {
-        const date = new Date(until.getTime() - index * DAY_MS).toISOString().slice(0, 10);
-        vault[`${JOURNAL}/${date}.md`] = dailyNote(date);
-    }
+    const dates = Array.from({ length: days }, (_, index) =>
+        new Date(until.getTime() - index * DAY_MS).toISOString().slice(0, 10)
+    );
+    for (const date of dates) vault[`${JOURNAL}/${date}.md`] = dailyNote(date);
     for (const book of Object.entries(BOOKS)) vault[`Books/${book[0]}.md`] = bookNote(book);
     for (const name of PEOPLE) vault[`People/${name}.md`] = personNote(name);
-    for (const name of PROJECTS) vault[`Projects/${name}.md`] = `# ${name}\n`;
+    for (const name of PROJECTS) vault[`Projects/${name}.md`] = projectNote(name, dates);
     vault["Reading.base"] = READING_BASE.join("\n") + "\n";
     vault["Attachments/atlas-wireframe.svg"] = WIREFRAME.join("\n") + "\n";
     return vault;
 }
 
-function main() {
+export function main() {
     const args = process.argv.slice(2);
     const flag = (name) => {
         const index = args.indexOf(name);
         return index === -1 ? undefined : args[index + 1];
     };
     const positional = args.filter((arg, index) => !arg.startsWith("--") && !args[index - 1]?.startsWith("--"));
-    const vault = resolve(positional[0] ?? join(REPO, ".dev", "demo-vault"));
+    const vault = resolve(positional[0] ?? DEMO_VAULT);
     const days = Number(flag("--days") ?? 60);
     const now = new Date();
     const until = flag("--until")
         ? new Date(`${flag("--until")}T00:00:00Z`)
         : new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
     if (!Number.isInteger(days) || days < 1 || Number.isNaN(until.getTime())) {
-        console.error("Usage: pnpm run seed:demo [vault] [--days N] [--until YYYY-MM-DD]");
+        console.error("Usage: pnpm run seed [vault] [--days N] [--until YYYY-MM-DD]");
         process.exit(1);
     }
 
@@ -345,7 +374,6 @@ function main() {
     for (const asset of assets) copyFileSync(join(REPO, asset), join(pluginDir, asset));
 
     console.log(`Wrote ${days} journal entries up to ${until.toISOString().slice(0, 10)} into ${vault}`);
-    console.log(`Open it: pnpm run open ${vault}`);
 }
 
 if (isMain(import.meta.url)) main();

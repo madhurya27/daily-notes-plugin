@@ -15,12 +15,10 @@ pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
 pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
 pnpm run test:memory    # e2e/memory.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
 
-pnpm run build && pnpm run seed   # write .dev/vault/ (gitignored) and install the build into it
-pnpm run build && pnpm run seed:demo   # write .dev/demo-vault/: a realistic journal for screenshots and recordings
-pnpm run open .dev/demo-vault          # open it; --desktop, --ipad as for the test vault
-pnpm run open                     # launch Obsidian on it; --help lists the flags
-pnpm run dev:vault                # link the build into .dev/vault/, watch it, reload the plugin on save
-pnpm run reload                   # reload the plugin in the open window, once
+pnpm run demo                     # open .dev/demo-vault/ (gitignored) and reload the plugin on every save; Ctrl-C closes it;
+                                  # reseeds it each run, builds if missing; --desktop, --ipad; --help lists the flags
+pnpm run build && pnpm run seed   # reseed .dev/demo-vault/, a realistic journal, and install the build into it
+# --test on demo and seed: .dev/vault/ instead, the edge cases docs/TESTING.md is written against
 
 pnpm run capture:screenshots   # rewrite the README's stills in docs/images/, from the demo vault
 pnpm run capture:recording     # rewrite only docs/images/demo-desktop.png, the README's recording
@@ -50,6 +48,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   `getSearchHotkeys`, a view's `titleEl` behind `getViewTitle`).
 - `notes/daily-note-service.ts` — the vault's daily notes, nested folders (`YYYY/MM/YYYY-MM-DD`) included,
   newest-first in batches.
+- `notes/backlink-index.ts` — which notes link to each path, inverted from `resolvedLinks`, one per plugin;
+  `notes/linked-mentions.ts` finds each link's list item or section in them.
 - `notes/parsed-dates.ts` — each path's parsed date, shared by every view's service, so a later open parses only
   what is new.
 - `ui/stream-view.ts` — `ItemView` subclass; wires vault events and header actions to the stream. It is the
@@ -75,7 +75,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
 - `render/` — a note's markdown, properties and the gestures on its title and links (`note-renderer.ts`), wide tables as
   cards (`wide-tables.ts`), wide equations shrunk to fit (`wide-equations.ts`), each Base in its own placeholder, as
   cards when too wide (`bases/`), collapsible sections (`collapsible.ts`) and their persisted state
-  (`collapse-store.ts`), bare text beside a block wrapped so WebKit paints highlights on it (`text-beside-blocks.ts`).
+  (`collapse-store.ts`), bare text beside a block wrapped so WebKit paints highlights on it (`text-beside-blocks.ts`),
+  the linked mentions footer, which draws after the note and redraws itself on `resolved` (`linked-mentions.ts`).
 
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest + jsdom, mocking `obsidian` and
 `obsidian-daily-notes-interface` from `tests/mocks/`. Tests typecheck against the mocks, which take their

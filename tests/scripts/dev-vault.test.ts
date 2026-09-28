@@ -1,25 +1,52 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, writeFileSync } from "fs";
+import { lstatSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join, resolve } from "path";
 import { debugPort } from "../../scripts/reload-plugin.mjs";
-import { ASSETS, createChangeFilter, createReloader, linkAssets } from "../../scripts/dev-vault.mjs";
+import {
+    ASSETS,
+    createChangeFilter,
+    createReloader,
+    linkAssets,
+    optionsFrom,
+    stepsFor,
+} from "../../scripts/dev-vault.mjs";
 
 const repoRoot = resolve(__dirname, "../..");
 
 describe("debugPort", () => {
-    it("reads the port Obsidian was launched with", () => {
-        const ps =
-            "/Applications/Obsidian.app/Contents/MacOS/Obsidian --user-data-dir=/x --remote-debugging-port=63416";
-        expect(debugPort(ps)).toBe(63416);
+    const DEV = "/repo/.dev/obsidian-userdata";
+    const obsidian = (dir: string, port?: number) =>
+        `/Applications/Obsidian.app/Contents/MacOS/Obsidian --user-data-dir=${dir}` +
+        (port ? ` --remote-debugging-port=${port}` : "");
+
+    it("reads the port the dev instance was launched with", () => {
+        expect(debugPort(obsidian(DEV, 63416), DEV)).toBe(63416);
     });
 
-    it("returns null when no window carries one", () => {
-        expect(debugPort("/Applications/Obsidian.app/Contents/MacOS/Obsidian --user-data-dir=/x")).toBeNull();
+    it("returns null when the dev instance has none", () => {
+        expect(debugPort(obsidian(DEV), DEV)).toBeNull();
     });
 
-    it("takes the first port when several windows are open", () => {
-        expect(debugPort("a --remote-debugging-port=1000\nb --remote-debugging-port=2000")).toBe(1000);
+    // A save during an e2e run must not reload the plugin inside a test's window.
+    it("passes over e2e instances, whatever order ps lists them in", () => {
+        const ps = [obsidian("/tmp/dns-userdata-a1", 1000), obsidian(DEV, 2000)].join("\n");
+        expect(debugPort(ps, DEV)).toBe(2000);
+        expect(debugPort(obsidian("/tmp/dns-userdata-a1", 1000), DEV)).toBeNull();
+    });
+
+    it("reads it from the main process, past helpers that carry the directory but no port", () => {
+        const helper = `/Applications/Obsidian.app/Contents/Frameworks/Obsidian Helper --type=renderer --user-data-dir=${DEV}`;
+        expect(debugPort([helper, obsidian(DEV, 2000)].join("\n"), DEV)).toBe(2000);
+    });
+
+    it("finds a directory whose path holds a space", () => {
+        const spaced = "/Users/me/Mobile Documents/repo/.dev/obsidian-userdata";
+        expect(debugPort(obsidian(spaced, 4000), spaced)).toBe(4000);
+    });
+
+    it("matches the directory whole, not one it prefixes", () => {
+        expect(debugPort(obsidian(`${DEV}-old`, 3000), DEV)).toBeNull();
     });
 });
 
@@ -56,11 +83,6 @@ describe("linkAssets", () => {
         linkAssets(repoRoot, vault);
         linkAssets(repoRoot, vault);
         expect(lstatSync(join(pluginDir(), "styles.css")).isSymbolicLink()).toBe(true);
-    });
-
-    it("refuses a vault that holds no plugin data, rather than seeding one", () => {
-        expect(() => linkAssets(repoRoot, join(vault, "nope"))).toThrow(/pnpm run seed/);
-        expect(existsSync(join(vault, "nope"))).toBe(false);
     });
 });
 
@@ -156,5 +178,31 @@ describe("createChangeFilter", () => {
         });
 
         expect(changed("gone.js")).toBe(false);
+    });
+});
+
+describe("stepsFor", () => {
+    // The vaults are disposable: a fresh seed each run keeps their notes current with the script and the date.
+    it("builds only when there is no build, and always seeds, links, opens and watches", () => {
+        expect(stepsFor({ built: true })).toEqual(["seed", "link", "open", "watch"]);
+        expect(stepsFor({ built: false })).toEqual(["build", "seed", "link", "open", "watch"]);
+    });
+});
+
+describe("optionsFrom", () => {
+    it("picks the vault named, not a flag's value", () => {
+        expect(optionsFrom(["--position", "900,60", "elsewhere", "--desktop"])).toEqual({
+            named: "elsewhere",
+            seedArgs: ["elsewhere"],
+            openArgs: ["--position", "900,60", "elsewhere", "--desktop"],
+        });
+    });
+
+    it("hands --test to the seed and the window, and layout flags to the window alone", () => {
+        expect(optionsFrom(["--test", "--ipad"])).toEqual({
+            named: undefined,
+            seedArgs: ["--test"],
+            openArgs: ["--test", "--ipad"],
+        });
     });
 });
