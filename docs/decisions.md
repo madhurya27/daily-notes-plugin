@@ -1055,9 +1055,11 @@ navbar right under the header; one icon for two searches reads as a duplicate.
 
 **Decision:** stream search keeps reading every note per query and refresh.
 
-**Why:** `vault.cachedRead` already holds each note until it changes. Across
-1,095 notes (`pnpm run test:memory`) a query takes 1 ms, the first after
-open 43 ms; a refresh after an edit, 1 ms.
+**Why:** across 1,095 notes (`pnpm run test:memory`) a query takes 1 ms, the
+first after open 43 ms, and a refresh finds an edit in 1 ms; with 50 KB
+notes, 5 ms and 136 ms. So `cachedRead` answers from memory and sees the
+edit. Its docs promise only "better performance", so the timing test is the
+guard.
 
 **Rejected:**
 - A source cache per path, invalidated on `modify` — duplicates Obsidian's.
