@@ -1172,3 +1172,44 @@ blank the rest. Failing open shows too much, never hides writing.
 
 - A Notice per failure — a full localStorage refuses every save after.
 - Failing closed (hiding what could not be checked) — writing vanishes silently.
+
+## D-072 — Empty-note verdicts are cached per device, trusted by mtime (2026-09-28)
+
+**Decision:** `EmptyNotes`, one per plugin, keeps each path's verdict keyed by
+`mtime`, filled before the first batch and updated on `metadataCache` `changed`.
+Only notes no bigger than the template plus 1 KB are read. It saves, in the
+vault's localStorage on this device, the template it checked against, when its
+last check of every note began, and each empty note's `mtime`. The next session
+trusts a note unchanged since: empty if saved with that `mtime`, else written. A
+note that fails to read shows and is read on the next check; a check with one
+unread saves nothing.
+
+**Why:** a first open reads only candidates, a later one only what changed. A
+written note costs nothing to save, an empty one about 40 bytes. A note emptied
+on another device, synced with an `mtime` older than the last check, shows until
+it next changes.
+
+**Rejected:**
+
+- Reading every note — thousands of reads at open for a few hundred candidates.
+- Saving every note's verdict — the check's start time vouches for the written
+  ones.
+- Trusting a saved empty note by the check's start time — a synced edit can
+  carry an older `mtime`, and a written note would stay hidden.
+
+## D-073 — Views re-check only the notes whose incoming links changed (2026-09-28)
+
+**Decision:** `LinkChanges`, one per plugin, compares each note's links into the
+daily-notes folder on every `resolve` and, once `resolved`, has each view
+re-check the notes that gained or lost one (ADR 0011: a linked empty note
+shows).
+
+**Why:** a link made or removed shows or hides its target without an open. A
+stream open at launch hides a linked empty note until the links resolve, then
+shows it.
+
+**Rejected:**
+
+- Re-checking every hidden note on `resolved` — the service must track what it
+  hid, for the same answer.
+- Checking backlinks only at open — a new link waits for the next open.

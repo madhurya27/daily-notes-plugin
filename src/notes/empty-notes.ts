@@ -58,7 +58,7 @@ interface Saved {
  * verdict is kept per path for the mtime it was read at, so only a note
  * changed since is read again; a changed template drops them all. The empty
  * ones, and when every note was last checked, are saved: the next session
- * reads only what changed since.
+ * reads only what changed since (docs/DECISIONS.md, D-072).
  */
 export class EmptyNotes {
     private template: Template | null = null;

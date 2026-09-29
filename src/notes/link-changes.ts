@@ -4,7 +4,7 @@ type Listener = (paths: string[]) => void;
 
 /**
  * Which daily notes gained or lost a link, one per plugin: a hidden empty note
- * shows while another links to it (ADR 0011). Each note's links into the
+ * shows while another links to it (ADR 0011; docs/DECISIONS.md, D-073). Each note's links into the
  * daily-notes folder are kept from its last `resolve`, and what changed is told
  * once the cache is `resolved`, when the backlink index is current again.
  */
