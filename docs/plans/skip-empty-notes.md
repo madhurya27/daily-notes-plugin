@@ -39,3 +39,30 @@ first at every step.
 - `docs/TESTING.md`: the checks from step 9, by hand.
 - `CLAUDE.md`: `empty-notes.ts` and `template-match.ts` under Architecture.
 - `docs/TODO.md` → `docs/DONE.md`; ADR 0011 → Accepted.
+
+## Left: phone test, then merge
+
+Steps 1–9 are done, with the failure handling (`D-071`). Build "witty panda" is
+on the iPhone's Demo vault, seeded 2026-09-29: template `Templates/Daily`;
+2026-08-03, 08-26 and 09-03 unwritten; 09-03 linked from
+`Projects/Kitchen renovation`. Force-quit Obsidian once iCloud syncs; the notice
+names the build.
+
+| #   | Do                                              | Expect                                                                  |
+| --- | ----------------------------------------------- | ----------------------------------------------------------------------- |
+| 1   | Scroll the stream                               | 08-26 and 08-03 absent; 09-03 shows, the plumber link under it          |
+| 2   | Scroll back and forth past them                 | No jumps or gaps                                                        |
+| 3   | Write a line in 08-26 (file list or search)     | Appears at its date without reopening; deleting the line hides it again |
+| 4   | Set only `mood` in 08-03                        | Appears                                                                 |
+| 5   | Remove the plumber line from Kitchen renovation | 09-03 hides; undo shows it                                              |
+| 6   | Settings: Linked mentions off                   | 09-03 hides                                                             |
+| 7   | Settings: Hide empty notes off, then on         | All three show without reopening, then hide                             |
+| 8   | Replace today's note with the template text     | Today still shows                                                       |
+| 9   | Jump to date                                    | 08-26 and 08-03 not offered                                             |
+| 10  | Force-quit and reopen                           | Same notes hidden; opens at least as fast                               |
+| 11  | Collapse a section, reopen                      | Stays collapsed                                                         |
+
+Unreadable notes and a full localStorage are covered by unit tests only.
+
+Then: merge `feat/skip-empty-notes` into `main` (`--no-ff`, with approval) and
+delete this plan.
