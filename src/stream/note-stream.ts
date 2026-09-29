@@ -373,12 +373,30 @@ export class NoteStream {
         return this.state.notes[index];
     }
 
-    /** Re-renders every note; reloads instead when what the service lists changed, a setting toggled. */
+    /**
+     * Re-renders every note; reloads instead when what the service lists
+     * changed, a setting toggled, and returns to the reader's place.
+     */
     refresh(): Promise<void> {
         return this.enqueue(async () => {
-            if (await this.service.refreshIfSettingsChanged()) await this.reload();
-            else await this.rerenderAll();
+            const place = this.place();
+            const date = place && this.service.dates()[this.service.indexOf(place.path)];
+            if (!(await this.service.refreshIfSettingsChanged())) return this.rerenderAll();
+            await this.reload();
+            const back = place && date ? this.stillListed(place, date) : null;
+            if (back) await this.returnTo(back);
         });
+    }
+
+    /**
+     * `place`, or when its note is no longer listed, the top of the next older
+     * one; null when none is left.
+     */
+    private stillListed(place: StreamPlace, date: Moment): StreamPlace | null {
+        if (this.service.indexOf(place.path) !== -1) return place;
+        const index = this.service.indexForDate(date);
+        const older = index === -1 ? undefined : this.service.getBatch(index, 1)[0];
+        return older ? { path: older.path, offset: 0 } : null;
     }
 
     /**
@@ -399,6 +417,7 @@ export class NoteStream {
     /** Discards the stream and loads the first batch of the new note set. */
     private async reload(): Promise<void> {
         this.blocks.empty();
+        this.scrollRoot.scrollTop = 0;
         this.scroll.detach();
         this.resetWindow();
         this.state.reset();

@@ -1095,4 +1095,63 @@ describe("the stream's place", () => {
 
         expect(pane.scrollTop).toBe(0);
     });
+
+    // A setting that changes what is listed, such as "Hide empty notes",
+    // reloads the stream; the reader stays where they were reading.
+    describe("after a setting changes what is listed", () => {
+        const dateOf = (file: TFile) => moment(file.basename, "YYYY-MM-DD", true);
+
+        beforeEach(async () => {
+            service.dates = vi.fn(() => notes.map(dateOf));
+            service.indexForDate = vi.fn((target) => notes.findIndex((n) => !dateOf(n).isAfter(target, "day")));
+            Object.defineProperty(pane, "scrollHeight", { value: 20000, configurable: true });
+            await stream.loadMoreNotes();
+            stream.blockOf(notes[5]!)!.getBoundingClientRect = () => ({ top: -150, bottom: 390 }) as DOMRect;
+            pane.scrollTop = 1000;
+        });
+
+        /** The setting hides `hidden`, and the service lists without it. */
+        function hide(...hidden: TFile[]) {
+            service.refreshIfSettingsChanged.mockImplementation(async () => {
+                notes = notes.filter((n) => !hidden.includes(n));
+                return true;
+            });
+        }
+
+        /** The reload starts at the top, with `file`'s rebuilt block 3000px down. */
+        function rebuildsAt(file: TFile) {
+            noteWindow.add.mockImplementation((f: TFile) => {
+                const block = placeholder(f.path);
+                if (f === file) block.getBoundingClientRect = () => ({ top: 3000, bottom: 3540 }) as DOMRect;
+                return block;
+            });
+        }
+
+        it("returns to the note it was at", async () => {
+            hide(notes[20]!);
+            rebuildsAt(notes[5]!);
+
+            await stream.refresh();
+
+            expect(pane.scrollTop).toBe(3150);
+        });
+
+        it("lands on the next older note when the one it was at is now hidden", async () => {
+            const older = notes[6]!;
+            hide(notes[5]!);
+            rebuildsAt(older);
+
+            await stream.refresh();
+
+            expect(pane.scrollTop).toBe(3000);
+        });
+
+        it("stays at the top when no older note is left", async () => {
+            hide(...notes.slice(5));
+
+            await stream.refresh();
+
+            expect(pane.scrollTop).toBe(0);
+        });
+    });
 });

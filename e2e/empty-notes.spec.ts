@@ -214,4 +214,63 @@ test.describe("empty daily notes", () => {
 
         await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
     });
+
+    test.describe("toggling the setting while reading", () => {
+        const block = (page: Page, path: string) => page.locator(`[data-source-path="${path}"]`);
+
+        /** Scrolls the note at `path` to the top of the pane. */
+        const readAt = (page: Page, path: string) =>
+            block(page, path).evaluate((el) => el.scrollIntoView({ block: "start", behavior: "instant" }));
+
+        /**
+         * Waits until every note down to `path` has its height remembered, as
+         * it has by the time a reader reaches a setting.
+         */
+        const settled = (page: Page, path: string) =>
+            expect
+                .poll(() =>
+                    page.evaluate((path) => {
+                        const blocks = [...document.querySelectorAll<HTMLElement>(".daily-note-block")];
+                        const above = blocks.slice(0, blocks.findIndex((b) => b.dataset.sourcePath === path) + 1);
+                        const notes: [string, [string, number][]][] =
+                            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON();
+                        const kept = new Set(notes.flatMap(([, heights]) => heights.map(([p]) => p)));
+                        return above.every((b) => kept.has(b.dataset.sourcePath!));
+                    }, path)
+                )
+                .toBe(true);
+
+        /** How far below the pane's top the note at `path` starts. */
+        const offsetOf = (page: Page, path: string) =>
+            block(page, path).evaluate((el) => {
+                const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                return el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+            });
+
+        test("keeps the note being read at the top", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const reading = `Notes/${seededDate(3)}.md`;
+            await titles(page);
+            await readAt(page, reading);
+            await settled(page, reading);
+
+            await setHideEmptyNotes(page, false);
+
+            await expect(block(page, EMPTY_NOTE)).toHaveCount(1);
+            await expect.poll(() => offsetOf(page, reading)).toBeCloseTo(0, 0);
+        });
+
+        test("moves to the next older note when the one being read is hidden", async ({ obsidian }) => {
+            const { page } = obsidian;
+            await setHideEmptyNotes(page, false);
+            await titles(page);
+            await readAt(page, EMPTY_NOTE);
+            await settled(page, EMPTY_NOTE);
+
+            await setHideEmptyNotes(page, true);
+
+            await expect(block(page, EMPTY_NOTE)).toHaveCount(0);
+            await expect.poll(() => offsetOf(page, `Notes/${seededDate(0)}.md`)).toBeCloseTo(0, 0);
+        });
+    });
 });
