@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-Obsidian plugin: infinite-scroll, read-only stream of all daily notes. Path-
-scoped rules in `.claude/rules/` load with the files they cover: the `src/` map
-(`architecture.md`), release, README captures.
+Obsidian plugin: infinite-scroll, read-only stream of all daily notes. Design
+and file map: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Path-scoped rules in
+`.claude/rules/` load with the files they cover.
 
 ## Commands
 
@@ -101,4 +101,5 @@ Update docs in the same branch as the change that makes them stale:
 - `AGENTS.md` — the sample plugin's copy, verbatim; fix the code to match its
   wording, never the reverse. Its npm commands are the exception: this repo uses
   pnpm.
-- This file and `.claude/rules/` — commands, architecture, invariants.
+- `docs/ARCHITECTURE.md` — layers, ownership, flow, file map.
+- This file and `.claude/rules/` — commands, invariants, instructions.
