@@ -6,7 +6,7 @@
  *
  *   pnpm run demo [--test] [--desktop | --ipad | --landscape] [vault]
  *
- * Why links and a reload: docs/DECISIONS.md, D-008. Watching the linked files covers a
+ * Why links and a reload: D-008. Watching the linked files covers a
  * TypeScript change without knowing anything about the build — `main.js` is
  * what esbuild rewrites — and `styles.css` needs no build at all.
  */

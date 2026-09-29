@@ -40,7 +40,7 @@ describe("plugin submission compliance", () => {
         if ("fundingUrl" in manifest) expect(manifest.fundingUrl).toMatch(/^https:\/\/\S+$/);
     });
 
-    // Obsidian's sample plugin names files in kebab-case; docs/DECISIONS.md, D-023.
+    // Obsidian's sample plugin names files in kebab-case; D-023.
     it("names every source and test file in kebab-case", () => {
         const kebab = /^[a-z0-9]+(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*\.ts$/;
         for (const dir of ["src", "tests", "e2e"]) {

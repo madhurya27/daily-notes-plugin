@@ -46,7 +46,7 @@ Ordered by priority, from the 2026-09 comparison against
 ## Features
 
 New capability, as opposed to the fixes above. Embedded editors are ruled out by
-`docs/DECISIONS.md`, D-001.
+D-001.
 
 Surveyed 2026-09 against core and the community directory. **The filter: what
 operates on a _file_ is already solved elsewhere; only what operates on _the
@@ -75,8 +75,7 @@ stream_ is ours.** ★ marks the recommended first two.
 
 Out of scope: random note (core ships it), task rollup (Tasks owns it, and
 read-only cannot check a box), folder/tag modes (dilutes what the plugin is), a
-tag/header filter (search does it), sticky date header (`docs/DECISIONS.md`,
-D-012).
+tag/header filter (search does it), sticky date header (D-012).
 
 ## Deferred, contingent on how unloading behaves in real use
 

@@ -310,7 +310,7 @@ test.describe("daily notes stream in real Obsidian", () => {
         });
 
         // On iOS an unload mid-glide ends the glide, so none happens until the
-        // scroll stops (docs/DECISIONS.md, D-032).
+        // scroll stops (D-032).
         test("keeps a note scrolled far above rendered until the scroll stops", async ({ obsidian }) => {
             const { page } = obsidian;
             const container = await openStream(page);

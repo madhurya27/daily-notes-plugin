@@ -329,7 +329,7 @@ describe("NoteWindowManager remembered heights", () => {
 
 /**
  * A note renders short and fills: Bases draw empty, images load late. Held at
- * a height it measured before, it never draws the dip (docs/DECISIONS.md, D-054).
+ * a height it measured before, it never draws the dip (D-054).
  */
 describe("NoteWindowManager holds a rendered note until it settles", () => {
     const heldHeight = (block: HTMLElement) => block.style.getPropertyValue("--daily-note-held-height");
@@ -537,7 +537,7 @@ describe("NoteWindowManager after the pane's width changes", () => {
 
     afterEach(() => document.body.empty());
 
-    // docs/DECISIONS.md, D-055.
+    // D-055.
     it("keeps an unloaded note's placeholder, and holds it at what it measured at the new width", async () => {
         const { manager, heights, narrow } = makeResizable();
         heights.keep(NARROW, FILE.path, 1200);
@@ -636,7 +636,7 @@ describe("NoteWindowManager margins", () => {
         expect(marginsPx()).toEqual([2400, 6400]);
     });
 
-    // Turning a phone changes the height too (docs/DECISIONS.md, D-055).
+    // Turning a phone changes the height too (D-055).
     it("keeps the scroll anchor when the pane is resized", () => {
         const root = makeScrollRoot(800);
         const { manager } = makeManager(makeRenderer(), () => 500, root);
@@ -792,7 +792,7 @@ describe("NoteWindowManager unload", () => {
 // Unloading waits for a still scroll
 // ---------------------------------------------------------------------------
 
-/** On iOS an unload mid-glide ends the glide (docs/DECISIONS.md, D-032). */
+/** On iOS an unload mid-glide ends the glide (D-032). */
 describe("NoteWindowManager.scrollToTop", () => {
     it("glides the pane to its top", () => {
         const { manager, scrollRoot } = makeManager();

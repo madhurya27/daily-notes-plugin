@@ -1,32 +1,29 @@
 # CLAUDE.md
 
+Obsidian plugin: infinite-scroll, read-only stream of all daily notes. Design
+and file map: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Path-scoped rules in
+`.claude/rules/` load with the files they cover.
+
 ## Commands
 
 ```bash
-pnpm install       # install deps
-pnpm run dev       # watch mode → main.js
-pnpm run build     # type-check + production build
-pnpm run build:device   # the same, named on load by a notice (two words, from the code): for a build tested on a phone
-pnpm run lint      # ESLint
-pnpm run format    # Prettier (--write); format:check verifies. Markdown wraps at 80, AGENTS.md aside.
-pnpm test          # typecheck tests/ (tests/tsconfig.json), then vitest run
+pnpm install
+pnpm run dev            # watch mode → main.js
+pnpm run build          # type-check + production build (esbuild → CJS main.js, `obsidian` external)
+pnpm run build:device   # the same, named on load by a notice (two words, from the code): for a phone test
+pnpm run lint           # ESLint
+pnpm run format         # Prettier --write; format:check verifies. Markdown wraps at 80, AGENTS.md aside.
+pnpm test               # typecheck tests/ (tests/tsconfig.json), then vitest run
 pnpm run test:coverage  # the same, 100% coverage required
-pnpm run test:e2e  # build + typecheck e2e + playwright against real Obsidian
+pnpm run test:e2e       # build + typecheck e2e + playwright against real Obsidian
 pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
-pnpm run test:memory    # memory.spec.ts and render-cost.spec.ts against a seeded three-year vault (E2E_SEED_DAYS)
+pnpm run test:memory    # memory.spec.ts, render-cost.spec.ts on a seeded three-year vault (E2E_SEED_DAYS)
 
-pnpm run demo                     # open .dev/demo-vault/ (gitignored) and reload the plugin on every save; Ctrl-C closes it;
-                                  # reseeds it each run, builds if missing; --desktop, --ipad; --help lists the flags
+pnpm run demo                     # open .dev/demo-vault/ (gitignored), reload the plugin on every save; Ctrl-C closes it
+                                  # reseeds each run, builds if missing; --desktop, --ipad; --help lists the flags
 pnpm run build && pnpm run seed   # reseed .dev/demo-vault/, a realistic journal, and install the build into it
 # --test on demo and seed: .dev/vault/ instead, the edge cases docs/TESTING.md is written against
-
-pnpm run capture:screenshots   # rewrite the README's stills in docs/images/, from the demo vault
-pnpm run capture:recording     # rewrite only docs/images/demo-desktop.png, the README's recording
 ```
-
-Both show the window: hidden, it produces no frames. The recording is an
-animated PNG assembled by `scripts/frames-to-apng.swift`, so it needs `swift`
-(Xcode Command Line Tools).
 
 ## Quality gates
 
@@ -36,96 +33,29 @@ changes: `src/`, `styles.css`, `manifest.json`, the build (`esbuild.config.mjs`,
 `playwright.config.ts`. Other e2e code runs the specs that use it. Anything else
 needs the other gates, plus a run of whatever the change touches.
 
-## Architecture
+## Tests
 
-Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
-
-Files are kebab-case, grouped by job in `src/` (docs/DECISIONS.md, D-023).
-
-- `main.ts` — plugin lifecycle; registers view, ribbon icon, command, settings
-  tab.
-- `settings.ts` — settings interface, defaults, `PluginSettingTab`.
-- `obsidian-internals.ts` — the single place unsupported internals are read
-  (`getReadableLineLength`, the `vault` "raw" event behind
-  `onVaultConfigChange`, the core global-search plugin and the `search` view's
-  `setQuery` behind `openTagSearch`, `metadataTypeManager` behind
-  `getPropertyIcon`, `hotkeyManager` behind `getSearchHotkeys`, a view's
-  `titleEl` behind `getViewTitle`).
-- `local-storage.ts` — `saveLoggingOnce`, which every localStorage store saves
-  through: a refused save is logged once, never thrown (docs/DECISIONS.md,
-  D-071).
-- `notes/daily-note-service.ts` — the vault's daily notes, nested folders
-  (`YYYY/MM/YYYY-MM-DD`) included, newest-first in batches.
-- `notes/backlink-index.ts` — which notes link to each path, inverted from
-  `resolvedLinks`, one per plugin; `notes/linked-mentions.ts` finds each link's
-  list item or section in them.
-- `notes/empty-notes.ts` — which daily notes hold only their template, one per
-  plugin, kept in the vault's localStorage on this device, and the filter each
-  view's service lists through
-  ([ADR 0011](docs/adr/0011-hide-template-only-notes.md));
-  `notes/template-match.ts` reads the template as a pattern;
-  `notes/link-changes.ts` tells each view which daily notes gained or lost a
-  link, so a linked empty note shows.
-- `notes/parsed-dates.ts` — each path's parsed date, shared by every view's
-  service, so a later open parses only what is new.
-- `ui/stream-view.ts` — `ItemView` subclass; wires vault events and header
-  actions to the stream. It is the hover parent Page preview hangs popovers on.
-- `ui/jump-to-date-modal.ts` — the `SuggestModal` behind the header action and
-  the `jump-to-date` command; offers the dates the vault has notes for, in the
-  vault's own format.
-- Search: `notes/note-search.ts` matches sources, `stream/stream-search.ts`
-  steps note to note, `render/search-highlights.ts` paints CSS highlight ranges,
-  `ui/search-bar.ts` is the bar, `ui/hotkey.ts` matches the vault's binding.
-- `stream/note-stream.ts` — the stream's contents: batches, vault-event updates,
-  jumps, rebuilds, all through one queue.
-- `stream/stream-blocks.ts` — where blocks sit: the path→block index, placement
-  ahead of the sentinel, the empty state.
-- `stream/note-window.ts` — renders a block near the viewport, empties it well
-  past; owns each note's `Component`.
-- `stream/scroll-box-guard.ts` — reports Base layouts to the renderer; clips
-  stray scroll boxes once still.
-- `stream/layout-memory.ts` — every note's last measured height
-  (`note-heights.ts`) and which Bases were too wide, each per layout
-  (`layout-table.ts`), kept in the vault's localStorage on this device
-  ([ADR 0010](docs/adr/0010-layout-memory.md)).
-- `stream/height-hold.ts` — holds a note or a Base at an earlier height while it
-  refills, until it settles.
-- `stream/` also holds the loaded range (`stream-state.ts`), the sentinel
-  (`infinite-scroll.ts`), scroll places (`scroll-position.ts`) and, where the
-  platform has none, scroll anchoring (`scroll-anchor.ts`).
-- `render/` — a note's markdown, properties and the gestures on its title and
-  links (`note-renderer.ts`), wide tables as cards (`wide-tables.ts`), wide
-  equations shrunk to fit (`wide-equations.ts`), each Base in its own
-  placeholder, as cards when too wide (`bases/`), collapsible sections
-  (`collapsible.ts`) and their persisted state (`collapse-store.ts`), bare text
-  beside a block wrapped so WebKit paints highlights on it
-  (`text-beside-blocks.ts`), the linked mentions footer, which draws after the
-  note and redraws itself on `resolved` (`linked-mentions.ts`).
-
-Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest +
-jsdom, mocking `obsidian` and `obsidian-daily-notes-interface` from
-`tests/mocks/`. Tests typecheck against the mocks, which take their signatures
-from the real API (docs/DECISIONS.md, D-025).
-
-**The test split is a contract**
-([ADR 0002](docs/adr/0002-real-obsidian-e2e.md)): jsdom loads no stylesheet, so
-a visibility assertion there proves nothing. Anything about real rendering, real
-events, or what is visible on screen belongs in `e2e/`, which drives the
-installed app against a throwaway vault. Every spec runs twice, desktop and
-mobile. Both are Chromium; what iOS's engine paints or computes differently is
-checked in `e2e/webkit.spec.ts`, on a snapshot of the mobile run
-([ADR 0009](docs/adr/0009-webkit-render-checks.md)).
-
-**Look at a UI change before handing it over.** Screenshot it from the e2e
-harness, desktop and mobile, and inspect the image: measurements prove a rule
-was matched, not that the result looks right.
+- Unit: Vitest + jsdom, mocking `obsidian` and `obsidian-daily-notes-interface`
+  from `tests/mocks/`. The mocks take their signatures from the real API, so
+  tests typecheck against them (D-025).
+- **The split is a contract** ([ADR 0002](docs/adr/0002-real-obsidian-e2e.md)):
+  jsdom loads no stylesheet, so a visibility assertion there proves nothing.
+  Real rendering, real events and what is visible on screen belong in `e2e/`,
+  which drives the installed app against a throwaway vault.
+- Every e2e spec runs twice, desktop and mobile, both Chromium. What iOS's
+  engine paints or computes differently is checked in `e2e/webkit.spec.ts`, on a
+  snapshot of the mobile run
+  ([ADR 0009](docs/adr/0009-webkit-render-checks.md)).
+- **Look at a UI change before handing it over.** Screenshot it from the e2e
+  harness, desktop and mobile, and inspect the image: measurements prove a rule
+  was matched, not that the result looks right.
 
 ## Invariants
 
 Traps that span files, so no single file's comments can hold them.
 
 - **`state.notes` always equals `service.getBatch(0, state.length)`.** Breaking
-  it desyncs `getBatch()` pagination — notes skipped or duplicated on further
+  it desyncs `getBatch()` pagination: notes skipped or duplicated on further
   scroll. `create`/`delete`/`rename` must route through
   `service.insertSorted`/`removeSorted`, and a note is rendered only when its
   global index falls in `[0, offset)`.
@@ -135,36 +65,27 @@ Traps that span files, so no single file's comments can hold them.
   DOM's `data-source-path` is the _old_ path: look the element up by `oldPath`,
   remove from cache and state by `file.path`.
 - **A note re-renders on `metadataCache.on("changed")`, not
-  `vault.on("modify")`** — the cache lags the write, and the renderer reads the
+  `vault.on("modify")`**: the cache lags the write, and the renderer reads the
   cache. `modify` only redraws cards copied from a `.base` file, which has no
   metadata.
 - **A block may hold no content.** Only notes near the viewport are rendered
-  ([ADR 0006](docs/adr/0006-unload-off-screen-notes.md)); everything else is an
-  empty `.daily-note-block` reserving its height. Never assume a block's
-  children exist, and never key anything off them — `data-source-path` is on the
-  block, and `StreamBlocks`' path→block index is the only lookup.
-- **Delegated listeners**: chevrons, note titles and links are rebuilt on every
-  re-render, so nothing binds a listener per element —
-  `CollapsibleManager.delegate()` and `NoteRenderer.delegate()` register one
-  listener per gesture on the stream container, resolving the target through a
-  `WeakMap` or the DOM. Binding per element would pile registrations on the view
-  until it closes.
+  ([ADR 0006](docs/adr/0006-unload-off-screen-notes.md)); the rest are empty
+  `.daily-note-block`s reserving their height. Never assume or key anything off
+  a block's children: `data-source-path` is on the block, and `StreamBlocks`'
+  path→block index is the only lookup.
+- **Delegated listeners.** Chevrons, note titles and links are rebuilt on every
+  re-render, so `CollapsibleManager.delegate()` and `NoteRenderer.delegate()`
+  register one listener per gesture on the stream container, resolving the
+  target through a `WeakMap` or the DOM. Per-element listeners would pile up on
+  the view until it closes.
 - **No scroll containers inside a note on mobile**
   ([ADR 0008](docs/adr/0008-nothing-scrolls-on-mobile.md)): one ends iOS glides
-  early. Clip with `overflow: clip`, never `hidden` or `auto`, under
-  `.is-mobile`. `e2e/scroll-boxes.spec.ts` enforces it. Desktop keeps Obsidian's
+  early. Under `.is-mobile`, clip with `overflow: clip`, never `hidden` or
+  `auto`; `e2e/scroll-boxes.spec.ts` enforces it. Desktop keeps Obsidian's
   scroll bars.
 - **TS strictness**: `noUncheckedIndexedAccess` (indexing returns
   `T | undefined`) and `noImplicitReturns`. Lifecycle properties assigned in
   `onload()` need `!` assertions.
-
-## Release
-
-Tag must equal the manifest version exactly, no leading `v`; `pnpm version`
-writes every file through `scripts/version-bump.mjs`. From `1.0.0`, tags are
-annotated (docs/DECISIONS.md, D-039). The workflow gates on format, lint and
-coverage before drafting the release. `tests/repo/release-workflow.test.ts`
-guards its shape.
 
 ## Documentation
 
@@ -172,11 +93,14 @@ Update docs in the same branch as the change that makes them stale:
 
 - `docs/adr/` — one numbered record per non-obvious decision. Rationale and
   rejected options live _only_ here; everything else links to it.
-- `docs/DECISIONS.md` — smaller design decisions: decision, why, rejected.
-  Bigger ones are an ADR. Cite an entry by its ID: `D-023`.
+- `docs/DECISIONS.md` — smaller decisions: decision, why, rejected. Cite by ID:
+  `D-023`.
 - `README.md` — user-facing features, install, usage.
 - `docs/TESTING.md` — manual verification checklist.
-- `docs/DONE.md` / `docs/TODO.md` — move items as work completes.
-- `AGENTS.md` — the sample plugin's copy, verbatim; don't edit its wording, fix
-  the code to match it. Its npm commands are the exception: this repo uses pnpm.
-- This file — commands, architecture, invariants.
+- `docs/TODO.md` — open work; delete an item when it ships. The merges on `main`
+  record what shipped.
+- `AGENTS.md` — the sample plugin's copy, verbatim; fix the code to match its
+  wording, never the reverse. Its npm commands are the exception: this repo uses
+  pnpm.
+- `docs/ARCHITECTURE.md` — layers, ownership, flow, file map.
+- This file and `.claude/rules/` — commands, invariants, instructions.

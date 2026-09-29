@@ -125,7 +125,7 @@ test.describe("search across a multi-year vault", () => {
     test.skip(SEEDED_DAYS < YEARS * 365, "run via pnpm run test:memory");
 
     // Every query and every refresh reads every note. Obsidian's cachedRead
-    // already keeps each note's text until it changes (docs/DECISIONS.md, D-067).
+    // already keeps each note's text until it changes (D-067).
     test("searches the whole vault, and again after an edit, from memory after the first", async ({
         obsidian,
         mobileLayout,
@@ -172,7 +172,7 @@ test.describe("search across a multi-year vault", () => {
 });
 
 // A session's first open parses every markdown file's name, in one task,
-// before any note draws (docs/DECISIONS.md, D-069).
+// before any note draws (D-069).
 test.describe("opening a multi-year vault", () => {
     test.skip(SEEDED_DAYS < YEARS * 365, "run via pnpm run test:memory");
     test.setTimeout(300_000);
@@ -261,7 +261,7 @@ test.describe("opening a multi-year vault", () => {
         );
 
         expect(parse.inFolder.notes).toBe(SEEDED_DAYS);
-        // About 3x phone speed's worst (docs/DECISIONS.md, D-069).
+        // About 3x phone speed's worst (D-069).
         expect(parse.noFolder.ms).toBeLessThan(100);
         expect(open.reads).toBe(SEEDED_DAYS);
         expect(open.ms).toBeLessThan(300);

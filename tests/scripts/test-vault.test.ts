@@ -62,7 +62,7 @@ describe("testVault", () => {
         expect(targets.filter((target) => !names.has(target))).toEqual(["Someday"]);
     });
 
-    // One note of each case docs/TESTING.md's linked mentions checks, all on the newest note.
+    // One note of each linked-mention case docs/TESTING.md lists, all on the newest note.
     describe("links to the newest note, for its linked mentions", () => {
         const newest = "[[2026-08-29]]";
         const linking = paths.filter((path) => !path.startsWith("Notes/") && note(path).includes(newest));
