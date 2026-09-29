@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { testVault } from "../../scripts/seed-test-vault.mjs";
+import { DAILY_TEMPLATE, testVault } from "../../scripts/seed-test-vault.mjs";
 
 const vault = testVault({ days: 120 });
 const paths = Object.keys(vault);
@@ -13,6 +13,31 @@ describe("testVault", () => {
         expect(daily).toContain("Notes/2026-02-01.md");
         expect(daily).toContain("Notes/2026-01-15.md");
         expect(daily.length).toBeGreaterThanOrEqual(120);
+    });
+
+    // docs/TESTING.md, "Empty notes".
+    describe("empty notes", () => {
+        const template = note(`${DAILY_TEMPLATE}.md`);
+
+        it("writes a template with a date placeholder", () => {
+            expect(template).toContain("{{date}}");
+        });
+
+        it("holds a note made from it and never written in, and a blank one", () => {
+            expect(note("Notes/2026-08-27.md")).toBe(template.replace("{{date}}", "2026-08-27"));
+            expect(note("Notes/2026-08-23.md")).toBe("");
+        });
+
+        it("holds one whose only writing is a property", () => {
+            expect(note("Notes/2026-08-25.md")).toBe(
+                template.replace("{{date}}", "2026-08-25").replace("mood:", "mood: rested")
+            );
+        });
+
+        it("holds an empty one another note links to", () => {
+            expect(note("Notes/2026-08-21.md")).toBe(template.replace("{{date}}", "2026-08-21"));
+            expect(note("Notes/Agenda.md")).toContain("[[2026-08-21]]");
+        });
     });
 
     it("keeps the files that must stay out of the stream", () => {

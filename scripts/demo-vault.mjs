@@ -19,6 +19,11 @@ import { DEMO_VAULT, PLUGIN_ID } from "./vaults.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const JOURNAL = "Journal";
+/** The daily-notes template setting: a path without `.md`, as Obsidian stores it. */
+export const DAILY_TEMPLATE = "Templates/Daily";
+const TEMPLATE = ["---", "tags:", "  - daily", "mood:", "---", "", "## Morning", "", "## Work", "", "- ", ""];
+/** About one day in twelve is made from the template and never written in. */
+const UNWRITTEN_ODDS = 1 / 12;
 const DAY_MS = 86_400_000;
 
 /** mulberry32: stable per seed, varied across seeds. */
@@ -431,6 +436,9 @@ const dailyNote = (date) => {
     return lines.join("\n") + "\n";
 };
 
+/** Whether `date` is left unwritten: the same on every run, as its note is. */
+const isUnwritten = (date) => seeded(hash(date))() < UNWRITTEN_ODDS;
+
 const READING_BASE = [
     "filters:",
     "  and:",
@@ -468,7 +476,7 @@ const personNote = (name) =>
  * those days' notes linked mentions. The renovation starts from a property. A
  * run shorter than the log links its oldest day in place of the days it lacks.
  */
-const projectNote = (name, dates) => {
+const projectNote = (name, dates, unwritten) => {
     const recent = (daysBack) => dates[Math.min(daysBack, dates.length - 1)];
     return (
         {
@@ -486,6 +494,7 @@ const projectNote = (name, dates) => {
                 "# Kitchen renovation",
                 "",
                 `Tiles ordered on [[${recent(0)}]]. None of the walls are square.`,
+                ...(unwritten ? ["", `The plumber came round on [[${unwritten}]].`] : []),
             ],
         }[name].join("\n") + "\n"
     );
@@ -505,10 +514,15 @@ export function demoVault({ until, days }) {
     const dates = Array.from({ length: days }, (_, index) =>
         new Date(until.getTime() - index * DAY_MS).toISOString().slice(0, 10)
     );
-    for (const date of dates) vault[`${JOURNAL}/${date}.md`] = dailyNote(date);
+    // The newest is always written: it heads the stream, and every screenshot.
+    const unwritten = dates.filter((date, index) => index > 0 && isUnwritten(date));
+    for (const date of dates) {
+        vault[`${JOURNAL}/${date}.md`] = unwritten.includes(date) ? TEMPLATE.join("\n") : dailyNote(date);
+    }
+    vault[`${DAILY_TEMPLATE}.md`] = TEMPLATE.join("\n");
     for (const book of Object.entries(BOOKS)) vault[`Books/${book[0]}.md`] = bookNote(book);
     for (const name of PEOPLE) vault[`People/${name}.md`] = personNote(name);
-    for (const name of PROJECTS) vault[`Projects/${name}.md`] = projectNote(name, dates);
+    for (const name of PROJECTS) vault[`Projects/${name}.md`] = projectNote(name, dates, unwritten[0]);
     vault["Reading.base"] = READING_BASE.join("\n") + "\n";
     vault["Attachments/atlas-wireframe.svg"] = WIREFRAME.join("\n") + "\n";
     return vault;
@@ -541,12 +555,12 @@ export function main() {
         if (!existsSync(join(vault, relative))) write(relative, JSON.stringify(value, null, 2));
     };
 
-    for (const folder of [JOURNAL, "Books", "People", "Projects", "Attachments"]) {
+    for (const folder of [JOURNAL, "Books", "People", "Projects", "Attachments", "Templates"]) {
         rmSync(join(vault, folder), { recursive: true, force: true });
     }
     for (const [path, contents] of Object.entries(demoVault({ until, days }))) write(path, contents);
 
-    writeConfigOnce(".obsidian/daily-notes.json", { folder: JOURNAL, format: "YYYY-MM-DD" });
+    writeConfigOnce(".obsidian/daily-notes.json", { folder: JOURNAL, format: "YYYY-MM-DD", template: DAILY_TEMPLATE });
     writeConfigOnce(".obsidian/core-plugins.json", { "daily-notes": true, bases: true });
     writeConfigOnce(".obsidian/community-plugins.json", [PLUGIN_ID]);
     writeConfigOnce(".obsidian/app.json", { attachmentFolderPath: "Attachments" });
