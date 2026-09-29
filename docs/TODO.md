@@ -12,6 +12,9 @@ Ordered by priority, from the 2026-09 comparison against
       fit a preview that opens on tap.
 - [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on
       `post-processor-change`.
+- [ ] Desktop: a setting toggled within ~3 s of scrolling loses the reader's
+      place. The notes above have no remembered height yet, and Chromium's
+      anchoring does not absorb their growth once they render.
 - [x] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop.
       Likely the hidden window's frame rate; loading is not the cost, so
       preloading would not help.

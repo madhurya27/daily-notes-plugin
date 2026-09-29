@@ -1,7 +1,7 @@
 import { writeFileSync } from "fs";
 import { join } from "path";
 import type { Page } from "@playwright/test";
-import { test, expect, openStream, seededDate } from "./obsidian";
+import { test, expect, openStream, scrollThroughStream, seededDate } from "./obsidian";
 
 const CONFIG = { folder: "Notes", format: "YYYY-MM-DD" };
 const TEMPLATE_PATH = "Templates/Daily.md";
@@ -12,6 +12,8 @@ const EMPTY_NOTE = `Notes/${EMPTY_DAY}.md`;
 /** Not a daily note: it links to the empty one. */
 const MENTIONING_NOTE = "Meeting.md";
 const EMPTY_TEXT = "---\ntags: daily\n---\n# Sunday, March 15\n\n## Log\n- \n";
+/** Empty notes older than every other, together taller than the pane: the stream's whole end. */
+const OLD_EMPTY_NOTES = ["01", "02", "03", "04", "05", "06"].map((day) => `Notes/2020-01-${day}.md`);
 
 function writeDailyNotesConfig(vaultPath: string, config: Record<string, string>) {
     writeFileSync(join(vaultPath, ".obsidian", "daily-notes.json"), JSON.stringify(config));
@@ -66,7 +68,7 @@ test.describe("empty daily notes", () => {
         const { page, vaultPath } = obsidian;
         await setHideEmptyNotes(page, true);
         writeDailyNotesConfig(vaultPath, CONFIG);
-        const paths = [TEMPLATE_PATH, EMPTY_NOTE, MENTIONING_NOTE, await todayNote(page)];
+        const paths = [TEMPLATE_PATH, EMPTY_NOTE, MENTIONING_NOTE, ...OLD_EMPTY_NOTES, await todayNote(page)];
         await page.evaluate(async (paths) => {
             for (const path of paths) {
                 const file = window.app.vault.getAbstractFileByPath(path);
@@ -213,5 +215,88 @@ test.describe("empty daily notes", () => {
         await setHideEmptyNotes(page, false);
 
         await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
+    });
+
+    test.describe("toggling the setting while reading", () => {
+        const block = (page: Page, path: string) => page.locator(`[data-source-path="${path}"]`);
+
+        /** Scrolls the note at `path` to the top of the pane. */
+        const readAt = (page: Page, path: string) =>
+            block(page, path).evaluate((el) => el.scrollIntoView({ block: "start", behavior: "instant" }));
+
+        /** Waits until every note drawn has its height remembered, as by the time a reader reaches a setting. */
+        const settled = (page: Page) =>
+            expect
+                .poll(() =>
+                    page.evaluate(() => {
+                        const drawn = [
+                            ...document.querySelectorAll<HTMLElement>(".daily-note-block:not(.is-unloaded)"),
+                        ];
+                        const notes: [string, [string, number][]][] =
+                            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON();
+                        const kept = new Set(notes.flatMap(([, heights]) => heights.map(([path]) => path)));
+                        return drawn.every((block) => kept.has(block.dataset.sourcePath!));
+                    })
+                )
+                .toBe(true);
+
+        /** How far below the pane's top the note at `path` starts. */
+        const offsetOf = (page: Page, path: string) =>
+            block(page, path).evaluate((el) => {
+                const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+                return el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+            });
+
+        test("keeps the note being read at the top", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const reading = `Notes/${seededDate(3)}.md`;
+            await titles(page);
+            await readAt(page, reading);
+            await settled(page);
+
+            await setHideEmptyNotes(page, false);
+
+            await expect(block(page, EMPTY_NOTE)).toHaveCount(1);
+            await expect.poll(() => offsetOf(page, reading)).toBeCloseTo(0, 0);
+        });
+
+        test("moves to the next older note when the one being read is hidden", async ({ obsidian }) => {
+            const { page } = obsidian;
+            await setHideEmptyNotes(page, false);
+            await titles(page);
+            await readAt(page, EMPTY_NOTE);
+            await settled(page);
+
+            await setHideEmptyNotes(page, true);
+
+            await expect(block(page, EMPTY_NOTE)).toHaveCount(0);
+            await expect.poll(() => offsetOf(page, `Notes/${seededDate(0)}.md`)).toBeCloseTo(0, 0);
+        });
+
+        test("goes to the end of the stream when no older note is left", async ({ obsidian }) => {
+            const { page } = obsidian;
+            for (const path of OLD_EMPTY_NOTES) await write(page, path, EMPTY_TEXT);
+            await setHideEmptyNotes(page, false);
+            const container = await openStream(page);
+            await scrollThroughStream(container);
+            const pane = container.locator("xpath=..");
+            const oldest = OLD_EMPTY_NOTES[0]!;
+            // Each batch loads as the end comes into view.
+            await expect
+                .poll(async () => {
+                    await pane.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
+                    return block(page, oldest).count();
+                })
+                .toBe(1);
+            await settled(page);
+            await pane.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
+
+            await setHideEmptyNotes(page, true);
+
+            await expect(block(page, oldest)).toHaveCount(0);
+            await expect
+                .poll(() => pane.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop))
+                .toBeLessThan(1);
+        });
     });
 });

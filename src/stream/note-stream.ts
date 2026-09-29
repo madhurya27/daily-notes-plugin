@@ -373,12 +373,37 @@ export class NoteStream {
         return this.state.notes[index];
     }
 
-    /** Re-renders every note; reloads instead when what the service lists changed, a setting toggled. */
+    /**
+     * Re-renders every note; reloads instead when what the service lists
+     * changed, a setting toggled, and returns to the reader's place.
+     */
     refresh(): Promise<void> {
         return this.enqueue(async () => {
-            if (await this.service.refreshIfSettingsChanged()) await this.reload();
-            else await this.rerenderAll();
+            const place = this.place();
+            const date = place && this.service.dates()[this.service.indexOf(place.path)];
+            if (!(await this.service.refreshIfSettingsChanged())) return this.rerenderAll();
+            await this.reload();
+            if (place && date) await this.returnNear(place, date);
         });
+    }
+
+    /**
+     * Returns to `place`; when its note is no longer listed, to the top of the
+     * next older one, or to the end of the stream when none is older.
+     */
+    private async returnNear(place: StreamPlace, date: Moment): Promise<void> {
+        if (this.service.indexOf(place.path) !== -1) return this.returnTo(place);
+        const index = this.service.indexForDate(date);
+        const older = index === -1 ? undefined : this.service.getBatch(index, 1)[0];
+        if (older) return this.returnTo({ path: older.path, offset: 0 });
+        await this.returnToEnd();
+    }
+
+    /** Loads every note and scrolls to the end; an empty stream stays at the top. */
+    private async returnToEnd(): Promise<void> {
+        if (!(await this.loadThrough(this.service.length - 1))) return;
+        this.scrollRoot.scrollTop = this.scrollRoot.scrollHeight;
+        this.window.placed();
     }
 
     /**
@@ -399,6 +424,7 @@ export class NoteStream {
     /** Discards the stream and loads the first batch of the new note set. */
     private async reload(): Promise<void> {
         this.blocks.empty();
+        this.scrollRoot.scrollTop = 0;
         this.scroll.detach();
         this.resetWindow();
         this.state.reset();
