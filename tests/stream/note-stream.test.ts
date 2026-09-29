@@ -1102,6 +1102,7 @@ describe("the stream's place", () => {
         const dateOf = (file: TFile) => moment(file.basename, "YYYY-MM-DD", true);
 
         beforeEach(async () => {
+            Object.defineProperty(service, "length", { get: () => notes.length, configurable: true });
             service.dates = vi.fn(() => notes.map(dateOf));
             service.indexForDate = vi.fn((target) => notes.findIndex((n) => !dateOf(n).isAfter(target, "day")));
             Object.defineProperty(pane, "scrollHeight", { value: 20000, configurable: true });
@@ -1146,8 +1147,17 @@ describe("the stream's place", () => {
             expect(pane.scrollTop).toBe(3000);
         });
 
-        it("stays at the top when no older note is left", async () => {
+        it("goes to the end of the stream when no older note is left", async () => {
             hide(...notes.slice(5));
+
+            await stream.refresh();
+
+            expect(await loadedCount()).toBe(5);
+            expect(pane.scrollTop).toBe(20000);
+        });
+
+        it("stays at the top when every note is now hidden", async () => {
+            hide(...notes);
 
             await stream.refresh();
 

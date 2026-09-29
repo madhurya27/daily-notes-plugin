@@ -383,20 +383,27 @@ export class NoteStream {
             const date = place && this.service.dates()[this.service.indexOf(place.path)];
             if (!(await this.service.refreshIfSettingsChanged())) return this.rerenderAll();
             await this.reload();
-            const back = place && date ? this.stillListed(place, date) : null;
-            if (back) await this.returnTo(back);
+            if (place && date) await this.returnNear(place, date);
         });
     }
 
     /**
-     * `place`, or when its note is no longer listed, the top of the next older
-     * one; null when none is left.
+     * Returns to `place`; when its note is no longer listed, to the top of the
+     * next older one, or to the end of the stream when none is older.
      */
-    private stillListed(place: StreamPlace, date: Moment): StreamPlace | null {
-        if (this.service.indexOf(place.path) !== -1) return place;
+    private async returnNear(place: StreamPlace, date: Moment): Promise<void> {
+        if (this.service.indexOf(place.path) !== -1) return this.returnTo(place);
         const index = this.service.indexForDate(date);
         const older = index === -1 ? undefined : this.service.getBatch(index, 1)[0];
-        return older ? { path: older.path, offset: 0 } : null;
+        if (older) return this.returnTo({ path: older.path, offset: 0 });
+        await this.returnToEnd();
+    }
+
+    /** Loads every note and scrolls to the end; an empty stream stays at the top. */
+    private async returnToEnd(): Promise<void> {
+        if (!(await this.loadThrough(this.service.length - 1))) return;
+        this.scrollRoot.scrollTop = this.scrollRoot.scrollHeight;
+        this.window.placed();
     }
 
     /**
