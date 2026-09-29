@@ -133,7 +133,7 @@ const WIDE = ["file.name", "file.path", "file.folder", "file.ext", "file.size", 
 /** Fits a tablet's note, not a phone's: rotate to flip it. */
 const MIDDLE = ["file.name", "file.path", "file.folder", "file.ext", "file.size"];
 
-/** The Bases the notes embed, one of each case docs/TESTING.md checks. */
+/** The Bases the notes embed, one of each case docs/TESTING.md lists. */
 const BASES = {
     "Wide.base": ["views:", ...tableView("Wide", WIDE)],
     "Middle.base": ["views:", ...tableView("Middle", MIDDLE)],
@@ -326,7 +326,7 @@ export function testVault({ days }) {
     vault[`${NOTES}/2026-01-20.png`] = "not really a png";
     vault["Elsewhere/2026-01-21.md"] = body("Dated, but outside the daily-notes folder.");
 
-    // The newest note's linked mentions, one of each case docs/TESTING.md checks.
+    // The newest note's linked mentions, one of each case docs/TESTING.md lists.
     // Agenda exists twice: Plan's [[Agenda]] must open the one beside Plan.
     const newest = `[[${fillerDate(0)}]]`;
     vault["Projects/Plan.md"] = body(
