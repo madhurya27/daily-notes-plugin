@@ -375,7 +375,7 @@ export class NoteStream {
 
     /**
      * Re-renders every note; reloads instead when what the service lists
-     * changed, a setting toggled, and returns to the reader's place.
+     * changed, a setting toggled, and returns to the reader's place (D-074).
      */
     refresh(): Promise<void> {
         return this.enqueue(async () => {

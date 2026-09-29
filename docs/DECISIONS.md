@@ -1213,3 +1213,18 @@ shows it.
 - Re-checking every hidden note on `resolved` — the service must track what it
   hid, for the same answer.
 - Checking backlinks only at open — a new link waits for the next open.
+
+## D-074 — A setting that changes what is listed keeps the reader's place (2026-09-29)
+
+**Decision:** toggling Hide empty notes or Show linked mentions reloads the
+stream, then returns to the note being read. When that note is now hidden, the
+reader lands at the top of the next older note; with none older, at the end of
+the stream. Only a stream with no notes left starts at the top.
+
+**Why:** the next older note is what the reader was scrolling towards, and the
+end is nearest when nothing older is left.
+
+**Rejected:**
+
+- Back to the top — what a reload did; it throws the reader years away.
+- The next newer note — it is behind the reader, above where they were.
