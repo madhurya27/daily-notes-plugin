@@ -3,7 +3,7 @@ import { BaseMeasurements, baseDigest, type BaseKey } from "../../../src/render/
 
 const key = (path: string, base = "b1", layout = "600:16px"): BaseKey => ({ layout, path, base });
 
-// A Base's height is never kept: its note holds it (docs/DECISIONS.md, D-054).
+// A Base's height is never kept: its note holds it (D-054).
 describe("BaseMeasurements", () => {
     it("keeps which Bases were too wide for a table, per layout", () => {
         const measured = new BaseMeasurements();

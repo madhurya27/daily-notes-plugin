@@ -350,7 +350,7 @@ test.describe("jump to date", () => {
     }
 
     // Turned, a phone redraws the cards being read as a table: the reader lands
-    // as far through the Base as they were (docs/DECISIONS.md, D-056), in
+    // as far through the Base as they were (D-056), in
     // the table while it is held open at the cards' height.
     test("keeps how far the pane's top is through a Base redrawn as a table", async ({ obsidian, mobileLayout }) => {
         test.skip(!mobileLayout, "only a phone draws a Base as cards");

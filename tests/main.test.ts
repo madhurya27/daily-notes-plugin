@@ -192,7 +192,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
         expect(await listed(plugin, app)).toEqual(["Notes/2025-01-01.md"]);
     });
 
-    // A later session reads only what changed since (docs/DECISIONS.md, D-072).
+    // A later session reads only what changed since (D-072).
     it("keeps which notes are empty on this device, saving them as the plugin unloads", async () => {
         const { plugin, app } = await loadPlugin();
         await listed(plugin, app);

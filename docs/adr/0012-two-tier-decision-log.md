@@ -22,7 +22,8 @@ citation did not say which entry it meant.
   entries were written; the date stays in its heading.
 - Both are append-only: a replaced decision is marked superseded, pointing at
   its replacement.
-- A citation names the ID (`docs/DECISIONS.md, D-023`), never a date.
+- A citation is the bare ID (`D-023`), never a date: IDs exist only in the log,
+  so the path adds nothing.
 
 ## Consequences
 
@@ -35,5 +36,7 @@ citation did not say which entry it meant.
 
 - **Everything as an ADR** — a page each for 70 decisions nobody would write.
 - **Citing by date and title** — long, and a retitle breaks it.
+- **Naming the file in each citation** (`docs/DECISIONS.md, D-023`) — length in
+  every comment for what one grep finds.
 - **GitHub heading anchors** — they carry the title, so a retitle breaks them.
 - **One file per log entry** — ADRs again, without the bar for writing one.

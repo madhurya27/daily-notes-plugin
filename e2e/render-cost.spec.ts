@@ -2,7 +2,7 @@ import { test, expect, openStream, emulatePhoneCpu, seededDate, SEEDED_DAYS } fr
 
 /**
  * On mobile a render awaits each Base, then measures tables and equations
- * (docs/DECISIONS.md, D-068). Needs the three-year vault, so it runs
+ * (D-068). Needs the three-year vault, so it runs
  * under `pnpm run test:memory`.
  */
 
@@ -152,7 +152,7 @@ test.describe("render cost on mobile, a Base and equations per note", () => {
         expect(drawn.rows).toBeGreaterThan(0);
         expect(drawn.equations).toBe(2);
         expect(baseMs.length).toBeGreaterThanOrEqual(NOTES);
-        // About 4x what phone speed measured (docs/DECISIONS.md, D-068).
+        // About 4x what phone speed measured (D-068).
         expect(sorted.at(-1)).toBeLessThan(250);
         expect(ms(ours)).toBeLessThan(250);
     });

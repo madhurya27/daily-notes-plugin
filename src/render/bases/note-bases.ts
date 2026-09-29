@@ -9,7 +9,7 @@ import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
 /**
  * A note's Bases, each drawn into its own placeholder as a table or, when the
  * table is wider than the note, as cards — the rule a Markdown table follows
- * (docs/DECISIONS.md, D-033). Cards come straight away when the headers
+ * (D-033). Cards come straight away when the headers
  * alone overrun the note; otherwise the table is drawn, measured on its first
  * layout, and redrawn alone. A measured answer is kept per note and layout, so
  * a note that unloads and comes back is drawn once.
@@ -103,7 +103,7 @@ export class NoteBases {
 
     /**
      * A Base file changed. A copy drawn as cards cannot save, and nothing else
-     * redraws it (docs/DECISIONS.md, D-033); a real embed redraws itself.
+     * redraws it (D-033); a real embed redraws itself.
      */
     async onBaseModified(file: TAbstractFile): Promise<void> {
         const slots = this.copies.get(file.path);

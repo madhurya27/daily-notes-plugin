@@ -3,9 +3,9 @@
 Smaller design decisions. Anything whose reversal means migrating data or
 rewriting across layers belongs in [`adr/`](adr/) instead.
 
-Entries are numbered in order and never renumbered; cite one by its ID
-(`DECISIONS.md, D-023`). A replaced decision is marked superseded by its
-replacement, not rewritten.
+Entries are numbered in order and never renumbered; cite one by its bare ID
+(`D-023`). A replaced decision is marked superseded by its replacement, not
+rewritten.
 
 ## D-001 — Editing is an action on the note, not an editor in the stream (2026-09-15)
 

@@ -1,7 +1,7 @@
 import { Platform, debounce } from "obsidian";
 import { BASE_SLOT_CLASS } from "../render/bases/bases-as-cards";
 
-/** How long the scroll is still before the stream counts it stopped (docs/DECISIONS.md, D-032). */
+/** How long the scroll is still before the stream counts it stopped (D-032). */
 export const SCROLL_IDLE_MS = 300;
 
 /** From a block down to an element, each where it was drawn in the pane, and how tall. */
@@ -29,7 +29,7 @@ export class ScrollAnchor {
     private place: Place = [];
     /**
      * The same from the first element starting inside the pane, held instead
-     * once the pane's width changes (docs/DECISIONS.md, D-057).
+     * once the pane's width changes (D-057).
      */
     private reflowPlace: Place = [];
     /** What the Base the pane's top crosses draws: it fills in after drawing, inside a box held open. */
@@ -212,7 +212,7 @@ export class ScrollAnchor {
     /**
      * How far `point` moved, less `scrolled`. A Base the pane's top crosses is
      * held as far through as it was: redrawn between cards and a table, its
-     * entries keep their order, not their height (docs/DECISIONS.md, D-056).
+     * entries keep their order, not their height (D-056).
      */
     private movedSince(point: Place[number], scrolled: number): number {
         const now = this.topInPane(point.el) + scrolled;
