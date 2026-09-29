@@ -14,10 +14,10 @@ part of the frontmatter block a moment earlier.
 ## Decision
 
 Drive re-render from `metadataCache.on("changed")`, which fires after the cache
-holds the new parse of that file. The handler replaces the note's DOM element
-in place rather than rebuilding the batch.
+holds the new parse of that file. The handler replaces the note's DOM element in
+place rather than rebuilding the batch.
 
-`create`, `delete` and `rename` stay on vault events: they change *which* notes
+`create`, `delete` and `rename` stay on vault events: they change _which_ notes
 exist, not what a note's parsed content is, and they route through
 `service.insertSorted` / `removeSorted` so sort order and the cached range stay
 in step.
@@ -33,6 +33,9 @@ in step.
 
 ## Rejected alternatives
 
-- **Keep `vault.modify`, re-read the file directly** — bypasses the cache the renderer already uses, so the offset can still disagree.
-- **Keep `vault.modify` with a delay** — a guess at the cache's timing, wrong under load.
-- **Re-render the whole batch on any change** — loses scroll position and collapse state for an edit to one note.
+- **Keep `vault.modify`, re-read the file directly** — bypasses the cache the
+  renderer already uses, so the offset can still disagree.
+- **Keep `vault.modify` with a delay** — a guess at the cache's timing, wrong
+  under load.
+- **Re-render the whole batch on any change** — loses scroll position and
+  collapse state for an edit to one note.

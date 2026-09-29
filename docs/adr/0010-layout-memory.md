@@ -17,23 +17,28 @@ state, and `BaseMeasurements`.
 ## Decision
 
 `LayoutMemory`, one per plugin, keeps every note's last measured height per
-layout (content width and text size), and which Bases were too wide, in the vault's
-localStorage on this device. A placeholder reserves the stored height, else the
-layout's median, else 400px. An edited note keeps its last height: nearer than
-any median. Back keeps only the place; the store holds its heights.
+layout (content width and text size), and which Bases were too wide, in the
+vault's localStorage on this device. A placeholder reserves the stored height,
+else the layout's median, else 400px. An edited note keeps its last height:
+nearer than any median. Back keeps only the place; the store holds its heights.
 
 ## Consequences
 
-- Daily notes rarely change once written, so after the first scroll through at
-  a layout, a jump reserves real heights and there is little to owe.
+- Daily notes rarely change once written, so after the first scroll through at a
+  layout, a jump reserves real heights and there is little to owe.
 - A note never measured at this layout is still a guess; the shift covers it.
 - Heights are per device: a phone never reserves what a laptop measured.
 - The store is a cache. A new format bumps its version and starts empty.
 
 ## Rejected alternatives
 
-- **Handing the owed shift over as an animation at the top** — the content still visibly races thousands of pixels.
-- **A scroll buffer above the newest note** — its size is a guess; too big leaves a blank gap to glide into.
-- **Measuring skipped notes ahead, off screen** — renders up to a thousand notes to learn what was measured before.
-- **Plugin data (`data.json`)** — it syncs, so one device's heights would land on another.
-- **Invalidating a height on edit** — the median it falls back to is further off than the old height.
+- **Handing the owed shift over as an animation at the top** — the content still
+  visibly races thousands of pixels.
+- **A scroll buffer above the newest note** — its size is a guess; too big
+  leaves a blank gap to glide into.
+- **Measuring skipped notes ahead, off screen** — renders up to a thousand notes
+  to learn what was measured before.
+- **Plugin data (`data.json`)** — it syncs, so one device's heights would land
+  on another.
+- **Invalidating a height on edit** — the median it falls back to is further off
+  than the old height.

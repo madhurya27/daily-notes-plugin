@@ -2,5 +2,5 @@ main.js
 coverage/
 pnpm-lock.yaml
 
-# Hand-wrapped prose
-*.md
+# The sample plugin's copy, kept verbatim
+AGENTS.md

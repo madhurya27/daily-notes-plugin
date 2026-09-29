@@ -35,7 +35,12 @@ test asserts zero overlap between text and button rects.
 
 ## Rejected alternatives
 
-- **Scope the float to `.is-mobile`** — matches core exactly and leaves desktop untouched, but keeps core's hover overlap and makes the rule depend on a class the e2e mobile project cannot exercise at 420px.
-- **`padding-right` on `pre`** — shortens every line, not just the one beside the button.
-- **Hide the button in the stream** — the stream is read-only, so copying code is one of the few useful actions left.
-- **Restyle or reposition the button** — fighting a core element that core updates without warning.
+- **Scope the float to `.is-mobile`** — matches core exactly and leaves desktop
+  untouched, but keeps core's hover overlap and makes the rule depend on a class
+  the e2e mobile project cannot exercise at 420px.
+- **`padding-right` on `pre`** — shortens every line, not just the one beside
+  the button.
+- **Hide the button in the stream** — the stream is read-only, so copying code
+  is one of the few useful actions left.
+- **Restyle or reposition the button** — fighting a core element that core
+  updates without warning.
