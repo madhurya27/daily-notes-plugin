@@ -42,7 +42,7 @@ export default tseslint.config(
                     message: "Electron is desktop-only; the manifest promises mobile.",
                 },
                 // A placeholder's height is measured at runtime, so custom
-                // properties may be set from code (docs/decisions.md, 2026-09-20).
+                // properties may be set from code (docs/DECISIONS.md, D-003).
                 {
                     selector:
                         "CallExpression[callee.property.name=/^(setProperty|removeProperty)$/][callee.object.property.name='style'][arguments.0.value!=/^--/]",

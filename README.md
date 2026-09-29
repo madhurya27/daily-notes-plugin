@@ -153,6 +153,9 @@ The stream follows Obsidian's theme, light or dark.
 pnpm install && pnpm test && pnpm run lint && pnpm run build
 ```
 
+Why the code is the way it is: [`docs/adr/`](docs/adr/) for architecture,
+[`docs/DECISIONS.md`](docs/DECISIONS.md) for smaller decisions.
+
 ## License
 
 MIT

@@ -232,7 +232,7 @@ retake shows the same content; `pnpm run seed` alone takes `--days N` and
 - On a phone, a quoted table stacks or clips; nothing in the footer scrolls.
   **[e2e]**
 - Better Search Views leaves the footer unchanged: it is the stream's own, not
-  Obsidian's backlinks pane (docs/decisions.md, 2026-09-28).
+  Obsidian's backlinks pane (docs/DECISIONS.md, D-061).
 
 ### Mobile
 

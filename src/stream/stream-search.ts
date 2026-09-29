@@ -35,7 +35,7 @@ type Direction = 1 | -1;
 
 /**
  * Moves through the notes matching a query, counted per note, and through the
- * highlights inside each (docs/decisions.md, 2026-09-23). Every call runs after
+ * highlights inside each (docs/DECISIONS.md, D-022). Every call runs after
  * the ones before it, so a step waits for the search typed ahead of it.
  */
 export class StreamSearch {
@@ -98,7 +98,7 @@ export class StreamSearch {
     /**
      * Marks the topmost match the reader can already see, as Obsidian's own
      * bar marks one as you type — without scrolling, so a half-typed word
-     * never carries the reader years away (docs/decisions.md, 2026-09-23).
+     * never carries the reader years away (docs/DECISIONS.md, D-022).
      */
     private markFirstOnScreen(): void {
         for (const [index, file] of this.matches.entries()) {

@@ -40,7 +40,7 @@ needs the other gates, plus a run of whatever the change touches.
 
 Obsidian plugin: infinite-scroll, read-only stream of all daily notes.
 
-Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
+Files are kebab-case, grouped by job in `src/` (docs/DECISIONS.md, D-023).
 
 - `main.ts` — plugin lifecycle; registers view, ribbon icon, command, settings
   tab.
@@ -95,7 +95,7 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
 Build: esbuild → `main.js` (CJS, `obsidian` external). Unit tests: Vitest +
 jsdom, mocking `obsidian` and `obsidian-daily-notes-interface` from
 `tests/mocks/`. Tests typecheck against the mocks, which take their signatures
-from the real API (docs/decisions.md, 2026-09-23).
+from the real API (docs/DECISIONS.md, D-025).
 
 **The test split is a contract**
 ([ADR 0002](docs/adr/0002-real-obsidian-e2e.md)): jsdom loads no stylesheet, so
@@ -152,8 +152,8 @@ Traps that span files, so no single file's comments can hold them.
 
 Tag must equal the manifest version exactly, no leading `v`; `pnpm version`
 writes every file through `scripts/version-bump.mjs`. From `1.0.0`, tags are
-annotated (docs/decisions.md, 2026-09-25). The workflow gates on format, lint
-and coverage before drafting the release. `tests/repo/release-workflow.test.ts`
+annotated (docs/DECISIONS.md, D-039). The workflow gates on format, lint and
+coverage before drafting the release. `tests/repo/release-workflow.test.ts`
 guards its shape.
 
 ## Documentation
@@ -162,8 +162,8 @@ Update docs in the same branch as the change that makes them stale:
 
 - `docs/adr/` — one numbered record per non-obvious decision. Rationale and
   rejected options live _only_ here; everything else links to it.
-- `docs/decisions.md` — smaller design decisions: decision, why, rejected.
-  Bigger ones are an ADR.
+- `docs/DECISIONS.md` — smaller design decisions: decision, why, rejected.
+  Bigger ones are an ADR. Cite an entry by its ID: `D-023`.
 - `README.md` — user-facing features, install, usage.
 - `docs/TESTING.md` — manual verification checklist.
 - `docs/DONE.md` / `docs/TODO.md` — move items as work completes.
