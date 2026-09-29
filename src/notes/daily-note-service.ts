@@ -56,11 +56,18 @@ export class DailyNoteService {
         private readonly filter = SHOW_ALL
     ) {}
 
-    /** Call once per view, on open. */
+    /**
+     * Call once per view, on open. A failure lists nothing, rather than leave
+     * the view blank, and the next refresh lists again.
+     */
     async initialize(): Promise<void> {
         const format = this.readFormat();
-        this._sorted = await this.buildSorted(format);
-        this.builtFrom = this.signature(format);
+        try {
+            this._sorted = await this.buildSorted(format);
+            this.builtFrom = this.signature(format);
+        } catch (error) {
+            console.error("DailyNotesStream: Failed to list the daily notes", error);
+        }
     }
 
     /**

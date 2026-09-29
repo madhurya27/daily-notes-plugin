@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DailyNoteService, type NoteFilter } from "../../src/notes/daily-note-service";
 import { ParsedDates } from "../../src/notes/parsed-dates";
 import {
@@ -597,6 +597,22 @@ describe("DailyNoteService: hidden notes", () => {
 
         expect(prepared).toEqual([["Notes/2025-01-01.md", "Notes/2025-01-02.md", "Notes/2025-01-03.md"]]);
         expect(paths(svc)).toEqual(["Notes/2025-01-03.md", "Notes/2025-01-01.md"]);
+    });
+
+    it("lists nothing when listing fails, and lists again on the next refresh", async () => {
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        const { filter } = filterHiding([]);
+        const prepare = vi.spyOn(filter, "prepare").mockRejectedValueOnce(new Error("ENOENT"));
+        const svc = new DailyNoteService(__mockMarkdownFiles, new ParsedDates(), filter);
+
+        await svc.initialize();
+        expect(svc.length).toBe(0);
+        expect(error).toHaveBeenCalledOnce();
+
+        expect(await svc.refreshIfSettingsChanged()).toBe(true);
+        expect(prepare).toHaveBeenCalledTimes(2);
+        expect(svc.length).toBe(3);
+        error.mockRestore();
     });
 
     it("inserts no hidden note", async () => {

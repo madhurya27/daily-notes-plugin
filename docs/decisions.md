@@ -1097,8 +1097,9 @@ with no daily-notes folder set; open to the first note, 50–88 ms. Under the
 **Decision:** every async entry point and every localStorage save catches,
 logs to the console, and carries on: a note that will not render says so, a
 read that fails shows its note, a refused save is logged once
-(`saveLoggingOnce`), stored state that does not parse counts as none. Only a
-failed jump raises a Notice.
+(`saveLoggingOnce`), stored state that does not parse counts as none, a list
+that fails to build lists nothing until the next refresh. Only a failed jump
+raises a Notice.
 
 **Why:** a stream is many notes; one bad one, or a full localStorage, must
 not blank the rest. Failing open shows too much, never hides writing.
