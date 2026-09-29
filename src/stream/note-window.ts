@@ -139,7 +139,7 @@ export class NoteWindowManager {
     /**
      * Rebuilds the margins against the pane's new height. A no-op when the
      * height did not change, so dragging a split costs nothing. The anchor
-     * stays (docs/decisions.md, 2026-09-26).
+     * stays (docs/DECISIONS.md, D-055).
      */
     private refreshMargins(): void {
         if (!this.scrollRoot) return;
@@ -344,7 +344,7 @@ export class NoteWindowManager {
      * A height is true only at the width it was measured at: on a new one,
      * nothing is held at the old one, and a note rendering again is held at
      * what it measured at the new one. Placeholders keep their heights until
-     * they render (docs/decisions.md, 2026-09-26). The same width rereads
+     * they render (docs/DECISIONS.md, D-055). The same width rereads
      * nothing.
      */
     private expectLayout(): void {
@@ -430,7 +430,7 @@ export class NoteWindowManager {
     /**
      * styles.css turns the custom property into the reserved height. The name
      * is spelled out rather than shared with the clearing site: the compliance
-     * rule reads the source text for it (docs/decisions.md, 2026-09-20).
+     * rule reads the source text for it (docs/DECISIONS.md, D-003).
      */
     private markUnloaded(block: HTMLElement, height: number): void {
         block.addClass("is-unloaded");

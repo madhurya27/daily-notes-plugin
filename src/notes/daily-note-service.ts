@@ -194,7 +194,7 @@ export class DailyNoteService {
 
     /** Every daily note in the vault, in no order. */
     private datedNotes(format: DateFormat): DatedNote[] {
-        // parseDate, as a live create (docs/decisions.md, 2026-09-23).
+        // parseDate, as a live create (docs/DECISIONS.md, D-026).
         const files = this.markdownFiles();
         const dates = this.parsedDates.datesOf(files, this.dateSignature(format), (file) =>
             this.parseDate(file, format)

@@ -14,7 +14,7 @@ export const PROPERTIES_SECTION_KEY = ":properties";
 /** Reserved key for the linked mentions footer. */
 export const LINKED_MENTIONS_SECTION_KEY = ":linked-mentions";
 
-/** Unwritten this long, a note's missing sections are gone, not mid-edit (docs/decisions.md, 2026-09-23). */
+/** Unwritten this long, a note's missing sections are gone, not mid-edit (docs/DECISIONS.md, D-027). */
 const SETTLED_AFTER_MS = 24 * 60 * 60 * 1000;
 
 /** A section whose collapsed state is persisted per note. */
@@ -135,7 +135,7 @@ export class CollapsibleManager {
 
     /**
      * Expands every collapsed section hiding `node`, unsaved, as Obsidian's
-     * reading view does for a search match (docs/decisions.md, 2026-09-23).
+     * reading view does for a search match (docs/DECISIONS.md, D-024).
      */
     unfold(node: Node): void {
         for (const fold of this.foldsAround(node)) fold.open();

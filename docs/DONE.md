@@ -1,64 +1,98 @@
 # Completed Work
 
 ## Core features shipped
+
 - [x] Stream view: continuous infinite-scroll feed of daily notes
 - [x] Chronological order: newest at top
 - [x] Infinite scroll with `IntersectionObserver` (batch 10, no duplicate load)
 - [x] Rich rendering: markdown, images, embeds, wikilinks, tasks
 - [x] Mobile: responsive layout, touch-friendly
-- [x] Note properties: collapsible frontmatter panel, native styling, icon decorations
-- [x] Linked mentions under each note, drawn off the render queue and held at their height until read
+- [x] Note properties: collapsible frontmatter panel, native styling, icon
+      decorations
+- [x] Linked mentions under each note, drawn off the render queue and held at
+      their height until read
 - [x] Live updates: new/modified/renamed/deleted notes reflect instantly
-- [x] Titles and links open in the stream's tab, as Obsidian's links do; mod-click opens a new tab
-- [x] Links to missing notes fade as in reading view, and unfade once the note exists
-- [x] The status bar clears while the stream has focus, instead of describing the last note
+- [x] Titles and links open in the stream's tab, as Obsidian's links do;
+      mod-click opens a new tab
+- [x] Links to missing notes fade as in reading view, and unfade once the note
+      exists
+- [x] The status bar clears while the stream has focus, instead of describing
+      the last note
 - [x] Back to the stream returns to the note it was scrolled to
-- [x] Notes reserve the height they last measured, across sessions: a scroll up from a jump reaches the top on iOS
+- [x] Notes reserve the height they last measured, across sessions: a scroll up
+      from a jump reaches the top on iOS
 - [x] On mobile, a tap on the header title glides to the top, as in iOS apps
 - [x] Scroll to top, from the command palette while the stream is open
 - [x] iOS: search highlights paint, and stream text selects
 - [x] Visual separation: vertical spacing between notes
 - [x] Collapsible headers (H1–H6) and nested lists
-- [x] Settings refresh: view re-renders on settings change, scroll position preserved
+- [x] Settings refresh: view re-renders on settings change, scroll position
+      preserved
 - [x] Nested folder support (e.g. `YYYY/MM/YYYY-MM-DD.md`)
-- [x] Automated tests with 100% coverage across all source files (Vitest + jsdom)
+- [x] Automated tests with 100% coverage across all source files (Vitest +
+      jsdom)
 - [x] Switch to pnpm
 - [x] Persisted collapse state per note, including the properties panel
 - [x] Keyboard and screen-reader support for collapse chevrons and note titles
-- [x] E2E tests against the real Obsidian app (Playwright over CDP, throwaway vault)
+- [x] E2E tests against the real Obsidian app (Playwright over CDP, throwaway
+      vault)
 - [x] Empty state returns when the last daily note is deleted
 - [x] Reload the stream when Obsidian's daily-note format or folder changes
-- [x] Hide daily notes that hold only their template, except today's; a setting shows them
-- [x] Unload off-screen notes: only blocks near the viewport hold content, and a placeholder holds their space
+- [x] Hide daily notes that hold only their template, except today's; a setting
+      shows them
+- [x] Unload off-screen notes: only blocks near the viewport hold content, and a
+      placeholder holds their space
 - [x] iOS flicks glide to a natural stop: unloads wait for the scroll to stop
-- [x] A turned or narrowed pane keeps the reader's place, and a note rendering again is held at the new width's height
-- [x] iOS glides no longer stop early past Bases and tables: nothing inside the stream scrolls
-- [x] On mobile, a Base too wide for its note draws as cards, as a Markdown table does; desktop scrolls
-- [x] On mobile, a display equation too wide for its note shrinks to fit instead of widening the page
-- [x] Tag click opens Obsidian's search on that tag; mod-click opens it in a new pane
+- [x] A turned or narrowed pane keeps the reader's place, and a note rendering
+      again is held at the new width's height
+- [x] iOS glides no longer stop early past Bases and tables: nothing inside the
+      stream scrolls
+- [x] On mobile, a Base too wide for its note draws as cards, as a Markdown
+      table does; desktop scrolls
+- [x] On mobile, a display equation too wide for its note shrinks to fit instead
+      of widening the page
+- [x] Tag click opens Obsidian's search on that tag; mod-click opens it in a new
+      pane
 - [x] Properties panel shown by default
 - [x] Jump to date, from the view header or the command palette
-- [x] Flaky e2e scroll-position-on-unload: a block measuring nothing reserved nothing and collapsed
-- [x] Split `DailyNotesStreamView`: the view wires events, `NoteStream` owns the stream's contents
-- [x] Jump to date as a suggester over the dates the vault has, in the vault's own format, with the platform's date wheel
-- [x] Jump prompt: the hidden date picker no longer pushes the clear button out of the query box
-- [x] Jump prompt: the calendar button opens the date wheel on iOS, where `showPicker()` opens nothing
-- [x] iOS: the text no longer jumps as notes above the reader render; the stream anchors its own scroll
+- [x] Flaky e2e scroll-position-on-unload: a block measuring nothing reserved
+      nothing and collapsed
+- [x] Split `DailyNotesStreamView`: the view wires events, `NoteStream` owns the
+      stream's contents
+- [x] Jump to date as a suggester over the dates the vault has, in the vault's
+      own format, with the platform's date wheel
+- [x] Jump prompt: the hidden date picker no longer pushes the clear button out
+      of the query box
+- [x] Jump prompt: the calendar button opens the date wheel on iOS, where
+      `showPicker()` opens nothing
+- [x] iOS: the text no longer jumps as notes above the reader render; the stream
+      anchors its own scroll
 - [x] Startup and live events agree on what is a daily note
 - [x] Broken daily-note settings recover once corrected
 - [x] Two open streams stay in step
 - [x] Stale collapse state is pruned a day after the note's last write
 - [x] Typecheck and lint `tests/`, against mocks typed by the real API
-- [x] Pruned the unit suite: duplicates dropped, vacuous tests made to assert, names say behavior
+- [x] Pruned the unit suite: duplicates dropped, vacuous tests made to assert,
+      names say behavior
 - [x] `NoteStream` has its own tests; the view's tests cover only its wiring
-- [x] Search the stream on the vault's own find hotkey, counted per note, stepping through highlights
-- [x] Search opens collapsed sections, unsaved, and labels a match it cannot show `· hidden`
+- [x] Search the stream on the vault's own find hotkey, counted per note,
+      stepping through highlights
+- [x] Search opens collapsed sections, unsaved, and labels a match it cannot
+      show `· hidden`
 - [x] Narrow `CollapsibleManager`'s sibling casts to `Element`
-- [x] `test:memory` bounds unloaded blocks by emptiness, not a node count a heavier note could trip
-- [x] Titles and internal links take Obsidian's link gestures: tab, split, file menu, and hover preview for links
-- [x] Opening the stream skips files outside the daily-notes folder before parsing dates: 70 → 50 ms at 6× CPU, 10-year vault plus 5,000 other notes
-- [x] Each note keeps the date parsed when the list was built: the jump picker opens in 0.0 ms, from 22 ms at 6× CPU in a 10-year vault
-- [x] A later open reuses the dates earlier opens parsed: the list builds in 4 ms, from 52 ms at 6× CPU (10-year vault, 5,000 other notes)
-- [x] The plugin is named "Daily notes stream" in sentence case, so the command palette reads "Daily notes stream: …"
-- [x] The ribbon icon and command open the stream in the current tab, as the graph does; mod-click the icon for a new tab
-- [x] The ribbon icon and tab draw `gallery-vertical-end`, a stack of cards, distinct from core Daily notes' calendar
+- [x] `test:memory` bounds unloaded blocks by emptiness, not a node count a
+      heavier note could trip
+- [x] Titles and internal links take Obsidian's link gestures: tab, split, file
+      menu, and hover preview for links
+- [x] Opening the stream skips files outside the daily-notes folder before
+      parsing dates: 70 → 50 ms at 6× CPU, 10-year vault plus 5,000 other notes
+- [x] Each note keeps the date parsed when the list was built: the jump picker
+      opens in 0.0 ms, from 22 ms at 6× CPU in a 10-year vault
+- [x] A later open reuses the dates earlier opens parsed: the list builds in 4
+      ms, from 52 ms at 6× CPU (10-year vault, 5,000 other notes)
+- [x] The plugin is named "Daily notes stream" in sentence case, so the command
+      palette reads "Daily notes stream: …"
+- [x] The ribbon icon and command open the stream in the current tab, as the
+      graph does; mod-click the icon for a new tab
+- [x] The ribbon icon and tab draw `gallery-vertical-end`, a stack of cards,
+      distinct from core Daily notes' calendar

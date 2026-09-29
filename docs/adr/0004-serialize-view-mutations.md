@@ -30,6 +30,9 @@ still-visible sentinel from queueing a second load for the same batch.
 
 ## Rejected alternatives
 
-- **Per-note locks** — finer-grained, but the bug is about the shared ordered list, not individual notes.
-- **Re-checking state after every await** — every mutating path grows the same defensive code, and one omission brings the bug back.
-- **Debouncing vault events** — hides the race at small scale without removing it.
+- **Per-note locks** — finer-grained, but the bug is about the shared ordered
+  list, not individual notes.
+- **Re-checking state after every await** — every mutating path grows the same
+  defensive code, and one omission brings the bug back.
+- **Debouncing vault events** — hides the race at small scale without removing
+  it.

@@ -7,26 +7,26 @@
 
 Nothing detached a rendered note. Every note the user scrolled past kept its
 whole Markdown subtree in the DOM, plus the child components
-`MarkdownRenderer.render()` registers — which hang off the view until it
-closes, so detaching DOM alone would not have freed them. A fully scrolled
-multi-year vault held all of it at once, which is the ceiling on how far the
-stream can usefully scroll.
+`MarkdownRenderer.render()` registers — which hang off the view until it closes,
+so detaching DOM alone would not have freed them. A fully scrolled multi-year
+vault held all of it at once, which is the ceiling on how far the stream can
+usefully scroll.
 
 ## Decision
 
 Every loaded note has a `.daily-note-block`; only blocks near the viewport hold
-content. `NoteWindowManager` renders a block when it comes within 1.5 viewports and
-empties it once it is 4 viewports away, reserving the height it measured so
+content. `NoteWindowManager` renders a block when it comes within 1.5 viewports
+and empties it once it is 4 viewports away, reserving the height it measured so
 nothing below moves. The margins are viewports rather than pixels — how far
 ahead of the reader the stream works is the same question on a phone and on a
-tall monitor — recomputed from the pane's height on `onResize`. Each note renders into its own `Component`,
-discarded with its DOM.
+tall monitor — recomputed from the pane's height on `onResize`. Each note
+renders into its own `Component`, discarded with its DOM.
 
 The block element, not its content, carries `data-source-path` and is what the
 view's path→element index holds, so a note stays addressable while unloaded.
 `loadBatch` appends placeholders rather than rendered notes: appending is O(1)
-DOM per note, which is what keeps a jump to a distant date (`docs/IMPROVEMENTS.md`
-§F1) cheap.
+DOM per note, which is what keeps a jump to a distant date
+(`docs/IMPROVEMENTS.md` §F1) cheap.
 
 ## Consequences
 
@@ -40,14 +40,20 @@ DOM per note, which is what keeps a jump to a distant date (`docs/IMPROVEMENTS.m
   observer fills it in — but only because the block always exists.
 - A flick can carry a block through both margins between frames. An observer
   reports changes, so that unload is the only one the block gets until it
-  returns: a render in flight records it and honors it on landing, and a
-  render still queued is skipped outright rather than holding the queue.
+  returns: a render in flight records it and honors it on landing, and a render
+  still queued is skipped outright rather than holding the queue.
 - jsdom lays nothing out, so unloading is provable only in `e2e/` (ADR 0002).
 
 ## Rejected alternatives
 
-- **Full virtualization** (absolute positioning, a windowed DOM) — the block set is already bounded by what was scrolled to, and absolute positioning fights Obsidian's reading-view CSS.
-- **Remove blocks entirely and rebuild on scroll-back** — loses the scroll height, so the scrollbar jumps on every unload.
-- **Cap the number of loaded notes** — breaks the stream premise; the vault should be scrollable to its end.
-- **One observer for both edges** — a block sitting on the boundary renders and unloads on every jitter.
-- **Fixed pixel margins** — a phone and a tall monitor would get a different number of screenfuls of lead.
+- **Full virtualization** (absolute positioning, a windowed DOM) — the block set
+  is already bounded by what was scrolled to, and absolute positioning fights
+  Obsidian's reading-view CSS.
+- **Remove blocks entirely and rebuild on scroll-back** — loses the scroll
+  height, so the scrollbar jumps on every unload.
+- **Cap the number of loaded notes** — breaks the stream premise; the vault
+  should be scrollable to its end.
+- **One observer for both edges** — a block sitting on the boundary renders and
+  unloads on every jitter.
+- **Fixed pixel margins** — a phone and a tall monitor would get a different
+  number of screenfuls of lead.

@@ -1,6 +1,6 @@
 /**
  * Reloads the plugin in the window `pnpm run demo` opened, over the debugging
- * port it was launched with. Why here and not in the vault: docs/decisions.md.
+ * port it was launched with. Why here and not in the vault: docs/DECISIONS.md, D-008.
  *
  * Disabling and re-enabling re-runs `onload` and re-injects `styles.css`, which
  * Obsidian otherwise reads once, at load.

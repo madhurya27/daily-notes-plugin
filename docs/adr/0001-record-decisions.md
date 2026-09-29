@@ -1,13 +1,14 @@
 # 0001. Keep architecture decisions in this log
 
-- **Status:** Accepted
+- **Status:** Superseded by [0012](0012-two-tier-decision-log.md), which adds a
+  numbered log for smaller decisions
 - **Date:** 2026-08-30
 
 ## Context
 
-Decisions were being rediscovered from commit bodies and `CLAUDE.md` prose.
-Both record *what* the code does; neither records what was considered and
-rejected, so a later change re-argues a settled question — or quietly undoes it.
+Decisions were being rediscovered from commit bodies and `CLAUDE.md` prose. Both
+record _what_ the code does; neither records what was considered and rejected,
+so a later change re-argues a settled question — or quietly undoes it.
 `CLAUDE.md` had started to absorb rationale, which pushed it towards a design
 document instead of a map of the current system.
 
@@ -34,7 +35,11 @@ for the why. Commit messages stay scoped to their own change.
 
 ## Rejected alternatives
 
-- **A single `DECISIONS.md`** — grows into a file nobody reads, and a per-decision status is hard to keep straight.
-- **Rationale in `CLAUDE.md`** — the status quo; it mixes "what is true now" with "why we chose it" and has no room for rejected options.
-- **Commit messages alone** — the reasoning survives, but only for whoever thinks to run `git log` on the right file.
-- **GitHub issues or the PR description** — off-repo, unversioned, and invisible to anyone reading the code offline.
+- **A single `DECISIONS.md`** — grows into a file nobody reads, and a
+  per-decision status is hard to keep straight.
+- **Rationale in `CLAUDE.md`** — the status quo; it mixes "what is true now"
+  with "why we chose it" and has no room for rejected options.
+- **Commit messages alone** — the reasoning survives, but only for whoever
+  thinks to run `git log` on the right file.
+- **GitHub issues or the PR description** — off-repo, unversioned, and invisible
+  to anyone reading the code offline.
