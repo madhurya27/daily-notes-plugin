@@ -1,6 +1,7 @@
 import { App, debounce } from "obsidian";
 import { BaseMeasurements } from "../render/bases/base-measurements";
 import { NoteHeights } from "./note-heights";
+import { saveLoggingOnce } from "../local-storage";
 
 /** Vault-scoped and per device: a height is only true on the screen that measured it. */
 export const LAYOUT_MEMORY_KEY = "daily-notes-stream:layout";
@@ -18,8 +19,7 @@ export class LayoutMemory {
     readonly notes = new NoteHeights(() => this.saveSoon());
     readonly bases = new BaseMeasurements(() => this.saveSoon());
     private readonly saveSoon = debounce(() => this.save(), SAVE_DELAY_MS);
-    /** A refused save is logged once: every change after it is refused too. */
-    private saveFailed = false;
+    private readonly saveLogged = saveLoggingOnce("layout memory");
 
     constructor(private readonly app: App) {
         const saved: unknown = app.loadLocalStorage(LAYOUT_MEMORY_KEY);
@@ -50,18 +50,14 @@ export class LayoutMemory {
         this.saveSoon.run();
     }
 
-    /** localStorage is a few megabytes, shared by every vault in the app: a save can be refused. */
     private save(): void {
-        try {
+        this.saveLogged(() =>
             this.app.saveLocalStorage(LAYOUT_MEMORY_KEY, {
                 version: VERSION,
                 notes: this.notes.toJSON(),
                 bases: this.bases.toJSON(),
-            });
-        } catch (error) {
-            if (!this.saveFailed) console.error("DailyNotesStream: Failed to save layout memory", error);
-            this.saveFailed = true;
-        }
+            })
+        );
     }
 }
 

@@ -1,4 +1,5 @@
 import { App } from "obsidian";
+import { saveLoggingOnce } from "../local-storage";
 
 /**
  * Collapse state in Obsidian's vault-scoped localStorage. Keys: slugified text
@@ -6,6 +7,8 @@ import { App } from "obsidian";
  * clearForFile() work without key enumeration, which the API does not expose.
  */
 export class CollapsibleStateStore {
+    private readonly saveLogged = saveLoggingOnce("collapse state");
+
     constructor(private readonly app: App) {}
 
     isCollapsed(filePath: string, sectionKey: string): boolean {
@@ -20,7 +23,7 @@ export class CollapsibleStateStore {
 
     /** Both states are persisted: "expanded" has to outlive a re-render too. */
     setCollapsed(filePath: string, sectionKey: string, collapsed: boolean): void {
-        this.app.saveLocalStorage(this.sectionStorageKey(filePath, sectionKey), collapsed);
+        this.save(this.sectionStorageKey(filePath, sectionKey), collapsed);
         this.addToIndex(filePath, sectionKey);
     }
 
@@ -39,16 +42,20 @@ export class CollapsibleStateStore {
         if (kept.length === index.length) return;
 
         for (const sectionKey of index) {
-            if (!keep.has(sectionKey)) this.app.saveLocalStorage(this.sectionStorageKey(filePath, sectionKey), null);
+            if (!keep.has(sectionKey)) this.save(this.sectionStorageKey(filePath, sectionKey), null);
         }
-        this.app.saveLocalStorage(this.indexStorageKey(filePath), kept.length > 0 ? kept : null);
+        this.save(this.indexStorageKey(filePath), kept.length > 0 ? kept : null);
     }
 
     clearForFile(filePath: string): void {
         for (const sectionKey of this.readIndex(filePath)) {
-            this.app.saveLocalStorage(this.sectionStorageKey(filePath, sectionKey), null);
+            this.save(this.sectionStorageKey(filePath, sectionKey), null);
         }
-        this.app.saveLocalStorage(this.indexStorageKey(filePath), null);
+        this.save(this.indexStorageKey(filePath), null);
+    }
+
+    private save(key: string, value: unknown): void {
+        this.saveLogged(() => this.app.saveLocalStorage(key, value));
     }
 
     private sectionStorageKey(filePath: string, sectionKey: string): string {
@@ -68,7 +75,7 @@ export class CollapsibleStateStore {
     private addToIndex(filePath: string, sectionKey: string): void {
         const index = this.readIndex(filePath);
         if (!index.includes(sectionKey)) {
-            this.app.saveLocalStorage(this.indexStorageKey(filePath), [...index, sectionKey]);
+            this.save(this.indexStorageKey(filePath), [...index, sectionKey]);
         }
     }
 }

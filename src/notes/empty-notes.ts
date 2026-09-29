@@ -4,6 +4,7 @@ import type { Moment, NoteFilter } from "./daily-note-service";
 import { isTemplateOnly, templatePattern } from "./template-match";
 import type { BacklinkIndex } from "./backlink-index";
 import type { DailyNotesStreamSettings } from "../settings";
+import { saveLoggingOnce } from "../local-storage";
 
 /** How much a note may outgrow its template and still be read: more is writing. */
 const READ_MARGIN_BYTES = 1024;
@@ -66,8 +67,7 @@ export class EmptyNotes {
     /** When this session's last check of every note began; nothing is saved before one. */
     private checkedAt: number | null = null;
     private readonly saveSoon = debounce(() => this.save(), SAVE_DELAY_MS);
-    /** A refused save is logged once: every change after it is refused too. */
-    private saveFailed = false;
+    private readonly saveLogged = saveLoggingOnce("which notes are empty");
 
     constructor(
         private readonly reader: NoteReader,
@@ -144,15 +144,11 @@ export class EmptyNotes {
         this.saveSoon.run();
     }
 
-    /** localStorage is a few megabytes, shared by every vault in the app: a save can be refused. */
     private save(): void {
         const empty = [...this.verdicts].filter(([, verdict]) => verdict.empty).map(([path, v]) => [path, v.mtime]);
-        try {
-            this.store.save({ version: VERSION, template: this.template?.key, checkedAt: this.checkedAt, empty });
-        } catch (error) {
-            if (!this.saveFailed) console.error("DailyNotesStream: Failed to save which notes are empty", error);
-            this.saveFailed = true;
-        }
+        this.saveLogged(() =>
+            this.store.save({ version: VERSION, template: this.template?.key, checkedAt: this.checkedAt, empty })
+        );
     }
 
     /**

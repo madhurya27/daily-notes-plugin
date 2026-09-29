@@ -46,6 +46,8 @@ Files are kebab-case, grouped by job in `src/` (docs/decisions.md, 2026-09-23).
   `vault` "raw" event behind `onVaultConfigChange`, the core global-search plugin and the `search` view's
   `setQuery` behind `openTagSearch`, `metadataTypeManager` behind `getPropertyIcon`, `hotkeyManager` behind
   `getSearchHotkeys`, a view's `titleEl` behind `getViewTitle`).
+- `local-storage.ts` — `saveLoggingOnce`, which every localStorage store saves through: a refused save is logged
+  once, never thrown (docs/decisions.md, 2026-09-28).
 - `notes/daily-note-service.ts` — the vault's daily notes, nested folders (`YYYY/MM/YYYY-MM-DD`) included,
   newest-first in batches.
 - `notes/backlink-index.ts` — which notes link to each path, inverted from `resolvedLinks`, one per plugin;

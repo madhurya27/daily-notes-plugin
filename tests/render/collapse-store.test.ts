@@ -173,6 +173,22 @@ describe("CollapsibleStateStore", () => {
         expect(indexCall?.[0]).toBe("collapse-idx:notes/2025-01-01.md");
     });
 
+    it("logs a refused save once, and throws from none", () => {
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        store.setCollapsed("file.md", "heading-1", true);
+        app.saveLocalStorage.mockImplementation(() => {
+            throw new DOMException("full", "QuotaExceededError");
+        });
+
+        expect(() => store.setCollapsed("file.md", "heading-2", true)).not.toThrow();
+        expect(() => store.retainOnly("file.md", new Set())).not.toThrow();
+        expect(() => store.clearForFile("file.md")).not.toThrow();
+        expect(() => store.migrate("file.md", "moved.md")).not.toThrow();
+
+        expect(error).toHaveBeenCalledOnce();
+        error.mockRestore();
+    });
+
     it("multiple files maintain independent state", () => {
         store.setCollapsed("a.md", "section", true);
         store.setCollapsed("b.md", "section", true);

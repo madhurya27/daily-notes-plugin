@@ -1091,3 +1091,18 @@ with no daily-notes folder set; open to the first note, 50–88 ms. Under the
 
 **Rejected:**
 - Parsing in chunks, yielding between — splits a task that is not long.
+
+## 2026-09-28 — A failure degrades one thing, and is logged
+
+**Decision:** every async entry point and every localStorage save catches,
+logs to the console, and carries on: a note that will not render says so, a
+read that fails shows its note, a refused save is logged once
+(`saveLoggingOnce`), stored state that does not parse counts as none. Only a
+failed jump raises a Notice.
+
+**Why:** a stream is many notes; one bad one, or a full localStorage, must
+not blank the rest. Failing open shows too much, never hides writing.
+
+**Rejected:**
+- A Notice per failure — a full localStorage refuses every save after.
+- Failing closed (hiding what could not be checked) — writing vanishes silently.
