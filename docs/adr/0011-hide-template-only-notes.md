@@ -43,6 +43,8 @@ notes that gained or lost one. A setting, on by default, turns hiding off.
   check, shows until it next changes.
 - A stream open at launch hides a linked empty note until the links resolve,
   then shows it.
+- A note that fails to read shows, and is read on the next check; a check
+  with one unread saves nothing. An unreadable template hides nothing.
 
 ## Rejected alternatives
 

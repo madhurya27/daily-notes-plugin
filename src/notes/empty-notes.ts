@@ -84,27 +84,44 @@ export class EmptyNotes {
     /** `refresh`, for every daily note: what the next session trusts dates from when it began. */
     async checkAll(files: TFile[]): Promise<void> {
         const startedAt = Date.now();
-        await this.refresh(files);
+        // A note left unread would be vouched for as written.
+        if (!(await this.readStale(files))) return;
         this.checkedAt = startedAt;
         this.saveSoon();
     }
 
     /** Reads, of `files`, the ones changed since their verdict, small enough to be empty, and not trusted from last session. */
     async refresh(files: TFile[]): Promise<void> {
+        await this.readStale(files);
+    }
+
+    /**
+     * `refresh`; whether it read every note. A read that fails leaves the note
+     * without a verdict, so it shows and is read again next time: it may be
+     * deleted mid-check, or not yet downloaded.
+     */
+    private async readStale(files: TFile[]): Promise<boolean> {
         const template = await this.readTemplate();
+        if (!template) return false;
         // A template change mid-read replaces the map; these verdicts land in the old one.
         const verdicts = this.verdicts;
         const saved = this.saved?.template === template.key ? this.saved : null;
         const stale = files.filter((file) => verdicts.get(file.path)?.mtime !== file.stat.mtime);
-        await Promise.all(
+        const read = await Promise.all(
             stale.map(async (file) => {
-                const empty =
-                    file.stat.size <= template.maxBytes &&
-                    (trusted(file, saved) ?? isTemplateOnly(await this.reader.read(file), template.pattern));
-                verdicts.set(file.path, { mtime: file.stat.mtime, empty });
+                try {
+                    const empty =
+                        file.stat.size <= template.maxBytes &&
+                        (trusted(file, saved) ?? isTemplateOnly(await this.reader.read(file), template.pattern));
+                    verdicts.set(file.path, { mtime: file.stat.mtime, empty });
+                    return true;
+                } catch {
+                    return false;
+                }
             })
         );
         if (stale.length > 0 && this.checkedAt !== null) this.saveSoon();
+        return read.every(Boolean);
     }
 
     /** Whether `file` held only its template when last read; false when unread or changed since. */
@@ -138,20 +155,30 @@ export class EmptyNotes {
         }
     }
 
-    /** Resolved as `obsidian-daily-notes-interface` resolves it; read again only once changed. */
-    private async readTemplate(): Promise<Template> {
+    /**
+     * Resolved as `obsidian-daily-notes-interface` resolves it; read again only
+     * once changed. Null when it cannot be read: nothing is empty until it is.
+     */
+    private async readTemplate(): Promise<Template | null> {
         const path = this.templatePath();
         const file = path ? this.reader.resolve(path) : null;
         const key = `${path}\u0000${file?.path}\u0000${file?.stat.mtime}`;
         if (this.template?.key === key) return this.template;
 
-        const text = file ? await this.reader.read(file) : null;
+        this.template = null;
+        this.verdicts = new Map();
+        let text: string | null = null;
+        try {
+            text = file ? await this.reader.read(file) : null;
+        } catch (error) {
+            console.error("DailyNotesStream: Failed to read the daily-notes template; hiding no notes", error);
+            return null;
+        }
         this.template = {
             key,
             pattern: templatePattern(text),
             maxBytes: (file?.stat.size ?? 0) + READ_MARGIN_BYTES,
         };
-        this.verdicts = new Map();
         return this.template;
     }
 }

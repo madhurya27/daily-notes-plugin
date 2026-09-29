@@ -113,6 +113,37 @@ describe("EmptyNotes", () => {
         expect(vault.notes.templatePath()).toBe("Templates/Journal");
     });
 
+    it("shows a note it could not read, and reads it again next time", async () => {
+        const vault = vaultOf({ "Templates/Daily.md": TEMPLATE, "a.md": TEMPLATE, "b.md": TEMPLATE });
+        const [a, b] = [vault.fileAt("a.md"), vault.fileAt("b.md")];
+        vault.read.mockImplementationOnce(vault.read.getMockImplementation()!);
+        vault.read.mockRejectedValueOnce(new Error("ENOENT"));
+
+        await vault.notes.refresh([a, b]);
+        expect(vault.notes.isEmpty(a)).toBe(false);
+        expect(vault.notes.isEmpty(b)).toBe(true);
+
+        await vault.notes.refresh([a, b]);
+        expect(vault.notes.isEmpty(a)).toBe(true);
+    });
+
+    it("hides nothing while the template cannot be read, and reads it again next time", async () => {
+        const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+        const vault = vaultOf({ "Templates/Daily.md": TEMPLATE, "a.md": TEMPLATE });
+        const a = vault.fileAt("a.md");
+        await vault.notes.refresh([a]);
+
+        write(vault, "Templates/Daily.md", TEMPLATE);
+        vault.read.mockRejectedValueOnce(new Error("ENOENT"));
+        await vault.notes.refresh([a]);
+        expect(vault.notes.isEmpty(a)).toBe(false);
+        expect(errors).toHaveBeenCalledOnce();
+
+        await vault.notes.refresh([a]);
+        expect(vault.notes.isEmpty(a)).toBe(true);
+        errors.mockRestore();
+    });
+
     it.each([
         ["no template set", ""],
         ["no template setting", undefined],
@@ -324,6 +355,17 @@ describe("EmptyNotes across sessions", () => {
         vault.notes.flush();
 
         expect(vault.store.save.mock.calls[0]![0]).toMatchObject({ checkedAt: 1_000 });
+    });
+
+    it("vouches for no note after a check that could not read one", async () => {
+        const vault = vaultOf({ ...TEXTS });
+        vault.read.mockImplementationOnce(vault.read.getMockImplementation()!);
+        vault.read.mockRejectedValueOnce(new Error("ENOENT"));
+
+        await vault.notes.checkAll([vault.fileAt("empty.md")]);
+        vault.notes.flush();
+
+        expect(vault.store.save).not.toHaveBeenCalled();
     });
 
     it("saves a verdict one note's re-check changed, a second after", async () => {
