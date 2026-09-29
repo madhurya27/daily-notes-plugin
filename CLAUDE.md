@@ -97,7 +97,8 @@ Update docs in the same branch as the change that makes them stale:
   `D-023`.
 - `README.md` — user-facing features, install, usage.
 - `docs/TESTING.md` — manual verification checklist.
-- `docs/DONE.md` / `docs/TODO.md` — move items as work completes.
+- `docs/TODO.md` — open work; delete an item when it ships. The merges on `main`
+  record what shipped.
 - `AGENTS.md` — the sample plugin's copy, verbatim; fix the code to match its
   wording, never the reverse. Its npm commands are the exception: this repo uses
   pnpm.
