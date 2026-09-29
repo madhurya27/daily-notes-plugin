@@ -137,7 +137,7 @@ export class DailyNoteService {
     }
 
     private buildSorted(format: DateFormat): DatedNote[] {
-        // parseDate, as a live create (docs/decisions.md, 2026-09-23).
+        // parseDate, as a live create (docs/DECISIONS.md, D-026).
         const files = this.markdownFiles();
         const dates = this.parsedDates.datesOf(files, this.signature(format), (file) => this.parseDate(file, format));
         const notes = files

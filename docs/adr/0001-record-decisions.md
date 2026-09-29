@@ -1,6 +1,7 @@
 # 0001. Keep architecture decisions in this log
 
-- **Status:** Accepted
+- **Status:** Superseded by [0012](0012-two-tier-decision-log.md), which adds a
+  numbered log for smaller decisions
 - **Date:** 2026-08-30
 
 ## Context

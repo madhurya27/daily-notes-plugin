@@ -8,9 +8,9 @@
 After a jump, the notes skipped over reserve a guess (ADR 0006). Scrolling back
 up renders them at their real heights, and on iOS, which has no scroll
 anchoring, `ScrollAnchor` draws the growth as a shift and hands it to the scroll
-once it stops (docs/decisions.md, 2026-09-24). Near the top the glide runs out
-of scroll room first: the probe owed 6,076px, so a hand scroll up stopped that
-far short of the newest note. Heights were kept in four places, none of which
+once it stops (docs/DECISIONS.md, D-036). Near the top the glide runs out of
+scroll room first: the probe owed 6,076px, so a hand scroll up stopped that far
+short of the newest note. Heights were kept in four places, none of which
 outlived the plugin: each block's reservation, a per-view median, Back's history
 state, and `BaseMeasurements`.
 

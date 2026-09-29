@@ -31,7 +31,7 @@
 
 /* ScrollAnchor holds the reader's place where the platform does not (iOS):
    native anchoring off, so nothing corrects twice, and the stream drawn shifted
-   until the scroll stops and takes the shift over (docs/decisions.md, 2026-09-24). */
+   until the scroll stops and takes the shift over (docs/DECISIONS.md, D-036). */
 .is-scroll-anchored {
     overflow-anchor: none;
 }
@@ -514,7 +514,7 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
 }
 
 /* Clipped, a Base has no scroll box to pin its header and summaries to
-   (docs/decisions.md, 2026-09-27). */
+   (docs/DECISIONS.md, D-059). */
 .is-mobile .daily-note-block .bases-thead {
     position: static;
 }
