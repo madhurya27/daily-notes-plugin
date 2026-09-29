@@ -147,19 +147,25 @@ describe("StreamBlocks", () => {
 
         it("shows one message before the sentinel", () => {
             const s = addSentinel();
-            blocks.showEmptyState();
+            blocks.showEmptyState("No notes.");
             expect(emptyStates()).toHaveLength(1);
             expect(container.lastChild).toBe(s);
         });
 
         it("never shows a second message", () => {
-            blocks.showEmptyState();
-            blocks.showEmptyState();
+            blocks.showEmptyState("No notes.");
+            blocks.showEmptyState("No notes.");
             expect(emptyStates()).toHaveLength(1);
         });
 
+        it("rewords the message it shows", () => {
+            blocks.showEmptyState("No notes.");
+            blocks.showEmptyState("Every note is hidden.");
+            expect([...emptyStates()].map((el) => el.textContent)).toEqual(["Every note is hidden."]);
+        });
+
         it("hides the message", () => {
-            blocks.showEmptyState();
+            blocks.showEmptyState("No notes.");
             blocks.hideEmptyState();
             expect(emptyStates()).toHaveLength(0);
         });

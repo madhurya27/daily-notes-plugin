@@ -20,6 +20,12 @@ const ASSETS = ["main.js", "manifest.json", "styles.css"];
 
 const body = (...lines) => lines.join("\n") + "\n";
 
+/** The daily-notes template setting: a path without `.md`, as Obsidian stores it. */
+export const DAILY_TEMPLATE = "Templates/Daily";
+const TEMPLATE = body("---", "mood:", "tags:", "  - daily", "---", "", "# {{date}}", "", "## Morning", "", "- ");
+/** A note made from the template on `date`, as the daily-notes plugin fills it in. */
+const fromTemplate = (date) => TEMPLATE.replace("{{date}}", date);
+
 /** The stream loads 10 at a time, so this is a dozen batches of scrolling. */
 const DEFAULT_DAYS = 120;
 
@@ -337,7 +343,20 @@ export function testVault({ days }) {
         `| ${newest} | b | c | d | e | f | g |`
     );
     vault["Projects/Agenda.md"] = body("# Projects agenda", "", "The link in Plan opens this one.");
-    vault[`${NOTES}/Agenda.md`] = body("# Notes agenda", "", "Not a daily note: the stream leaves it out.");
+    vault[`${NOTES}/Agenda.md`] = body(
+        "# Notes agenda",
+        "",
+        "Not a daily note: the stream leaves it out.",
+        "",
+        "Nothing written on [[2026-08-21]] yet."
+    );
+
+    // "Empty notes" in the checklist: hidden, but for a property or a link.
+    vault[`${DAILY_TEMPLATE}.md`] = TEMPLATE;
+    vault[`${NOTES}/2026-08-27.md`] = fromTemplate("2026-08-27");
+    vault[`${NOTES}/2026-08-25.md`] = fromTemplate("2026-08-25").replace("mood:", "mood: rested");
+    vault[`${NOTES}/2026-08-23.md`] = "";
+    vault[`${NOTES}/2026-08-21.md`] = fromTemplate("2026-08-21");
     vault["Trip.md"] = body("---", `started: "${newest}"`, "---", "", "Packed.");
     vault["Inbox.md"] = body(`Follow up on ${newest}.`);
     return vault;
@@ -373,10 +392,14 @@ export function main() {
     rmSync(join(vault, NOTES), { recursive: true, force: true });
     rmSync(join(vault, "Elsewhere"), { recursive: true, force: true });
     rmSync(join(vault, "Bases"), { recursive: true, force: true });
+    rmSync(join(vault, "Templates"), { recursive: true, force: true });
     for (const [relative, contents] of Object.entries(testVault({ days }))) write(relative, contents);
     rmSync(join(vault, "Someday.md"), { force: true });
 
-    writeConfigOnce(".obsidian/daily-notes.json", JSON.stringify({ folder: NOTES, format: "YYYY-MM-DD" }, null, 2));
+    writeConfigOnce(
+        ".obsidian/daily-notes.json",
+        JSON.stringify({ folder: NOTES, format: "YYYY-MM-DD", template: DAILY_TEMPLATE }, null, 2)
+    );
     writeConfigOnce(".obsidian/core-plugins.json", JSON.stringify({ "daily-notes": true }, null, 2));
     writeConfigOnce(".obsidian/community-plugins.json", JSON.stringify([PLUGIN_ID], null, 2));
     writeConfigOnce(".obsidian/appearance.json", JSON.stringify({ theme: "system" }, null, 2));

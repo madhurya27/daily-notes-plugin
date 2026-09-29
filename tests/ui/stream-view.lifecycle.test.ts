@@ -1,7 +1,15 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../../src/ui/stream-view";
 import { Platform, TFile, WorkspaceLeaf } from "../mocks/obsidian";
-import { asApp, makeApp, makePlugin, makeService, makeStubbedView, makeViewSetup } from "../stream-view-fixture";
+import {
+    asApp,
+    flushPromises,
+    makeApp,
+    makePlugin,
+    makeService,
+    makeStubbedView,
+    makeViewSetup,
+} from "../stream-view-fixture";
 
 describe("DailyNotesStreamView — view API", () => {
     let view: DailyNotesStreamView;
@@ -96,6 +104,7 @@ describe("DailyNotesStreamView — view API", () => {
             propertiesCollapsed: false,
             showLinkedMentions: false,
             linkedMentionsCollapsed: false,
+            hideEmptyNotes: false,
         }; // as loadSettings() would
         const file = new TFile("Notes/2025-01-01.md");
         const renderer = freshView["renderer"];
@@ -184,6 +193,23 @@ describe("DailyNotesStreamView — header title", () => {
         Platform.isMobile = true;
         const { view } = makeStubbedView();
         await expect(view.onOpen()).resolves.toBeUndefined();
+    });
+});
+
+describe("DailyNotesStreamView — onOpen", () => {
+    // Its first batch must already leave out the hidden notes (ADR 0011).
+    it("opens the stream only once the service has listed its notes", async () => {
+        const { view, service } = makeStubbedView();
+        let listed!: () => void;
+        vi.mocked(service.initialize).mockReturnValue(new Promise((resolve) => (listed = resolve)));
+
+        const opened = view.onOpen();
+        await flushPromises();
+        expect(view["stream"]["scroll"].attach).not.toHaveBeenCalled();
+
+        listed();
+        await opened;
+        expect(view["stream"]["scroll"].attach).toHaveBeenCalled();
     });
 });
 

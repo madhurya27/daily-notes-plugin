@@ -1,11 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { demoVault } from "../../scripts/demo-vault.mjs";
+import { DAILY_TEMPLATE, demoVault } from "../../scripts/demo-vault.mjs";
 
 const UNTIL = new Date(Date.UTC(2026, 8, 25)); // a Friday
 const vault = demoVault({ until: UNTIL, days: 90 });
 const paths = Object.keys(vault);
 const dailyPaths = paths.filter((path) => /^Journal\/\d{4}-\d{2}-\d{2}\.md$/.test(path));
 const daily = (date: string) => vault[`Journal/${date}.md`] ?? "";
+const template = vault[`${DAILY_TEMPLATE}.md`];
+const unwritten = dailyPaths.filter((path) => vault[path] === template);
+const written = dailyPaths.filter((path) => vault[path] !== template);
 
 describe("demoVault", () => {
     it("writes one daily note per day, ending on the given date", () => {
@@ -21,8 +24,27 @@ describe("demoVault", () => {
     });
 
     it("varies from day to day", () => {
-        const bodies = new Set(dailyPaths.map((path) => vault[path]));
-        expect(bodies.size).toBe(dailyPaths.length);
+        const bodies = new Set(written.map((path) => vault[path]));
+        expect(bodies.size).toBe(written.length);
+    });
+
+    // Unwritten days are what "Hide empty notes" leaves out (ADR 0011).
+    describe("unwritten days", () => {
+        it("writes the daily-notes template", () => {
+            expect(template).toMatch(/^---\ntags:\n {2}- daily\n/);
+        });
+
+        it("leaves a few days holding only the template, never the newest", () => {
+            expect(unwritten.length).toBeGreaterThanOrEqual(3);
+            expect(unwritten.length).toBeLessThanOrEqual(dailyPaths.length / 8);
+            expect(unwritten).not.toContain("Journal/2026-09-25.md");
+        });
+
+        it("links one from another note, so it shows", () => {
+            const others = paths.filter((path) => !dailyPaths.includes(path)).map((path) => vault[path]!);
+            const linked = unwritten.filter((path) => others.some((body) => body.includes(`[[${path.slice(8, -3)}]]`)));
+            expect(linked).toHaveLength(1);
+        });
     });
 
     // Several notes fit one screen, and a reader scrolls months: a line seen twice reads as filler.

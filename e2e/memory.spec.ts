@@ -194,24 +194,24 @@ test.describe("opening a multi-year vault", () => {
 
         const restoreCpu = mobileLayout ? await emulatePhoneCpu(page) : async () => {};
         // A fresh service and date cache: what the plugin's first open does.
-        const parse = await page.evaluate(() => {
+        const parse = await page.evaluate(async () => {
             const { app } = window;
             const service = app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view.service;
             const Service = service.constructor;
             const Dates = service.parsedDates.constructor;
-            const time = () => {
+            const time = async () => {
                 const fresh = new Service(() => app.vault.getMarkdownFiles(), new Dates());
                 const start = performance.now();
-                fresh.initialize();
+                await fresh.initialize();
                 return { ms: Math.round(performance.now() - start), notes: fresh.length as number };
             };
             const options = app.internalPlugins.getPluginById("daily-notes").instance.options;
             const folder = options.folder;
-            const inFolder = time();
+            const inFolder = await time();
             // Unset, every file's name goes through the date parse.
             options.folder = "";
             try {
-                return { inFolder, noFolder: time(), files: app.vault.getMarkdownFiles().length as number };
+                return { inFolder, noFolder: await time(), files: app.vault.getMarkdownFiles().length as number };
             } finally {
                 options.folder = folder;
             }
@@ -220,12 +220,35 @@ test.describe("opening a multi-year vault", () => {
         // Open to the first note's content, in the page: openStream's own waits would dwarf it.
         await page.evaluate(() => window.app.workspace.detachLeavesOfType("daily-notes-stream-view"));
         await page.waitForTimeout(1000);
+        // Every note unread, as on a session's first open; each seeded note is small enough to read (ADR 0011).
+        await page.evaluate(() => {
+            const notes = window.app.plugins.plugins["daily-notes-stream"].emptyNotes;
+            notes.template = null;
+            notes.reads = 0;
+            const { read } = notes.reader;
+            notes.reader.read = (file: unknown) => (notes.reads++, read(file));
+        });
         const open = await page.evaluate(async () => {
             const start = performance.now();
             await window.app.commands.executeCommandById("daily-notes-stream:open-stream");
             while (!document.querySelector(".daily-notes-stream-container .daily-note-content"))
                 await new Promise((resolve) => setTimeout(resolve, 5));
-            return Math.round(performance.now() - start);
+            const ms = Math.round(performance.now() - start);
+            return { ms, reads: window.app.plugins.plugins["daily-notes-stream"].emptyNotes.reads as number };
+        });
+        // A later session: what this one saved, restored into a fresh index.
+        const later = await page.evaluate(async () => {
+            const { app } = window;
+            const notes = app.plugins.plugins["daily-notes-stream"].emptyNotes;
+            notes.flush();
+            const fresh = new notes.constructor(notes.reader, notes.store);
+            const daily = app.vault
+                .getMarkdownFiles()
+                .filter((file: { path: string }) => file.path.startsWith("Notes/"));
+            notes.reads = 0;
+            const start = performance.now();
+            await fresh.checkAll(daily);
+            return { ms: Math.round(performance.now() - start), reads: notes.reads as number };
         });
         await restoreCpu();
 
@@ -233,12 +256,88 @@ test.describe("opening a multi-year vault", () => {
         console.log(
             `[memory] ${mobileLayout ? "phone speed" : "laptop"}: first open over ${parse.files} files: parse ${parse.inFolder.ms} ms ` +
                 `(${parse.inFolder.notes} daily notes), folder unset ${parse.noFolder.ms} ms | ` +
-                `open to first note ${open} ms`
+                `open to first note ${open.ms} ms, reading ${open.reads} notes for emptiness | ` +
+                `a later session's check ${later.ms} ms, reading ${later.reads}`
         );
 
         expect(parse.inFolder.notes).toBe(SEEDED_DAYS);
         // About 3x phone speed's worst (docs/DECISIONS.md, D-069).
         expect(parse.noFolder.ms).toBeLessThan(100);
-        expect(open).toBeLessThan(300);
+        expect(open.reads).toBe(SEEDED_DAYS);
+        expect(open.ms).toBeLessThan(300);
+        // Every note is unchanged since the saved check, and this vault sets no template.
+        expect(later.reads).toBe(0);
+    });
+});
+
+// Obsidian resolves every file's links at launch, one `resolve` each: a stream
+// already open compares each file's links, then re-checks what changed once.
+test.describe("links resolved across a multi-year vault", () => {
+    test.skip(SEEDED_DAYS < YEARS * 365, "run via pnpm run test:memory");
+    test.setTimeout(300_000);
+
+    /** Notes linking to a daily note each, as meeting notes and projects do. */
+    const LINKING_NOTES = 1000;
+
+    test("follows a launch's worth of resolves, and re-checks the linked days, quickly", async ({
+        obsidian,
+        mobileLayout,
+    }) => {
+        const { page } = obsidian;
+        await page.evaluate(
+            async ({ count, dates }) => {
+                const { vault } = window.app;
+                if (!vault.getAbstractFileByPath("Linking")) await vault.createFolder("Linking");
+                for (let i = 0; i < count; i++) {
+                    const path = `Linking/Meeting ${i}.md`;
+                    if (!vault.getAbstractFileByPath(path)) await vault.create(path, `On [[${dates[i]}]].`);
+                }
+            },
+            { count: LINKING_NOTES, dates: Array.from({ length: LINKING_NOTES }, (_, i) => seededDate(i)) }
+        );
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    (count) =>
+                        Object.keys(window.app.metadataCache.resolvedLinks).filter((path) =>
+                            path.startsWith("Linking/")
+                        ).length,
+                    LINKING_NOTES
+                )
+            )
+            .toBe(LINKING_NOTES);
+        await openStream(page);
+
+        const restoreCpu = mobileLayout ? await emulatePhoneCpu(page) : async () => {};
+        // A fresh tracker, as at launch: every file's links are new to it.
+        const result = await page.evaluate(async () => {
+            const { app } = window;
+            const plugin = app.plugins.plugins["daily-notes-stream"];
+            const view = app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view;
+            const current = plugin.linkChanges;
+            const fresh = new current.constructor(current.links, current.folder);
+            let rechecked = 0;
+            fresh.subscribe((paths: string[]) => {
+                rechecked = paths.length;
+                void view.stream.onLinksChanged(paths.map((path) => app.vault.getFileByPath(path)).filter(Boolean));
+            });
+            const files = app.vault.getMarkdownFiles();
+            const start = performance.now();
+            for (const file of files) fresh.onResolve(file.path);
+            const resolves = Math.round(performance.now() - start);
+            fresh.onResolved();
+            await view.stream.queue;
+            return { files: files.length as number, resolves, total: Math.round(performance.now() - start), rechecked };
+        });
+        await restoreCpu();
+
+        // eslint-disable-next-line no-console -- the numbers this test exists to report
+        console.log(
+            `[memory] ${mobileLayout ? "phone speed" : "laptop"}: ${result.files} resolves ${result.resolves} ms | ` +
+                `with ${result.rechecked} linked days re-checked ${result.total} ms`
+        );
+
+        expect(result.rechecked).toBe(LINKING_NOTES);
+        expect(result.total).toBeLessThan(300);
     });
 });

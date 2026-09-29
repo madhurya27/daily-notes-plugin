@@ -48,6 +48,14 @@ tasks and Bases.
 
 <img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="440">
 
+### Empty notes
+
+A daily note that holds only your daily-notes template, or nothing, is left out
+of the stream. Once you write in it, or change one of its properties, it
+appears. Today's note always shows, and so does one another note links to, for
+its linked mentions. A note made from an older version of the template counts as
+written.
+
 ### Move around
 
 | To                    | Do                                                                             |
@@ -142,6 +150,8 @@ they do in Obsidian.
 - **Collapse properties by default** (off): start with the properties folded.
 - **Show linked mentions** (on): show or hide the notes linking to each note.
 - **Collapse linked mentions by default** (off): start with them folded.
+- **Hide empty notes** (on): leave out daily notes you never wrote in. See
+  [Empty notes](#empty-notes).
 
 The stream follows Obsidian's theme, light or dark.
 

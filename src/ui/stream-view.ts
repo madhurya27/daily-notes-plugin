@@ -120,8 +120,9 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
             })
         );
 
-        // Not in onload(): the vault may not have indexed its files yet.
-        this.service.initialize();
+        // Not in onload(): the vault may not have indexed its files yet. Awaited:
+        // the first batch must already leave out what is hidden (ADR 0011).
+        await this.service.initialize();
 
         this.collapsible.delegate(this, streamContainerEl);
         this.renderer.delegate(this, streamContainerEl);
@@ -135,6 +136,13 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.registerEvent(vault.on("rename", (f, old) => this.applyChange(() => this.stream.onFileRename(f, old))));
         // A Base has no metadata to wait for.
         this.registerEvent(vault.on("modify", (f) => void this.renderer.onBaseModified(f)));
+        // A link to an empty note shows it; losing its last hides it (ADR 0011).
+        this.register(
+            this.plugin.linkChanges.subscribe((paths) => {
+                const files = paths.map((path) => vault.getFileByPath(path)).filter((file) => file !== null);
+                this.applyChange(() => void this.stream.onLinksChanged(files));
+            })
+        );
 
         this.addAction("calendar-1", "Jump to date", () => this.promptJumpToDate());
         this.addAction("text-search", "Search", () => this.searchBar.open());

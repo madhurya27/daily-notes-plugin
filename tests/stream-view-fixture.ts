@@ -10,6 +10,7 @@ import { Component, WorkspaceLeaf, type App, type EventRef, type TFile } from ".
 import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import { BacklinkIndex } from "../src/notes/backlink-index";
+import { LinkChanges } from "../src/notes/link-changes";
 import { LayoutMemory } from "../src/stream/layout-memory";
 
 /** A stand-in for `T`, holding only the members a test reaches. */
@@ -26,10 +27,13 @@ export function asApp(stub: object): App {
 export function makeService(): DailyNoteService {
     return fake<DailyNoteService>({
         getBatch: vi.fn().mockReturnValue([]),
-        initialize: vi.fn(),
-        refreshIfSettingsChanged: vi.fn().mockReturnValue(false),
+        initialize: vi.fn().mockResolvedValue(undefined),
+        refreshIfSettingsChanged: vi.fn().mockResolvedValue(false),
         insertSorted: vi.fn().mockReturnValue(-1),
         removeSorted: vi.fn().mockReturnValue(-1),
+        indexOf: vi.fn().mockReturnValue(-1),
+        belongs: vi.fn().mockResolvedValue(false),
+        hidesAny: vi.fn().mockReturnValue(false),
         indexForDate: vi.fn().mockReturnValue(-1),
         dates: vi.fn().mockReturnValue([]),
         formatDate: vi.fn().mockReturnValue(""),
@@ -47,10 +51,15 @@ export function makePlugin(): DailyNotesStreamPlugin {
             propertiesCollapsed: false,
             showLinkedMentions: false,
             linkedMentionsCollapsed: false,
+            hideEmptyNotes: false,
         },
         collapseStore: new CollapsibleStateStore(asApp(app)),
         layoutMemory: new LayoutMemory(asApp(app)),
         backlinks: new BacklinkIndex(() => ({})),
+        linkChanges: new LinkChanges(
+            () => ({}),
+            () => ""
+        ),
     });
 }
 
@@ -64,6 +73,7 @@ export function makeApp() {
             configDir: ".obsidian",
             on: events(),
             cachedRead: vi.fn((_file: TFile) => Promise.resolve("")),
+            getFileByPath: vi.fn((_path: string): TFile | null => null),
         },
         workspace: {
             on: events(),

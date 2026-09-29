@@ -6,6 +6,9 @@ import { DailyNoteService } from "./notes/daily-note-service";
 import { ParsedDates } from "./notes/parsed-dates";
 import { LayoutMemory } from "./stream/layout-memory";
 import { BacklinkIndex } from "./notes/backlink-index";
+import { EMPTY_NOTES_KEY, EmptyNotes, hideEmptyNotes } from "./notes/empty-notes";
+import { LinkChanges } from "./notes/link-changes";
+import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 
 /** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
 declare const BUILD_LABEL: string;
@@ -20,6 +23,8 @@ export default class DailyNotesStreamPlugin extends Plugin {
     collapseStore!: CollapsibleStateStore;
     layoutMemory!: LayoutMemory;
     backlinks!: BacklinkIndex;
+    emptyNotes!: EmptyNotes;
+    linkChanges!: LinkChanges;
 
     async onload() {
         // Unit tests run the source unbundled, where nothing defines it.
@@ -29,13 +34,16 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.collapseStore = new CollapsibleStateStore(this.app);
         this.rememberLayout();
         this.indexBacklinks();
+        this.indexEmptyNotes();
+        this.followLinkChanges();
 
-        // Each view owns its service (CLAUDE.md, Invariants); they share only the parsed dates.
+        // Each view owns its service (CLAUDE.md, Invariants); they share only the parsed dates and verdicts.
         const parsedDates = new ParsedDates();
         const markdownFiles = () => this.app.vault.getMarkdownFiles();
+        const filter = hideEmptyNotes(this.emptyNotes, this.backlinks, () => this.settings);
         this.registerView(
             VIEW_TYPE_DAILY_NOTES_STREAM,
-            (leaf) => new DailyNotesStreamView(leaf, this, new DailyNoteService(markdownFiles, parsedDates))
+            (leaf) => new DailyNotesStreamView(leaf, this, new DailyNoteService(markdownFiles, parsedDates, filter))
         );
 
         this.registerHoverLinkSource(VIEW_TYPE_DAILY_NOTES_STREAM, {
@@ -75,6 +83,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
 
     onunload() {
         this.layoutMemory.flush();
+        this.emptyNotes.flush();
     }
 
     /** What the stream measured; a note's measurements follow it across a rename, and out with a delete. */
@@ -94,6 +103,36 @@ export default class DailyNotesStreamPlugin extends Plugin {
         const { metadataCache } = this.app;
         this.backlinks = new BacklinkIndex(() => metadataCache.resolvedLinks);
         this.registerEvent(metadataCache.on("resolved", () => this.backlinks.invalidate()));
+    }
+
+    /** Registered before any view opens, so a renamed note's verdict has moved by the time a view looks. */
+    /** Registered after `indexBacklinks`, so a view told of a change reads a current index. */
+    private followLinkChanges(): void {
+        const { vault, metadataCache } = this.app;
+        const changes = (this.linkChanges = new LinkChanges(
+            () => metadataCache.resolvedLinks,
+            () => getDailyNoteSettings().folder ?? ""
+        ));
+        this.registerEvent(metadataCache.on("resolve", (file) => changes.onResolve(file.path)));
+        this.registerEvent(metadataCache.on("resolved", () => changes.onResolved()));
+        this.registerEvent(vault.on("delete", (file) => changes.onDelete(file.path)));
+        this.registerEvent(vault.on("rename", (file, oldPath) => changes.onRename(oldPath, file.path)));
+    }
+
+    private indexEmptyNotes(): void {
+        const { vault, metadataCache } = this.app;
+        const notes = (this.emptyNotes = new EmptyNotes(
+            {
+                read: (file) => vault.cachedRead(file),
+                resolve: (linkpath) => metadataCache.getFirstLinkpathDest(linkpath, ""),
+            },
+            {
+                load: (): unknown => this.app.loadLocalStorage(EMPTY_NOTES_KEY),
+                save: (value) => this.app.saveLocalStorage(EMPTY_NOTES_KEY, value),
+            }
+        ));
+        this.registerEvent(vault.on("rename", (file, oldPath) => notes.rename(oldPath, file.path)));
+        this.registerEvent(vault.on("delete", (file) => notes.forget(file.path)));
     }
 
     /** The stream is the only place a jump means anything, so open it first. */

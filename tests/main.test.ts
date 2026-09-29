@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import DailyNotesStreamPlugin from "../src/main";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/ui/stream-view";
+import { EMPTY_NOTES_KEY } from "../src/notes/empty-notes";
 import { DEFAULT_SETTINGS } from "../src/settings";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import { BaseMeasurements } from "../src/render/bases/base-measurements";
@@ -24,7 +25,12 @@ function makeApp() {
             revealLeaf: vi.fn().mockResolvedValue(undefined),
             onLayoutReady: vi.fn((callback: () => unknown) => void callback()),
         },
-        metadataCache: { on: vi.fn().mockReturnValue({}), getFileCache: vi.fn().mockReturnValue(null) },
+        metadataCache: {
+            on: vi.fn().mockReturnValue({}),
+            getFileCache: vi.fn().mockReturnValue(null),
+            getFirstLinkpathDest: vi.fn().mockReturnValue(null),
+            resolvedLinks: {} as Record<string, Record<string, number>>,
+        },
         loadLocalStorage: vi.fn().mockReturnValue(null),
         saveLocalStorage: vi.fn(),
     };
@@ -87,16 +93,16 @@ describe("DailyNotesStreamPlugin — onload", () => {
         const { plugin, app } = await loadPlugin();
         const open = () => {
             const view = plugin.views[VIEW_TYPE_DAILY_NOTES_STREAM]!(new WorkspaceLeaf(asApp(app)));
-            (view as DailyNotesStreamView)["service"].initialize();
+            return (view as DailyNotesStreamView)["service"].initialize();
         };
-        open();
+        await open();
         let reads = 0;
         for (const file of __mockMarkdownFiles()) {
             const { basename } = file;
             Object.defineProperty(file, "basename", { get: () => (reads++, basename) });
         }
 
-        open();
+        await open();
 
         expect(reads).toBe(0);
     });
@@ -145,6 +151,167 @@ describe("DailyNotesStreamPlugin — onload", () => {
         resolved();
 
         expect(invalidate).toHaveBeenCalledOnce();
+    });
+});
+
+describe("DailyNotesStreamPlugin — empty notes", () => {
+    /** The daily notes a newly opened view lists. */
+    async function listed(plugin: DailyNotesStreamPlugin, app: ReturnType<typeof makeApp>) {
+        const view = plugin.views[VIEW_TYPE_DAILY_NOTES_STREAM]!(new WorkspaceLeaf(asApp(app)));
+        const service = (view as DailyNotesStreamView)["service"];
+        await service.initialize();
+        return service.getBatch(0, service.length).map((file) => file.path);
+    }
+
+    beforeEach(() => __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]));
+
+    it("leaves out of every view a daily note holding only its template", async () => {
+        const { plugin, app } = await loadPlugin();
+        app.vault.cachedRead.mockImplementation((file: TFile) =>
+            Promise.resolve(file.path === "Notes/2025-01-02.md" ? "Written." : "")
+        );
+
+        expect(await listed(plugin, app)).toEqual(["Notes/2025-01-02.md"]);
+        expect(await listed(plugin, app)).toEqual(["Notes/2025-01-02.md"]);
+        expect(app.vault.cachedRead).toHaveBeenCalledTimes(2);
+    });
+
+    it("finds the template as the daily-notes plugin does", async () => {
+        __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes", template: "Templates/Daily" });
+        const { plugin, app } = await loadPlugin();
+
+        await listed(plugin, app);
+
+        expect(app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith("Templates/Daily", "");
+    });
+
+    it("keeps an empty note another note links to, for its linked mentions", async () => {
+        const { plugin, app } = await loadPlugin();
+        app.metadataCache.resolvedLinks = { "Meeting.md": { "Notes/2025-01-01.md": 1 } };
+
+        expect(await listed(plugin, app)).toEqual(["Notes/2025-01-01.md"]);
+    });
+
+    // A later session reads only what changed since (ADR 0011).
+    it("keeps which notes are empty on this device, saving them as the plugin unloads", async () => {
+        const { plugin, app } = await loadPlugin();
+        await listed(plugin, app);
+
+        plugin.onunload();
+
+        expect(app.saveLocalStorage).toHaveBeenCalledWith(
+            EMPTY_NOTES_KEY,
+            expect.objectContaining({
+                empty: [
+                    ["Notes/2025-01-01.md", 0],
+                    ["Notes/2025-01-02.md", 0],
+                ],
+            })
+        );
+    });
+
+    it("reads no note unchanged since the last session", async () => {
+        const first = await loadPlugin();
+        await listed(first.plugin, first.app);
+        first.plugin.onunload();
+        const saved: unknown = first.app.saveLocalStorage.mock.calls.find(([key]) => key === EMPTY_NOTES_KEY)![1];
+
+        const app = makeApp();
+        app.loadLocalStorage.mockImplementation((key: string) => (key === EMPTY_NOTES_KEY ? saved : null));
+        const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
+        await plugin.onload();
+
+        expect(await listed(plugin, app)).toEqual([]);
+        expect(app.vault.cachedRead).not.toHaveBeenCalled();
+    });
+
+    it("leaves out nothing with the setting off", async () => {
+        const { plugin, app } = await loadPlugin({ hideEmptyNotes: false });
+
+        expect(await listed(plugin, app)).toEqual(["Notes/2025-01-02.md", "Notes/2025-01-01.md"]);
+        expect(app.vault.cachedRead).not.toHaveBeenCalled();
+    });
+
+    it("carries a note's verdict across a rename, and forgets a deleted note's", async () => {
+        const { plugin, app } = await loadPlugin();
+        const rename = vi.spyOn(plugin.emptyNotes, "rename");
+        const forget = vi.spyOn(plugin.emptyNotes, "forget");
+        const handlers = (name: string) =>
+            app.vault.on.mock.calls
+                .filter(([event]) => event === name)
+                .map(([, callback]) => callback as (...args: unknown[]) => void);
+
+        for (const handler of handlers("rename")) handler({ path: "Notes/new.md" }, "Notes/old.md");
+        for (const handler of handlers("delete")) handler({ path: "Notes/gone.md" });
+
+        expect(rename).toHaveBeenCalledWith("Notes/old.md", "Notes/new.md");
+        expect(forget).toHaveBeenCalledWith("Notes/gone.md");
+    });
+});
+
+describe("DailyNotesStreamPlugin — link changes", () => {
+    /** Every callback onload() gave `source.on(name)`. */
+    function handlers(source: { on: { mock: { calls: unknown[][] } } }, name: string) {
+        return source.on.mock.calls
+            .filter(([event]) => event === name)
+            .map(([, callback]) => callback as (...args: unknown[]) => void);
+    }
+
+    it("follows the cache's resolves, and the vault's deletes and renames, for every view", async () => {
+        const { plugin, app } = await loadPlugin();
+        const changes = plugin.linkChanges;
+        const spies = (["onResolve", "onResolved", "onDelete", "onRename"] as const).map((name) =>
+            vi.spyOn(changes, name)
+        );
+
+        for (const handler of handlers(app.metadataCache, "resolve")) handler({ path: "Meeting.md" });
+        for (const handler of handlers(app.metadataCache, "resolved")) handler();
+        for (const handler of handlers(app.vault, "delete")) handler({ path: "Gone.md" });
+        for (const handler of handlers(app.vault, "rename")) handler({ path: "New.md" }, "Old.md");
+
+        expect(spies.map((spy) => spy.mock.calls)).toEqual([
+            [["Meeting.md"]],
+            [[]],
+            [["Gone.md"]],
+            [["Old.md", "New.md"]],
+        ]);
+    });
+
+    // A view's footers and hidden notes both read the backlink index on `resolved`.
+    it("tells the views only after the backlink index is told the links changed", async () => {
+        const { plugin, app } = await loadPlugin();
+        const order: string[] = [];
+        vi.spyOn(plugin.backlinks, "invalidate").mockImplementation(() => void order.push("index"));
+        vi.spyOn(plugin.linkChanges, "onResolved").mockImplementation(() => void order.push("views"));
+
+        for (const handler of handlers(app.metadataCache, "resolved")) handler();
+
+        expect(order).toEqual(["index", "views"]);
+    });
+
+    it("follows links to every note when no daily-notes folder is set", async () => {
+        __setMockSettings({ format: "YYYY-MM-DD" });
+        const { plugin, app } = await loadPlugin();
+        const heard: string[][] = [];
+        plugin.linkChanges.subscribe((paths) => heard.push(paths));
+        app.metadataCache.resolvedLinks = { "Meeting.md": { "2025-01-01.md": 1 } };
+
+        plugin.linkChanges.onResolve("Meeting.md");
+        plugin.linkChanges.onResolved();
+
+        expect(heard).toEqual([["2025-01-01.md"]]);
+    });
+
+    it("follows links into the daily-notes folder", async () => {
+        const { plugin, app } = await loadPlugin();
+        const heard: string[][] = [];
+        plugin.linkChanges.subscribe((paths) => heard.push(paths));
+        app.metadataCache.resolvedLinks = { "Meeting.md": { "Notes/2025-01-01.md": 1, "Elsewhere/2025-01-01.md": 1 } };
+
+        plugin.linkChanges.onResolve("Meeting.md");
+        plugin.linkChanges.onResolved();
+
+        expect(heard).toEqual([["Notes/2025-01-01.md"]]);
     });
 });
 
@@ -424,6 +591,7 @@ describe("DailyNotesStreamPlugin — two open streams", () => {
     /** Two views of one plugin, each opened with its first batch loaded. */
     async function openTwoViews() {
         const { plugin, app } = await loadPlugin();
+        app.vault.cachedRead.mockResolvedValue("Written.");
         const factory = plugin.views[VIEW_TYPE_DAILY_NOTES_STREAM]!;
         const views = [factory(new WorkspaceLeaf(asApp(app))), factory(new WorkspaceLeaf(asApp(app)))];
         const streams = views.map((view) => (view as DailyNotesStreamView)["stream"]);

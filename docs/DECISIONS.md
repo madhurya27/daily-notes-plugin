@@ -1156,3 +1156,19 @@ the ADRs, about 120 elsewhere, and nothing checked either.
 - Hand-wrapping at a written width — a rule nothing enforces drifts again.
 - `proseWrap: "never"`, a line per paragraph — diffs a whole paragraph for one
   word.
+
+## D-071 — A failure degrades one thing, and is logged (2026-09-28)
+
+**Decision:** every async entry point and every localStorage save catches, logs
+to the console, and carries on: a note that will not render says so, a read that
+fails shows its note, a refused save is logged once (`saveLoggingOnce`), stored
+state that does not parse counts as none, a list that fails to build lists
+nothing until the next refresh. Only a failed jump raises a Notice.
+
+**Why:** a stream is many notes; one bad one, or a full localStorage, must not
+blank the rest. Failing open shows too much, never hides writing.
+
+**Rejected:**
+
+- A Notice per failure — a full localStorage refuses every save after.
+- Failing closed (hiding what could not be checked) — writing vanishes silently.

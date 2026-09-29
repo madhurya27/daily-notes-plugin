@@ -185,6 +185,25 @@ retake shows the same content; `pnpm run seed` alone takes `--days N` and
 - Changing the daily-note folder or date format in Obsidian's settings reloads
   the stream, without reopening the view. **[e2e]**
 
+### Empty notes
+
+The test vault sets the template to `Templates/Daily` and seeds from it:
+2026-08-27 unwritten, 2026-08-25 with only `mood` set, 2026-08-23 blank, and
+2026-08-21 unwritten but linked from `Notes/Agenda.md`.
+
+- 2026-08-27 and 2026-08-23 are absent; 2026-08-25 and 2026-08-21 show.
+- Today's note, made from the template and just as empty, shows. **[e2e]**
+- Writing a line in it, or adding a property, brings it in at its date; emptying
+  it again hides it. **[e2e]**
+- Turning off "Hide empty notes" shows it without reopening the stream.
+  **[e2e]**
+- Link to it from another note: it shows at once, with the link under it; remove
+  the link, or delete that note, and it is hidden again. **[e2e]** With linked
+  mentions turned off, a link does not show it.
+- With every daily note empty, the empty state says they are hidden.
+- Point the template setting at another file: the stream reloads by the new
+  template.
+
 ### Properties
 
 - **Show note properties ON** (the default): a "Properties" header appears for

@@ -51,11 +51,21 @@ Files are kebab-case, grouped by job in `src/` (docs/DECISIONS.md, D-023).
   `setQuery` behind `openTagSearch`, `metadataTypeManager` behind
   `getPropertyIcon`, `hotkeyManager` behind `getSearchHotkeys`, a view's
   `titleEl` behind `getViewTitle`).
+- `local-storage.ts` — `saveLoggingOnce`, which every localStorage store saves
+  through: a refused save is logged once, never thrown (docs/DECISIONS.md,
+  D-071).
 - `notes/daily-note-service.ts` — the vault's daily notes, nested folders
   (`YYYY/MM/YYYY-MM-DD`) included, newest-first in batches.
 - `notes/backlink-index.ts` — which notes link to each path, inverted from
   `resolvedLinks`, one per plugin; `notes/linked-mentions.ts` finds each link's
   list item or section in them.
+- `notes/empty-notes.ts` — which daily notes hold only their template, one per
+  plugin, kept in the vault's localStorage on this device, and the filter each
+  view's service lists through
+  ([ADR 0011](docs/adr/0011-hide-template-only-notes.md));
+  `notes/template-match.ts` reads the template as a pattern;
+  `notes/link-changes.ts` tells each view which daily notes gained or lost a
+  link, so a linked empty note shows.
 - `notes/parsed-dates.ts` — each path's parsed date, shared by every view's
   service, so a later open parses only what is new.
 - `ui/stream-view.ts` — `ItemView` subclass; wires vault events and header

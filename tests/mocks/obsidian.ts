@@ -176,7 +176,6 @@ export class ItemView extends Component {
         return {};
     }
     setEphemeralState(_state: unknown): void {}
-    register() {}
     addAction(icon: string, title: string, callback: (evt: MouseEvent) => unknown) {
         this.actions.push({ icon, title, callback });
         return document.createElement("div");

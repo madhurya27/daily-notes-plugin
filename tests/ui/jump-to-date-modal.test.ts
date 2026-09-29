@@ -11,11 +11,11 @@ describe("JumpToDateModal", () => {
     let modal: JumpToDateModal;
 
     /** Opens the suggester over a vault naming its notes `format`. */
-    function open(format: string, basenames: string[]) {
+    async function open(format: string, basenames: string[]) {
         __setMockSettings({ format, folder: "Notes" });
         __setMockNotes(basenames.map((name) => `Notes/${name}.md`));
         const service = new DailyNoteService(__mockMarkdownFiles);
-        service.initialize();
+        await service.initialize();
         modal = new JumpToDateModal(asApp(makeApp()), service, onSubmit);
         modal.close = vi.fn();
         modal.open();
@@ -34,14 +34,14 @@ describe("JumpToDateModal", () => {
         Platform.isMobile = false;
     });
 
-    it("offers every date, newest first, as this vault names its notes", () => {
-        open("DD-MM-YYYY", ["01-01-2025", "03-01-2025", "02-01-2025"]);
+    it("offers every date, newest first, as this vault names its notes", async () => {
+        await open("DD-MM-YYYY", ["01-01-2025", "03-01-2025", "02-01-2025"]);
 
         expect(listed()).toEqual(["03-01-2025", "02-01-2025", "01-01-2025"]);
     });
 
-    it("narrows to the dates the query appears in", () => {
-        open("DD-MM-YYYY", ["01-01-2025", "03-02-2025", "02-01-2025"]);
+    it("narrows to the dates the query appears in", async () => {
+        await open("DD-MM-YYYY", ["01-01-2025", "03-02-2025", "02-01-2025"]);
 
         modal.type("-01-");
 
@@ -49,16 +49,16 @@ describe("JumpToDateModal", () => {
     });
 
     // The reader may reach for ISO whatever their filenames look like.
-    it("narrows on an ISO query in a vault that names nothing that way", () => {
-        open("DD-MM-YYYY", ["01-01-2025", "03-02-2025"]);
+    it("narrows on an ISO query in a vault that names nothing that way", async () => {
+        await open("DD-MM-YYYY", ["01-01-2025", "03-02-2025"]);
 
         modal.type("2025-02");
 
         expect(listed()).toEqual(["03-02-2025"]);
     });
 
-    it("keeps the list to what a reader can scan", () => {
-        open(
+    it("keeps the list to what a reader can scan", async () => {
+        await open(
             "YYYY-MM-DD",
             Array.from({ length: JUMP_SUGGESTION_LIMIT + 10 }, (_, i) =>
                 moment("2025-01-01", "YYYY-MM-DD", true).add(i, "days").format("YYYY-MM-DD")
@@ -68,8 +68,8 @@ describe("JumpToDateModal", () => {
         expect(listed()).toHaveLength(JUMP_SUGGESTION_LIMIT);
     });
 
-    it("submits the date that was chosen", () => {
-        open("DD-MM-YYYY", ["01-01-2025", "03-01-2025"]);
+    it("submits the date that was chosen", async () => {
+        await open("DD-MM-YYYY", ["01-01-2025", "03-01-2025"]);
 
         modal.type("01-01");
         modal.choose();
@@ -81,24 +81,24 @@ describe("JumpToDateModal", () => {
     // The silent nearest-older fallback is what the suggester retires: a date
     // with no note is still offered, but it says so first.
     describe("a date no note carries", () => {
-        it("offers the jump as one entry, saying what it will do", () => {
-            open("DD-MM-YYYY", ["01-01-2025"]);
+        it("offers the jump as one entry, saying what it will do", async () => {
+            await open("DD-MM-YYYY", ["01-01-2025"]);
 
             modal.type("05-01-2025");
 
             expect(listed()).toEqual(["05-01-2025 has no noteJump to the nearest older note"]);
         });
 
-        it("reads the query in ISO too", () => {
-            open("DD-MM-YYYY", ["01-01-2025"]);
+        it("reads the query in ISO too", async () => {
+            await open("DD-MM-YYYY", ["01-01-2025"]);
 
             modal.type("2025-01-05");
 
             expect(listed()).toEqual(["05-01-2025 has no noteJump to the nearest older note"]);
         });
 
-        it("hands the date over, leaving the fallback to the jump itself", () => {
-            open("DD-MM-YYYY", ["01-01-2025"]);
+        it("hands the date over, leaving the fallback to the jump itself", async () => {
+            await open("DD-MM-YYYY", ["01-01-2025"]);
 
             modal.type("05-01-2025");
             modal.choose();
@@ -106,8 +106,8 @@ describe("JumpToDateModal", () => {
             expect(onSubmit.mock.calls[0]![0].format("YYYY-MM-DD")).toBe("2025-01-05");
         });
 
-        it("offers nothing on a query that is no date at all", () => {
-            open("DD-MM-YYYY", ["01-01-2025"]);
+        it("offers nothing on a query that is no date at all", async () => {
+            await open("DD-MM-YYYY", ["01-01-2025"]);
 
             modal.type("not-a-date");
 
@@ -122,32 +122,32 @@ describe("JumpToDateModal", () => {
 
         // iOS has showPicker() but opens nothing from it: its wheel opens only
         // for a tap on the date input itself, so the input is the control.
-        it("is the date input itself, under the calendar icon", () => {
-            open("YYYY-MM-DD", ["2025-01-01"]);
+        it("is the date input itself, under the calendar icon", async () => {
+            await open("YYYY-MM-DD", ["2025-01-01"]);
 
             expect(calendarIcon()!.getAttribute("data-icon")).toBe("calendar");
             expect(picker()!.parentElement).toBe(calendarIcon());
             expect(picker()!.getAttribute("aria-label")).toBe("Pick a date");
         });
 
-        it("asks for the wheel on a click, where the platform can show it", () => {
+        it("asks for the wheel on a click, where the platform can show it", async () => {
             const showPicker = vi.fn();
             (HTMLInputElement.prototype as { showPicker?: () => void }).showPicker = showPicker;
-            open("YYYY-MM-DD", ["2025-01-01"]);
+            await open("YYYY-MM-DD", ["2025-01-01"]);
 
             picker()!.click();
 
             expect(showPicker).toHaveBeenCalledOnce();
         });
 
-        it("leaves a click to the platform where it has no showPicker", () => {
-            open("YYYY-MM-DD", ["2025-01-01"]);
+        it("leaves a click to the platform where it has no showPicker", async () => {
+            await open("YYYY-MM-DD", ["2025-01-01"]);
 
             expect(() => picker()!.click()).not.toThrow();
         });
 
-        it("writes the picked date into the query, in this vault's format", () => {
-            open("DD-MM-YYYY", ["01-01-2025", "03-01-2025"]);
+        it("writes the picked date into the query, in this vault's format", async () => {
+            await open("DD-MM-YYYY", ["01-01-2025", "03-01-2025"]);
 
             picker()!.value = "2025-01-03";
             picker()!.dispatchEvent(new Event("change"));
@@ -156,8 +156,8 @@ describe("JumpToDateModal", () => {
             expect(listed()).toEqual(["03-01-2025"]);
         });
 
-        it("ignores a picker cleared rather than set", () => {
-            open("DD-MM-YYYY", ["01-01-2025"]);
+        it("ignores a picker cleared rather than set", async () => {
+            await open("DD-MM-YYYY", ["01-01-2025"]);
 
             picker()!.value = "";
             picker()!.dispatchEvent(new Event("change"));
@@ -167,21 +167,21 @@ describe("JumpToDateModal", () => {
     });
 
     // A focused query raises the phone's keyboard over half the list.
-    it("leaves the query unfocused on mobile, so the list opens without a keyboard", () => {
+    it("leaves the query unfocused on mobile, so the list opens without a keyboard", async () => {
         Platform.isMobile = true;
-        open("YYYY-MM-DD", ["2025-01-01"]);
+        await open("YYYY-MM-DD", ["2025-01-01"]);
 
         expect(document.activeElement).not.toBe(modal.inputEl);
     });
 
-    it("focuses the query on desktop, ready to type", () => {
-        open("YYYY-MM-DD", ["2025-01-01"]);
+    it("focuses the query on desktop, ready to type", async () => {
+        await open("YYYY-MM-DD", ["2025-01-01"]);
 
         expect(document.activeElement).toBe(modal.inputEl);
     });
 
-    it("empties its content on close, so a reopen starts clean", () => {
-        open("YYYY-MM-DD", ["2025-01-01"]);
+    it("empties its content on close, so a reopen starts clean", async () => {
+        await open("YYYY-MM-DD", ["2025-01-01"]);
 
         modal.onClose();
 
