@@ -8,6 +8,13 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] iOS still stalls on inline math in a table. Lead: MathJax fonts dropped on
       unload (`experiment/warm-math-fonts`, `5da0863`); keep that branch when
       deleting the other experiments.
+- [ ] iOS: a Base's table draws some rows blank for a frame as a note above it
+      renders mid-glide. Bases draws only rows it measured in view, and
+      re-measures after the paint. The probe that traced it is `src/probe.ts` on
+      `experiment/stream-layer`; keep that branch until this is fixed.
+- [ ] iOS: a change inside the note the pane's top crosses, such as an image
+      loading above the reader, can still jump a frame: pinning holds only the
+      notes around it (ADR 0013).
 - [ ] PDF, iframe, canvas, Dataview: check for scroll boxes; give what cannot
       fit a preview that opens on tap.
 - [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on

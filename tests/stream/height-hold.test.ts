@@ -48,6 +48,21 @@ describe("HeightHold", () => {
         later.release();
     });
 
+    // A pinned block keeps its height through a let-go until told (ADR 0013).
+    it("says it let go, by release or by the limit, once each", async () => {
+        const released = vi.fn();
+        const hold = new HeightHold(el, 812, released);
+        const timed = vi.fn();
+        new HeightHold(document.createElement("div"), 812, timed);
+
+        hold.release();
+        hold.release();
+        await vi.advanceTimersByTimeAsync(HOLD_LIMIT_MS);
+
+        expect(released).toHaveBeenCalledOnce();
+        expect(timed).toHaveBeenCalledOnce();
+    });
+
     it("says whether it still holds", async () => {
         const hold = new HeightHold(el, 812);
         expect(hold.holding).toBe(true);

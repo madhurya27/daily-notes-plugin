@@ -73,6 +73,10 @@ Traps that span files, so no single file's comments can hold them.
   `.daily-note-block`s reserving their height. Never assume or key anything off
   a block's children: `data-source-path` is on the block, and `StreamBlocks`'
   path→block index is the only lookup.
+- **A rendered block's height changes only in `NoteWindowManager.repin`**
+  ([ADR 0013](docs/adr/0013-pin-rendered-note-heights.md)), which tells the
+  anchor in the same task. Anything that changes a block's height another way
+  jumps the screen a frame on iOS.
 - **Delegated listeners.** Chevrons, note titles and links are rebuilt on every
   re-render, so `CollapsibleManager.delegate()` and `NoteRenderer.delegate()`
   register one listener per gesture on the stream container, resolving the

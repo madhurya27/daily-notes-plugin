@@ -94,10 +94,18 @@ export class NoteWindowManager {
         this.detachObservers();
         this.scrollRoot = scrollRoot;
         this.observeMargins(scrollRoot);
-        this.anchor.attach(scrollRoot);
+        // Made before the anchor's, so it hears a report first: reports run in
+        // that order, and the anchor must read each note re-pinned.
         this.resizes = new ResizeObserver((entries) => {
-            for (const entry of entries) this.windowOf(entry.target)?.keepOnceSettled?.();
+            const blocks = new Set(entries.map(({ target }) => this.blockOf(target)));
+            for (const block of blocks) {
+                const window = block ? this.windows.get(block) : undefined;
+                if (!block || !window) continue;
+                if (window.component) this.repin(block);
+                window.keepOnceSettled?.();
+            }
         });
+        this.anchor.attach(scrollRoot);
 
         for (const [block, window] of this.windows) {
             this.observe(block);
@@ -226,6 +234,7 @@ export class NoteWindowManager {
         const { component, footer } = await this.renderer.renderInto(block, window.file);
         window.component = component;
         this.watchSettling(block, window, footer);
+        this.repin(block);
     }
 
     remove(block: HTMLElement): void {
@@ -285,6 +294,7 @@ export class NoteWindowManager {
                 block.removeClass("is-unloaded");
                 block.style.removeProperty("--daily-note-placeholder-height");
                 this.watchSettling(block, window, footer);
+                this.repin(block);
 
                 if (window.unloadWanted) this.leave(block);
             } finally {
@@ -336,6 +346,7 @@ export class NoteWindowManager {
         this.measureInto(block, window);
         this.discard(window);
         block.empty();
+        this.unpin(block);
         this.markUnloaded(block, window.height);
         this.changes++;
     }
@@ -370,7 +381,15 @@ export class NoteWindowManager {
      * other notes first, and a quiet spell while they do is not settled.
      */
     private watchSettling(block: HTMLElement, window: NoteWindow, footer: Promise<void>): void {
-        if (window.measured) window.hold = new HeightHold(block, window.height);
+        if (window.measured) {
+            const hold = new HeightHold(block, window.height, () => {
+                // Let go while the note stays: the pin hid the drop until now.
+                if (window.hold !== hold) return;
+                window.hold = null;
+                this.repin(block);
+            });
+            window.hold = hold;
+        }
         window.watched = [block, ...Array.from(block.children)];
         this.watch(window.watched);
         const { component } = window;
@@ -390,8 +409,11 @@ export class NoteWindowManager {
         }
     }
 
+    /** Emptied or refilled next: its hold goes, and the pin keeps the height meanwhile. */
     private stopSettling(window: NoteWindow): void {
-        this.releaseHold(window);
+        const { hold } = window;
+        window.hold = null;
+        hold?.release();
         window.keepOnceSettled?.cancel();
         window.keepOnceSettled = null;
         for (const el of window.watched) {
@@ -401,15 +423,40 @@ export class NoteWindowManager {
         window.watched = [];
     }
 
+    /** Lets go of the hold, and the block takes its own height. */
     private releaseHold(window: NoteWindow): void {
         window.hold?.release();
-        window.hold = null;
     }
 
     /** The note `target` is in, or is. */
     private windowOf(target: EventTarget | null): NoteWindow | undefined {
-        const block = target instanceof Element ? target.closest<HTMLElement>(".daily-note-block") : null;
+        const block = this.blockOf(target);
         return block ? this.windows.get(block) : undefined;
+    }
+
+    private blockOf(target: EventTarget | null): HTMLElement | null {
+        return target instanceof Element ? target.closest<HTMLElement>(".daily-note-block") : null;
+    }
+
+    /**
+     * Pins `block` at the height it lays out at, and tells the anchor in the
+     * same task if that changed. Nothing rendering inside a pinned block moves
+     * the stream: mid-glide iOS paints a resize before reporting it, and the
+     * shift would land a frame late (ADR 0013). A block laid out at nothing,
+     * in a hidden tab, stays unpinned.
+     */
+    private repin(block: HTMLElement): void {
+        const before = block.style.getPropertyValue("--daily-note-pinned-height");
+        block.style.removeProperty("--daily-note-pinned-height");
+        const height = this.measure(block);
+        if (height > 0) block.style.setProperty("--daily-note-pinned-height", `${height}px`);
+        block.toggleClass("is-pinned", height > 0);
+        if (block.style.getPropertyValue("--daily-note-pinned-height") !== before) this.anchor.resized();
+    }
+
+    private unpin(block: HTMLElement): void {
+        block.removeClass("is-pinned");
+        block.style.removeProperty("--daily-note-pinned-height");
     }
 
     /** Takes the block's height now; one never laid out measures zero and keeps what it had. */

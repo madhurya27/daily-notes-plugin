@@ -85,6 +85,9 @@ in, an image loads. Three mechanisms keep the reader's place.
   sessions, so placeholders start at the right size
   ([ADR 0010](adr/0010-layout-memory.md)).
 - `HeightHold` holds a note or Base at its earlier height while it refills.
+- `NoteWindowManager` pins each rendered note's height and changes it only in
+  the task that tells `ScrollAnchor`
+  ([ADR 0013](adr/0013-pin-rendered-note-heights.md)).
 - `ScrollAnchor` undoes shifts above the reader where the platform does not:
   Chromium anchors natively, iOS WebKit does not.
 

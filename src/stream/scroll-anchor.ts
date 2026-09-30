@@ -87,6 +87,14 @@ export class ScrollAnchor {
         this.observer?.unobserve(el);
     }
 
+    /**
+     * A block resized in this task. Owed now, drawn in the frame it changed:
+     * mid-glide iOS paints a resize before reporting it (ADR 0013).
+     */
+    resized(): void {
+        if (this.scrollRoot) this.hold();
+    }
+
     /** A scroll moves the place, and puts off the hand-over until it stops. */
     onScroll(): void {
         if (!this.scrollRoot) return;

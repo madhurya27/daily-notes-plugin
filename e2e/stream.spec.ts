@@ -512,6 +512,115 @@ test.describe("daily notes stream in real Obsidian", () => {
             });
         });
 
+        // Mid-glide, iOS paints a resize before reporting it (ADR 0013).
+        // Chromium reports first, so each test reads the layout as the task
+        // changing it ends: what iOS would paint.
+        test.describe("as iOS paints it, before any resize is reported", () => {
+            test.beforeEach(({ obsidian }) => withoutScrollAnchoring(obsidian.page));
+            test.afterEach(({ obsidian }) => restoreScrollAnchoring(obsidian.page));
+
+            test("draws a note rendering above the pane with the shift that keeps the place", async ({
+                obsidian,
+                mobileLayout,
+            }) => {
+                test.skip(
+                    mobileLayout && process.env.E2E_SHOW_WINDOW !== "1",
+                    "the hidden phone window draws a frame a second, too slow to glide"
+                );
+                const { page } = obsidian;
+                // Unmeasured, every note renders unheld: the case that jumped.
+                await page.evaluate(() =>
+                    window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.restore(null)
+                );
+                const container = await openStream(page);
+                const blocks = container.locator(".daily-note-block");
+                await expect(blocks).toHaveCount(10); // BATCH_SIZE
+                await blocks.last().evaluate((el) => el.scrollIntoView({ block: "start" }));
+                await page.waitForTimeout(1000);
+                // Seeded notes lay out alike, so the layout's median guesses them
+                // right: each placeholder guesses short, and every render grows.
+                await container.evaluate((stream) => {
+                    for (const block of stream.querySelectorAll<HTMLElement>(".daily-note-block.is-unloaded"))
+                        block.style.setProperty("--daily-note-placeholder-height", "100px");
+                });
+                await page.waitForTimeout(1000);
+                await expect(container).not.toHaveClass(/is-scroll-shifted/);
+
+                const drifts = await container.locator("xpath=..").evaluate(async (pane) => {
+                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    const box = pane.getBoundingClientRect();
+                    const reader = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)!;
+                    const start = reader.getBoundingClientRect().top;
+                    const from = pane.scrollTop;
+                    // How far the reader is from where the scroll alone puts it.
+                    const drift = () => reader.getBoundingClientRect().top - (start + (from - pane.scrollTop));
+                    const drifts: number[] = [];
+                    // A mutation's callback runs as the task that made it ends.
+                    const rendered = new MutationObserver((records) => {
+                        for (const { target, oldValue } of records) {
+                            const block = target as HTMLElement;
+                            if (oldValue?.includes("is-unloaded") && !block.classList.contains("is-unloaded"))
+                                drifts.push(drift());
+                        }
+                    });
+                    rendered.observe(pane, {
+                        subtree: true,
+                        attributeFilter: ["class"],
+                        attributeOldValue: true,
+                    });
+                    while (pane.scrollTop > 0) {
+                        pane.scrollTop -= 30;
+                        await frame();
+                        await frame();
+                    }
+                    rendered.disconnect();
+                    return drifts;
+                });
+
+                expect(drifts.length).toBeGreaterThan(0);
+                for (const drift of drifts) expect(drift).toBeCloseTo(0, 0);
+            });
+
+            test("keeps the place as a note above the pane grows", async ({ obsidian }) => {
+                const { page } = obsidian;
+                const container = await openStream(page);
+                const blocks = container.locator(".daily-note-block");
+                await expect(blocks.nth(3)).toBeAttached();
+                await blocks.nth(3).evaluate((el) => el.scrollIntoView({ block: "start" }));
+                await expect(blocks.first()).not.toHaveClass(/is-unloaded/);
+                await page.waitForTimeout(1000);
+
+                const moved = await blocks.first().evaluate((el) => {
+                    const reader = el.parentElement!.children[3]!;
+                    const before = reader.getBoundingClientRect().top;
+                    el.appendChild(document.createElement("div")).style.height = "1000px";
+                    return reader.getBoundingClientRect().top - before;
+                });
+
+                expect(moved).toBe(0);
+            });
+
+            test("pins each rendered note at the height it lays out at, clipping none of it", async ({ obsidian }) => {
+                const { page } = obsidian;
+                const container = await openStream(page);
+                await expect(container.locator(".daily-note-block.is-pinned").first()).toBeAttached();
+                await page.waitForTimeout(1000);
+
+                const offBy = await container.evaluate((stream) =>
+                    [...stream.querySelectorAll<HTMLElement>(".daily-note-block.is-pinned")].map((block) => {
+                        const pinned = block.getBoundingClientRect().height;
+                        block.classList.remove("is-pinned");
+                        const natural = block.getBoundingClientRect().height;
+                        block.classList.add("is-pinned");
+                        return pinned - natural;
+                    })
+                );
+
+                expect(offBy.length).toBeGreaterThan(0);
+                expect(offBy).toEqual(offBy.map(() => 0));
+            });
+        });
+
         // Where the platform anchors, a second correction would double the move.
         test("leaves the anchoring to the platform where it has its own", async ({ obsidian }) => {
             const { page } = obsidian;
