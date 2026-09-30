@@ -63,33 +63,39 @@ Terms:
 | Per-line rate   | Median over text-only notes measured at any layout of (height − template height) ÷ extra wrapped lines; line height until one exists.                                                                                        |
 | Embed buffer    | Per layout: median over notes with embeds measured at this layout of the residual per embed; until one exists, the pane's height. Count from the cache's `embeds`.                                                           |
 
-## Steps
+## Status
 
-Test first throughout (red shown, then green), as `CLAUDE.md` requires.
+Steps 1–6 done on this branch: the benchmark (embeds varied in the spec's own
+vault, so the demo and README captures stay), `note-lines.ts`,
+`template-height.ts`, `height-estimates.ts`, wired through `NoteStream`, and the
+benchmark command in `CLAUDE.md`. Left: the phone check under Gates.
 
-1. **Benchmark.** Done: the spec varies the embeds in its own vault, leaving the
-   demo (and the README's captures) as they are; Evidence is the new baseline.
-2. **Line counting.** A pure `src/stream/note-lines.ts`: wrapped lines of a
-   `CachedMetadata` at a width and charWidth. Unit tests with hand-built caches:
-   a list, a paragraph wrapping, a code block, frontmatter ignored, embeds
-   counted.
-3. **Template height.** Measured by `NoteWindowManager` (or a small class it
-   owns) once per layout after attach and on each new layout, through the
-   renderer, then discarded. Stored in `LayoutMemory` (a new table, like
-   `bases`). Bump `VERSION` in `layout-memory.ts`: the format changes.
-4. **Estimator.** A pure function taking the terms above; `NoteHeights` (or a
-   new `HeightEstimates`) supplies stored heights, rate and buffer.
-   `NoteWindowManager.expect()` calls it in place of
-   `heightOf ?? estimate ?? 400`. An estimate is never `measured`: nothing is
-   held at a guess.
-5. **Wire and measure.** Run the spec with the real estimator, called in the
-   page, and score it. Acceptance, on the step 1 benchmark:
-    - text-only notes, another layout stored: mean error ≤ 20px;
-    - never measured, rate learned: ≤ 90px; line height only: ≤ 130px;
-    - notes with embeds: better than the "now" row for the same case at both
-      orientations (stored elsewhere: 389; never measured: 1048 / 665).
-6. **Keep the benchmark.** Leave the spec opt-in; note its command in
-   `CLAUDE.md` beside `test:memory`.
+Scored with the plugin's own estimator, called in the page (mean error, px,
+portrait / landscape):
+
+| Case                                | Target       | Result        |
+| ----------------------------------- | ------------ | ------------- |
+| Text, stored at the other layout    | ≤ 20         | 18 / 18       |
+| Text, never measured, rate learned  | ≤ 90         | 44 / 50       |
+| Text, never measured, line height   | ≤ 130        | **149 / 135** |
+| Embeds, stored at the other layout  | < 389        | 378 / 378     |
+| Embeds, never measured, learned     | < 1048 / 665 | 531 / 174     |
+| Embeds, never measured, nothing yet | < 1048 / 665 | 577 / 182     |
+
+The line-height case misses: a note's line costs ~35px, not 24 (headings,
+spacing, properties), and it lasts only until the first notes at this text size
+are measured.
+
+Where the code differs from the terms above:
+
+- Wrapped lines: each source line of a section, at the section's average length
+  (a table's rows wrap one by one).
+- No template: the median, as step 3.
+- The template is measured by `TemplateHeight`, owned by `NoteStream`, without
+  waiting for the linked mentions. Its probe copies the column's class, so e2e
+  locators exclude `.daily-notes-stream-probe`.
+- charWidth comes from a sample sentence in a probe paragraph's font: 7.8px
+  against the demo text's 7.3.
 
 ## Constraints
 

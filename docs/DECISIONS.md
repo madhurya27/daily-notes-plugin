@@ -1245,3 +1245,25 @@ list did not say so.
 
 - `SettingGroup` cards — needs `minAppVersion` 1.11.0, up from 1.8.7.
 - Disabling the collapse toggle — a greyed row still reads as a choice.
+
+## D-079 — A placeholder never measured here is estimated from its text (2026-09-30)
+
+**Decision:** a note with no height stored at the layout reserves, first that
+applies: its height at the nearest width of the same text size, plus its wrapped
+lines' difference × line height; else the template's measured height here, plus
+its lines past the template's × a per-line rate learned from text-only notes,
+plus its embeds × a per-embed height learned at this layout (the pane's height
+until one is); else the layout's median. Lines come from the metadata cache, so
+adding a block stays synchronous. Benchmark: `docs/plans/height-estimates.md`.
+
+**Why:** a turn changes a text note only by re-wrapping it, and every note is
+its template plus writing (ADR 0011). Mean error for text notes falls from 85px
+(the other width's height) to 18px, and from ~330px (400px) to ~50px.
+
+**Rejected:**
+
+- The template's height alone — a floor, 443–624px short on average.
+- A fixed buffer per embed — no one value fits Bases drawn as cards in portrait
+  and tables in landscape.
+- Heights stored per Base — a vault's Bases differ, and one Base's height varies
+  with what it draws.

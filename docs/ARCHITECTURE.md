@@ -28,8 +28,8 @@ Per plugin, shared by views:
 - `EmptyNotes` — template-only verdicts; `template-match.ts` reads the template
   as a pattern.
 - `LinkChanges` — which daily notes gained or lost a link.
-- `LayoutMemory` — heights (`note-heights.ts`) and too-wide Bases
-  (`layout-table.ts`), per layout.
+- `LayoutMemory` — heights (`note-heights.ts`), too-wide Bases
+  (`layout-table.ts`) and the template's height, per layout.
 - `CollapsibleStateStore` — collapsed sections.
 
 Per view: `DailyNoteService` (daily notes, nested folders included, newest
@@ -83,7 +83,8 @@ in, an image loads. Three mechanisms keep the reader's place.
 
 - `LayoutMemory` remembers each note's measured height per layout, across
   sessions, so placeholders start at the right size
-  ([ADR 0010](adr/0010-layout-memory.md)).
+  ([ADR 0010](adr/0010-layout-memory.md)). A note not measured at the layout is
+  estimated from its text (`height-estimates.ts`, D-079).
 - `HeightHold` holds a note or Base at its earlier height while it refills.
 - `NoteWindowManager` pins each rendered note's height and changes it only in
   the task that tells `ScrollAnchor`

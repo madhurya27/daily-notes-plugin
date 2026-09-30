@@ -83,14 +83,3 @@ stream_ is ours.** ★ marks the recommended first two.
 Out of scope: random note (core ships it), task rollup (Tasks owns it, and
 read-only cannot check a box), folder/tag modes (dilutes what the plugin is), a
 tag/header filter (search does it), sticky date header (D-012).
-
-## Deferred, contingent on how unloading behaves in real use
-
-Only worth doing if jumps show up on a phone. Chromium's scroll anchoring
-absorbs them on desktop; iOS WebKit has none
-([ADR 0006](adr/0006-unload-off-screen-notes.md)). A flick past unrendered
-placeholders, anchoring off in e2e mobile, jumped 891–2673px as they rendered
-above the viewport (400px estimate → 1291px notes).
-
-- [ ] Estimate per note from `TFile.stat.size` — only if the median proves too
-      coarse for a vault of uneven notes.
