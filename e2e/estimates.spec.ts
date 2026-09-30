@@ -1,8 +1,8 @@
 import type { Locator, Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "fs";
-import { dirname, resolve } from "path";
+import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { test, expect, openStream } from "./obsidian";
+import { test, expect, openStream, STREAM } from "./obsidian";
 import { demoVault } from "../scripts/demo-vault.mjs";
 
 /**
@@ -71,6 +71,64 @@ interface Measured {
     template: number;
     /** The note text's width, and its font's line height and average character width. */
     text: { width: number; lineHeight: number; charWidth: number };
+    /** The plugin's own estimates, by case: see `estimateAll`. */
+    estimates?: Estimates;
+}
+
+type Estimates = Record<"elsewhere" | "learned" | "fresh", Record<string, number | null>>;
+
+/** The template set, and notes holding only it shown, so every note is measured. */
+async function useTemplate(page: Page, vaultPath: string): Promise<void> {
+    const template = TEMPLATE_PATH.replace(/\.md$/, "");
+    writeFileSync(
+        join(vaultPath, ".obsidian", "daily-notes.json"),
+        JSON.stringify({ folder: "Notes", format: "YYYY-MM-DD", template })
+    );
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.app.internalPlugins.getPluginById("daily-notes").instance.options.template)
+        )
+        .toBe(template);
+    await page.evaluate(async () => {
+        const plugin = window.app.plugins.plugins["daily-notes-stream"];
+        plugin.settings.hideEmptyNotes = false;
+        await plugin.saveSettings();
+    });
+}
+
+/**
+ * The stream's own estimate of each note at `here`, the layout it is laid out
+ * in now, with the heights stored as three cases leave them: measured only at
+ * `other` (a turn); never measured, every other note measured at both (a
+ * long-read vault); nothing measured yet.
+ */
+async function estimateAll(page: Page, here: string, other: string, heights: Record<string, Record<string, number>>) {
+    return page.evaluate(
+        ({ here, other, heights }) => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            const { estimates } = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view.stream;
+            const estimating = (saved: [string, [string, number][]][]) => {
+                const stored = new plugin.layoutMemory.notes.constructor();
+                stored.restore(saved);
+                return new estimates.constructor(stored, plugin.layoutMemory.templates, estimates.sources);
+            };
+            const without = (layout: string, path: string): [string, [string, number][]] => [
+                layout,
+                Object.entries(heights[layout]!).filter(([p]) => p !== path),
+            ];
+            const elsewhere = estimating([[other, Object.entries(heights[other]!)]]);
+            const fresh = estimating([]);
+            const result: Record<string, Record<string, number | null>> = { elsewhere: {}, learned: {}, fresh: {} };
+            for (const path of Object.keys(heights[here]!)) {
+                const learned = estimating([without(other, path), without(here, path)]);
+                result.elsewhere![path] = elsewhere.estimate(here, path) ?? null;
+                result.learned![path] = learned.estimate(here, path) ?? null;
+                result.fresh![path] = fresh.estimate(here, path) ?? null;
+            }
+            return result as Estimates;
+        },
+        { here, other, heights }
+    );
 }
 
 async function seed(page: Page): Promise<void> {
@@ -155,8 +213,9 @@ test("measures the demo journal at both orientations", async ({ obsidian, mobile
     test.skip(process.env.MEASURE_ESTIMATES !== "1", "set MEASURE_ESTIMATES=1 to measure");
     test.skip(!mobileLayout, "a phone's two orientations");
     test.setTimeout(900_000);
-    const { page } = obsidian;
+    const { page, vaultPath } = obsidian;
     await seed(page);
+    await useTemplate(page, vaultPath);
 
     const results: Record<string, Measured> = {};
     for (const [name, size] of Object.entries(ORIENTATIONS)) {
@@ -176,7 +235,19 @@ test("measures the demo journal at both orientations", async ({ obsidian, mobile
         };
     }
 
+    const heights = Object.fromEntries(Object.values(results).map(({ layout, heights }) => [layout, heights]));
+    for (const [name, size] of Object.entries(ORIENTATIONS)) {
+        await page.setViewportSize(size);
+        const here = results[name]!.layout;
+        await expect.poll(() => page.locator(STREAM).evaluate((el) => el.clientWidth)).toBe(Number(here.split(":")[0]));
+        const other = Object.values(results).find(({ layout }) => layout !== here)!.layout;
+        results[name]!.estimates = await estimateAll(page, here, other, heights);
+    }
+    const templates: unknown = await page.evaluate(() =>
+        window.app.plugins.plugins["daily-notes-stream"].layoutMemory.templates.toJSON()
+    );
+
     const texts = Object.fromEntries(Object.entries(VAULT).filter(([path]) => path.startsWith("Notes/")));
     mkdirSync(dirname(OUT), { recursive: true });
-    writeFileSync(OUT, JSON.stringify({ results, texts, template: VAULT[TEMPLATE_PATH] }, null, 2));
+    writeFileSync(OUT, JSON.stringify({ results, templates, texts, template: VAULT[TEMPLATE_PATH] }, null, 2));
 });

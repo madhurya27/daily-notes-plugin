@@ -76,6 +76,40 @@ describe("NoteHeights", () => {
         expect(changed).toHaveBeenCalledTimes(5);
     });
 
+    // An estimate reads other layouts; that is no use of them, and they still go first.
+    it("lists what it holds, by note and by layout, without counting as a use", () => {
+        const heights = new NoteHeights(undefined, 2);
+        heights.keep("a", "x.md", 1);
+        heights.keep("a", "y.md", 2);
+        heights.keep("b", "x.md", 3);
+
+        expect(heights.heightsOf("x.md")).toEqual([
+            ["a", 1],
+            ["b", 3],
+        ]);
+        expect(heights.layouts()).toEqual(["a", "b"]);
+        expect(heights.entries("a")).toEqual([
+            ["x.md", 1],
+            ["y.md", 2],
+        ]);
+        expect(heights.entries("c")).toEqual([]);
+
+        heights.keep("c", "z.md", 4);
+        expect(heights.layouts()).toEqual(["b", "c"]);
+    });
+
+    // What is learned from every height is recomputed only once one changed.
+    it("counts its changes", () => {
+        const heights = new NoteHeights();
+        const start = heights.revision;
+        heights.keep("a", "x.md", 1);
+        heights.keep("a", "x.md", 1);
+        expect(heights.revision).toBe(start + 1);
+
+        heights.restore([]);
+        expect(heights.revision).toBe(start + 2);
+    });
+
     it("comes back from what it saved, oldest layout still first to go", () => {
         const saved = new NoteHeights(undefined, 2);
         saved.keep("a", "x.md", 1);

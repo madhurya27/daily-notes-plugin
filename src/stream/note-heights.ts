@@ -12,12 +12,14 @@ export class NoteHeights {
     private readonly table: LayoutTable<number>;
     /** Each layout's median, until one of its heights changes. */
     private readonly medians = new Map<string, number>();
+    private changes = 0;
 
     constructor(changed: () => void = () => {}, limit?: number) {
         this.table = new LayoutTable(
             (value): value is number => typeof value === "number",
             (layout) => {
                 this.medians.delete(layout);
+                this.changes++;
                 changed();
             },
             limit
@@ -26,6 +28,26 @@ export class NoteHeights {
 
     heightOf(layout: string, path: string): number | undefined {
         return this.table.get(layout, path);
+    }
+
+    /** `path`'s height in each layout that measured it; reading is no use of a layout. */
+    heightsOf(path: string): [layout: string, height: number][] {
+        return this.table.valuesOf(path);
+    }
+
+    /** Every layout, the one used longest ago first. */
+    layouts(): string[] {
+        return this.table.layoutNames();
+    }
+
+    /** Heights by path at `layout`; reading is no use of it. */
+    entries(layout: string): [path: string, height: number][] {
+        return this.table.entries(layout);
+    }
+
+    /** Changes so far: what was learned from the heights holds while it stays the same. */
+    get revision(): number {
+        return this.changes;
     }
 
     /** In whole pixels: sub-pixel digits cost a third of what is stored. */
@@ -64,5 +86,6 @@ export class NoteHeights {
     restore(saved: unknown): void {
         this.table.restore(saved);
         this.medians.clear();
+        this.changes++;
     }
 }

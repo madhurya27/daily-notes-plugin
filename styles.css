@@ -657,3 +657,14 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
     visibility: hidden;
     pointer-events: none;
 }
+
+/* A copy of the stream's column, as wide, that the template and the note text
+   are measured in (src/stream/column-probe.ts). */
+.daily-notes-stream-container.daily-notes-stream-probe {
+    position: absolute;
+    inset-block-start: 0;
+    width: var(--daily-notes-probe-width);
+    max-width: none;
+    visibility: hidden;
+    pointer-events: none;
+}

@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, openStream, seededDate } from "./obsidian";
+import { test, expect, openStream, seededDate, STREAM } from "./obsidian";
 
 const NEWEST = seededDate(0);
 
@@ -166,7 +166,7 @@ test.describe("linked mentions", () => {
     test("holds a note coming back into view at its height while its mentions are read", async ({ obsidian }) => {
         const { page } = obsidian;
         await footerOfNewest(page);
-        const container = page.locator(".daily-notes-stream-container");
+        const container = page.locator(STREAM);
         const blocks = container.locator(".daily-note-block");
         const newest = blocks.first();
         await expect

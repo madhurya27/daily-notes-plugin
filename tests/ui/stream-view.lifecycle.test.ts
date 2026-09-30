@@ -1,8 +1,10 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../../src/ui/stream-view";
 import { Platform, TFile, WorkspaceLeaf } from "../mocks/obsidian";
+import type { EmptyNotes } from "../../src/notes/empty-notes";
 import {
     asApp,
+    fake,
     flushPromises,
     makeApp,
     makePlugin,
@@ -91,6 +93,27 @@ describe("DailyNotesStreamView — view API", () => {
         const freshView = new DailyNotesStreamView(new WorkspaceLeaf(asApp(makeApp())), plugin, makeService());
 
         expect(freshView["stream"]["window"]["heights"]).toBe(plugin.layoutMemory.notes);
+    });
+
+    // D-079.
+    it("estimates a note never measured from the vault's metadata, up from the daily-notes template", () => {
+        const plugin = makePlugin();
+        const template = new TFile("Templates/Daily.md");
+        plugin.emptyNotes = fake<EmptyNotes>({ templateFile: () => template });
+        const app = makeApp();
+        const cache = { sections: [] };
+        const getCache = vi.fn((_path: string) => cache);
+        const freshView = new DailyNotesStreamView(
+            new WorkspaceLeaf(asApp({ ...app, metadataCache: { ...app.metadataCache, getCache } })),
+            plugin,
+            makeService()
+        );
+        const stream = freshView["stream"];
+
+        expect(stream["templateHeight"]["templates"]).toBe(plugin.layoutMemory.templates);
+        expect(stream["templateHeight"]["template"]()).toBe(template);
+        expect(stream["estimates"]["sources"].cacheOf("a.md")).toBe(cache);
+        expect(getCache).toHaveBeenCalledWith("a.md");
     });
 
     it("gives the renderer a live view of the plugin settings", async () => {

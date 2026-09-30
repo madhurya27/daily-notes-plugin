@@ -14,7 +14,7 @@ describe("LayoutMemory", () => {
     afterEach(() => vi.useRealTimers());
 
     it("comes back with the heights a last session saved", () => {
-        const app = makeApp({ version: 3, notes: [["600:16px", [["a.md", 300]]]] });
+        const app = makeApp({ version: 4, notes: [["600:16px", [["a.md", 300]]]] });
         const memory = new LayoutMemory(asApp(app));
 
         expect(app.loadLocalStorage).toHaveBeenCalledWith(LAYOUT_MEMORY_KEY);
@@ -23,13 +23,19 @@ describe("LayoutMemory", () => {
 
     it("comes back with what Bases measured in a last session", () => {
         const bases = [["600:16px", [["a.md\nb1", { tooWide: true }]]]];
-        const memory = new LayoutMemory(asApp(makeApp({ version: 3, notes: [], bases })));
+        const memory = new LayoutMemory(asApp(makeApp({ version: 4, notes: [], bases })));
         expect(memory.bases.isTooWide({ layout: "600:16px", path: "a.md", base: "b1" })).toBe(true);
     });
 
-    // Version 1 keyed Bases by their whole source; version 2 kept their heights.
+    it("comes back with the template's heights a last session measured", () => {
+        const templates = [["600:16px", [["Templates/Daily.md", 360]]]];
+        const memory = new LayoutMemory(asApp(makeApp({ version: 4, notes: [], bases: [], templates })));
+        expect(memory.templates.heightOf("600:16px", "Templates/Daily.md")).toBe(360);
+    });
+
+    // Version 1 keyed Bases by their whole source; version 2 kept their heights; version 3 had no templates.
     it("starts empty from another version's save", () => {
-        const memory = new LayoutMemory(asApp(makeApp({ version: 2, notes: [["600:16px", [["a.md", 300]]]] })));
+        const memory = new LayoutMemory(asApp(makeApp({ version: 3, notes: [["600:16px", [["a.md", 300]]]] })));
         expect(memory.notes.toJSON()).toEqual([]);
         expect(memory.bases.toJSON()).toEqual([]);
         expect(new LayoutMemory(asApp(makeApp())).notes.toJSON()).toEqual([]);
@@ -42,12 +48,13 @@ describe("LayoutMemory", () => {
         memory.notes.keep("600:16px", "a.md", 300);
         memory.notes.keep("600:16px", "b.md", 200);
         memory.bases.markTooWide({ layout: "600:16px", path: "a.md", base: "b1" });
+        memory.templates.keep("600:16px", "t.md", 360);
         expect(app.saveLocalStorage).not.toHaveBeenCalled();
 
         vi.advanceTimersByTime(SAVE_DELAY_MS);
         expect(app.saveLocalStorage).toHaveBeenCalledTimes(1);
         expect(app.saveLocalStorage).toHaveBeenCalledWith(LAYOUT_MEMORY_KEY, {
-            version: 3,
+            version: 4,
             notes: [
                 [
                     "600:16px",
@@ -58,6 +65,7 @@ describe("LayoutMemory", () => {
                 ],
             ],
             bases: [["600:16px", [["a.md\nb1", { tooWide: true }]]]],
+            templates: [["600:16px", [["t.md", 360]]]],
         });
     });
 
@@ -67,6 +75,7 @@ describe("LayoutMemory", () => {
         for (const path of ["old.md", "gone.md", "stale.md"]) {
             memory.notes.keep("600:16px", path, 300);
             memory.bases.markTooWide(base(path));
+            memory.templates.keep("600:16px", path, 360);
         }
 
         memory.rename("old.md", "new.md");
@@ -75,6 +84,7 @@ describe("LayoutMemory", () => {
 
         expect(memory.notes.toJSON()).toEqual([["600:16px", [["new.md", 300]]]]);
         expect(memory.bases.toJSON()).toEqual([["600:16px", [["new.md\nb1", { tooWide: true }]]]]);
+        expect(memory.templates.toJSON()).toEqual([["600:16px", [["new.md", 360]]]]);
     });
 
     // localStorage is a few megabytes, shared by every vault in the app.

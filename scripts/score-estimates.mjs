@@ -126,3 +126,24 @@ for (const to of ["portrait", "landscape"]) {
     for (const b of [0, 200, 400, 600, 800, Math.round(perEmbedHere), viewport, Math.round(viewport / 2)])
         console.log(`   buffer ${String(b).padStart(4)}: template+lines ${errOf(b, base)}`);
 }
+
+if (d.results.portrait.estimates) {
+    console.log("\nthe plugin's estimates (mean|err| text / embeds):");
+    console.log(`template measured in the app: ${JSON.stringify(d.templates)}`);
+    for (const to of ["portrait", "landscape"]) {
+        const T = d.results[to];
+        const line = Object.entries(T.estimates).map(([name, estimates]) => {
+            const errs = (withEmbeds) => {
+                const paths = Object.keys(T.heights).filter((p) => embeds(p) > 0 === withEmbeds);
+                const missing = paths.filter((p) => estimates[p] === null).length;
+                const abs = paths
+                    .filter((p) => estimates[p] !== null)
+                    .map((p) => Math.abs(estimates[p] - T.heights[p]));
+                const mean = Math.round(abs.reduce((s, x) => s + x, 0) / abs.length);
+                return missing ? `${mean} (${missing} none)` : `${mean}`;
+            };
+            return `${name}: ${errs(false)} / ${errs(true)}`;
+        });
+        console.log(`${to.padEnd(9)} ${line.join("  ")}`);
+    }
+}

@@ -43,6 +43,23 @@ export class LayoutTable<V> {
         return [...(this.layouts.get(layout)?.values() ?? [])];
     }
 
+    /** `layout`'s keys and values, without counting as a use of it. */
+    entries(layout: string): [key: string, value: V][] {
+        return [...(this.layouts.get(layout) ?? [])];
+    }
+
+    /** Every layout, the one used longest ago first. */
+    layoutNames(): string[] {
+        return [...this.layouts.keys()];
+    }
+
+    /** `key`'s value in each layout holding one, without counting as a use of any. */
+    valuesOf(key: string): [layout: string, value: V][] {
+        return [...this.layouts].flatMap(([layout, entries]): [string, V][] =>
+            entries.has(key) ? [[layout, entries.get(key)!]] : []
+        );
+    }
+
     rename(oldPath: string, newPath: string): void {
         this.edit((entries) => {
             const moved = [...entries].filter(([key]) => notePathOf(key) === oldPath);

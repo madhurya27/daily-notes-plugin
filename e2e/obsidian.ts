@@ -534,6 +534,9 @@ export interface MobileLayoutOptions {
 /** The viewport each project lays out at. */
 export const LAYOUT_VIEWPORT = { desktop: VIEWPORT, mobile: PHONE_VIEWPORT };
 
+/** The stream's column, not the copy of it the template is measured in while the stream opens. */
+export const STREAM = ".daily-notes-stream-container:not(.daily-notes-stream-probe)";
+
 /**
  * Opens a *fresh* stream view and returns its container locator. Tests share one
  * Obsidian instance, so an existing view would carry the previous test's loaded
@@ -556,7 +559,7 @@ export async function openStream(page: Page) {
         }
         throw new Error("stream view never opened");
     });
-    const container = page.locator(".daily-notes-stream-container");
+    const container = page.locator(STREAM);
     await expect(container).toBeVisible();
     await expect(container.locator(".daily-note-block").first()).toBeVisible();
     return container;

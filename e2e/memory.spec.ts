@@ -231,7 +231,11 @@ test.describe("opening a multi-year vault", () => {
         const open = await page.evaluate(async () => {
             const start = performance.now();
             await window.app.commands.executeCommandById("daily-notes-stream:open-stream");
-            while (!document.querySelector(".daily-notes-stream-container .daily-note-content"))
+            while (
+                !document.querySelector(
+                    ".daily-notes-stream-container:not(.daily-notes-stream-probe) .daily-note-content"
+                )
+            )
                 await new Promise((resolve) => setTimeout(resolve, 5));
             const ms = Math.round(performance.now() - start);
             return { ms, reads: window.app.plugins.plugins["daily-notes-stream"].emptyNotes.reads as number };

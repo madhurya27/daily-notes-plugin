@@ -238,6 +238,48 @@ describe("NoteWindowManager remembered heights", () => {
         expect(placeholderHeight(manager.add(FILE))).toBe("710px");
     });
 
+    describe("with an estimate from the note's text", () => {
+        function makeEstimating(heights: NoteHeights) {
+            const estimate = vi.fn((_layout: string, path: string) => (path === FILE.path ? 950 : undefined));
+            const manager = new NoteWindowManager(
+                makeRenderer() as never,
+                makeQueue(),
+                heights,
+                () => LAYOUT,
+                () => 500,
+                estimate
+            );
+            manager.attach(makeScrollRoot(800));
+            return { manager, estimate };
+        }
+
+        it("reserves it for a note not measured here, over the layout's median", () => {
+            const heights = new NoteHeights();
+            heights.keep(LAYOUT, "a.md", 700);
+            const { manager, estimate } = makeEstimating(heights);
+
+            expect(placeholderHeight(manager.add(FILE))).toBe("950px");
+            expect(estimate).toHaveBeenCalledWith(LAYOUT, FILE.path);
+            expect(placeholderHeight(manager.add(new TFile("b.md")))).toBe("700px");
+
+            heights.keep(LAYOUT, FILE.path, 812);
+            expect(placeholderHeight(manager.add(FILE))).toBe("812px");
+        });
+
+        // A guess is no height to hold a note at while it renders.
+        it("holds nothing at it", async () => {
+            const { manager } = makeEstimating(new NoteHeights());
+            const block = manager.add(FILE);
+            document.body.appendChild(block);
+
+            fire(observers.render, block, true);
+            await settle();
+
+            expect(block.style.getPropertyValue("--daily-note-held-height")).toBe("");
+            block.remove();
+        });
+    });
+
     it("falls back to the constant before anything has been measured", () => {
         const { manager } = makeManager();
         expect(placeholderHeight(manager.add(FILE))).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
