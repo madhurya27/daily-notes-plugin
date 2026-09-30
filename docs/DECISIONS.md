@@ -368,6 +368,8 @@ searches hidden frontmatter too (checked 2026-09-23).
 - A longer typing pause — 1095 notes search in 1–3 ms.
 - Skipping frontmatter when properties are off — disagrees with Obsidian.
 - A tag/header filter — core search does it.
+- Matching the "Properties" label, as reading view does — it is in no note's
+  source, and "prop" would hit every note with frontmatter.
 
 ## D-023 — Kebab-case files, grouped into folders (2026-09-23)
 

@@ -192,6 +192,18 @@ test.describe("search the stream", () => {
         expect(await currentMatch(page)).toBeNull();
     });
 
+    test("paints nothing in the properties heading, which no note holds", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+        await expect(page.locator(".metadata-properties-title").first()).toHaveText("Properties");
+        const bar = await openSearch(page);
+
+        await bar.locator("input").fill("Properties");
+
+        await expect(bar.locator(".document-search-count")).toHaveText("No results");
+        expect(await painted(page, "daily-notes-search-match")).toBe(0);
+    });
+
     test("clears every highlight on close", async ({ obsidian }) => {
         const { page } = obsidian;
         await openStream(page);

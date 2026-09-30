@@ -400,7 +400,9 @@ export class NoteRenderer {
         const keyContainer = propertyRow.createDiv({ cls: "metadata-property-key" });
         const iconEl = keyContainer.createDiv({ cls: "metadata-property-icon" });
         setIcon(iconEl, getPropertyIcon(this.app, key, value) ?? fallbackIcon(key));
-        keyContainer.createSpan({ cls: "metadata-property-key-input", text: key });
+        // The key is a flex box, and WebKit paints no CSS highlight on a bare
+        // text run inside one (D-038): search marked no key on iOS.
+        keyContainer.createSpan({ cls: "metadata-property-key-input" }).createSpan({ text: key });
 
         const valueEl = propertyRow.createDiv({ cls: "metadata-property-value" });
         const items = pillItems(key, value);
