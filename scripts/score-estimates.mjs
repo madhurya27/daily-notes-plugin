@@ -1,11 +1,9 @@
 // Scores placeholder estimates against the heights e2e/estimates.spec.ts measured.
 import { readFileSync } from "fs";
-import { demoVault } from "./demo-vault.mjs";
 
 const d = JSON.parse(readFileSync(".dev/estimates.json", "utf8"));
-const DEMO = demoVault({ until: new Date(Date.UTC(2026, 8, 25)), days: 90 });
-const text = (path) => DEMO[path.replace(/^Notes\//, "Journal/")];
-const template = DEMO["Templates/Daily.md"];
+const text = (path) => d.texts[path];
+const template = d.template;
 const templateLines = new Set(template.split("\n").map((l) => l.trim()));
 
 /** Lines of body text beyond the template, each wrapped at the column's width. */

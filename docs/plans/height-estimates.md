@@ -7,35 +7,37 @@ the stream, a blank gap. Branch `feat/height-estimates`.
 
 ## Evidence
 
-`e2e/estimates.spec.ts` (opt-in) renders the 90-note demo journal at a phone's
-portrait (402×874) and landscape (874×402) and writes `.dev/estimates.json`;
+`e2e/estimates.spec.ts` (opt-in) renders the 90-note demo journal, its embeds
+varied (three Bases, four images of different shapes), at a phone's portrait
+(402×874) and landscape (874×402) and writes `.dev/estimates.json`;
 `scripts/score-estimates.mjs` scores estimates against it. Mean error per note,
 px, estimating each orientation from the other (portrait / landscape):
 
-| Estimate                                    | 75 text-only notes | 15 with an embed |
+| Estimate                                    | 61 text-only notes | 29 with an embed |
 | ------------------------------------------- | ------------------ | ---------------- |
-| 400px (now, for a note never measured)      | 360 / 277          | 1440 / 598       |
-| Height at the other width (now, after turn) | 84 / 84            | 842 / 842        |
-| Template's height here                      | 577 / 367 (all)    |                  |
-| Template + wrapped lines × line height      | 117 / 115          | 1156 / 350       |
-| Template + lines × rate learned elsewhere   | 64 / 65            | 790 / 793        |
-| Other width's height, text re-wrapped       | **5 / 5**          | 826 / 826        |
+| 400px (now, for a note never measured)      | 369 / 284          | 1048 / 665       |
+| Height at the other width (now, after turn) | 85 / 85            | 389 / 389        |
+| Template's height here                      | 624 / 443 (all)    |                  |
+| Template + wrapped lines × line height      | 121 / 119          | 782 / 454        |
+| Template + lines × rate learned elsewhere   | 63 / 70            | 506 / 365        |
+| Other width's height, text re-wrapped       | **5 / 5**          | 376 / 376        |
 
 A buffer per embed, added to template + lines:
 
 | Buffer per embed               | Portrait | Landscape |
 | ------------------------------ | -------- | --------- |
-| none                           | 1156     | 350       |
-| 400px                          | 763      | 66        |
-| one pane height (874 / 402)    | 413      | 67        |
-| learned: median at this layout | 129      | 25        |
+| none                           | 782      | 454       |
+| 400px                          | 491      | 178       |
+| one pane height (874 / 402)    | 648      | 178       |
+| learned: median at this layout | 492      | 167       |
 
 - The template alone (362px at both widths) is only a floor: every note shown is
   its template plus writing (ADR 0011).
 - A turn changes a text note only by re-wrapping its text.
-- An embed's height depends on the width (a Base is cards in portrait, a table
-  in landscape: 1283 vs 341px). The demo repeats one Base, so the learned buffer
-  above is optimistic; real vaults embed different Bases and images.
+- An embed's height depends on the width, and differs by embed: a Base drawn as
+  cards in portrait and a table in landscape (Reading: ~1300 vs ~340px), a
+  banner image scaling with the width, a small image the same at both. No buffer
+  gets within ~490px in portrait; the learned median is the least bad.
 
 ## The estimate
 
@@ -65,10 +67,8 @@ Terms:
 
 Test first throughout (red shown, then green), as `CLAUDE.md` requires.
 
-1. **Benchmark.** Make the demo journal's embeds varied before tuning: a second
-   and third Base (a short list, a wide table) and images of different sizes, in
-   `scripts/demo-vault.mjs`, or in the spec's own vault. Re-run the spec and
-   score; record the new baseline here.
+1. **Benchmark.** Done: the spec varies the embeds in its own vault, leaving the
+   demo (and the README's captures) as they are; Evidence is the new baseline.
 2. **Line counting.** A pure `src/stream/note-lines.ts`: wrapped lines of a
    `CachedMetadata` at a width and charWidth. Unit tests with hand-built caches:
    a list, a paragraph wrapping, a code block, frontmatter ignored, embeds
@@ -86,7 +86,8 @@ Test first throughout (red shown, then green), as `CLAUDE.md` requires.
    page, and score it. Acceptance, on the step 1 benchmark:
     - text-only notes, another layout stored: mean error ≤ 20px;
     - never measured, rate learned: ≤ 90px; line height only: ≤ 130px;
-    - notes with embeds: better than both "now" rows at both orientations.
+    - notes with embeds: better than the "now" row for the same case at both
+      orientations (stored elsewhere: 389; never measured: 1048 / 665).
 6. **Keep the benchmark.** Leave the spec opt-in; note its command in
    `CLAUDE.md` beside `test:memory`.
 

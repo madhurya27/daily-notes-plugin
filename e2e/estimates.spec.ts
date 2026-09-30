@@ -6,14 +6,63 @@ import { test, expect, openStream } from "./obsidian";
 import { demoVault } from "../scripts/demo-vault.mjs";
 
 /**
- * Measures the demo journal at a phone's two orientations, for scoring
- * placeholder estimates against real heights. Opt-in, through
+ * Measures the demo journal, its embeds varied, at a phone's two orientations,
+ * for scoring placeholder estimates against real heights. Opt-in, through
  * MEASURE_ESTIMATES=1 E2E_SHOW_WINDOW=1: it writes `.dev/estimates.json`.
  */
 
 const OUT = resolve(dirname(fileURLToPath(import.meta.url)), "..", ".dev", "estimates.json");
-const DEMO = demoVault({ until: new Date(Date.UTC(2026, 8, 25)), days: 90 });
 const TEMPLATE_PATH = "Scratch/Daily template.md";
+
+const base = (folder: string, columns: string[]) =>
+    [
+        "filters:",
+        "  and:",
+        `    - file.inFolder("${folder}")`,
+        "views:",
+        "  - type: table",
+        "    name: View",
+        "    order:",
+        ...columns.map((column) => `      - ${column}`),
+        "",
+    ].join("\n");
+const svg = (width: number, height: number) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="#b8ae9a"/></svg>\n`;
+
+/** The demo has one Base and one image; a vault's embeds differ in shape and in how they meet the width. */
+const EMBEDS = {
+    /** Narrow: a table at both widths. */
+    "People.base": base("People", ["file.name"]),
+    /** Wide: cards at both widths. */
+    "Library.base": base("Books", ["file.name", "author", "status", "rating", "file.path", "file.ctime", "file.mtime"]),
+    /** Scales with the width. */
+    "Attachments/banner.svg": svg(1200, 240),
+    /** Narrower than a phone: the same height at both widths. */
+    "Attachments/photo.svg": svg(300, 480),
+    "Attachments/icon.svg": svg(96, 96),
+};
+const BASES = ["Reading.base", "People.base", "Library.base"];
+const IMAGES = ["atlas-wireframe.svg", "banner.svg", "photo.svg", "icon.svg"];
+
+/** Sundays rotate through the Bases, every other one with an image too; one written weekday in five gets an image. */
+function variedDemo(): Record<string, string> {
+    const demo = demoVault({ until: new Date(Date.UTC(2026, 8, 25)), days: 90 });
+    const template = demo["Templates/Daily.md"]!;
+    const vault: Record<string, string> = { ...EMBEDS };
+    let sundays = 0;
+    let images = 0;
+    const image = () => `\n![[${IMAGES[images++ % IMAGES.length]}]]\n`;
+    for (const [index, [path, text]] of Object.entries(demo).entries()) {
+        let varied = text;
+        if (text.includes("![[Reading.base]]")) {
+            varied = text.replace("Reading.base", BASES[sundays % BASES.length]!);
+            if (sundays++ % 2 === 1) varied += image();
+        } else if (path.startsWith("Journal/") && text !== template && index % 5 === 2) varied += image();
+        vault[path.replace(/^Journal\//, "Notes/").replace(/^Templates\/Daily\.md$/, TEMPLATE_PATH)] = varied;
+    }
+    return vault;
+}
+const VAULT = variedDemo();
 const ORIENTATIONS = { portrait: { width: 402, height: 874 }, landscape: { width: 874, height: 402 } };
 
 interface Measured {
@@ -25,10 +74,7 @@ interface Measured {
 }
 
 async function seed(page: Page): Promise<void> {
-    const files = Object.entries(DEMO).map(([path, text]): [string, string] => [
-        path.replace(/^Journal\//, "Notes/").replace(/^Templates\/Daily\.md$/, TEMPLATE_PATH),
-        text,
-    ]);
+    const files = Object.entries(VAULT);
     await page.evaluate(async (files) => {
         const { vault } = window.app;
         for (const file of vault.getFiles()) await vault.delete(file);
@@ -130,9 +176,7 @@ test("measures the demo journal at both orientations", async ({ obsidian, mobile
         };
     }
 
-    const chars = Object.fromEntries(
-        Object.entries(DEMO).map(([path, text]) => [path.replace(/^Journal\//, "Notes/"), text.length])
-    );
+    const texts = Object.fromEntries(Object.entries(VAULT).filter(([path]) => path.startsWith("Notes/")));
     mkdirSync(dirname(OUT), { recursive: true });
-    writeFileSync(OUT, JSON.stringify({ results, chars, templateChars: DEMO["Templates/Daily.md"]!.length }, null, 2));
+    writeFileSync(OUT, JSON.stringify({ results, texts, template: VAULT[TEMPLATE_PATH] }, null, 2));
 });
