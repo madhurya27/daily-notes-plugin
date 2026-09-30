@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import { Component, TFile } from "obsidian";
 import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX } from "../../src/stream/note-window";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "../../src/stream/scroll-anchor";
@@ -119,7 +119,7 @@ const LAYOUT = "600:16px";
 
 function makeManager(
     renderer = makeRenderer(),
-    measure = () => 500,
+    measure: (el: HTMLElement) => number = () => 500,
     scrollRoot = makeScrollRoot(800),
     heights = new NoteHeights()
 ) {
@@ -335,7 +335,7 @@ describe("NoteWindowManager holds a rendered note until it settles", () => {
     const heldHeight = (block: HTMLElement) => block.style.getPropertyValue("--daily-note-held-height");
 
     /** Renders a block for FILE, which measured `remembered` before, if anything. */
-    async function renderRemembering(remembered: number | undefined, measure = () => 640) {
+    async function renderRemembering(remembered: number | undefined, measure: (el: HTMLElement) => number = () => 640) {
         const heights = new NoteHeights();
         if (remembered !== undefined) heights.keep(LAYOUT, FILE.path, remembered);
         const setup = makeManager(makeRenderer(), measure, undefined, heights);
@@ -363,8 +363,8 @@ describe("NoteWindowManager holds a rendered note until it settles", () => {
     });
 
     it("lets go once it settles, remembering what it measures without the hold", async () => {
-        const { block, heights } = await renderRemembering(812, () =>
-            block.style.getPropertyValue("--daily-note-held-height") ? 812 : 640
+        const { block, heights } = await renderRemembering(812, (el) =>
+            el.style.getPropertyValue("--daily-note-held-height") ? 812 : 640
         );
 
         await vi.advanceTimersByTimeAsync(SETTLE_MS);
@@ -493,8 +493,8 @@ describe("NoteWindowManager holds a rendered note until it settles", () => {
     });
 
     it("unloads at what it measures without the hold", async () => {
-        const { block } = await renderRemembering(812, () =>
-            block.style.getPropertyValue("--daily-note-held-height") ? 812 : 640
+        const { block } = await renderRemembering(812, (el) =>
+            el.style.getPropertyValue("--daily-note-held-height") ? 812 : 640
         );
 
         fire(observers.unload, block, false);
@@ -739,6 +739,194 @@ describe("NoteWindowManager render", () => {
 
         expect(renderer.discard).toHaveBeenCalledTimes(1);
         expect(block.classList.contains("is-unloaded")).toBe(true);
+    });
+});
+
+/**
+ * Mid-glide, iOS paints a resize a frame before reporting it: a note's height
+ * changes only where the anchor is told in the same task (ADR 0013).
+ */
+describe("NoteWindowManager pins a rendered note", () => {
+    const pinned = (block: HTMLElement) => block.style.getPropertyValue("--daily-note-pinned-height");
+    let told: MockInstance<() => void>;
+
+    beforeEach(() => {
+        told = vi.spyOn(ScrollAnchor.prototype, "resized");
+    });
+    afterEach(() => document.body.empty());
+
+    /** Renders FILE; `measure` sees the block as laid out, pinned or not. */
+    async function rendered(measure: (block: HTMLElement) => number, heights = new NoteHeights()) {
+        const setup = makeManager(makeRenderer(), () => measure(block), undefined, heights);
+        const block = setup.manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        return { ...setup, block };
+    }
+
+    /** The natural height while unpinned; what it is pinned at otherwise. */
+    const natural = (height: () => number) => (block: HTMLElement) => parseFloat(pinned(block)) || height();
+
+    it("pins it at the height it lays out at, and tells the anchor in that task", async () => {
+        const { block } = await rendered(natural(() => 640));
+
+        expect(pinned(block)).toBe("640px");
+        expect(block.hasClass("is-pinned")).toBe(true);
+        expect(told).toHaveBeenCalledOnce();
+    });
+
+    it("takes a new height only as its content reports a resize, telling the anchor at once", async () => {
+        let height = 640;
+        const { block } = await rendered(natural(() => height));
+        told.mockClear();
+
+        height = 900;
+        expect(pinned(block)).toBe("640px");
+        resize(block.lastElementChild as HTMLElement);
+
+        expect(pinned(block)).toBe("900px");
+        expect(told).toHaveBeenCalledOnce();
+    });
+
+    // Reports run in the order the observers were made. Read first, the place
+    // fell where the grown note was still clipped, in the note below it.
+    it("hears a resize before the scroll anchor, which reads the note re-pinned", async () => {
+        // No native anchoring, as on iOS: the anchor attaches and observes too.
+        vi.stubGlobal("CSS", { supports: () => false });
+        let height = 640;
+        const { block } = await rendered(natural(() => height));
+        height = 900;
+
+        resizeCallbacks[0]!([{ target: block.lastElementChild } as ResizeObserverEntry], {} as ResizeObserver);
+
+        expect(pinned(block)).toBe("900px");
+    });
+
+    it("tells the anchor nothing when its height did not change", async () => {
+        const { block } = await rendered(natural(() => 640));
+        told.mockClear();
+
+        resize(block.lastElementChild as HTMLElement);
+
+        expect(told).not.toHaveBeenCalled();
+    });
+
+    // A hold is a min-height, which the pin hides: its let-go shows only once re-pinned.
+    it("takes its own height once the reader touches it out of its hold", async () => {
+        const heights = new NoteHeights();
+        heights.keep(LAYOUT, FILE.path, 812);
+        const heldOr = (height: number) => (block: HTMLElement) =>
+            block.style.getPropertyValue("--daily-note-held-height") ? 812 : height;
+        const { manager, block } = await rendered(heldOr(640), heights);
+        expect(pinned(block)).toBe("812px");
+
+        manager.onTouch(block.firstElementChild);
+
+        expect(pinned(block)).toBe("640px");
+    });
+
+    it("takes its own height when the hold's limit passes", async () => {
+        const heights = new NoteHeights();
+        heights.keep(LAYOUT, FILE.path, 812);
+        const { block } = await rendered(
+            (b) => (b.style.getPropertyValue("--daily-note-held-height") ? 812 : 640),
+            heights
+        );
+        // Resizing all along, it never settles.
+        for (let t = 0; t < HOLD_LIMIT_MS; t += SETTLE_MS / 2) {
+            resize(block.lastElementChild as HTMLElement);
+            await vi.advanceTimersByTimeAsync(SETTLE_MS / 2);
+        }
+
+        expect(pinned(block)).toBe("640px");
+    });
+
+    it("stays pinned while it re-renders in place, then takes its new height", async () => {
+        let height = 640;
+        const pinnedWhileRendering: string[] = [];
+        const renderer = makeRenderer({ render: (b) => void pinnedWhileRendering.push(pinned(b)) });
+        const { manager } = makeManager(renderer, () => parseFloat(pinned(block)) || height);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        height = 700;
+
+        await manager.refresh(block);
+
+        expect(pinnedWhileRendering).toEqual(["", "640px"]);
+        expect(pinned(block)).toBe("700px");
+    });
+
+    // Half-drawn, it would pin short, then grow back as the render finished.
+    it("keeps the pin through a resize reported while it re-renders", async () => {
+        let height = 640;
+        let mid: () => void = () => {};
+        const renderer = makeRenderer({ render: () => mid() });
+        const { manager } = makeManager(renderer, () => parseFloat(pinned(block)) || height);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        const pinnedMidRender: string[] = [];
+        mid = () => {
+            height = 100;
+            resize(block);
+            pinnedMidRender.push(pinned(block));
+            height = 700;
+        };
+
+        await manager.refresh(block);
+
+        expect(pinnedMidRender).toEqual(["640px"]);
+        expect(pinned(block)).toBe("700px");
+    });
+
+    it("ignores a resize reported for a note it no longer has", async () => {
+        const { manager, block } = await rendered(natural(() => 640));
+        manager.remove(block);
+        told.mockClear();
+
+        resize(block);
+        resize(document.body);
+
+        expect(told).not.toHaveBeenCalled();
+    });
+
+    // Emptied or refilled next: re-pinned short, it would shift the stream for nothing.
+    it("keeps its height as a hold stops with the note", async () => {
+        const heights = new NoteHeights();
+        heights.keep(LAYOUT, FILE.path, 812);
+        const { manager, block } = await rendered(
+            (b) => (b.style.getPropertyValue("--daily-note-held-height") ? 812 : 640),
+            heights
+        );
+        told.mockClear();
+
+        manager.remove(block);
+
+        expect(told).not.toHaveBeenCalled();
+        expect(pinned(block)).toBe("812px");
+    });
+
+    it("lets go of the pin as it unloads, reserving its height as a placeholder", async () => {
+        const { block } = await rendered(natural(() => 640));
+
+        fire(observers.unload, block, false);
+        await still();
+
+        expect(pinned(block)).toBe("");
+        expect(block.hasClass("is-pinned")).toBe(false);
+        expect(placeholderHeight(block)).toBe("640px");
+    });
+
+    // In a hidden tab nothing lays out: pinned at zero, the note would vanish.
+    it("pins nothing while the block lays out at nothing", async () => {
+        const { block } = await rendered(() => 0);
+
+        expect(block.hasClass("is-pinned")).toBe(false);
+        expect(pinned(block)).toBe("");
     });
 });
 

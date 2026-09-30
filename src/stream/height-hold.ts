@@ -13,10 +13,14 @@ export class HeightHold {
     private readonly timer: number;
     private held = true;
 
-    /** styles.css turns the property into a `min-height`, for notes and Bases alike. */
+    /**
+     * styles.css turns the property into a `min-height`, for notes and Bases
+     * alike. `released` runs once it lets go.
+     */
     constructor(
         private readonly el: HTMLElement,
-        height: number
+        height: number,
+        private readonly released: () => void = () => {}
     ) {
         el.style.setProperty("--daily-note-held-height", `${height}px`);
         this.timer = window.setTimeout(() => this.release(), HOLD_LIMIT_MS);
@@ -31,5 +35,6 @@ export class HeightHold {
         this.held = false;
         window.clearTimeout(this.timer);
         this.el.style.removeProperty("--daily-note-held-height");
+        this.released();
     }
 }

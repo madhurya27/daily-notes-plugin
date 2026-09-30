@@ -172,6 +172,22 @@ describe("ScrollAnchor", () => {
         expect(readerTop(blocks)).toBe(-100);
     });
 
+    // Mid-glide, iOS paints a resize before reporting it: told in the task
+    // that made the change, the shift is drawn with it (ADR 0013).
+    it("shifts the moment it is told a block resized, before any report of it", () => {
+        const { content, blocks, resize } = watch([400, 400, 400], 900);
+
+        resize(blocks[0]!, 1300);
+        anchor.resized();
+
+        expect(shift(content)).toBe(-900);
+        expect(readerTop(blocks)).toBe(-100);
+    });
+
+    it("ignores being told of a resize before it is attached", () => {
+        expect(() => anchor.resized()).not.toThrow();
+    });
+
     // A phone turned on its side hides the status bar: the pane moves up, and
     // everything in it with the pane.
     it("owes nothing for the pane itself moving", () => {

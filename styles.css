@@ -46,6 +46,14 @@
     overflow: clip;
 }
 
+/* A rendered note at the height the stream last took for it: what renders
+   inside moves nothing until NoteWindowManager re-pins it, telling the scroll
+   anchor in the same task (ADR 0013). */
+.daily-note-block.is-pinned {
+    height: var(--daily-note-pinned-height);
+    overflow-y: clip;
+}
+
 /* A note or Base held at an earlier height while it refills
    (src/stream/height-hold.ts). */
 .daily-note-block,
