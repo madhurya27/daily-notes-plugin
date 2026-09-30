@@ -82,9 +82,11 @@ portrait / landscape):
 | Embeds, never measured, learned     | < 1048 / 665 | 531 / 174     |
 | Embeds, never measured, nothing yet | < 1048 / 665 | 577 / 182     |
 
-The line-height case misses: a note's line costs ~35px, not 24 (headings,
-spacing, properties), and it lasts only until the first notes at this text size
-are measured.
+The line-height case misses, and the target is relaxed to it: a note's line
+costs ~35px, not 24 (headings, spacing, properties), and it lasts only until the
+first notes at this text size are measured. A starting multiplier on the line
+height (~1.45) was rejected: fitted to the demo journal and theme, for a case
+gone after the first screen.
 
 Where the code differs from the terms above:
 
@@ -130,4 +132,10 @@ up after a jump and after a turn, compared with the last one.
 
 - Re-reserving placeholders on a turn with the re-wrapped estimate (would fix
   the turn case the recordings show). Needs D-055's clamp solved first.
+- Measuring notes in the background while the reader is still: render each note
+  never measured at this layout into the probe, keep its height, discard it.
+  Every placeholder then holds a real height. Open: CPU and battery on a phone
+  (render-cost.spec measures Base draws at ~16ms each, and a three-year vault
+  has 1,095 notes); images and Bases settle late; no `requestIdleCallback` on
+  iOS. Its own ADR.
 - Delete this plan once shipped.
