@@ -130,12 +130,26 @@ up after a jump and after a turn, compared with the last one.
 
 ## Later
 
+Worth exploring, most promising first:
+
+- **Measure notes in the background while the reader is still.** Render each
+  note never measured at this layout into the probe, keep its height once it
+  settles, discard it. Every placeholder then holds a real height, without the
+  reader visiting each note; estimates only cover the gap. Start with the notes
+  loaded in the stream, nearest the reader first, and extend render-cost.spec to
+  price it at phone speed before going vault-wide. Open: CPU and battery (a Base
+  draws in ~16ms; a three-year vault has 1,095 notes, so 20–50s per layout); no
+  `requestIdleCallback` on iOS, so idle means no scroll or touch for a while,
+  yielding within one note; images and Bases settle late; rendering runs Bases'
+  queries and other plugins' post-processors. Its own ADR.
+- **Measure the other orientation too.** The probe's width is ours to set: the
+  same background pass can measure at the other orientation's width, so a turn
+  finds real heights. Pays off only with re-reserving on a turn, below.
+- **Remember each image's aspect ratio.** Once an image loads, keep its natural
+  size by path: its height at any width is then exact, not the per-embed buffer.
+  Images are most of the embed error that is not Bases.
+- **Read charWidth from rendered note text,** once a note is on screen, rather
+  than a sample sentence (7.8px against the demo's 7.3).
 - Re-reserving placeholders on a turn with the re-wrapped estimate (would fix
   the turn case the recordings show). Needs D-055's clamp solved first.
-- Measuring notes in the background while the reader is still: render each note
-  never measured at this layout into the probe, keep its height, discard it.
-  Every placeholder then holds a real height. Open: CPU and battery on a phone
-  (render-cost.spec measures Base draws at ~16ms each, and a three-year vault
-  has 1,095 notes); images and Bases settle late; no `requestIdleCallback` on
-  iOS. Its own ADR.
 - Delete this plan once shipped.
