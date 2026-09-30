@@ -46,6 +46,24 @@ test.describe("in iOS's engine", () => {
         expect(await paints(await inWebKit(), "daily-notes-search-match")).toBe(true);
     });
 
+    for (const [part, query] of [
+        ["key", "mood"],
+        ["value", "day-"],
+        ["tag pill", "daily"],
+    ] as const) {
+        test(`paints a match in a property's ${part}`, async ({ obsidian, inWebKit }) => {
+            await search(obsidian.page, query);
+
+            const phone = await inWebKit();
+            const inPanel = await phone.evaluate(() => {
+                const [range] = [...CSS.highlights.get("daily-notes-search-match")!] as Range[];
+                return !!range!.startContainer.parentElement!.closest(".metadata-container");
+            });
+            expect(inPanel).toBe(true);
+            expect(await paints(phone, "daily-notes-search-match")).toBe(true);
+        });
+    }
+
     test("lets the reader select a note's text and title", async ({ obsidian, inWebKit }) => {
         const container = await openStream(obsidian.page);
         await expect(container.locator(".daily-note-content p").first()).toBeAttached();
