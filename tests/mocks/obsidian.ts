@@ -470,6 +470,7 @@ export class Setting {
 
     name = "";
     desc = "";
+    heading = false;
     toggles: ToggleComponent[] = [];
     texts: TextComponent[] = [];
     buttons: ButtonComponent[] = [];
@@ -485,6 +486,11 @@ export class Setting {
     }
     setDesc(desc: string) {
         this.desc = desc;
+        return this;
+    }
+    setHeading() {
+        this.heading = true;
+        this.itemEl.addClass("setting-item-heading");
         return this;
     }
     addText(cb: (_text: TextComponent) => unknown) {

@@ -72,10 +72,10 @@ describe("README", () => {
         ).display();
 
         expect(Setting.created.length).toBeGreaterThan(0);
-        for (const { name, toggles } of Setting.created) {
+        for (const { name, heading, toggles } of Setting.created) {
             const line = section.split("\n").find((text) => text.includes(`**${name}**`));
             expect(line, `${name} is not under ## Settings`).toBeDefined();
-            expect(line).toContain(toggles[0]!.value ? "(on)" : "(off)");
+            if (!heading) expect(line).toContain(toggles[0]!.value ? "(on)" : "(off)");
         }
     });
 });

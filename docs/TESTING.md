@@ -74,6 +74,9 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
   **[e2e]** for the wait; the glide by hand.
 - Tall window, short notes: loading continues past the first batch.
 - Toggling any setting refreshes the view but keeps the scroll position.
+- The settings tab groups Properties and Linked mentions under headings; turning
+  a section's "Show" off removes its "Collapse by default" row, on brings it
+  back.
 
 ### Jump to date
 

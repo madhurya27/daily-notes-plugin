@@ -1228,3 +1228,18 @@ end is nearest when nothing older is left.
 
 - Back to the top — what a reload did; it throws the reader years away.
 - The next newer note — it is behind the reader, above where they were.
+
+## D-078 — Settings are grouped under headings; a hidden section drops its collapse toggle (2026-09-30)
+
+**Decision:** the settings tab puts Properties and Linked mentions under
+`Setting.setHeading()` rows, Hide empty notes above them. A section's "Collapse
+by default" is drawn only while its "Show" toggle is on; that toggle redraws the
+tab.
+
+**Why:** each collapse toggle means nothing without its show toggle, and a flat
+list did not say so.
+
+**Rejected:**
+
+- `SettingGroup` cards — needs `minAppVersion` 1.11.0, up from 1.8.7.
+- Disabling the collapse toggle — a greyed row still reads as a choice.

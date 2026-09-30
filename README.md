@@ -146,12 +146,17 @@ they do in Obsidian.
 
 ## Settings
 
-- **Show note properties** (on): show or hide each note's properties.
-- **Collapse properties by default** (off): start with the properties folded.
-- **Show linked mentions** (on): show or hide the notes linking to each note.
-- **Collapse linked mentions by default** (off): start with them folded.
 - **Hide empty notes** (on): leave out daily notes you never wrote in. See
   [Empty notes](#empty-notes).
+- **Properties**
+    - **Show note properties** (on): show or hide each note's properties.
+    - **Collapse by default** (off): start with the properties folded.
+- **Linked mentions**
+    - **Show linked mentions** (on): show or hide the notes linking to each
+      note.
+    - **Collapse by default** (off): start with them folded.
+
+A section's **Collapse by default** is listed only while the section is shown.
 
 The stream follows Obsidian's theme, light or dark.
 

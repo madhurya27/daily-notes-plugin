@@ -1,5 +1,6 @@
 import { writeFileSync } from "fs";
 import { join } from "path";
+import type { Page } from "@playwright/test";
 import { test, expect, openStream } from "./obsidian";
 
 const CONFIG = { folder: "Notes", format: "YYYY-MM-DD" };
@@ -56,5 +57,49 @@ test.describe("Obsidian's daily-notes settings change under a live stream", () =
         }, JOURNAL_NOTE);
         await expect(container.locator(".daily-note-title")).toHaveText(["2026-06-05"]);
         await expect(container.locator(".daily-notes-empty-state")).toHaveCount(0);
+    });
+});
+
+/** Opens the plugin's settings tab and returns the page drawing it: desktop gives settings a window of their own. */
+async function openPluginSettings(page: Page, mobileLayout: boolean): Promise<Page> {
+    const settingsWindow = mobileLayout ? page : page.context().waitForEvent("page");
+    await page.evaluate(() => {
+        window.app.setting.open();
+        window.app.setting.openTabById("daily-notes-stream");
+    });
+    return settingsWindow;
+}
+
+test.describe("The plugin's settings tab", () => {
+    test.afterEach(async ({ obsidian }) => {
+        await obsidian.page.evaluate(() => window.app.setting.close());
+    });
+
+    test("groups each section under a heading and drops a hidden section's collapse toggle", async ({
+        obsidian,
+        mobileLayout,
+    }) => {
+        const settings = await openPluginSettings(obsidian.page, mobileLayout);
+        const rows = settings.locator(".vertical-tab-content .setting-item");
+        const names = rows.locator(".setting-item-name");
+        const grouped = [
+            "Hide empty notes",
+            "Properties",
+            "Show note properties",
+            "Collapse by default",
+            "Linked mentions",
+            "Show linked mentions",
+            "Collapse by default",
+        ];
+        await expect(names).toHaveText(grouped);
+        await expect(rows.locator("visible=true")).toHaveCount(grouped.length);
+        await expect(rows.and(settings.locator(".setting-item-heading")).locator(".setting-item-name")).toHaveText([
+            "Properties",
+            "Linked mentions",
+        ]);
+
+        await rows.filter({ hasText: "Show note properties" }).locator(".checkbox-container").click();
+
+        await expect(names).toHaveText(grouped.filter((_, row) => row !== 3));
     });
 });

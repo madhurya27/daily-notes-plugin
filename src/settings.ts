@@ -17,6 +17,12 @@ export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
     hideEmptyNotes: true,
 };
 
+interface ToggleRow {
+    key: keyof DailyNotesStreamSettings;
+    name: string;
+    desc: string;
+}
+
 export class DailyNotesStreamSettingTab extends PluginSettingTab {
     plugin: DailyNotesStreamPlugin;
 
@@ -26,32 +32,53 @@ export class DailyNotesStreamSettingTab extends PluginSettingTab {
     }
 
     display(): void {
+        this.draw();
+    }
+
+    private draw(): void {
         this.containerEl.empty();
 
-        this.addToggle(
-            "showProperties",
-            "Show note properties",
-            "Display the frontmatter properties (metadata) for each daily note."
+        this.addToggle({
+            key: "hideEmptyNotes",
+            name: "Hide empty notes",
+            desc: "Leave out daily notes that hold only their template. Today's note always shows.",
+        });
+        this.addSection(
+            "Properties",
+            {
+                key: "showProperties",
+                name: "Show note properties",
+                desc: "Display the frontmatter properties (metadata) for each daily note.",
+            },
+            {
+                key: "propertiesCollapsed",
+                name: "Collapse by default",
+                desc: "Whether the properties section should be collapsed by default.",
+            }
         );
-        this.addToggle(
-            "propertiesCollapsed",
-            "Collapse properties by default",
-            "Whether the properties section should be collapsed by default."
-        );
-        this.addToggle("showLinkedMentions", "Show linked mentions", "List the notes that link to each daily note.");
-        this.addToggle(
-            "linkedMentionsCollapsed",
-            "Collapse linked mentions by default",
-            "Whether the linked mentions should be collapsed by default."
-        );
-        this.addToggle(
-            "hideEmptyNotes",
-            "Hide empty notes",
-            "Leave out daily notes that hold only their template. Today's note always shows."
+        this.addSection(
+            "Linked mentions",
+            {
+                key: "showLinkedMentions",
+                name: "Show linked mentions",
+                desc: "List the notes that link to each daily note.",
+            },
+            {
+                key: "linkedMentionsCollapsed",
+                name: "Collapse by default",
+                desc: "Whether the linked mentions should be collapsed by default.",
+            }
         );
     }
 
-    private addToggle(key: keyof DailyNotesStreamSettings, name: string, desc: string): void {
+    /** A heading over a section's toggles; `collapsed` is drawn only while the section shows (D-078). */
+    private addSection(heading: string, show: ToggleRow, collapsed: ToggleRow): void {
+        new Setting(this.containerEl).setName(heading).setHeading();
+        this.addToggle(show, () => this.draw());
+        if (this.plugin.settings[show.key]) this.addToggle(collapsed);
+    }
+
+    private addToggle({ key, name, desc }: ToggleRow, afterSave: () => void = () => {}): void {
         new Setting(this.containerEl)
             .setName(name)
             .setDesc(desc)
@@ -59,6 +86,7 @@ export class DailyNotesStreamSettingTab extends PluginSettingTab {
                 toggle.setValue(this.plugin.settings[key]).onChange(async (value) => {
                     this.plugin.settings[key] = value;
                     await this.plugin.saveSettings();
+                    afterSave();
                 })
             );
     }
