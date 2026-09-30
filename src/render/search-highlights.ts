@@ -23,10 +23,10 @@ function registered(name: string): Highlight | null {
     return highlight;
 }
 
-/** Search matches a note's own source; its linked mentions quote other notes. */
-const OUTSIDE_THE_NOTE = ".daily-note-mentions";
+/** Search matches a note's own source: its linked mentions quote other notes, the heading is our label. */
+const OUTSIDE_THE_NOTE = ".daily-note-mentions, .metadata-properties-heading";
 
-/** Every occurrence of `pattern` inside one text node of `root`, its linked mentions left out. */
+/** Every occurrence of `pattern` inside one text node of `root`, what is outside the note left out. */
 function findRanges(root: HTMLElement, pattern: RegExp): Range[] {
     const ranges: Range[] = [];
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, (node) =>

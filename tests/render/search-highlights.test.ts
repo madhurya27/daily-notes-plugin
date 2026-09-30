@@ -44,6 +44,18 @@ describe("SearchHighlighter", () => {
         expect(highlighter.rangesIn(block).map((r) => r.toString())).toEqual(["km"]);
     });
 
+    // The heading is the plugin's own label, in no note's source: the count would say "No results".
+    it("highlights nothing in the properties heading", () => {
+        const { block, component } = renderedBlock(
+            '<div class="metadata-properties-heading"><div>Properties</div></div><p>properties of water</p>'
+        );
+        highlighter.setQuery("properties");
+
+        highlighter.track(block, component);
+
+        expect(highlighter.rangesIn(block).map((r) => r.toString())).toEqual(["properties"]);
+    });
+
     it("re-highlights the rendered notes when the query changes", () => {
         const { block, component } = renderedBlock("<p>milk and bread</p>");
         highlighter.track(block, component);
