@@ -40,6 +40,13 @@ describe("wrappedLines", () => {
         expect(wrappedLines(cache, WIDTH, CHAR_WIDTH)).toBe(5);
     });
 
+    // A table's rows, a callout's lines: each wraps on its own, and the cache holds no line's length.
+    it("wraps a section of several lines as lines of its average length", () => {
+        const cache: CachedMetadata = { sections: [section("table", 3, 45)] };
+
+        expect(wrappedLines(cache, WIDTH, CHAR_WIDTH)).toBe(3 * 2);
+    });
+
     it("leaves out frontmatter", () => {
         const cache: CachedMetadata = { sections: [section("yaml", 4, 60), section("heading", 1, 9)] };
 
