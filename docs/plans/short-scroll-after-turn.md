@@ -8,14 +8,14 @@ notes above render. Each note above that renders shorter than its placeholder
 adds to what `ScrollAnchor` owes, drawn as a shift; the scroll takes it only at
 rest, so a glide hits `scrollTop` 0 still owing it.
 
-## State (2026-10-01, after run 3)
+## State (2026-10-01, before runs 4a/4b)
 
 | What                         | Where                                                                                                  |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Fix (ADR 0015), phone-proven | `fix/shift-before-shrink`; gates pass. **Not merged: asked the user to merge now or after estimates.** |
 | Probe                        | `experiment/height-probe`; never merge                                                                 |
-| On the phone (Demo vault)    | both combined, notice "sandy ferret", store version 4 (kept)                                           |
-| Waiting on                   | the user: approve handing over in the re-reserve's task (Next 1)                                       |
+| On the phone (Demo vault)    | both combined, notice "crisp sloth", store version 5 (clears on first load)                            |
+| Waiting on                   | the user: runs 4a and 4b (Next 1)                                                                      |
 
 ## Findings
 
@@ -45,12 +45,15 @@ rest, so a glide hits `scrollTop` 0 still owing it.
 
 ## Next
 
-1. On `fix/shift-before-shrink`, test-first: `reserve()` hands the shift to the
-   scroll in its own task (`ScrollAnchor.handOver()`), carrying any debt already
-   owed. Safe: `reserve()` runs only after `SCROLL_IDLE_MS` still, the same
-   condition a handover waits for. Amend ADR 0015's "at the next rest".
-2. Phone run 4, store kept: expect `settle owed` in the re-reserve's millisecond
-   and no shift on the `rest` at the top.
+Handing over in the re-reserve's task is done (`b633713`, ADR 0015 amended).
+
+1. Read runs 4a and 4b. **4a**, the first load of "crisp sloth": the store is
+   cleared, so landscape heights are estimated. **4b**, after a force-quit: 4a's
+   landscape heights are stored. Expect, in both, `settle owed` in the
+   re-reserve's millisecond. In 4b, nothing owed at the top. In 4a, what is owed
+   at the top is estimate error: attribute it with the `owe` rows.
+2. If 4a owes much at the top, fix the estimate it blames (D-079/D-080), scored
+   with `scripts/score-estimates.mjs`.
 3. Merge `fix/shift-before-shrink` (`--no-ff`) when the user approves.
 
 Log:
