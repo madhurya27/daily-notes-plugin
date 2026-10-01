@@ -8,14 +8,14 @@ notes above render. Each note above that renders shorter than its placeholder
 adds to what `ScrollAnchor` owes, drawn as a shift; the scroll takes it only at
 rest, so a glide hits `scrollTop` 0 still owing it.
 
-## State (2026-10-01, before run 3)
+## State (2026-10-01, after run 3)
 
 | What                         | Where                                                                                                  |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Fix (ADR 0015), phone-proven | `fix/shift-before-shrink`; gates pass. **Not merged: asked the user to merge now or after estimates.** |
 | Probe                        | `experiment/height-probe`; never merge                                                                 |
 | On the phone (Demo vault)    | both combined, notice "sandy ferret", store version 4 (kept)                                           |
-| Waiting on                   | the user: run 3; merge now or later; whether run 2 stopped ~700 px short                               |
+| Waiting on                   | the user: approve handing over in the re-reserve's task (Next 1)                                       |
 
 ## Findings
 
@@ -35,13 +35,22 @@ rest, so a glide hits `scrollTop` 0 still owing it.
    cleared, so D-080 had no note measured at both widths. Bases render 240–510
    px short and grow back as they fill.
 
+5. **Run 3, store kept** (`load` 19:38Z): 28 `owe` rows during the glide net
+   **0**: stored estimates are exact. The re-reserve (`above move -7578`) was
+   drawn at a rest, its handover due 300 ms later; the user scrolled first, so
+   it waited for the top: `settle owed -7784 scroll 0->0`.
+6. **The original ~200 px:** after a turn a Base above the reader redraws late
+   (`repin 2026-08-30 1369->1160`, `owe -209`), within 300 ms of the rest; a
+   scroll begun then carries it to the top. Same mechanism as finding 5.
+
 ## Next
 
-1. Run 3 **without** clearing the store (landscape now measured): the user's
-   original ~200 px case. Turn near the end, scroll up without stopping.
-2. Account for the debt at the top with the `owe` and `repin` rows; then fix the
-   estimate it blames, likely D-079's text-only rate (~25 px short), scored with
-   `scripts/score-estimates.mjs`.
+1. On `fix/shift-before-shrink`, test-first: `reserve()` hands the shift to the
+   scroll in its own task (`ScrollAnchor.handOver()`), carrying any debt already
+   owed. Safe: `reserve()` runs only after `SCROLL_IDLE_MS` still, the same
+   condition a handover waits for. Amend ADR 0015's "at the next rest".
+2. Phone run 4, store kept: expect `settle owed` in the re-reserve's millisecond
+   and no shift on the `rest` at the top.
 3. Merge `fix/shift-before-shrink` (`--no-ff`) when the user approves.
 
 Log:
