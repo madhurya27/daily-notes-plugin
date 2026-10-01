@@ -6,8 +6,7 @@ Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
 - [ ] iOS still stalls on inline math in a table. Lead: MathJax fonts dropped on
-      unload (`experiment/warm-math-fonts`, `5da0863`); keep that branch when
-      deleting the other experiments.
+      unload (`experiment/warm-math-fonts`, `5da0863`).
 - [ ] iOS: a Base's table draws some rows blank for a frame as a note above it
       renders mid-glide. Bases draws only rows it measured in view, and
       re-measures after the paint. The probe that traced it is `src/probe.ts` on
@@ -27,33 +26,20 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] Desktop: a setting toggled within ~3 s of scrolling loses the reader's
       place. The notes above have no remembered height yet, and Chromium's
       anchoring does not absorb their growth once they render.
-- [x] Time a search step on a real phone: 4–6 s in e2e mobile, 85 ms on desktop.
-      Likely the hidden window's frame rate; loading is not the cost, so
-      preloading would not help.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**;
           includes the jump suggester's date wheel, which the e2e mobile project
           cannot reach (desktop Chromium), and the scroll stall on Android
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
-          review the history first
-    - [x] Dry-run the release workflow — `0.1.0` ran green and its draft release
-          holds the three assets, each downloading to a byte-identical copy of
-          the local build. Publish that draft once the repo is public
-    - [x] README screenshots, desktop and phone — captured from the real app by
-          `e2e/screenshots.spec.ts`
-    - [x] GitHub repo description (mirrors the manifest's) and topics
-          (`obsidian`, `obsidian-plugin`, `obsidian-md`, `daily-notes`,
-          `typescript`)
+          review the history first, then publish the `0.1.0` draft release (its
+          assets match the local build)
 - [ ] Position the README against Daily Notes Editor — a live-updating reading
       feed, not an inline editor.
 - [ ] A phone recording for the README. Desktop Chromium can't fake a phone
       convincingly: a touch swipe lacks a thumb's feel, there is no on-screen
       keyboard to type with, and the phone's own chrome (tapping the title bar
       to scroll to the top) can't be tapped.
-- [x] Show the features in the README: `e2e/screenshots.spec.ts` captures a
-      still per feature and a recording of the stream updating live, scrolling
-      and searching, from the demo vault.
 
 ## Features
 
