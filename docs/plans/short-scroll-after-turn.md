@@ -8,40 +8,47 @@ notes above render. Each note above that renders shorter than its placeholder
 adds to what `ScrollAnchor` owes, drawn as a shift; the scroll takes it only at
 rest, so a glide hits `scrollTop` 0 still owing it.
 
-## State (2026-10-01)
+## State (2026-10-01, after run 2)
 
-| What                                                     | Where                                                                                                             |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Fix: re-reserve never waits on a shrink above (ADR 0015) | `fix/shift-before-shrink`; all gates pass. **Not merged: needs the user's approval, after the phone run.**        |
-| Probe: logs heights to the vault                         | `experiment/height-probe`; never merge                                                                            |
-| On the phone (Demo vault)                                | both branches combined, notice **"golden salmon"**; height store version 4 (clears the phone's version-5 heights) |
-| Waiting on                                               | the user's phone run: turn near the stream's end, scroll up without stopping                                      |
+| What                         | Where                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Fix (ADR 0015), phone-proven | `fix/shift-before-shrink`; gates pass. **Not merged: asked the user to merge now or after estimates.** |
+| Probe                        | `experiment/height-probe`; never merge                                                                 |
+| On the phone (Demo vault)    | both combined, notice "golden salmon", store version 4                                                 |
+| Waiting on                   | the user: merge now or later; whether the stop looked ~700 px short                                    |
 
 ## Findings
 
-1. **Run 1, store cleared** (`stream-heights.log`, 2026-10-01 18:20Z). The turn
-   logged `re-reserve waits … shrink 5863 below 3572`; the scroll up never
-   rested, so every note above rendered at its portrait height (text notes
-   ~100–170 px too tall, Bases ~1,300). At the top:
+1. **Run 1, store cleared** (log `load` 18:20Z): the turn logged
+   `re-reserve waits … shrink 5863 below 3572`; the scroll up never rested, so
+   every note above rendered at its portrait height. Top:
    `rest scroll 0 … shift 5545.75px`.
 2. **Cause of the wait:** WebKit and Chromium keep a shifted stream's scroll
    range; the clamp came from reading the layout between the shrink and the
-   shift. Test page: `.dev/clamp.mjs` (gitignored). Fix and rejected spacer:
-   ADR 0015.
-3. **Open:** the original ~200 px gap, with the re-reserve applied, is estimate
-   error. Run 2 measures it.
+   shift. Test page: `.dev/clamp.mjs` (gitignored). Fix: ADR 0015.
+3. **Run 2, fix + probe** (`load` 19:31Z): re-reserve applied at the first rest
+   (`above move -7286`), handed over at the next (`settle owed -7495`). Top
+   still owed **722 px** (`settle owed -722 scroll 0->0`).
+4. **The 722 px**, from `settled` rows of the 32 notes rendered going up: 4
+   Reading-Base notes +1036 (~265 too tall each), 28 others −736 (~25 too short
+   each), net +300; ~420 unaccounted. Base error is cold-start: the store was
+   cleared, so D-080 had no note measured at both widths. Bases render 240–510
+   px short and grow back as they fill.
 
 ## Next
 
-1. Read
-   `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Demo/stream-heights.log`
-   (appended across sessions; take the rows after the last `load`). Expect no
-   `re-reserve waits`, a `re-reserve … above move` at the first rest after the
-   turn, and a small shift on the `rest` at the top.
-2. Sum `reserved - rendered` over the `render` lines above the reader;
-   `expected` beside each is the landscape estimate. Too tall overall → tune
-   D-079/D-080's estimates, scored with `scripts/score-estimates.mjs`.
-3. Ask to merge `fix/shift-before-shrink` (`--no-ff`).
+1. Probe: log each change the anchor owes (`owe()`), and each `repin` that
+   changes a height, so the debt at the top adds up.
+2. Run 3 **without** clearing the store (landscape now measured): the user's
+   original ~200 px case. Turn near the end, scroll up without stopping.
+3. Fix the estimate it blames, likely D-079's text-only rate (~25 px short),
+   scored with `scripts/score-estimates.mjs`.
+4. Merge `fix/shift-before-shrink` (`--no-ff`) when the user approves.
+
+Log:
+`~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Demo/stream-heights.log`,
+appended across sessions; take rows after the last `load`. iCloud can lag the
+phone by minutes: check the file's time first.
 
 ## Probe log
 
