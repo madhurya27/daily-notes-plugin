@@ -68,8 +68,8 @@ Terms:
 Steps 1–6 done on this branch: the benchmark (embeds varied in the spec's own
 vault, so the demo and README captures stay), `note-lines.ts`,
 `template-height.ts`, `height-estimates.ts`, wired through `NoteStream`, and the
-benchmark command in `CLAUDE.md`. Then D-080, for Bases on a turn. Left: the
-phone check after a turn.
+benchmark command in `CLAUDE.md`. Then D-080, for Bases on a turn. Left, on the
+branch that re-reserves placeholders (Later): the phone check after a turn.
 
 Scored with the plugin's own estimator, called in the page (mean error, px,
 portrait / landscape):
