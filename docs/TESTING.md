@@ -32,8 +32,8 @@ one batch) and a path to seed elsewhere.
   way down).
 - **2026-08-30**, the newest: one of each embed the e2e tests cover. Bases wide,
   narrow, too wide only in their values, resized by hand, a named view and
-  inline (the Bases live in `Bases/`), plus embedded notes, display math,
-  Mermaid and a wide table.
+  inline (the Bases live in `Bases/`), plus embedded notes, a PDF, a video
+  iframe, display math, Mermaid and a wide table.
 - **2026-08-29**, the newest filler note: linked mentions of every kind, from a
   nested list item, a paragraph, a wide table and a property. `[[Agenda]]` in
   `Projects/Plan.md` must open `Projects/Agenda.md`, not `Notes/Agenda.md`.
@@ -167,6 +167,7 @@ Checks:
 - Nothing scrolls sideways: code and URLs wrap, wide tables stack, wide Bases
   draw as cards, wide equations shrink to fit. **[e2e]** Each case is in
   **2026-08-30**.
+- A PDF shows its first page without a toolbar; a tap opens the PDF. **[e2e]**
 - Rotation reflows without clipping. With a Base on screen, a wide one turns to
   cards or back to a table; a wide equation grows or shrinks with the note.
 - Turn the phone both ways with a title just below the screen's top, then with

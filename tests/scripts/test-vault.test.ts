@@ -50,6 +50,13 @@ describe("testVault", () => {
             expect(paths).toContain(`Bases/${base}.base`);
     });
 
+    // docs/TESTING.md, "Wide content": a phone draws page 1 and opens the PDF on a tap (D-083).
+    it("embeds a PDF of several pages and a video wider than a phone in the newest note", () => {
+        expect(note("Attachments/Manual.pdf")).toContain("/Count 3");
+        expect(note("Notes/2026-08-30.md")).toContain("![[Manual.pdf]]");
+        expect(note("Notes/2026-08-30.md")).toMatch(/<iframe [^>]*width="560"/);
+    });
+
     it("gives 2026-02-01 the frontmatter the checklist lists", () => {
         expect(note("Notes/2026-02-01.md")).toMatch(/aliases: Feb 1st Test\nmood: productive/);
     });

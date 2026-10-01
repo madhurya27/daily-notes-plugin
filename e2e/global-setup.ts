@@ -2,6 +2,7 @@ import { execFileSync } from "child_process";
 import { readdirSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import { fetchDataview } from "./dataview";
 
 /** True when some running process still references this directory. */
 function inUse(dir: string): boolean {
@@ -18,8 +19,9 @@ function inUse(dir: string): boolean {
  * exit, Ctrl-C and a killed run alike. A crashed worker can still strand one,
  * so sweep anything left over that no live process is using.
  */
-export default function globalSetup(): void {
+export default async function globalSetup(): Promise<void> {
     killStrandedInstances();
+    await fetchDataview();
     const tmp = tmpdir();
     for (const entry of readdirSync(tmp)) {
         if (!entry.startsWith("dns-vault-") && !entry.startsWith("dns-userdata-")) continue;

@@ -11,6 +11,7 @@
 import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { pdf } from "./pdf.mjs";
 import { isMain } from "./reload-plugin.mjs";
 import { PLUGIN_ID, TEST_VAULT } from "./vaults.mjs";
 
@@ -227,6 +228,16 @@ export function testVault({ days }) {
         "",
         "![[Reading list#Later]]",
         "",
+        "## Files and frames",
+        "",
+        "On a phone the PDF is its first page, and a tap opens it:",
+        "",
+        "![[Manual.pdf]]",
+        "",
+        "Wider than a phone, so it shrinks to the note:",
+        "",
+        '<iframe src="https://www.youtube.com/embed/aqz-KE-bpKQ" width="560" height="315"></iframe>',
+        "",
         "## Math",
         "",
         "$$\\sum_{i=1}^{n} x_i + \\sum_{j=1}^{m} y_j + \\sum_{k=1}^{p} z_k + \\sum_{l=1}^{q} w_l + \\int_0^1 f(t)\\,dt$$",
@@ -312,6 +323,7 @@ export function testVault({ days }) {
 
     // What 2026-02-01 links to. Long, so its #Later link has somewhere to scroll;
     // main() removes Someday.md, so that link stays unresolved even after a click made it.
+    vault["Attachments/Manual.pdf"] = pdf(3);
     vault["Reading list.md"] = body(
         "# Reading list",
         "",

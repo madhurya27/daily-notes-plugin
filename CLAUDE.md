@@ -15,7 +15,7 @@ pnpm run lint           # ESLint
 pnpm run format         # Prettier --write; format:check verifies. Markdown wraps at 80, AGENTS.md aside.
 pnpm test               # typecheck tests/ (tests/tsconfig.json), then vitest run
 pnpm run test:coverage  # the same, 100% coverage required
-pnpm run test:e2e       # build + typecheck e2e + playwright against real Obsidian
+pnpm run test:e2e       # build + typecheck e2e + playwright against real Obsidian; fetches Dataview into .dev/ once
 pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
 pnpm run test:memory    # memory.spec.ts, render-cost.spec.ts on a seeded three-year vault (E2E_SEED_DAYS)
 MEASURE_ESTIMATES=1 E2E_SHOW_WINDOW=1 pnpm exec playwright test estimates.spec.ts --project=mobile

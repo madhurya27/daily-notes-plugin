@@ -14,8 +14,9 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] iOS: a change inside the note the pane's top crosses, such as an image
       loading above the reader, can still jump a frame: pinning holds only the
       notes around it (ADR 0013).
-- [ ] PDF, iframe, canvas, Dataview: check for scroll boxes; give what cannot
-      fit a preview that opens on tap.
+- [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
+      box guard cannot see; a video player does not. Check that a flick over one
+      still glides.
 - [ ] Desktop: a setting toggled within ~3 s of scrolling loses the reader's
       place. The notes above have no remembered height yet, and Chromium's
       anchoring does not absorb their growth once they render.

@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { pdf } from "../scripts/pdf.mjs";
 import { test, expect, openStream } from "./obsidian";
 
 /** Newer than every seeded note, so it opens the stream. */
@@ -26,6 +27,9 @@ function baseView(order: string[], extra: string[] = []): string {
     ].join("\n");
 }
 
+/** Three pages of text: Obsidian's PDF viewer scrolls between them. */
+const PDF = { path: "Doc.pdf", body: pdf(3) };
+
 /** One of each embed that scrolls inside a note elsewhere in Obsidian. */
 const ZOO = [
     "## Embeds",
@@ -42,6 +46,11 @@ const ZOO = [
     "![[Reading list]]",
     "",
     "![[Reading list#Later]]",
+    "",
+    `![[${PDF.path}]]`,
+    "",
+    // Wider than a phone, as a pasted video embed is.
+    '<iframe src="about:blank" width="560" height="315"></iframe>',
     "",
     "$$\\sum_{i=1}^{n} x_i + \\sum_{j=1}^{m} y_j + \\sum_{k=1}^{p} z_k + \\sum_{l=1}^{q} w_l + \\sum_{r=1}^{s} v_r + \\int_0^1 f(t)\\,dt$$",
     "",
@@ -77,7 +86,7 @@ async function seedZoo(page: Page): Promise<void> {
             for (const [path, body] of Object.entries(bases)) await window.app.vault.create(path, body);
             await window.app.vault.create(note, zoo);
         },
-        { bases: BASES, note: NOTE, zoo: ZOO }
+        { bases: { ...BASES, [PDF.path]: PDF.body }, note: NOTE, zoo: ZOO }
     );
 }
 
@@ -89,7 +98,7 @@ async function deleteZoo(page: Page): Promise<void> {
                 if (file) await window.app.vault.delete(file);
             }
         },
-        [NOTE, ...Object.keys(BASES)]
+        [NOTE, PDF.path, ...Object.keys(BASES)]
     );
 }
 
@@ -109,6 +118,7 @@ test("never scrolls the page sideways", async ({ obsidian }) => {
         const container = await openStream(page);
         await expect(container.locator(".bases-view").first()).toBeVisible();
         await expect(container.locator(".mermaid svg")).toBeVisible();
+        await expect(container.locator("iframe")).toBeAttached();
 
         await expect
             .poll(() => container.evaluate((el) => el.parentElement!.scrollWidth - el.parentElement!.clientWidth))
@@ -164,8 +174,22 @@ test.describe("on mobile, nothing inside the stream scrolls", () => {
         await expect(note.locator(".bases-tr").first()).toBeVisible();
         await expect(note.locator(".bases-cards-item").first()).toBeVisible();
         await expect(note.locator(".mermaid svg")).toBeVisible();
+        await expect(note.locator(".pdf-embed canvas").first()).toBeVisible();
 
         await expect.poll(() => scrollBoxes(container)).toEqual([]);
+    });
+
+    // Clipped, its viewer shows page 1 and its toolbar reaches nothing (D-083).
+    test("opens a PDF from a tap on its first page", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await seedZoo(page);
+        const pdf = (await openStream(page)).locator(".pdf-embed");
+        await expect(pdf.locator("canvas").first()).toBeVisible();
+        await expect(pdf.locator(".pdf-toolbar:visible")).toHaveCount(0);
+
+        await pdf.click();
+
+        await expect.poll(() => page.evaluate(() => window.app.workspace.getActiveFile()?.path)).toBe(PDF.path);
     });
 
     test("fits a Base that cannot become cards to the note", async ({ obsidian }) => {

@@ -62,6 +62,15 @@ describe("stackWideTables", () => {
         expect(cells.map((cell) => cell.dataset.column)).toEqual(["Day", "Pace"]);
     });
 
+    it("leaves Dataview's result count out of its first column's name", () => {
+        const el = content.appendChild(table(["File"], [["a"]]));
+        el.querySelector("th")!.createSpan({ cls: "dataview small-text", text: "15" });
+
+        stackWideTables(content, component);
+
+        expect(el.querySelector("td")!.dataset.column).toBe("File");
+    });
+
     it("leaves a cell with no header unnamed", () => {
         const el = content.appendChild(table(["Day", ""], [["1", "2", "3"]]));
 
@@ -127,18 +136,56 @@ describe("stackWideTables", () => {
         expect(el.classList.contains("is-stacked")).toBe(false);
     });
 
-    it("stops watching once the note unloads", () => {
+    // Dataview draws its table after the note renders, and again on each change.
+    it("stacks a table drawn into the note later, named by its columns", async () => {
+        stackWideTables(content, component);
+        const el = table(["Day"], [["1"]]);
+        setWidth(el, "offsetWidth", () => 600);
+
+        content.createDiv().appendChild(el);
+        await Promise.resolve();
+
+        expect(el.classList.contains("is-stacked")).toBe(true);
+        expect(el.querySelector("td")!.dataset.column).toBe("Day");
+    });
+
+    // Dataview fills its table over several renders: a header first, rows later.
+    it("re-checks a table as its rows arrive", async () => {
+        const el = content.appendChild(table(["Day"], []));
+        let width = 300;
+        setWidth(el, "offsetWidth", () => width);
+        stackWideTables(content, component);
+
+        width = 600;
+        el.querySelector("tbody")!.createEl("tr").createEl("td", { text: "1" });
+        await Promise.resolve();
+
+        expect(el.classList.contains("is-stacked")).toBe(true);
+        expect(el.querySelector("td")!.dataset.column).toBe("Day");
+    });
+
+    it("re-checks a later table when the note's width changes", async () => {
+        stackWideTables(content, component);
+        const el = content.appendChild(table(["A"], [["1"]]));
+        setWidth(el, "offsetWidth", () => 600);
+        await Promise.resolve();
+
+        noteWidth = 800;
+        FakeResizeObserver.instances[0]!.callback();
+
+        expect(el.classList.contains("is-stacked")).toBe(false);
+    });
+
+    it("stops watching once the note unloads", async () => {
         content.appendChild(table(["A"], [["1"]]));
         stackWideTables(content, component);
 
         component.unload();
+        const later = content.appendChild(table(["A"], [["1"]]));
+        setWidth(later, "offsetWidth", () => 600);
+        await Promise.resolve();
 
         expect(FakeResizeObserver.instances[0]!.disconnected).toBe(true);
-    });
-
-    it("watches nothing in a note without a table", () => {
-        stackWideTables(content, component);
-
-        expect(FakeResizeObserver.instances).toEqual([]);
+        expect(later.classList.contains("is-stacked")).toBe(false);
     });
 });

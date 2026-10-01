@@ -67,12 +67,12 @@ through one promise queue, so none interleaves at an `await`
 - Gestures on titles, links and chevrons are delegated: one listener per gesture
   on the stream container. The view is the hover parent Page preview hangs
   popovers on.
-- Wide content: tables become cards, equations shrink, and each Base draws in
-  its own placeholder, as cards when too wide (D-033). `ScrollBoxGuard` reports
-  Base layouts to the renderer.
+- Wide content: tables become cards, Dataview's too as they fill in (D-084),
+  equations shrink, and each Base draws in its own placeholder, as cards when
+  too wide (D-033). `ScrollBoxGuard` reports Base layouts to the renderer.
 - On mobile nothing inside a note scrolls: `ScrollBoxGuard` clips stray scroll
-  boxes ([ADR 0008](adr/0008-nothing-scrolls-on-mobile.md)). Desktop keeps
-  Obsidian's scroll boxes.
+  boxes ([ADR 0008](adr/0008-nothing-scrolls-on-mobile.md)), and a PDF is its
+  first page, opened by a tap (D-083). Desktop keeps Obsidian's scroll boxes.
 - The linked mentions footer draws after the note and redraws itself on
   `resolved`; `notes/linked-mentions.ts` finds each link's list item or section.
 
