@@ -150,6 +150,21 @@ Worth exploring, most promising first:
   Images are most of the embed error that is not Bases.
 - **Read charWidth from rendered note text,** once a note is on screen, rather
   than a sample sentence (7.8px against the demo's 7.3).
-- Re-reserving placeholders on a turn with the re-wrapped estimate (would fix
-  the turn case the recordings show). Needs D-055's clamp solved first.
+- **Re-reserve placeholders on a turn,** with the re-wrapped estimate. Notes
+  released before a turn keep the old width's height (D-055), off by ~85px a
+  text note and ~390px a note with an embed, and each becomes a correction the
+  anchor makes as the reader scrolls back up: the turn case the recordings show.
+  Needs D-055's clamp solved: placeholders shrinking shorten the stream, the
+  browser clamps the scroll first, and `ScrollAnchor` takes the clamp for the
+  reader's. Ways, in order to try:
+    1. A spacer at the stream's end, as tall as the shrink, removed once the
+       scroll is still: the stream never shortens, so nothing clamps, and the
+       anchor corrects as for any resize. No scroll write.
+    2. Correct the scroll first, then shrink, in one task: nothing paints
+       between. A scroll write: it ends an iOS glide mid-turn.
+    3. Re-reserve only once the scroll is still: fewer clamps, not none.
+
+    Decide from this branch's phone recording after a turn. An e2e turn test and
+    its own ADR.
+
 - Delete this plan once shipped.
