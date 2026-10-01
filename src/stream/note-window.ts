@@ -87,7 +87,9 @@ export class NoteWindowManager {
         /** The layout the stream is laid out in now: a height is true only there. */
         private readonly layoutOf: () => string,
         /** jsdom lays nothing out, so measurement is the one seam tests replace. */
-        private readonly measure: (el: HTMLElement) => number = (el) => el.getBoundingClientRect().height
+        private readonly measure: (el: HTMLElement) => number = (el) => el.getBoundingClientRect().height,
+        /** A note's height at a layout, from its text, where none is stored (D-079). */
+        private readonly estimate: (layout: string, path: string) => number | undefined = () => undefined
     ) {}
 
     attach(scrollRoot: HTMLElement): void {
@@ -368,10 +370,12 @@ export class NoteWindowManager {
         }
     }
 
-    /** What `window` last measured in `layout`, or the estimate. */
+    /** What `window` last measured in `layout`, or an estimate: from its text, else the layout's median. */
     private expect(window: NoteWindow, layout: string): void {
-        const remembered = this.heights.heightOf(layout, window.file.path);
-        window.height = remembered ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
+        const { path } = window.file;
+        const remembered = this.heights.heightOf(layout, path);
+        window.height =
+            remembered ?? this.estimate(layout, path) ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
         window.measured = remembered !== undefined;
     }
 

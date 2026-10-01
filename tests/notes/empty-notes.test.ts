@@ -113,6 +113,16 @@ describe("EmptyNotes", () => {
         expect(vault.notes.templatePath()).toBe("Templates/Journal");
     });
 
+    it("finds the template's file, as the daily-notes settings name it", () => {
+        const vault = vaultOf({ "Templates/Daily.md": TEMPLATE });
+        expect(vault.notes.templateFile()).toBe(vault.fileAt("Templates/Daily.md"));
+
+        __setMockSettings({ format: "YYYY-MM-DD", folder: "", template: "Templates/Missing" });
+        expect(vault.notes.templateFile()).toBeNull();
+        __setMockSettings({ format: "YYYY-MM-DD", folder: "", template: "" });
+        expect(vault.notes.templateFile()).toBeNull();
+    });
+
     it("shows a note it could not read, and reads it again next time", async () => {
         const vault = vaultOf({ "Templates/Daily.md": TEMPLATE, "a.md": TEMPLATE, "b.md": TEMPLATE });
         const [a, b] = [vault.fileAt("a.md"), vault.fileAt("b.md")];

@@ -1245,3 +1245,43 @@ list did not say so.
 
 - `SettingGroup` cards — needs `minAppVersion` 1.11.0, up from 1.8.7.
 - Disabling the collapse toggle — a greyed row still reads as a choice.
+
+## D-079 — A placeholder never measured here is estimated from its text (2026-09-30)
+
+**Decision:** a note with no height stored at the layout reserves, first that
+applies: its height at the nearest width of the same text size, plus its wrapped
+lines' difference × line height; else the template's measured height here, plus
+its lines past the template's × a per-line rate learned from text-only notes,
+plus its embeds × a per-embed height learned at this layout (the pane's height
+until one is); else the layout's median. Lines come from the metadata cache, so
+adding a block stays synchronous. Benchmark: `docs/plans/height-estimates.md`.
+
+**Why:** a turn changes a text note only by re-wrapping it, and every note is
+its template plus writing (ADR 0011). Mean error for text notes falls from 85px
+(the other width's height) to 18px, and from ~330px (400px) to ~50px.
+
+**Rejected:**
+
+- The template's height alone — a floor, 443–624px short on average.
+- A fixed buffer per embed — no one value fits Bases drawn as cards in portrait
+  and tables in landscape.
+- Heights stored per Base — a vault's Bases differ, and one Base's height varies
+  with what it draws.
+
+## D-080 — A turned note's Bases change by what the same Base changed elsewhere (2026-10-01)
+
+**Decision:** a note estimated from its height at another width (D-079) adds,
+per Base it embeds, the median change per Base, beyond re-wrapped text, of other
+notes embedding that Base and measured at both widths. None measured at both: no
+change.
+
+**Why:** only a Base switching between table and cards changes much on a turn
+(up to ~1400px), and the same Base switches the same way in every note. Embed
+error after a turn: 378px → 35px.
+
+**Rejected:**
+
+- One change per embed, or per Base — images barely change, and Bases differ:
+  the median is near zero, or half of a switching Base's change.
+- Adjusting only Bases flagged too wide (`BaseMeasurements`) — known per note
+  only once drawn at the new width; learning per Base gets there without it.

@@ -28,6 +28,7 @@ function makeApp() {
         metadataCache: {
             on: vi.fn().mockReturnValue({}),
             getFileCache: vi.fn().mockReturnValue(null),
+            getCache: vi.fn().mockReturnValue(null),
             getFirstLinkpathDest: vi.fn().mockReturnValue(null),
             resolvedLinks: {} as Record<string, Record<string, number>>,
         },
@@ -344,7 +345,7 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         __setMockNotes(["Notes/2025-01-01.md"]);
         const app = makeApp();
         app.loadLocalStorage.mockReturnValue({
-            version: 3,
+            version: 4,
             notes: [
                 [
                     "600:16px",

@@ -6,8 +6,9 @@ import { StreamState } from "./stream-state";
 import { StreamBlocks } from "./stream-blocks";
 import { InfiniteScrollController } from "./infinite-scroll";
 import { NoteWindowManager } from "./note-window";
-import type { NoteHeights } from "./note-heights";
-import { layoutOf } from "./layout-memory";
+import { layoutOf, type LayoutMemory } from "./layout-memory";
+import { HeightEstimates, measureText, type EstimateSources } from "./height-estimates";
+import { TemplateHeight } from "./template-height";
 import { ScrollBoxGuard } from "./scroll-box-guard";
 import {
     captureAnchor,
@@ -42,6 +43,8 @@ export class NoteStream {
     private state = new StreamState();
     private scroll = new InfiniteScrollController();
     private window: NoteWindowManager;
+    private templateHeight: TemplateHeight;
+    private estimates: HeightEstimates;
     private scrollRoot!: HTMLElement;
     private blocks = new StreamBlocks(() => this.scroll.getSentinel());
     private scrollBoxes: ScrollBoxGuard;
@@ -60,9 +63,26 @@ export class NoteStream {
         private readonly service: DailyNoteService,
         private readonly collapseStore: CollapsibleStateStore,
         renderer: NoteRenderer,
-        heights: NoteHeights
+        /** Every height measured, kept across sessions (ADR 0010). */
+        memory: Pick<LayoutMemory, "notes" | "templates">,
+        /** What a note's placeholder is estimated from, where no height is stored (D-079). */
+        notes: Pick<EstimateSources, "cacheOf" | "template">
     ) {
-        this.window = new NoteWindowManager(renderer, this.enqueue.bind(this), heights, () => layoutOf(this.blocks.el));
+        const enqueue = this.enqueue.bind(this);
+        this.estimates = new HeightEstimates(memory.notes, memory.templates, {
+            ...notes,
+            text: () => measureText(this.blocks.el),
+            paneHeight: () => this.scrollRoot.clientHeight,
+        });
+        this.window = new NoteWindowManager(
+            renderer,
+            enqueue,
+            memory.notes,
+            () => layoutOf(this.blocks.el),
+            undefined,
+            (layout, path) => this.estimates.estimate(layout, path)
+        );
+        this.templateHeight = new TemplateHeight(renderer, enqueue, memory.templates, notes.template);
         this.scrollBoxes = new ScrollBoxGuard((view) => renderer.onBaseLayout(view));
     }
 
@@ -72,6 +92,7 @@ export class NoteStream {
         this.blocks.attach(container);
         this.state.reset();
         this.window.attach(scrollRoot);
+        this.measureTemplate();
         // iOS ends a glide early on a scroll box; Android is held to the same rule (ADR 0008).
         if (Platform.isMobile) this.scrollBoxes.attach(container);
         this.attachScroll();
@@ -89,6 +110,12 @@ export class NoteStream {
 
     onResize(): void {
         this.window.onResize();
+        this.measureTemplate();
+    }
+
+    /** At the column's layout now; a column not laid out, in a hidden tab, has none. */
+    private measureTemplate(): void {
+        if (this.blocks.el.clientWidth > 0) this.templateHeight.measureAt(this.blocks.el, layoutOf(this.blocks.el));
     }
 
     scrollToTop(): void {
