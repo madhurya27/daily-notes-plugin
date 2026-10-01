@@ -56,6 +56,41 @@ describe("SearchHighlighter", () => {
         expect(highlighter.rangesIn(block).map((r) => r.toString())).toEqual(["properties"]);
     });
 
+    // A Base lists other notes, and draws its own toolbar: "15 results".
+    it("highlights nothing in a Base", () => {
+        const { block, component } = renderedBlock(
+            '<p>Soup results</p><div class="block-language-base bases-embed"><div>15 results</div><div>Soup</div></div>'
+        );
+        highlighter.setQuery("soup");
+
+        highlighter.track(block, component);
+
+        expect(highlighter.rangesIn(block).map((r) => r.toString())).toEqual(["Soup"]);
+    });
+
+    it("highlights nothing in an embedded note", () => {
+        const { block, component } = renderedBlock(
+            // A <div> in a <p> would close it: the parser is not Obsidian's DOM calls.
+            '<div>Ran 5 km.<span class="internal-embed markdown-embed"><div>Ran 10 km.</div></span></div>'
+        );
+        highlighter.setQuery("km");
+
+        highlighter.track(block, component);
+
+        expect(highlighter.rangesIn(block).map((r) => r.toString())).toEqual(["km"]);
+    });
+
+    it("highlights nothing in Obsidian's word on a missing attachment", () => {
+        const { block, component } = renderedBlock(
+            '<p>Found it<span class="internal-embed file-embed">“a.png” could not be found.</span></p>'
+        );
+        highlighter.setQuery("found");
+
+        highlighter.track(block, component);
+
+        expect(highlighter.rangesIn(block).map((r) => r.toString())).toEqual(["Found"]);
+    });
+
     it("re-highlights the rendered notes when the query changes", () => {
         const { block, component } = renderedBlock("<p>milk and bread</p>");
         highlighter.track(block, component);

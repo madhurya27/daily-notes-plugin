@@ -81,9 +81,10 @@ Press Ctrl/Cmd+F, or click the search icon at the top. If you changed Obsidian's
 | Shift+Enter | Previous matching note |
 | Escape      | Close search           |
 
-Search opens collapsed sections to show a match. If the counter reads
-`2 / 5 · hidden`, the note matched in a part that isn't shown, such as hidden
-properties or an embed.
+Search finds each note's own text: what a Base, an embedded note or linked
+mentions show belongs to other notes, and is left out. It opens collapsed
+sections to show a match. If the counter reads `2 / 5 · hidden`, the note
+matched in a part that isn't shown, such as hidden properties or an embed.
 
 <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Mara" width="440">
 

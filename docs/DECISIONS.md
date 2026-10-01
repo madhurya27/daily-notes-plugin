@@ -370,6 +370,8 @@ searches hidden frontmatter too (checked 2026-09-23).
 - A tag/header filter — core search does it.
 - Matching the "Properties" label, as reading view does — it is in no note's
   source, and "prop" would hit every note with frontmatter.
+- Highlighting what a Base, an embed or linked mentions show — another file's
+  text, or Obsidian's, counted in no note: "No results" over a highlight.
 
 ## D-023 — Kebab-case files, grouped into folders (2026-09-23)
 

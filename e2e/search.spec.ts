@@ -285,6 +285,71 @@ test.describe("search the stream", () => {
         expect(await painted(page, "daily-notes-search-match")).toBe(0);
     });
 
+    test.describe("text another file holds", () => {
+        const path = `Notes/${seededDate(0)}.md`;
+        let before = "";
+
+        test.beforeEach(async ({ obsidian }) => {
+            const { page } = obsidian;
+            before = await page.evaluate((p) => window.app.vault.read(window.app.vault.getFileByPath(p)!), path);
+            const base = ["```base", "views:", "  - type: table", "    name: All", "```"].join("\n");
+            const text = `${before}\n![[Borscht]]\n\n${base}\n`;
+            await page.evaluate(
+                async ({ path, text }) => {
+                    await window.app.vault.createFolder("Recipes");
+                    // Listed by the Base only, and embedded only.
+                    await window.app.vault.create("Recipes/Gazpacho.md", "");
+                    await window.app.vault.create("Recipes/Borscht.md", "Chilled beetroot, blended smooth");
+                    await window.app.vault.modify(window.app.vault.getFileByPath(path)!, text);
+                },
+                { path, text }
+            );
+        });
+        test.afterEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate(
+                async ({ path, before }) => {
+                    await window.app.vault.modify(window.app.vault.getFileByPath(path)!, before);
+                    await window.app.vault.delete(window.app.vault.getFolderByPath("Recipes")!, true);
+                },
+                { path, before }
+            );
+        });
+
+        /** Searches once the note draws `shown`, which no daily note's source holds. */
+        async function searchFor(page: Page, query: string, shown: Locator) {
+            await openStream(page);
+            // Bases draws the rows on screen only.
+            await expect(async () => {
+                await page
+                    .locator(`[data-source-path="${path}"] .daily-note-content > *`)
+                    .last()
+                    .scrollIntoViewIfNeeded();
+                await expect(shown).toBeAttached({ timeout: 500 });
+            }).toPass();
+            const bar = await openSearch(page);
+            await bar.locator("input").fill(query);
+            await expect(bar.locator(".document-search-count")).toHaveText("No results");
+        }
+
+        test("paints nothing in a Base, which lists other files", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const row = page.locator(`[data-source-path="${path}"] .block-language-base`).getByText("Gazpacho");
+
+            await searchFor(page, "Gazpacho", row.first());
+
+            expect(await painted(page, "daily-notes-search-match")).toBe(0);
+        });
+
+        test("paints nothing in an embedded note", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const embed = page.locator(`[data-source-path="${path}"] .markdown-embed`).getByText("Chilled beetroot");
+
+            await searchFor(page, "Chilled", embed);
+
+            expect(await painted(page, "daily-notes-search-match")).toBe(0);
+        });
+    });
+
     test("clears every highlight on close", async ({ obsidian }) => {
         const { page } = obsidian;
         await openStream(page);
