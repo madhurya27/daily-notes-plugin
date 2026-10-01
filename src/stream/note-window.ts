@@ -382,30 +382,42 @@ export class NoteWindowManager {
 
     /**
      * Each unloaded note reserves what it is now expected at: its height at a
-     * new width, or an estimate grown wiser since. Put off while the stream
-     * would shrink by more than lies below the pane: the browser would clamp
-     * the scroll before the anchor could hold the place.
+     * new width, or an estimate grown wiser since. The anchor draws the notes
+     * above the pane moving first, which keeps the scroll range (ADR 0015).
+     * Put off while the rest would shrink the stream by more than lies below
+     * the pane: the browser would clamp the scroll.
      */
     private reserve(): void {
+        const root = this.scrollRoot;
+        if (!root) return;
         const layout = this.layout();
         const key = this.reserveKey();
+        const paneTop = root.getBoundingClientRect().top;
         const changed: [HTMLElement, NoteWindow][] = [];
-        let shrink = 0;
+        let movedAbove = 0;
+        let shrinkBelow = 0;
         for (const [block, window] of this.windows) {
             if (window.component || window.rendering) continue;
             if (!window.measured) this.expect(window, layout);
             const reserved = parseFloat(block.style.getPropertyValue("--daily-note-placeholder-height"));
             if (reserved === window.height) continue;
             changed.push([block, window]);
-            shrink += reserved - window.height;
+            if (this.isAbove(block, paneTop)) movedAbove += window.height - reserved;
+            else shrinkBelow += reserved - window.height;
         }
-        const root = this.scrollRoot;
-        if (!root || shrink > root.scrollHeight - root.scrollTop - root.clientHeight) return;
+        if (shrinkBelow > root.scrollHeight - root.scrollTop - root.clientHeight) return;
         this.reservedFrom = key;
         if (changed.length === 0) return;
+        this.anchor.anticipate(movedAbove);
         for (const [block, window] of changed) this.markUnloaded(block, window.height);
         this.changes++;
         this.anchor.resized();
+    }
+
+    /** Wholly above the pane's top; a block not laid out, in a hidden tab, is nowhere. */
+    private isAbove(block: HTMLElement, paneTop: number): boolean {
+        const { bottom, height } = block.getBoundingClientRect();
+        return height > 0 && bottom <= paneTop;
     }
 
     private reserveKey(): string {
