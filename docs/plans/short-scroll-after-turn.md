@@ -8,14 +8,14 @@ notes above render. Each note above that renders shorter than its placeholder
 adds to what `ScrollAnchor` owes, drawn as a shift; the scroll takes it only at
 rest, so a glide hits `scrollTop` 0 still owing it.
 
-## State (2026-10-01, after run 2)
+## State (2026-10-01, before run 3)
 
 | What                         | Where                                                                                                  |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Fix (ADR 0015), phone-proven | `fix/shift-before-shrink`; gates pass. **Not merged: asked the user to merge now or after estimates.** |
 | Probe                        | `experiment/height-probe`; never merge                                                                 |
-| On the phone (Demo vault)    | both combined, notice "golden salmon", store version 4                                                 |
-| Waiting on                   | the user: merge now or later; whether the stop looked ~700 px short                                    |
+| On the phone (Demo vault)    | both combined, notice "sandy ferret", store version 4 (kept)                                           |
+| Waiting on                   | the user: run 3; merge now or later; whether run 2 stopped ~700 px short                               |
 
 ## Findings
 
@@ -37,13 +37,12 @@ rest, so a glide hits `scrollTop` 0 still owing it.
 
 ## Next
 
-1. Probe: log each change the anchor owes (`owe()`), and each `repin` that
-   changes a height, so the debt at the top adds up.
-2. Run 3 **without** clearing the store (landscape now measured): the user's
+1. Run 3 **without** clearing the store (landscape now measured): the user's
    original ~200 px case. Turn near the end, scroll up without stopping.
-3. Fix the estimate it blames, likely D-079's text-only rate (~25 px short),
-   scored with `scripts/score-estimates.mjs`.
-4. Merge `fix/shift-before-shrink` (`--no-ff`) when the user approves.
+2. Account for the debt at the top with the `owe` and `repin` rows; then fix the
+   estimate it blames, likely D-079's text-only rate (~25 px short), scored with
+   `scripts/score-estimates.mjs`.
+3. Merge `fix/shift-before-shrink` (`--no-ff`) when the user approves.
 
 Log:
 `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Demo/stream-heights.log`,
@@ -62,6 +61,8 @@ then:
 | `settled`                | height kept, against reserved and first rendered                         |
 | `resize`                 | the turn: layout, pane size, scroll                                      |
 | `re-reserve` / `… waits` | each change, or the shrink below against the room below                  |
+| `owe`                    | each move the anchor adds: amount, total owed, note at the pane's top    |
+| `repin`                  | a rendered note's height change after its first paint, top in pane       |
 | `settle owed`            | the anchor's hand-over: scroll before → after                            |
 | `rest`                   | scroll, shift, first four notes: state, top, height                      |
 
