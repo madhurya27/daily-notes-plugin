@@ -8,14 +8,14 @@ notes above render. Each note above that renders shorter than its placeholder
 adds to what `ScrollAnchor` owes, drawn as a shift; the scroll takes it only at
 rest, so a glide hits `scrollTop` 0 still owing it.
 
-## State (2026-10-01, before runs 4a/4b)
+## State (2026-10-01, after runs 4a/4b)
 
 | What                         | Where                                                                                                  |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Fix (ADR 0015), phone-proven | `fix/shift-before-shrink`; gates pass. **Not merged: asked the user to merge now or after estimates.** |
 | Probe                        | `experiment/height-probe`; never merge                                                                 |
 | On the phone (Demo vault)    | both combined, notice "crisp sloth", store version 5 (clears on first load)                            |
-| Waiting on                   | the user: runs 4a and 4b (Next 1)                                                                      |
+| Waiting on                   | the user: option 1 or 2 (Next)                                                                         |
 
 ## Findings
 
@@ -43,18 +43,24 @@ rest, so a glide hits `scrollTop` 0 still owing it.
    (`repin 2026-08-30 1369->1160`, `owe -209`), within 300 ms of the rest; a
    scroll begun then carries it to the top. Same mechanism as finding 5.
 
+7. **Run 4b, store kept** (`load` 19:55:51Z): handover 16 ms after the
+   re-reserve (`settle owed -15002`, the late Base's 209 included). Top owes **6
+   px**: fixed.
+8. **Run 4a, store cleared** (`load` 19:54:38Z; the 19:54:33Z load is the old
+   build): handover 13 ms after. Top owes **8,830 px**; the `owe` rows sum to
+   −8,828. Reading-Base notes estimated ~1,100 too tall each (portrait cards vs
+   landscape table); D-080 had no note measured at both widths by the rest.
+
 ## Next
 
-Handing over in the re-reserve's task is done (`b633713`, ADR 0015 amended).
+Asked the user to choose:
 
-1. Read runs 4a and 4b. **4a**, the first load of "crisp sloth": the store is
-   cleared, so landscape heights are estimated. **4b**, after a force-quit: 4a's
-   landscape heights are stored. Expect, in both, `settle owed` in the
-   re-reserve's millisecond. In 4b, nothing owed at the top. In 4a, what is owed
-   at the top is estimate error: attribute it with the `owe` rows.
-2. If 4a owes much at the top, fix the estimate it blames (D-079/D-080), scored
-   with `scripts/score-estimates.mjs`.
-3. Merge `fix/shift-before-shrink` (`--no-ff`) when the user approves.
+1. **Merge now** (recommended): replace the TODO item with the cold-start Base
+   case, delete this handoff, ask to merge `fix/shift-before-shrink` with
+   `--no-ff`.
+2. **Cold-start estimate first**: a note whose Base drew as cards at the old
+   width, with nothing known at the new one, is estimated from template and
+   lines (D-079's fallback), not its old-width height.
 
 Log:
 `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Demo/stream-heights.log`,
