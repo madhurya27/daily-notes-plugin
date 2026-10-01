@@ -9,15 +9,15 @@ const TEXT = { charWidth: 10, lineHeight: 24 };
 const PANE = 800;
 const HERE = "100:16px";
 
-/** A note of single-line paragraphs, `chars` long each, and `embeds` embeds. */
-function note(chars: number[], embeds = 0): CachedMetadata {
+/** A note of single-line paragraphs, `chars` long each, embedding `embeds`. */
+function note(chars: number[], embeds: string[] = []): CachedMetadata {
     const span = (length: number) => ({
         start: { line: 0, col: 0, offset: 0 },
         end: { line: 0, col: 0, offset: length },
     });
     return {
         sections: chars.map((length) => ({ type: "paragraph", position: span(length) })),
-        embeds: Array.from({ length: embeds }, () => ({ link: "a.png", original: "![[a.png]]", position: span(10) })),
+        embeds: embeds.map((link) => ({ link, original: `![[${link}]]`, position: span(10) })),
     };
 }
 
@@ -65,6 +65,83 @@ describe("HeightEstimates", () => {
 
             expect(estimates.estimate(HERE, "a.md")).toBe(540);
         });
+
+        // A Base drawn as cards at one width and a table at another changes by up to a screen or more.
+        describe("embedding a Base", () => {
+            const OTHER = "300:16px";
+
+            it("changes by what the same Base changed in notes measured at both widths", () => {
+                const { heights, estimates } = setup({
+                    "a.md": note([30], ["Reading.base"]),
+                    "b.md": note([5], ["Reading.base"]),
+                    "c.md": note([5], ["Reading.base#Table"]),
+                    "d.md": note([5], ["Reading.base"]),
+                    "other.md": note([5], ["People.base"]),
+                    "image.md": note([5], ["a.png"]),
+                });
+                heights.keep(OTHER, "a.md", 2000);
+                heights.keep(OTHER, "b.md", 1900);
+                heights.keep(HERE, "b.md", 1000);
+                heights.keep(OTHER, "c.md", 1900);
+                heights.keep(HERE, "c.md", 1100);
+                heights.keep(OTHER, "d.md", 1900);
+                heights.keep(HERE, "d.md", 1200);
+                heights.keep(OTHER, "other.md", 900);
+                heights.keep(HERE, "other.md", 100);
+                heights.keep(OTHER, "image.md", 900);
+                heights.keep(HERE, "image.md", 100);
+
+                expect(estimates.estimate(HERE, "a.md")).toBe(2000 + (3 - 1) * TEXT.lineHeight - 800);
+            });
+
+            it("shares a note's change among the Bases it embeds", () => {
+                const { heights, estimates } = setup({
+                    "a.md": note([5], ["Reading.base"]),
+                    "b.md": note([5], ["Reading.base", "Reading.base"]),
+                });
+                heights.keep(OTHER, "a.md", 2000);
+                heights.keep(OTHER, "b.md", 3000);
+                heights.keep(HERE, "b.md", 1000);
+
+                expect(estimates.estimate(HERE, "a.md")).toBe(1000);
+            });
+
+            // Every placeholder of a batch asks, as for what is learned at one layout.
+            it("learns what Bases changed again only once the heights change", () => {
+                const { heights, sources, estimates } = setup({
+                    "a.md": note([5], ["Reading.base"]),
+                    "b.md": note([5], ["Reading.base"]),
+                });
+                heights.keep(OTHER, "a.md", 2000);
+                heights.keep(OTHER, "b.md", 1900);
+                heights.keep(HERE, "b.md", 1000);
+
+                estimates.estimate(HERE, "a.md");
+                const reads = sources.cacheOf.mock.calls.length;
+                estimates.estimate(HERE, "a.md");
+                expect(sources.cacheOf.mock.calls.length - reads).toBe(1);
+
+                heights.keep(HERE, "b.md", 1100);
+                estimates.estimate(HERE, "a.md");
+                expect(sources.cacheOf.mock.calls.length - reads).toBe(3);
+            });
+
+            it("is the height re-wrapped where no note with that Base is measured at both widths", () => {
+                const { heights, estimates } = setup({
+                    "a.md": note([5], ["Reading.base"]),
+                    "b.md": note([5], ["Reading.base"]),
+                    "unread.md": note([5], ["Reading.base"]),
+                });
+                heights.keep(OTHER, "a.md", 2000);
+                heights.keep(OTHER, "b.md", 1900);
+                heights.keep("200:16px", "b.md", 1000);
+                heights.keep(HERE, "unread.md", 100);
+                heights.keep(OTHER, "gone.md", 1900);
+                heights.keep(HERE, "gone.md", 100);
+
+                expect(estimates.estimate(HERE, "a.md")).toBe(2000);
+            });
+        });
     });
 
     describe("a note never measured", () => {
@@ -76,7 +153,7 @@ describe("HeightEstimates", () => {
         });
 
         it("reserves a pane's height for each embed until one is measured here", () => {
-            const { templates, estimates } = setup({ "a.md": note([5, 5], 2) });
+            const { templates, estimates } = setup({ "a.md": note([5, 5], ["a.png", "a.png"]) });
             templates.keep(HERE, TEMPLATE.path, 360);
 
             expect(estimates.estimate(HERE, "a.md")).toBe(360 + 2 * PANE);
@@ -87,7 +164,7 @@ describe("HeightEstimates", () => {
             const { heights, templates, estimates } = setup({
                 "a.md": note([5, 5, 5, 5]),
                 "b.md": note([5, 5, 5, 5, 5, 5]),
-                "embeds.md": note([5, 5, 5], 1),
+                "embeds.md": note([5, 5, 5], ["a.png"]),
                 "large.md": note([5, 5, 5]),
                 "new.md": note([5, 5, 5, 5, 5]),
             });
@@ -105,10 +182,10 @@ describe("HeightEstimates", () => {
 
         it("reserves for each embed what embeds measured at this layout", () => {
             const { heights, templates, estimates } = setup({
-                "a.md": note([5, 5, 5], 1),
-                "b.md": note([5, 5, 5], 1),
-                "elsewhere.md": note([5, 5, 5], 1),
-                "new.md": note([5, 5], 2),
+                "a.md": note([5, 5, 5], ["a.png"]),
+                "b.md": note([5, 5, 5], ["a.png"]),
+                "elsewhere.md": note([5, 5, 5], ["a.png"]),
+                "new.md": note([5, 5], ["a.png", "a.png"]),
             });
             templates.keep(HERE, TEMPLATE.path, 360);
             templates.keep("300:16px", TEMPLATE.path, 360);

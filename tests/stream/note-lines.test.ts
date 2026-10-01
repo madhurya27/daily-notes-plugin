@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CachedMetadata } from "obsidian";
-import { embedCount, wrappedLines } from "../../src/stream/note-lines";
+import { baseEmbeds, embedCount, wrappedLines } from "../../src/stream/note-lines";
 
 /** `lines` source lines holding `chars` characters, as the metadata cache records a span. */
 function span(lines: number, chars: number) {
@@ -64,5 +64,16 @@ describe("embedCount", () => {
 
         expect(embedCount({ embeds: [embed, embed] })).toBe(2);
         expect(embedCount({})).toBe(0);
+    });
+});
+
+describe("baseEmbeds", () => {
+    const embed = (link: string) => ({ link, original: `![[${link}]]`, position: span(1, 10) });
+
+    it("lists the Bases a note embeds, by link, without the view", () => {
+        const cache = { embeds: [embed("Reading.base"), embed("a.png"), embed("Books/Library.base#Table")] };
+
+        expect(baseEmbeds(cache)).toEqual(["Reading.base", "Books/Library.base"]);
+        expect(baseEmbeds({})).toEqual([]);
     });
 });

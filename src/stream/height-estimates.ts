@@ -1,6 +1,6 @@
 import type { CachedMetadata, TFile } from "obsidian";
 import type { NoteHeights } from "./note-heights";
-import { embedCount, wrappedLines } from "./note-lines";
+import { baseEmbeds, embedCount, wrappedLines } from "./note-lines";
 import { probeBeside } from "./column-probe";
 
 /** The note text's font, at one text size. */
@@ -38,6 +38,7 @@ interface Learned {
 export class HeightEstimates {
     private readonly texts = new Map<string, TextMetrics>();
     private learned: { key: string; value: Learned } | null = null;
+    private baseChanges: { key: string; value: Map<string, number> } | null = null;
 
     constructor(
         private readonly heights: NoteHeights,
@@ -50,19 +51,46 @@ export class HeightEstimates {
         const cache = this.sources.cacheOf(path);
         const text = this.textAt(here.size);
         if (!cache || !text) return undefined;
-        return this.rewrapped(path, cache, here, text) ?? this.fromTemplate(layout, cache, here, text);
+        return this.rewrapped(layout, path, cache, text) ?? this.fromTemplate(layout, cache, here, text);
     }
 
-    /** Measured at the nearest width of the same text size: that height, plus the lines its text gains here. */
-    private rewrapped(path: string, cache: CachedMetadata, here: Layout, text: TextMetrics): number | undefined {
+    /**
+     * Measured at the nearest width of the same text size: that height, plus the
+     * lines its text gains here, plus what each Base it embeds changed between
+     * the two widths in other notes.
+     */
+    private rewrapped(layout: string, path: string, cache: CachedMetadata, text: TextMetrics): number | undefined {
+        const here = parse(layout);
         const [nearest] = this.heights
             .heightsOf(path)
-            .map(([layout, height]) => ({ ...parse(layout), height }))
+            .map(([layout, height]) => ({ layout, ...parse(layout), height }))
             .filter(({ size }) => size === here.size)
             .sort((a, b) => Math.abs(a.width - here.width) - Math.abs(b.width - here.width));
         if (!nearest) return undefined;
-        const lines = (width: number) => wrappedLines(cache, width, text.charWidth);
-        return nearest.height + (lines(here.width) - lines(nearest.width)) * text.lineHeight;
+        const changes = this.baseChangesBetween(nearest.layout, layout, text);
+        const bases = baseEmbeds(cache).reduce((sum, base) => sum + (changes.get(base) ?? 0), 0);
+        return nearest.height + rewrap(cache, nearest.width, here.width, text) + bases;
+    }
+
+    /** Per Base, the median change per embed, beyond its text, of notes measured at both layouts. */
+    private baseChangesBetween(from: string, to: string, text: TextMetrics): Map<string, number> {
+        const key = `${this.heights.revision}\n${from}\n${to}`;
+        if (this.baseChanges?.key !== key) this.baseChanges = { key, value: this.learnBaseChanges(from, to, text) };
+        return this.baseChanges.value;
+    }
+
+    private learnBaseChanges(from: string, to: string, text: TextMetrics): Map<string, number> {
+        const [was, is] = [parse(from).width, parse(to).width];
+        const changes = new Map<string, number[]>();
+        for (const [path, height] of this.heights.entries(to)) {
+            const before = this.heights.heightOf(from, path);
+            const cache = this.sources.cacheOf(path);
+            const bases = cache ? baseEmbeds(cache) : [];
+            if (before === undefined || !cache || bases.length === 0) continue;
+            const change = (height - before - rewrap(cache, was, is, text)) / bases.length;
+            for (const base of bases) changes.set(base, [...(changes.get(base) ?? []), change]);
+        }
+        return new Map([...changes].map(([base, values]) => [base, median(values)!]));
     }
 
     /** The template's height here, plus a learned height for each line and embed the note adds to it. */
@@ -155,6 +183,12 @@ export function measureText(column: HTMLElement): TextMetrics | null {
     if (!font || !(lineHeight > 0) || !context) return null;
     context.font = font;
     return { charWidth: context.measureText(SAMPLE).width / SAMPLE.length, lineHeight };
+}
+
+/** What a note's text adds, in px, going from width `was` to width `is`. */
+function rewrap(cache: CachedMetadata, was: number, is: number, text: TextMetrics): number {
+    const lines = (width: number) => wrappedLines(cache, width, text.charWidth);
+    return (lines(is) - lines(was)) * text.lineHeight;
 }
 
 interface Layout {

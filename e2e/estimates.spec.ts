@@ -75,7 +75,7 @@ interface Measured {
     estimates?: Estimates;
 }
 
-type Estimates = Record<"elsewhere" | "learned" | "fresh", Record<string, number | null>>;
+type Estimates = Record<"elsewhere" | "turned" | "learned" | "fresh", Record<string, number | null>>;
 
 /** The template set, and notes holding only it shown, so every note is measured. */
 async function useTemplate(page: Page, vaultPath: string): Promise<void> {
@@ -99,8 +99,9 @@ async function useTemplate(page: Page, vaultPath: string): Promise<void> {
 /**
  * The stream's own estimate of each note at `here`, the layout it is laid out
  * in now, with the heights stored as three cases leave them: measured only at
- * `other` (a turn); never measured, every other note measured at both (a
- * long-read vault); nothing measured yet.
+ * `other` (a turn); measured at `other`, every other note at both (a turn
+ * in a long-read vault); never measured, every other note measured at both;
+ * nothing measured yet.
  */
 async function estimateAll(page: Page, here: string, other: string, heights: Record<string, Record<string, number>>) {
     return page.evaluate(
@@ -118,10 +119,17 @@ async function estimateAll(page: Page, here: string, other: string, heights: Rec
             ];
             const elsewhere = estimating([[other, Object.entries(heights[other]!)]]);
             const fresh = estimating([]);
-            const result: Record<string, Record<string, number | null>> = { elsewhere: {}, learned: {}, fresh: {} };
+            const result: Record<string, Record<string, number | null>> = {
+                elsewhere: {},
+                turned: {},
+                learned: {},
+                fresh: {},
+            };
             for (const path of Object.keys(heights[here]!)) {
+                const turned = estimating([[other, Object.entries(heights[other]!)], without(here, path)]);
                 const learned = estimating([without(other, path), without(here, path)]);
                 result.elsewhere![path] = elsewhere.estimate(here, path) ?? null;
+                result.turned![path] = turned.estimate(here, path) ?? null;
                 result.learned![path] = learned.estimate(here, path) ?? null;
                 result.fresh![path] = fresh.estimate(here, path) ?? null;
             }

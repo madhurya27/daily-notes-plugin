@@ -20,3 +20,8 @@ export function wrappedLines(cache: CachedMetadata, width: number, charWidth: nu
 export function embedCount(cache: CachedMetadata): number {
     return cache.embeds?.length ?? 0;
 }
+
+/** The Bases a note embeds, by link without the view: what a Base's change between widths is learned by. */
+export function baseEmbeds(cache: CachedMetadata): string[] {
+    return (cache.embeds ?? []).map(({ link }) => link.split("#")[0]!).filter((link) => link.endsWith(".base"));
+}
