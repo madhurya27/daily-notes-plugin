@@ -68,8 +68,8 @@ Terms:
 Steps 1–6 done on this branch: the benchmark (embeds varied in the spec's own
 vault, so the demo and README captures stay), `note-lines.ts`,
 `template-height.ts`, `height-estimates.ts`, wired through `NoteStream`, and the
-benchmark command in `CLAUDE.md`. Then D-080, for Bases on a turn. Left, on the
-branch that re-reserves placeholders (Later): the phone check after a turn.
+benchmark command in `CLAUDE.md`. Then D-080, for Bases on a turn. Left: the
+phone check after a turn, with ADR 0014.
 
 Scored with the plugin's own estimator, called in the page (mean error, px,
 portrait / landscape):
@@ -103,11 +103,7 @@ Where the code differs from the terms above:
 
 ## Constraints
 
-- **D-055 stays.** A turn re-reserves no placeholder already in the stream: a
-  shrink above the reader clamps the scroll. The estimate reaches those notes
-  only as the height they are held at, which needs `measured`, so not at all. It
-  changes new placeholders: batches, jumps, rebuilds. Re-reserving on a turn is
-  a separate decision, with its own e2e turn test (see Later).
+- **D-055 stayed** on this branch; ADR 0014 replaced it.
 - **Pinning (ADR 0013)** is untouched: estimates set placeholder heights only.
 - `add()` stays synchronous: everything it reads is cached. A note whose cache
   is not ready yet takes step 3.
@@ -152,21 +148,5 @@ Worth exploring, most promising first:
   Images are most of the embed error that is not Bases.
 - **Read charWidth from rendered note text,** once a note is on screen, rather
   than a sample sentence (7.8px against the demo's 7.3).
-- **Re-reserve placeholders on a turn,** with the re-wrapped estimate. Notes
-  released before a turn keep the old width's height (D-055), off by ~85px a
-  text note and ~390px a note with an embed, and each becomes a correction the
-  anchor makes as the reader scrolls back up: the turn case the recordings show.
-  Needs D-055's clamp solved: placeholders shrinking shorten the stream, the
-  browser clamps the scroll first, and `ScrollAnchor` takes the clamp for the
-  reader's. Ways, in order to try:
-    1. A spacer at the stream's end, as tall as the shrink, removed once the
-       scroll is still: the stream never shortens, so nothing clamps, and the
-       anchor corrects as for any resize. No scroll write.
-    2. Correct the scroll first, then shrink, in one task: nothing paints
-       between. A scroll write: it ends an iOS glide mid-turn.
-    3. Re-reserve only once the scroll is still: fewer clamps, not none.
-
-    Decide from this branch's phone recording after a turn. An e2e turn test and
-    its own ADR.
-
+- **Re-reserve placeholders on a turn:** done, ADR 0014.
 - Delete this plan once shipped.

@@ -19,6 +19,11 @@ Ordered by priority, from the 2026-09 comparison against
       fit a preview that opens on tap.
 - [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on
       `post-processor-change`.
+- [ ] iOS: after a turn, scrolling up to the newest note stops ~200 px short
+      until the notes above render; the benchmark predicts estimates slightly
+      too tall instead (ADR 0014). Probe on an experiment branch: a device build
+      writing each note's reserved and rendered height to a file in the Demo
+      vault, read back through iCloud.
 - [ ] Desktop: a setting toggled within ~3 s of scrolling loses the reader's
       place. The notes above have no remembered height yet, and Chromium's
       anchoring does not absorb their growth once they render.

@@ -27,6 +27,19 @@ async function scrollToOldest(page: Page, container: Locator) {
     await page.locator(".prompt .suggestion-item").first().click();
     await expect(page.locator(".prompt")).toBeHidden();
     await expect.poll(() => pane(container).evaluate((el) => el.scrollTop)).toBeGreaterThan(1000);
+    // Once still, the notes above are re-reserved and the anchor moves the scroll with them (ADR 0014).
+    let last = NaN;
+    await expect
+        .poll(
+            async () => {
+                const now = await pane(container).evaluate((el) => el.scrollTop);
+                const settled = now === last;
+                last = now;
+                return settled;
+            },
+            { intervals: [600] }
+        )
+        .toBe(true);
 }
 
 /** How far the newest note sits below the pane's top. */

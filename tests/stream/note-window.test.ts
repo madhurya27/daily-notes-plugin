@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, onTestFinished, vi, type MockInstance } from "vitest";
 import { Component, TFile } from "obsidian";
 import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX } from "../../src/stream/note-window";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "../../src/stream/scroll-anchor";
@@ -555,32 +555,57 @@ describe("NoteWindowManager after the pane's width changes", () => {
     const NARROW = "400:16px";
     const heldHeight = (block: HTMLElement) => block.style.getPropertyValue("--daily-note-held-height");
 
-    /** A manager whose layout the test changes; FILE measured 812 at LAYOUT. */
-    function makeResizable() {
+    /**
+     * A manager whose layout the test changes; FILE measured 812 at LAYOUT.
+     * `below` is how much of the stream lies under the pane.
+     */
+    function makeResizable({
+        estimate = (): number | undefined => undefined,
+        below = 10_000,
+        render = (_block: HTMLElement): void | Promise<void> => undefined,
+    } = {}) {
         let layout = LAYOUT;
         const heights = new NoteHeights();
         heights.keep(LAYOUT, FILE.path, 812);
         const manager = new NoteWindowManager(
-            makeRenderer() as never,
+            makeRenderer({ render }) as never,
             makeQueue(),
             heights,
             () => layout,
-            () => 640
+            () => 640,
+            estimate
         );
-        manager.attach(makeScrollRoot(800));
+        const root = makeScrollRoot(800);
+        Object.defineProperty(root, "scrollTop", { value: 2000, configurable: true });
+        Object.defineProperty(root, "scrollHeight", { value: 2000 + 800 + below, configurable: true });
+        manager.attach(root);
         /** The layout is read once per task: the width changes in the next one. */
         const narrow = async () => {
             await settle();
             layout = NARROW;
             manager.onResize();
         };
-        return { manager, heights, narrow };
+        /** Another note measured: what estimates read changed. */
+        const learn = () => heights.keep(LAYOUT, "learned.md", 700);
+        return { manager, heights, narrow, learn };
     }
 
     afterEach(() => document.body.empty());
 
-    // D-055.
-    it("keeps an unloaded note's placeholder, and holds it at what it measured at the new width", async () => {
+    it("holds a note rendering after the turn at what it measured at the new width", async () => {
+        const { manager, heights, narrow } = makeResizable();
+        heights.keep(NARROW, FILE.path, 1200);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        await narrow();
+        fire(observers.render, block, true);
+        await settle();
+        expect(heldHeight(block)).toBe("1200px");
+    });
+
+    // The text reflows for several frames after a turn: nothing else moves meanwhile.
+    it("re-reserves an unloaded note at the new width once the scroll is still", async () => {
         const { manager, heights, narrow } = makeResizable();
         heights.keep(NARROW, FILE.path, 1200);
         const block = manager.add(FILE);
@@ -589,9 +614,120 @@ describe("NoteWindowManager after the pane's width changes", () => {
         await narrow();
         expect(placeholderHeight(block)).toBe("812px");
 
-        fire(observers.render, block, true);
+        await still();
+        expect(placeholderHeight(block)).toBe("1200px");
+    });
+
+    // The stream learns from every note drawn; a placeholder made before reserves what it knew then.
+    it("re-estimates a note never measured here once the scroll comes to rest", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated });
+        const block = manager.add(new TFile("b.md"));
+        document.body.appendChild(block);
+        expect(placeholderHeight(block)).toBe("900px");
+
+        estimated = 1100;
+        learn();
+        manager.onScroll();
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
+        expect(placeholderHeight(block)).toBe("900px");
+
+        await still();
+        expect(placeholderHeight(block)).toBe("1100px");
+    });
+
+    it("tells the anchor in the task it re-reserves, and only then", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated });
+        document.body.appendChild(manager.add(new TFile("b.md")));
+        const told = vi.spyOn(ScrollAnchor.prototype, "resized");
+        onTestFinished(() => told.mockRestore());
+
+        manager.onScroll();
+        await still();
+        expect(told).not.toHaveBeenCalled();
+
+        estimated = 1100;
+        learn();
+        manager.onScroll();
+        await still();
+        expect(told).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves rendered notes, and notes already right, as they are", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({
+            estimate: () => estimated,
+            // Its render never finishes.
+            render: (block) => (block.dataset.sourcePath === "rendering.md" ? new Promise(() => {}) : undefined),
+        });
+        const rendered = manager.add(new TFile("rendered.md"));
+        const rendering = manager.add(new TFile("rendering.md"));
+        const measured = manager.add(FILE);
+        for (const block of [rendered, rendering, measured]) document.body.appendChild(block);
+        fire(observers.render, rendered, true);
         await settle();
-        expect(heldHeight(block)).toBe("1200px");
+        fire(observers.render, rendering, true);
+
+        estimated = 1100;
+        learn();
+        manager.onScroll();
+        await still();
+
+        expect(placeholderHeight(rendered)).toBe("");
+        expect(placeholderHeight(rendering)).toBe("900px");
+        expect(placeholderHeight(measured)).toBe("812px");
+    });
+
+    it("tells nobody when what it learned moves no placeholder, and waits for the next lesson", async () => {
+        const { manager, learn } = makeResizable({ estimate: () => 900 });
+        document.body.appendChild(manager.add(new TFile("b.md")));
+        const told = vi.spyOn(ScrollAnchor.prototype, "resized");
+        onTestFinished(() => told.mockRestore());
+
+        learn();
+        manager.onScroll();
+        await still();
+        manager.onScroll();
+
+        expect(told).not.toHaveBeenCalled();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("keeps a shrink owed when a note is added meanwhile", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated, below: 300 });
+        const block = manager.add(new TFile("b.md"));
+        document.body.appendChild(block);
+        estimated = 500;
+        learn();
+        manager.onScroll();
+        await still();
+
+        document.body.appendChild(manager.add(new TFile("c.md")));
+        manager.onScroll();
+
+        expect(vi.getTimerCount()).toBe(1);
+    });
+
+    // ADR 0014: a stream shortened past the pane's bottom clamps the scroll first.
+    it("puts off a shrink larger than the stream below the pane", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated, below: 300 });
+        const block = manager.add(new TFile("b.md"));
+        document.body.appendChild(block);
+
+        estimated = 500;
+        learn();
+        manager.onScroll();
+        await still();
+        expect(placeholderHeight(block)).toBe("900px");
+
+        // Still owed: the next rest tries again, with nothing new learned.
+        estimated = 700;
+        manager.onScroll();
+        await still();
+        expect(placeholderHeight(block)).toBe("700px");
     });
 
     it("holds nothing on a note never measured at the new width", async () => {
@@ -688,6 +824,16 @@ describe("NoteWindowManager margins", () => {
         manager.onResize();
 
         expect(detach).not.toHaveBeenCalled();
+    });
+
+    it("reserves nothing when resized before it is attached", async () => {
+        const manager = new NoteWindowManager(makeRenderer() as never, makeQueue(), new NoteHeights(), () => LAYOUT);
+        const block = manager.add(FILE);
+
+        manager.onResize();
+        await still();
+
+        expect(placeholderHeight(block)).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
     });
 
     it("leaves the observers alone when a resize did not change the height", () => {

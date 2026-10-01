@@ -72,6 +72,9 @@ export class NoteWindowManager {
     /** Rendered blocks past the unload margin, waiting for the scroll to be still. */
     private readonly leaving = new Set<HTMLElement>();
     private readonly unloadOnceStill = debounce(() => this.unloadLeaving(), SCROLL_IDLE_MS, true);
+    private readonly reserveOnceStill = debounce(() => this.reserve(), SCROLL_IDLE_MS, true);
+    /** What the placeholders were last reserved from: the heights' revision, and the layout. */
+    private reservedFrom: string;
     /** Watches rendered notes: a Base filling or an image loading measures short until done. */
     private resizes: ResizeObserver | null = null;
 
@@ -90,7 +93,9 @@ export class NoteWindowManager {
         private readonly measure: (el: HTMLElement) => number = (el) => el.getBoundingClientRect().height,
         /** A note's height at a layout, from its text, where none is stored (D-079). */
         private readonly estimate: (layout: string, path: string) => number | undefined = () => undefined
-    ) {}
+    ) {
+        this.reservedFrom = this.reserveKey();
+    }
 
     attach(scrollRoot: HTMLElement): void {
         this.detachObservers();
@@ -144,6 +149,7 @@ export class NoteWindowManager {
     onResize(): void {
         this.refreshMargins();
         this.expectLayout();
+        this.reserveOnceStill();
     }
 
     /**
@@ -167,6 +173,7 @@ export class NoteWindowManager {
     onScroll(): void {
         this.anchor.onScroll();
         if (this.leaving.size > 0) this.unloadOnceStill();
+        if (this.reservedFrom !== this.reserveKey()) this.reserveOnceStill();
     }
 
     /** A touch is the reader's own change, such as a collapse: no hold keeps it. */
@@ -196,8 +203,11 @@ export class NoteWindowManager {
             keepOnceSettled: null,
         };
         this.windows.set(block, window);
+        // Reserved from what is known now; the others too, unless one is owed.
+        const owed = this.reservedFrom !== this.reserveKey();
         this.expectedIn = this.layout();
         this.expect(window, this.expectedIn);
+        if (!owed) this.reservedFrom = this.reserveKey();
         this.markUnloaded(block, window.height);
         this.observe(block);
         return block;
@@ -252,6 +262,7 @@ export class NoteWindowManager {
     detach(): void {
         this.detachObservers();
         this.unloadOnceStill.cancel();
+        this.reserveOnceStill.cancel();
         this.leaving.clear();
         this.scrollRoot = null;
         for (const window of this.windows.values()) {
@@ -356,9 +367,8 @@ export class NoteWindowManager {
     /**
      * A height is true only at the width it was measured at: on a new one,
      * nothing is held at the old one, and a note rendering again is held at
-     * what it measured at the new one. Placeholders keep their heights until
-     * they render (D-055). The same width rereads
-     * nothing.
+     * what it measured at the new one. Placeholders take it once the scroll is
+     * still. The same width rereads nothing.
      */
     private expectLayout(): void {
         const layout = this.layout();
@@ -368,6 +378,38 @@ export class NoteWindowManager {
             this.releaseHold(window);
             if (!window.component) this.expect(window, layout);
         }
+    }
+
+    /**
+     * Each unloaded note reserves what it is now expected at: its height at a
+     * new width, or an estimate grown wiser since. Put off while the stream
+     * would shrink by more than lies below the pane: the browser would clamp
+     * the scroll before the anchor could hold the place.
+     */
+    private reserve(): void {
+        const layout = this.layout();
+        const key = this.reserveKey();
+        const changed: [HTMLElement, NoteWindow][] = [];
+        let shrink = 0;
+        for (const [block, window] of this.windows) {
+            if (window.component || window.rendering) continue;
+            if (!window.measured) this.expect(window, layout);
+            const reserved = parseFloat(block.style.getPropertyValue("--daily-note-placeholder-height"));
+            if (reserved === window.height) continue;
+            changed.push([block, window]);
+            shrink += reserved - window.height;
+        }
+        const root = this.scrollRoot;
+        if (!root || shrink > root.scrollHeight - root.scrollTop - root.clientHeight) return;
+        this.reservedFrom = key;
+        if (changed.length === 0) return;
+        for (const [block, window] of changed) this.markUnloaded(block, window.height);
+        this.changes++;
+        this.anchor.resized();
+    }
+
+    private reserveKey(): string {
+        return `${this.heights.revision}\n${this.expectedIn}`;
     }
 
     /** What `window` last measured in `layout`, or an estimate: from its text, else the layout's median. */
