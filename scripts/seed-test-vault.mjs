@@ -233,7 +233,7 @@ export function testVault({ days }) {
         "",
         "## Diagram",
         "",
-        "Obsidian asks once before drawing Mermaid: Allow, then reopen the stream.",
+        "Obsidian asks once before drawing Mermaid; Allow draws it.",
         "",
         "```mermaid",
         "flowchart LR",

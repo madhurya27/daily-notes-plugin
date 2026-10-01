@@ -18,7 +18,13 @@ import { StreamSearch } from "../stream/stream-search";
 import { SearchHighlighter } from "../render/search-highlights";
 import { SearchBar } from "./search-bar";
 import { matchesHotkey } from "./hotkey";
-import { getReadableLineLength, getSearchHotkeys, getViewTitle, onVaultConfigChange } from "../obsidian-internals";
+import {
+    getReadableLineLength,
+    getSearchHotkeys,
+    getViewTitle,
+    onPostProcessorChange,
+    onVaultConfigChange,
+} from "../obsidian-internals";
 import { isStreamPlace } from "../stream/scroll-position";
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
@@ -139,6 +145,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.registerEvent(vault.on("rename", (f, old) => this.applyChange(() => this.stream.onFileRename(f, old))));
         // A Base has no metadata to wait for.
         this.registerEvent(vault.on("modify", (f) => void this.renderer.onBaseModified(f)));
+        this.registerEvent(onPostProcessorChange(this.app, () => void this.refresh()));
         // A link to an empty note shows it; losing its last hides it (ADR 0011).
         this.register(
             this.plugin.linkChanges.subscribe((paths) => {

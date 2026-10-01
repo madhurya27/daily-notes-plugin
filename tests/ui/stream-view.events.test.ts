@@ -62,6 +62,16 @@ describe("DailyNotesStreamView — vault events", () => {
         callbacks["rename"]?.(file, "Notes/old-name.md");
         expect(spy).toHaveBeenCalledWith(file, "Notes/old-name.md");
     });
+
+    // Mermaid's "Allow" fires it, as does a plugin adding or removing a post-processor.
+    it("workspace 'post-processor-change' re-renders the stream", async () => {
+        const app = makeApp();
+        const { view } = await makeViewSetup(app);
+        const spy = vi.spyOn(view["stream"], "refresh").mockResolvedValue();
+        const callbacks = Object.fromEntries(app.workspace.on.mock.calls);
+        callbacks["post-processor-change"]?.();
+        expect(spy).toHaveBeenCalled();
+    });
 });
 
 describe("DailyNotesStreamView — links to daily notes", () => {

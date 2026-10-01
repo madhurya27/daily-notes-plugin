@@ -32,6 +32,17 @@ export function onVaultConfigChange(app: App, handler: () => void): EventRef {
     });
 }
 
+/** Obsidian's unpublished workspace event. */
+type WorkspaceInternal = { on(name: "post-processor-change", callback: () => unknown): EventRef };
+
+/**
+ * Fires when what renders markdown changes: Mermaid's "Allow", or a plugin
+ * adding or removing a post-processor. Obsidian's own views re-render on it.
+ */
+export function onPostProcessorChange(app: App, handler: () => void): EventRef {
+    return (app.workspace as unknown as WorkspaceInternal).on("post-processor-change", handler);
+}
+
 /** The core search plugin's unpublished handle, reached through the registry. */
 type InternalPlugins = {
     getPluginById(id: "global-search"): { instance?: { openGlobalSearch(query: string): void } } | undefined;

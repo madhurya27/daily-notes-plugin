@@ -5,6 +5,7 @@ import {
     getReadableLineLength,
     getSearchHotkeys,
     getViewTitle,
+    onPostProcessorChange,
     onVaultConfigChange,
     openTagSearch,
 } from "../src/obsidian-internals";
@@ -70,6 +71,18 @@ describe("onVaultConfigChange", () => {
     it("returns the event ref, so the caller can register it for cleanup", () => {
         const { app, ref } = makeVaultApp(".obsidian");
         expect(onVaultConfigChange(app, vi.fn())).toBe(ref);
+    });
+});
+
+describe("onPostProcessorChange", () => {
+    it("subscribes the handler to the workspace's undeclared event, returning its ref", () => {
+        const ref = {};
+        const on = vi.fn().mockReturnValue(ref);
+        const app = { workspace: { on } } as unknown as App;
+        const handler = vi.fn();
+
+        expect(onPostProcessorChange(app, handler)).toBe(ref);
+        expect(on).toHaveBeenCalledWith("post-processor-change", handler);
     });
 });
 
