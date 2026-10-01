@@ -413,7 +413,8 @@
     overflow-wrap: break-word;
 }
 
-/* A pasted video embed fixes its width; nothing it holds can scroll into view. */
+/* A pasted video embed fixes a width wider than a phone. Capped, not clipped:
+   no scroll could reach a clipped edge. */
 :is(.daily-note-content, .daily-note-mention-excerpt) iframe {
     max-width: 100%;
 }

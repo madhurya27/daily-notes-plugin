@@ -60,12 +60,12 @@ test("never scrolls the page sideways", async ({ obsidian }) => {
         .toBeLessThanOrEqual(0);
 });
 
-// Dataview scrolls its own blocks; the stream draws them before the guard could clip (ADR 0008).
+// Dataview's own stylesheet makes its blocks scroll (ADR 0008).
 test("on mobile, draws no scroll box around a query", async ({ obsidian, mobileLayout }) => {
     test.skip(!mobileLayout, "desktop keeps its scroll bars");
     const note = await openQueries(obsidian.page);
 
-    // Clipped by the guard, a block would have scrolled until the scroll was still.
+    // The guard clips only once the scroll is still: a block it clipped scrolled until then.
     const boxes = await note.evaluate((root) =>
         Array.from(root.querySelectorAll(".block-language-dataview, .block-language-dataviewjs"))
             .filter(

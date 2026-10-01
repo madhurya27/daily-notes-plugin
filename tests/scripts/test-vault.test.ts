@@ -50,7 +50,7 @@ describe("testVault", () => {
             expect(paths).toContain(`Bases/${base}.base`);
     });
 
-    // docs/TESTING.md, "Wide content": a phone draws page 1 and opens the PDF on a tap (D-083).
+    // docs/TESTING.md, "Mobile": a phone draws page 1 and opens the PDF on a tap (D-083).
     it("embeds a PDF of several pages and a video wider than a phone in the newest note", () => {
         expect(note("Attachments/Manual.pdf")).toContain("/Count 3");
         expect(note("Notes/2026-08-30.md")).toContain("![[Manual.pdf]]");

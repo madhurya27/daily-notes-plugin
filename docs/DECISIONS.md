@@ -1335,8 +1335,8 @@ screen; a step also painted the note's top for two frames before centering.
 ## D-083 — On mobile a PDF embed is its first page, opened by a tap (2026-10-01)
 
 **Decision:** under `.is-mobile` a PDF embed is clipped like a Base, its toolbar
-hidden, and a tap anywhere on it opens the PDF, page kept, through the link
-handlers (`NoteRenderer.linkAt`). An iframe is capped at the note's width,
+hidden, and a tap anywhere on it opens the PDF at the embed's page, through the
+link handlers (`NoteRenderer.linkAt`). An iframe is capped at the note's width,
 everywhere.
 
 **Why:** clipped, Obsidian's viewer shows page 1 and its toolbar can reach no
@@ -1351,10 +1351,14 @@ phone.
 
 ## D-084 — Dataview's queries are clipped and stacked like the note's own (2026-10-01)
 
-**Decision:** on mobile the stylesheet clips Dataview's blocks, which its own
-stylesheet makes scroll, and `stackWideTables` stacks a table whenever one is
-added or filled in, not only those present once the note renders. e2e runs a
-pinned Dataview release, fetched once into `.dev/` (`e2e/dataview.ts`).
+**Decision:**
+
+- On mobile the stylesheet clips Dataview's blocks, which Dataview's own
+  stylesheet makes scroll.
+- `stackWideTables` stacks a table whenever one is added or filled in, not only
+  at render.
+- e2e runs a pinned Dataview release, fetched once into `.dev/`
+  (`e2e/dataview.ts`).
 
 **Why:** Dataview draws after the note renders, over several passes; its wide
 tables were clipped, not stacked, and each block was a scroll box until the
