@@ -413,6 +413,11 @@
     overflow-wrap: break-word;
 }
 
+/* A pasted video embed fixes its width; nothing it holds can scroll into view. */
+:is(.daily-note-content, .daily-note-mention-excerpt) iframe {
+    max-width: 100%;
+}
+
 /* Desktop: wide content scrolls inside its own box, as in Obsidian's reading
    view, rather than widen the stream. */
 body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(table, pre) {
@@ -511,8 +516,19 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
 .is-mobile .daily-note-block :is(.bases-embed, .block-language-base),
 .is-mobile .daily-note-block :is(.bases-embed, .block-language-base) *,
 .is-mobile .daily-note-block .markdown-embed-content,
+.is-mobile .daily-note-block :is(.pdf-embed, .pdf-embed *),
 .is-mobile .daily-note-block .is-scroll-clipped {
     overflow: clip !important;
+}
+
+/* A PDF is a preview of its first page, opened by a tap (D-083): its toolbar
+   reaches nothing, and the tap goes past the viewer to the embed. */
+.is-mobile .daily-note-block .pdf-embed .pdf-toolbar {
+    display: none;
+}
+
+.is-mobile .daily-note-block .pdf-embed > * {
+    pointer-events: none;
 }
 
 /* A card's border is a ring Bases draws just outside it, which the grid ends

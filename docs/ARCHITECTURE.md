@@ -71,8 +71,8 @@ through one promise queue, so none interleaves at an `await`
   its own placeholder, as cards when too wide (D-033). `ScrollBoxGuard` reports
   Base layouts to the renderer.
 - On mobile nothing inside a note scrolls: `ScrollBoxGuard` clips stray scroll
-  boxes ([ADR 0008](adr/0008-nothing-scrolls-on-mobile.md)). Desktop keeps
-  Obsidian's scroll boxes.
+  boxes ([ADR 0008](adr/0008-nothing-scrolls-on-mobile.md)), and a PDF is its
+  first page, opened by a tap (D-083). Desktop keeps Obsidian's scroll boxes.
 - The linked mentions footer draws after the note and redraws itself on
   `resolved`; `notes/linked-mentions.ts` finds each link's list item or section.
 

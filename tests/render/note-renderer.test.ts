@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { BaseMeasurements } from "../../src/render/bases/base-measurements";
 import { SearchHighlighter } from "../../src/render/search-highlights";
 import { NoteRenderer } from "../../src/render/note-renderer";
@@ -910,6 +910,49 @@ describe("NoteRenderer internal links", () => {
         dispatch(el, "mouseover");
 
         expect(app.workspace.trigger).not.toHaveBeenCalled();
+    });
+});
+
+// On a phone a PDF is a preview of its first page (D-083).
+describe("NoteRenderer PDF embeds", () => {
+    async function renderPdf(app: ReturnType<typeof makeApp>) {
+        const renderer = new NoteRenderer(
+            asApp(app),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter(),
+            new BaseMeasurements(),
+            new BacklinkIndex(() => ({}))
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+        const embed = el
+            .querySelector(".daily-note-content")!
+            .createSpan({ cls: "internal-embed pdf-embed", attr: { src: "Doc.pdf#page=2" } });
+        return embed.createDiv({ cls: "pdf-container" }).createEl("canvas");
+    }
+
+    afterEach(() => {
+        Platform.isMobile = false;
+    });
+
+    it("opens the PDF, page kept, on a tap on mobile", async () => {
+        Platform.isMobile = true;
+        const app = makeApp();
+        const page = await renderPdf(app);
+
+        page.click();
+
+        expect(app.workspace.openLinkText).toHaveBeenCalledWith("Doc.pdf#page=2", "Notes/2025-01-01.md", false);
+    });
+
+    it("leaves a click to the PDF's own viewer on desktop", async () => {
+        const app = makeApp();
+        const page = await renderPdf(app);
+
+        page.click();
+
+        expect(app.workspace.openLinkText).not.toHaveBeenCalled();
     });
 });
 

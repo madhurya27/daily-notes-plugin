@@ -1331,3 +1331,20 @@ screen; a step also painted the note's top for two frames before centering.
   shows.
 - Readying the notes around it too — the match's own note is where its Bases
   sit; the neighbours render as they do on any scroll.
+
+## D-083 — On mobile a PDF embed is its first page, opened by a tap (2026-10-01)
+
+**Decision:** under `.is-mobile` a PDF embed is clipped like a Base, its toolbar
+hidden, and a tap anywhere on it opens the PDF, page kept, through the link
+handlers (`NoteRenderer.linkAt`). An iframe is capped at the note's width,
+everywhere.
+
+**Why:** clipped, Obsidian's viewer shows page 1 and its toolbar can reach no
+other page; a pasted video embed's fixed width scrolled the page sideways on a
+phone.
+
+**Rejected:**
+
+- Every page at full height — a long PDF becomes the whole stream.
+- Obsidian's file card (icon and name) — loses the page a reader recognizes.
+- Leaving the viewer live — a scroll box, which ends an iOS glide (ADR 0008).

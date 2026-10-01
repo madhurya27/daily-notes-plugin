@@ -337,10 +337,12 @@ export class NoteRenderer {
     /**
      * An internal link, and the note it was written in, which resolves it: a
      * linked mention's excerpt was written in its source, not the daily note.
+     * On mobile a PDF embed is a preview, a link to its file (D-083).
      */
     private linkAt(target: HTMLElement): { el: HTMLElement; linktext: string; sourcePath: string } | null {
-        const el = target.closest<HTMLElement>(".internal-link");
-        const linktext = el?.getAttribute("data-href");
+        const pdf = Platform.isMobile ? target.closest<HTMLElement>(".pdf-embed") : null;
+        const el = pdf ?? target.closest<HTMLElement>(".internal-link");
+        const linktext = pdf ? pdf.getAttribute("src") : el?.getAttribute("data-href");
         const sourcePath =
             el?.closest<HTMLElement>("[data-link-source]")?.dataset.linkSource ??
             el?.closest<HTMLElement>(".daily-note-block")?.dataset.sourcePath;
