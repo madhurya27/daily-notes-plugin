@@ -108,6 +108,13 @@ export class ScrollAnchor {
         this.settleOnceStill();
     }
 
+    /** The scroll is still now: what is owed goes to it at once, not once still again. */
+    handOver(): void {
+        if (!this.scrollRoot) return;
+        this.settleOnceStill.cancel();
+        this.settle();
+    }
+
     /** A scroll moves the place, and puts off the hand-over until it stops. */
     onScroll(): void {
         if (!this.scrollRoot) return;

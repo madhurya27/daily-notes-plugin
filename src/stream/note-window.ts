@@ -412,6 +412,9 @@ export class NoteWindowManager {
         for (const [block, window] of changed) this.markUnloaded(block, window.height);
         this.changes++;
         this.anchor.resized();
+        // Run only once the scroll is still; put off, a scroll begun meanwhile
+        // carries the shift to the top (ADR 0015).
+        this.anchor.handOver();
     }
 
     /** Wholly above the pane's top; a block not laid out, in a hidden tab, is nowhere. */

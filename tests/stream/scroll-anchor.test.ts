@@ -212,6 +212,25 @@ describe("ScrollAnchor", () => {
         expect(readerTop(blocks)).toBe(-100);
     });
 
+    // Told the scroll is still, it writes now: a handover put off is lost to a scroll begun meanwhile.
+    it("hands what it owes to the scroll at once when told the scroll is still", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+
+        anchor.anticipate(-300);
+        resize(blocks[1]!, 100);
+        anchor.resized();
+        anchor.handOver();
+
+        expect(shift(content)).toBe(0);
+        expect(pane.scrollTop).toBe(600);
+        expect(readerTop(blocks)).toBe(-100);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("ignores being told to hand over before it is attached", () => {
+        expect(() => anchor.handOver()).not.toThrow();
+    });
+
     it("ignores being told of a move before it is attached", () => {
         expect(() => anchor.anticipate(-300)).not.toThrow();
     });

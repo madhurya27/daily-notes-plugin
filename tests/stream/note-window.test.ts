@@ -774,6 +774,26 @@ describe("NoteWindowManager after the pane's width changes", () => {
         expect(reservedWhenTold).toEqual(["900px"]);
     });
 
+    // ADR 0015: it runs only once the scroll is still, the moment a handover waits for.
+    it("hands the move to the scroll in the task it re-reserves", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated });
+        const block = manager.add(new TFile("b.md"));
+        document.body.appendChild(block);
+        const reservedAtHandOver: string[] = [];
+        const handedOver = vi
+            .spyOn(ScrollAnchor.prototype, "handOver")
+            .mockImplementation(() => reservedAtHandOver.push(placeholderHeight(block)));
+        onTestFinished(() => handedOver.mockRestore());
+
+        estimated = 500;
+        learn();
+        manager.onScroll();
+        await still();
+
+        expect(reservedAtHandOver).toEqual(["500px"]);
+    });
+
     it("holds nothing on a note never measured at the new width", async () => {
         const { manager, narrow } = makeResizable();
         const block = manager.add(FILE);

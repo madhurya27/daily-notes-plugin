@@ -19,16 +19,21 @@ layout, shortened and not yet shifted.
 
 `reserve()` sums how far the unloaded notes wholly above the pane move, and
 `ScrollAnchor.anticipate()` draws that shift before any placeholder changes. The
-anchor's next read finds nothing more owed. Only a shrink below the pane's top
-larger than what lies below still waits.
+anchor's next read finds nothing more owed, and the scroll takes the shift in
+the same task: `reserve()` runs only once the scroll is still, so the write ends
+no glide. Only a shrink below the pane's top larger than what lies below still
+waits.
 
 ## Consequences
 
 - A turn re-reserves at its first rest, wherever the reader is.
+- Whatever was owed before, such as a Base redrawn late, goes with it.
 - Each re-reserve reads the rect of every placeholder it changes.
 - A note crossing the pane's top counts as below; unloaded there, it is rare.
 
 ## Rejected alternatives
 
 - **A spacer at the stream's end** — the shift already keeps the range.
+- **Handing over at the next rest** — a scroll begun within 300 ms carried 7.8k
+  px to the top.
 - **Waiting, as ADR 0014 did** — a scroll with no rest never retries.
