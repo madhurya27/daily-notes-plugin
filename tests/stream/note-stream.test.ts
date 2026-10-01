@@ -8,6 +8,7 @@ import type { ScrollBoxGuard } from "../../src/stream/scroll-box-guard";
 import type { DailyNoteService } from "../../src/notes/daily-note-service";
 import type { CollapsibleStateStore } from "../../src/render/collapse-store";
 import { NoteHeights } from "../../src/stream/note-heights";
+import { BASE_SLOT_CLASS } from "../../src/render/bases/bases-as-cards";
 import type { TemplateHeight } from "../../src/stream/template-height";
 import { measureText, type EstimateSources, type HeightEstimates } from "../../src/stream/height-estimates";
 import { flushPromises, makePlugin, makeService } from "../stream-view-fixture";
@@ -125,6 +126,20 @@ function placeholder(path: string): HTMLElement {
 
 const note = (date: string) => new TFile(`Notes/${date}.md`);
 
+/** A frame, at the fake clock's 60 fps. */
+const FRAME_MS = 16;
+
+/** A Base `file` draws as it renders, its query not yet run; on the fake clock from here. */
+function loadingBase(file: TFile): HTMLElement {
+    vi.useFakeTimers();
+    const view = document.createElement("div");
+    view.addClass("bases-cards-container", "is-loading");
+    noteWindow.render.mockImplementation((block: HTMLElement) => {
+        if (block.dataset.sourcePath === file.path) block.createDiv({ cls: BASE_SLOT_CLASS }).appendChild(view);
+    });
+    return view;
+}
+
 /** Obsidian renames the TFile in place before the event arrives. */
 function renameInPlace(file: TFile, path: string): TFile {
     file.path = path;
@@ -189,6 +204,8 @@ async function loadedCount(): Promise<number> {
 }
 
 const emptyState = () => container.querySelector(".daily-notes-empty-state");
+
+afterEach(() => vi.useRealTimers());
 
 describe("loading a batch", () => {
     it("places a block per note and holds them for the next batch", async () => {
@@ -862,6 +879,22 @@ describe("jumping to a date", () => {
         expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
     });
 
+    it("scrolls to the target note once its Bases fill in", async () => {
+        const target = placeholder(notes[3]!.path);
+        target.scrollIntoView = vi.fn();
+        noteWindow.add.mockImplementation((f: TFile) => (f === notes[3] ? target : placeholder(f.path)));
+        const base = loadingBase(notes[3]!);
+        service.indexForDate.mockReturnValue(3);
+
+        void jump("2025-01-27");
+        await vi.advanceTimersByTimeAsync(10 * FRAME_MS);
+        expect(target.scrollIntoView).not.toHaveBeenCalled();
+
+        base.removeClass("is-loading");
+        await vi.advanceTimersByTimeAsync(FRAME_MS);
+        expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    });
+
     it("scrolls nowhere when the target was renamed before its block caught up", async () => {
         await stream.loadMoreNotes();
         renameInPlace(notes[3]!, "Notes/Renamed.md");
@@ -914,27 +947,40 @@ describe("what a search moves through", () => {
 
     const rect = (top: number, bottom: number) => ({ top, bottom }) as DOMRect;
 
-    it("loads a note past the loaded range and scrolls it to the top", async () => {
+    // The step scrolls once, to the match: centering it is the search's.
+    it("loads a note past the loaded range without scrolling to it", async () => {
         const target = placeholder(notes[24]!.path);
         target.scrollIntoView = vi.fn();
         noteWindow.add.mockImplementation((f: TFile) => (f === notes[24] ? target : placeholder(f.path)));
 
-        expect(await stream.reveal(notes[24]!)).toBe(target);
+        expect(await stream.ready(notes[24]!)).toBe(target);
         expect(await loadedCount()).toBe(30);
-        expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+        expect(target.scrollIntoView).not.toHaveBeenCalled();
     });
 
-    // A search reads the note's highlights the moment it arrives; the window
-    // manager's own render can land a frame after the scroll settles.
+    // A search reads the note's highlights the moment it arrives.
     it("renders the note before handing it back", async () => {
-        HTMLElement.prototype.scrollIntoView = vi.fn();
         let rendered = false;
         noteWindow.render.mockImplementation(() => void noteWindow["enqueue"](async () => void (rendered = true)));
 
-        const block = await stream.reveal(notes[3]!);
+        const block = await stream.ready(notes[3]!);
 
         expect(noteWindow.render).toHaveBeenCalledWith(block);
         expect(rendered).toBe(true);
+    });
+
+    // Scrolled to before, it shows its Bases empty, then filling in.
+    it("hands the note back once its Bases fill in", async () => {
+        const base = loadingBase(notes[3]!);
+        let handed = false;
+
+        void stream.ready(notes[3]!).then(() => (handed = true));
+        await vi.advanceTimersByTimeAsync(10 * FRAME_MS);
+        expect(handed).toBe(false);
+
+        base.removeClass("is-loading");
+        await vi.advanceTimersByTimeAsync(FRAME_MS);
+        expect(handed).toBe(true);
     });
 
     it("centers an element and keeps it there while the stream renders", async () => {
@@ -969,8 +1015,8 @@ describe("what a search moves through", () => {
             expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
         });
 
-        it("is let go once another is revealed", async () => {
-            await stream.reveal(notes[3]!);
+        it("is let go once another is readied", async () => {
+            await stream.ready(notes[3]!);
             resized();
 
             expect(el.scrollIntoView).not.toHaveBeenCalled();
@@ -1016,8 +1062,8 @@ describe("what a search moves through", () => {
         expect(stream.isOnScreen(range(790, 810))).toBe(false);
     });
 
-    it("reveals nothing for a note no longer in the vault", async () => {
-        expect(await stream.reveal(note("2024-06-01"))).toBeNull();
+    it("readies nothing for a note no longer in the vault", async () => {
+        expect(await stream.ready(note("2024-06-01"))).toBeNull();
         expect(service.getBatch).not.toHaveBeenCalled();
     });
 

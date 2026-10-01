@@ -1311,3 +1311,21 @@ overestimate 1,408px → 353px.
   estimate overshoots notes whose Base does not, by up to 1,131px.
 - Only Bases flagged too wide at the old width (`BaseMeasurements`) — a Base
   predicted too wide from its headers draws as cards without a flag.
+
+## D-082 — A jump or search step draws its note whole before scrolling (2026-10-01)
+
+**Decision:** the target note renders off screen and waits for its Bases'
+queries (`is-loading` cleared, a frame on, at most `BASES_LOAD_LIMIT_MS`), then
+the scroll goes once: a jump to its top, a step to the match (`basesLoaded`,
+`NoteStream.ready`).
+
+**Why:** scrolled to first, a Base showed "0 results", then filled in, on
+screen; a step also painted the note's top for two frames before centering.
+
+**Rejected:**
+
+- Hiding a Base until it fills — blank space, then cards popping in.
+- Remembering each Base's height — the space is right, the "0 results" bar still
+  shows.
+- Readying the notes around it too — the match's own note is where its Bases
+  sit; the neighbours render as they do on any scroll.

@@ -11,8 +11,8 @@ export interface NoteSource {
 
 /** The stream, as a search moves through it. */
 export interface SearchTarget {
-    /** Loads `file` into the stream and scrolls to it; its block, or null when gone. */
-    reveal(file: TFile): Promise<HTMLElement | null>;
+    /** Loads `file` into the stream, drawn whole, without scrolling to it; its block, or null when gone. */
+    ready(file: TFile): Promise<HTMLElement | null>;
     /** The block `file` is shown in, if loaded. */
     blockOf(file: TFile): HTMLElement | null;
     /** The note at the top of the pane, where a search starts from. */
@@ -126,10 +126,10 @@ export class StreamSearch {
         await this.enter(this.adjacentNote(direction), direction);
     }
 
-    /** Reveals the match at `index`, on its first highlight going forwards and its last going back. */
+    /** Shows the match at `index`, on its first highlight going forwards and its last going back. */
     private async enter(index: number, direction: Direction): Promise<void> {
         this.current = index;
-        const block = await this.target.reveal(this.matches[index]!);
+        const block = await this.target.ready(this.matches[index]!);
         const ranges = block ? this.reachableRanges(block) : [];
         await this.show(ranges, direction === 1 ? 0 : ranges.length - 1);
     }

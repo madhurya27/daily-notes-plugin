@@ -98,8 +98,9 @@ in, an image loads. Three mechanisms keep the reader's place.
 Jumps, search steps and Back (`getEphemeralState`) go through
 `scroll-position.ts`: `scrollIntoPlace` re-applies the scroll until the stream
 stops rendering, and `keepInPlace` holds a centered match while Bases fill in. A
-jump starts in `jump-to-date-modal.ts`, which offers the vault's note dates in
-the vault's own format.
+jump or step first draws its note whole, Bases filled (D-082). A jump starts in
+`jump-to-date-modal.ts`, which offers the vault's note dates in the vault's own
+format.
 
 ## Search
 

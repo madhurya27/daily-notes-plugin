@@ -145,6 +145,37 @@ test.describe("search the stream", () => {
             await expect.poll(() => currentMatch(page)).toEqual({ text: "Quokka", onScreen: true });
         });
 
+        // Scrolled to before they load, Bases show "0 results", then fill in.
+        test("shows no Base on screen before it fills in", async ({ obsidian }) => {
+            const { page } = obsidian;
+            await openStream(page);
+            await page.evaluate(() => {
+                const frames: boolean[] = ((window as unknown as { loadingShown: boolean[] }).loadingShown = []);
+                const pane = document.querySelector(".daily-notes-stream-container")!.parentElement!;
+                const sample = () => {
+                    const { top, bottom } = pane.getBoundingClientRect();
+                    const loading = [...document.querySelectorAll(".daily-note-base .is-loading")];
+                    frames.push(
+                        loading.some((el) => {
+                            const rect = el.getBoundingClientRect();
+                            return rect.bottom > top && rect.top < bottom;
+                        })
+                    );
+                    if (frames.length < 120) requestAnimationFrame(sample);
+                };
+                requestAnimationFrame(sample);
+            });
+
+            await stepToMatch(page);
+
+            await expect
+                .poll(() => page.evaluate(() => (window as unknown as { loadingShown: boolean[] }).loadingShown.length))
+                .toBe(120);
+            const shown = await page.evaluate(() => (window as unknown as { loadingShown: boolean[] }).loadingShown);
+            expect(shown.filter(Boolean)).toEqual([]);
+            await expect.poll(() => currentMatch(page)).toEqual({ text: "Quokka", onScreen: true });
+        });
+
         // A remembered note is held at that height, so the Bases fill in
         // inside it and the stream around it never resizes. Remembered taller
         // than it draws, as after a Base lost rows, no rounding resizes it

@@ -17,7 +17,7 @@ describe("StreamSearch", () => {
     let blocks: Map<TFile, HTMLElement>;
     let highlighter: SearchHighlighter;
     let status: string;
-    let revealed: TFile[];
+    let readied: TFile[];
     let centered: HTMLElement[];
     let top: TFile | null;
     let shown: (range: Range) => boolean;
@@ -42,7 +42,7 @@ describe("StreamSearch", () => {
             })
         );
         status = "";
-        revealed = [];
+        readied = [];
         centered = [];
         top = notes[0]!;
         shown = () => true;
@@ -55,8 +55,8 @@ describe("StreamSearch", () => {
                 read: (file) => Promise.resolve(SOURCES.find(([path]) => path === file.path)![1]),
             },
             {
-                reveal: (file) => {
-                    revealed.push(file);
+                ready: (file) => {
+                    readied.push(file);
                     return Promise.resolve(blocks.get(file) ?? null);
                 },
                 blockOf: (file) => blocks.get(file) ?? null,
@@ -104,7 +104,7 @@ describe("StreamSearch", () => {
         expect(current()[0]!.startOffset).toBe(14);
         expect(currentNote()).toBe(notes[0]);
         expect(status).toBe("1 / 3");
-        expect(revealed).toEqual([]);
+        expect(readied).toEqual([]);
         expect(centered).toEqual([]);
     });
 
@@ -114,7 +114,7 @@ describe("StreamSearch", () => {
 
         await search.next();
 
-        expect(revealed).toEqual([notes[4]]);
+        expect(readied).toEqual([notes[4]]);
         expect(status).toBe("3 / 3");
     });
 
@@ -150,7 +150,7 @@ describe("StreamSearch", () => {
 
         await search.next();
 
-        expect(revealed).toEqual([notes[2]]);
+        expect(readied).toEqual([notes[2]]);
         expect(status).toBe("2 / 3");
     });
 
@@ -160,7 +160,7 @@ describe("StreamSearch", () => {
 
         await search.next();
 
-        expect(revealed).toEqual([notes[0]]);
+        expect(readied).toEqual([notes[0]]);
     });
 
     it("steps through a note's highlights before moving to the next note", async () => {
@@ -173,7 +173,7 @@ describe("StreamSearch", () => {
         await search.next();
 
         expect([first.startOffset, second.startOffset]).toEqual([0, 14]);
-        expect(revealed).toEqual([notes[0], notes[2]]);
+        expect(readied).toEqual([notes[0], notes[2]]);
         expect(currentNote()).toBe(notes[2]);
         expect(status).toBe("2 / 3");
     });
@@ -195,7 +195,7 @@ describe("StreamSearch", () => {
         await search.next();
         await search.next();
 
-        expect(revealed).toEqual([notes[1], notes[3], notes[1]]);
+        expect(readied).toEqual([notes[1], notes[3], notes[1]]);
         expect(status).toBe("1 / 2");
     });
 
@@ -205,7 +205,7 @@ describe("StreamSearch", () => {
 
         await search.previous();
 
-        expect(revealed).toEqual([notes[4]]);
+        expect(readied).toEqual([notes[4]]);
         expect(current()[0]!.startOffset).toBe(12);
         expect(status).toBe("3 / 3");
     });
@@ -218,7 +218,7 @@ describe("StreamSearch", () => {
         await search.previous();
         await search.previous();
 
-        expect(revealed).toEqual([notes[0], notes[4]]);
+        expect(readied).toEqual([notes[0], notes[4]]);
         expect(status).toBe("3 / 3");
     });
 
@@ -228,7 +228,7 @@ describe("StreamSearch", () => {
 
         await search.previous();
 
-        expect(revealed).toEqual([notes[2]]);
+        expect(readied).toEqual([notes[2]]);
     });
 
     it("skips highlights the reader cannot see, as under a collapsed heading", async () => {
@@ -267,7 +267,7 @@ describe("StreamSearch", () => {
             search = new StreamSearch(
                 { notes: () => notes, read: (file) => Promise.resolve(SOURCES[notes.indexOf(file)]![1]) },
                 {
-                    reveal: (file) => Promise.resolve(blocks.get(file)!),
+                    ready: (file) => Promise.resolve(blocks.get(file)!),
                     blockOf: () => null,
                     firstVisibleNote: () => null,
                     center: () => Promise.resolve(),
@@ -294,7 +294,7 @@ describe("StreamSearch", () => {
         await search.next();
         await search.next();
 
-        expect(revealed).toEqual([notes[0], notes[2]]);
+        expect(readied).toEqual([notes[0], notes[2]]);
         expect(current()).toEqual([]);
         expect(status).toBe("2 / 3 · hidden");
     });
@@ -305,7 +305,7 @@ describe("StreamSearch", () => {
         await search.next();
         await search.previous();
 
-        expect(revealed).toEqual([]);
+        expect(readied).toEqual([]);
     });
 
     it("finds the notes a vault change adds, staying on the current one", async () => {
@@ -372,6 +372,6 @@ describe("StreamSearch", () => {
 
         await Promise.all([typed, stepped]);
 
-        expect(revealed).toEqual([notes[1]]);
+        expect(readied).toEqual([notes[1]]);
     });
 });

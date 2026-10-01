@@ -158,7 +158,7 @@ describe("DailyNotesStreamView — search", () => {
     });
 
     it("steps to the next matching note on Enter", async () => {
-        const reveal = vi.spyOn(view["stream"], "reveal").mockResolvedValue(null);
+        const ready = vi.spyOn(view["stream"], "ready").mockResolvedValue(null);
         input().value = "dentist";
         input().dispatchEvent(new Event("input"));
 
@@ -166,13 +166,13 @@ describe("DailyNotesStreamView — search", () => {
         input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
         await settle();
 
-        expect(reveal).toHaveBeenCalledWith(NOTES[0]);
-        // The mocked reveal draws no block, so the match is hidden.
+        expect(ready).toHaveBeenCalledWith(NOTES[0]);
+        // The mocked ready draws no block, so the match is hidden.
         expect(count()).toBe("1 / 2 · hidden");
     });
 
     it("steps back on the Previous button", async () => {
-        const reveal = vi.spyOn(view["stream"], "reveal").mockResolvedValue(null);
+        const ready = vi.spyOn(view["stream"], "ready").mockResolvedValue(null);
         input().value = "dentist";
         input().dispatchEvent(new Event("input"));
         await settle();
@@ -180,7 +180,7 @@ describe("DailyNotesStreamView — search", () => {
         bar().querySelector<HTMLElement>('[aria-label="Previous"]')!.click();
         await settle();
 
-        expect(reveal).toHaveBeenCalledWith(NOTES[0]);
+        expect(ready).toHaveBeenCalledWith(NOTES[0]);
     });
 
     it("clears the count when closed", async () => {

@@ -1,3 +1,4 @@
+import { basesLoaded } from "../render/bases/bases-loaded";
 import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce } from "obsidian";
 import type { DailyNoteService, Moment } from "../notes/daily-note-service";
 import type { CollapsibleStateStore } from "../render/collapse-store";
@@ -281,17 +282,25 @@ export class NoteStream {
         if (!block) new Notice(NO_NOTE_FOR_DATE);
     }
 
-    /** Loads `file` into the stream and scrolls it to the top; its block, or null when gone. */
-    reveal(file: TFile): Promise<HTMLElement | null> {
+    /** Loads `file` into the stream, drawn whole, without scrolling to it; its block, or null when gone. */
+    ready(file: TFile): Promise<HTMLElement | null> {
         const index = this.service.indexOf(file.path);
-        return index === -1 ? Promise.resolve(null) : this.revealIndex(index);
+        return index === -1 ? Promise.resolve(null) : this.readyIndex(index);
+    }
+
+    private async revealIndex(index: number): Promise<HTMLElement | null> {
+        const block = await this.readyIndex(index);
+        if (block) await scrollIntoPlace(block, "start", this.scrollRoot, this.layout);
+        return block;
     }
 
     /**
-     * Loading is one enqueued task: interleaving with a scroll-triggered load
-     * would desync state from the service cache.
+     * Renders the note before any scroll reaches it, and waits for its Bases:
+     * scrolled to first, it shows each empty, then filling in. Loading is one
+     * enqueued task: interleaving with a scroll-triggered load would desync
+     * state from the service cache.
      */
-    private async revealIndex(index: number): Promise<HTMLElement | null> {
+    private async readyIndex(index: number): Promise<HTMLElement | null> {
         this.letGoOfCentered();
         let file: TFile | undefined;
         await this.enqueue(async () => {
@@ -299,10 +308,9 @@ export class NoteStream {
         });
         const block = file ? this.blocks.get(file.path) : null;
         if (!block) return null;
-        await scrollIntoPlace(block, "start", this.scrollRoot, this.layout);
-        // The observer's render can land a frame after the scroll settles.
         this.window.render(block);
         await this.layout.drain();
+        await basesLoaded(block);
         return block;
     }
 
