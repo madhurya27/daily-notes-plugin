@@ -901,6 +901,9 @@ it covers every late fill, so per-Base heights were a second cache.
 
 ## D-055 — A new width changes no placeholder (2026-09-26)
 
+Superseded in part by ADR 0014: placeholders are re-reserved once the scroll is
+still. The anchor still survives the margins' rebuild.
+
 **Decision:** on a width change, an unloaded note keeps its placeholder until it
 renders; only the height it is held at on rendering comes from the new width.
 The scroll anchor survives the margins' rebuild.

@@ -88,7 +88,9 @@ in, an image loads. Three mechanisms keep the reader's place.
 - `HeightHold` holds a note or Base at its earlier height while it refills.
 - `NoteWindowManager` pins each rendered note's height and changes it only in
   the task that tells `ScrollAnchor`
-  ([ADR 0013](adr/0013-pin-rendered-note-heights.md)).
+  ([ADR 0013](adr/0013-pin-rendered-note-heights.md)). Once the scroll is still,
+  it re-reserves unloaded notes at what they are now expected at
+  ([ADR 0014](adr/0014-re-reserve-placeholders-at-rest.md)).
 - `ScrollAnchor` undoes shifts above the reader where the platform does not:
   Chromium anchors natively, iOS WebKit does not.
 
