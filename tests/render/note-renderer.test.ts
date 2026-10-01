@@ -934,10 +934,18 @@ describe("NoteRenderer PDF embeds", () => {
 
     afterEach(() => {
         Platform.isMobile = false;
+        vi.unstubAllGlobals();
     });
 
     it("opens the PDF, page kept, on a tap on mobile", async () => {
         Platform.isMobile = true;
+        vi.stubGlobal(
+            "ResizeObserver",
+            class {
+                observe() {}
+                disconnect() {}
+            }
+        );
         const app = makeApp();
         const page = await renderPdf(app);
 

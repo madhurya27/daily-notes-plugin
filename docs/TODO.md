@@ -16,7 +16,7 @@ Ordered by priority, from the 2026-09 comparison against
       notes around it (ADR 0013).
 - [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
       box guard cannot see; a video player does not. Check that a flick over one
-      still glides. Dataview, not installed in e2e, needs the same check.
+      still glides.
 - [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on
       `post-processor-change`.
 - [ ] Desktop: a setting toggled within ~3 s of scrolling loses the reader's

@@ -511,10 +511,12 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
     max-height: none;
 }
 
-/* A Base and everything in it, and whatever the scroll box guard found
-   (src/stream/scroll-box-guard.ts). !important outranks Bases' own rules. */
+/* A Base and everything in it, a Dataview query, and whatever the scroll box
+   guard found (src/stream/scroll-box-guard.ts). !important outranks Bases' and
+   Dataview's own rules. */
 .is-mobile .daily-note-block :is(.bases-embed, .block-language-base),
 .is-mobile .daily-note-block :is(.bases-embed, .block-language-base) *,
+.is-mobile .daily-note-block :is(.block-language-dataview, .block-language-dataviewjs),
 .is-mobile .daily-note-block .markdown-embed-content,
 .is-mobile .daily-note-block :is(.pdf-embed, .pdf-embed *),
 .is-mobile .daily-note-block .is-scroll-clipped {

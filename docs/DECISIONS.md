@@ -1348,3 +1348,22 @@ phone.
 - Every page at full height — a long PDF becomes the whole stream.
 - Obsidian's file card (icon and name) — loses the page a reader recognizes.
 - Leaving the viewer live — a scroll box, which ends an iOS glide (ADR 0008).
+
+## D-084 — Dataview's queries are clipped and stacked like the note's own (2026-10-01)
+
+**Decision:** on mobile the stylesheet clips Dataview's blocks, which its own
+stylesheet makes scroll, and `stackWideTables` stacks a table whenever one is
+added or filled in, not only those present once the note renders. e2e runs a
+pinned Dataview release, fetched once into `.dev/` (`e2e/dataview.ts`).
+
+**Why:** Dataview draws after the note renders, over several passes; its wide
+tables were clipped, not stacked, and each block was a scroll box until the
+guard caught it at rest.
+
+**Rejected:**
+
+- The scroll box guard alone — it clips once the scroll is still, so a block
+  drawn mid-glide scrolls for that glide.
+- A stand-in plugin drawing late tables in e2e — proves nothing about Dataview's
+  own stylesheet or render passes.
+- Dataview committed to the repo — 2.3 MB of someone else's build.
