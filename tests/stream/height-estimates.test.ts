@@ -141,6 +141,56 @@ describe("HeightEstimates", () => {
 
                 expect(estimates.estimate(HERE, "a.md")).toBe(2000);
             });
+
+            // Cards at the narrower width may be a table here, a screen or more shorter.
+            describe("turned wider", () => {
+                const NARROWER = "50:16px";
+
+                it("is the template's estimate here while that Base's change is not learned", () => {
+                    const { heights, templates, estimates } = setup({ "a.md": note([30], ["Reading.base"]) });
+                    heights.keep(NARROWER, "a.md", 3000);
+                    templates.keep(HERE, TEMPLATE.path, 360);
+
+                    expect(estimates.estimate(HERE, "a.md")).toBe(360 + (3 - 2) * TEXT.lineHeight + PANE);
+                });
+
+                it("is the height re-wrapped before the template is measured here", () => {
+                    const { heights, estimates } = setup({ "a.md": note([30], ["Reading.base"]) });
+                    heights.keep(NARROWER, "a.md", 3000);
+
+                    expect(estimates.estimate(HERE, "a.md")).toBe(3000 - (6 - 3) * TEXT.lineHeight);
+                });
+
+                it("changes by what the same Base changed, once learned", () => {
+                    const { heights, templates, estimates } = setup({
+                        "a.md": note([5], ["Reading.base"]),
+                        "b.md": note([5], ["Reading.base"]),
+                    });
+                    heights.keep(NARROWER, "a.md", 3000);
+                    heights.keep(NARROWER, "b.md", 3000);
+                    heights.keep(HERE, "b.md", 1000);
+                    templates.keep(HERE, TEMPLATE.path, 360);
+
+                    expect(estimates.estimate(HERE, "a.md")).toBe(1000);
+                });
+
+                it("is the height re-wrapped without a Base", () => {
+                    const { heights, templates, estimates } = setup({ "a.md": note([5], ["a.png"]) });
+                    heights.keep(NARROWER, "a.md", 3000);
+                    templates.keep(HERE, TEMPLATE.path, 360);
+
+                    expect(estimates.estimate(HERE, "a.md")).toBe(3000);
+                });
+            });
+
+            // Narrower, a table may become cards: taller, and the template's estimate overshoots more.
+            it("is the height re-wrapped when turned narrower, the template measured here", () => {
+                const { heights, templates, estimates } = setup({ "a.md": note([5], ["Reading.base"]) });
+                heights.keep(OTHER, "a.md", 1000);
+                templates.keep(HERE, TEMPLATE.path, 360);
+
+                expect(estimates.estimate(HERE, "a.md")).toBe(1000);
+            });
         });
     });
 

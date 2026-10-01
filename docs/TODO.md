@@ -18,12 +18,6 @@ Ordered by priority, from the 2026-09 comparison against
       fit a preview that opens on tap.
 - [ ] Mermaid's "Allow" doesn't redraw the stream: re-render on
       `post-processor-change`.
-- [ ] iOS, first turn with no heights stored at the new width: a note whose Base
-      drew as cards at the old width is estimated ~1,100 px too tall, so
-      scrolling up stops short until a rest. D-080 learns the switch only once a
-      note with that Base has settled at both widths. Lead: estimate such a note
-      from its template and lines (D-079's fallback). Probe:
-      `experiment/height-probe`.
 - [ ] Desktop: a setting toggled within ~3 s of scrolling loses the reader's
       place. The notes above have no remembered height yet, and Chromium's
       anchoring does not absorb their growth once they render.

@@ -79,7 +79,7 @@ portrait / landscape):
 | Text, stored at the other layout    | ≤ 20         | 18 / 18       |
 | Text, never measured, rate learned  | ≤ 90         | 44 / 50       |
 | Text, never measured, line height   | ≤ 130        | **149 / 135** |
-| Embeds, stored at the other layout  | < 389        | 378 / 378     |
+| Embeds, stored at the other layout  | < 389        | 378 / 128     |
 | Embeds, turned, others at both      | < 389        | 35 / 35       |
 | Embeds, never measured, learned     | < 1048 / 665 | 531 / 174     |
 | Embeds, never measured, nothing yet | < 1048 / 665 | 577 / 182     |

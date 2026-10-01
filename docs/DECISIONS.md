@@ -1288,3 +1288,21 @@ error after a turn: 378px → 35px.
   the median is near zero, or half of a switching Base's change.
 - Adjusting only Bases flagged too wide (`BaseMeasurements`) — known per note
   only once drawn at the new width; learning per Base gets there without it.
+
+## D-081 — Turned wider, an unlearned Base's note is estimated from its template (2026-10-01)
+
+**Decision:** a note measured only at a narrower width, embedding a Base whose
+change D-080 has not learned, is estimated from the template and its lines
+(D-079's fallback) once the template is measured here; before, as D-080.
+
+**Why:** cards at the narrower width may be a table here, up to ~1,400px
+shorter, and until a note with that Base settles at both widths nothing says so.
+Demo journal, Base notes turned to landscape: mean error 782px → 224px, worst
+overestimate 1,408px → 353px.
+
+**Rejected:**
+
+- Also turned narrower — a table there may become cards here, but the template's
+  estimate overshoots notes whose Base does not, by up to 1,131px.
+- Only Bases flagged too wide at the old width (`BaseMeasurements`) — a Base
+  predicted too wide from its headers draws as cards without a flag.

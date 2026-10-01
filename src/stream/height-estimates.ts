@@ -57,7 +57,9 @@ export class HeightEstimates {
     /**
      * Measured at the nearest width of the same text size: that height, plus the
      * lines its text gains here, plus what each Base it embeds changed between
-     * the two widths in other notes.
+     * the two widths in other notes. Turned wider with a Base whose change is
+     * not learned, the template's estimate instead, once measured here (D-081):
+     * cards there may be a table here, by far shorter.
      */
     private rewrapped(layout: string, path: string, cache: CachedMetadata, text: TextMetrics): number | undefined {
         const here = parse(layout);
@@ -68,8 +70,14 @@ export class HeightEstimates {
             .sort((a, b) => Math.abs(a.width - here.width) - Math.abs(b.width - here.width));
         if (!nearest) return undefined;
         const changes = this.baseChangesBetween(nearest.layout, layout, text);
-        const bases = baseEmbeds(cache).reduce((sum, base) => sum + (changes.get(base) ?? 0), 0);
-        return nearest.height + rewrap(cache, nearest.width, here.width, text) + bases;
+        const bases = baseEmbeds(cache);
+        const mayShrink = nearest.width < here.width && bases.some((base) => !changes.has(base));
+        return (
+            (mayShrink ? this.fromTemplate(layout, cache, here, text) : undefined) ??
+            nearest.height +
+                rewrap(cache, nearest.width, here.width, text) +
+                bases.reduce((sum, base) => sum + (changes.get(base) ?? 0), 0)
+        );
     }
 
     /** Per Base, the median change per embed, beyond its text, of notes measured at both layouts. */
