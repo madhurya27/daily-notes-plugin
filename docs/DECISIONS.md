@@ -965,9 +965,11 @@ visible for the same reason.
 
 ## D-058 — A search holds its match while the Bases around it fill in (2026-09-27)
 
-**Decision:** once centered, a match is re-centered whenever the stream resizes,
-until it is still for `SETTLE_MS` or the reader touches or wheels the pane
-(`keepInPlace`, `src/stream/scroll-position.ts`).
+**Decision:** once centered, a match is re-centered whenever the stream, or
+anything above the match in its note, resizes, until it is still for `SETTLE_MS`
+or the reader touches or wheels the pane (`keepInPlace`,
+`src/stream/scroll-position.ts`). A note remembered at its height is held there,
+so a Base filling in inside it resizes nothing outside it.
 
 **Why:** Bases fill in after the note renders, uncounted by `scrollIntoPlace`;
 one above the match pushed it off screen, leaving the reader on the Base.
@@ -977,6 +979,9 @@ one above the match pushed it off screen, leaving the reader on the Base.
 - Counting Base fills as layout changes — `scrollIntoPlace` would wait on them,
   and every step with it.
 - Scroll anchoring — it holds the note's top, not the match.
+- Checking the match's place each frame — a change made after the frame's
+  `requestAnimationFrame` paints a frame off screen; a resize reports before
+  paint.
 
 ## D-059 — A Base's header and summaries scroll with it, on mobile (2026-09-27)
 

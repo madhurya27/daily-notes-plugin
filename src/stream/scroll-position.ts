@@ -139,10 +139,11 @@ export async function scrollIntoPlace(
 }
 
 /**
- * Keeps `el` at its place in `scrollEl` while `stream` resizes around it, until
- * it is still for `SETTLE_MS`; returns what lets go sooner, as the reader
- * moving the pane must. A Base fills in after drawing, uncounted by
- * `scrollIntoPlace`, and one above `el` pushes it off screen.
+ * Keeps `el` at its place in `scrollEl` while what lies above it resizes,
+ * until it is still for `SETTLE_MS`; returns what lets go sooner, as the
+ * reader moving the pane must. A Base fills in after drawing, uncounted by
+ * `scrollIntoPlace`, and one above `el` pushes it off screen. Re-placed in the
+ * frame it moved: a resize reports before paint.
  */
 export function keepInPlace(
     el: HTMLElement,
@@ -166,6 +167,21 @@ export function keepInPlace(
         observer.disconnect();
     }
     observer.observe(stream);
+    for (const above of aboveInBlock(el, stream)) observer.observe(above);
     waitForStill();
     return letGo;
+}
+
+/**
+ * What lies above `el` inside its block: a note held at its height grows
+ * nothing outside it as a Base in it fills in. The blocks above resize the
+ * stream.
+ */
+function aboveInBlock(el: Element, stream: HTMLElement): Element[] {
+    const above: Element[] = [];
+    for (let at = el; at.parentElement && at.parentElement !== stream; at = at.parentElement) {
+        for (let sibling = at.previousElementSibling; sibling; sibling = sibling.previousElementSibling)
+            above.push(sibling);
+    }
+    return above;
 }

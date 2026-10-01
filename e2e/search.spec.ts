@@ -1,5 +1,14 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, openStream, seededDate, SEEDED_DAYS } from "./obsidian";
+import {
+    test,
+    expect,
+    openStream,
+    restoreScrollAnchoring,
+    scrollThroughStream,
+    seededDate,
+    SEEDED_DAYS,
+    withoutScrollAnchoring,
+} from "./obsidian";
 
 /** Opens the bar from the header, which both layouts show. */
 async function openSearch(page: Page): Promise<Locator> {
@@ -96,16 +105,24 @@ test.describe("search the stream", () => {
         await expect.poll(() => currentMatch(page)).toEqual({ text: "Ran 2 km", onScreen: true });
     });
 
-    // The Bases above the match fill in after the scroll lands on it.
-    test("keeps a match on screen while the Bases above it fill in", async ({ obsidian }) => {
-        const { page } = obsidian;
+    test.describe("a match below Bases", () => {
         const path = `Notes/${seededDate(SEEDED_DAYS)}.md`;
         const columns = ["file.name", "file.path", "file.folder", "file.ext", "file.size", "file.ctime", "file.mtime"];
         const base = ["```base", "views:", "  - type: table", "    name: Wide", "    order:"];
         const text = [...base, ...columns.map((c) => `      - ${c}`), "```", ""].join("\n").repeat(2) + "Quokka";
-        await page.evaluate(async ({ path, text }) => void (await window.app.vault.create(path, text)), { path, text });
-        try {
-            await openStream(page);
+
+        test.beforeEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate(async ({ path, text }) => void (await window.app.vault.create(path, text)), {
+                path,
+                text,
+            });
+        });
+        test.afterEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate((p) => window.app.vault.delete(window.app.vault.getFileByPath(p)!), path);
+        });
+
+        /** Steps to the match, and waits for every Base above it to fill in. */
+        async function stepToMatch(page: Page) {
             const bar = await openSearch(page);
             await bar.locator("input").fill("Quokka");
             await page.keyboard.press("Enter");
@@ -116,10 +133,43 @@ test.describe("search the stream", () => {
             for (const view of await views.all()) {
                 await expect(view.locator(".bases-tr, .bases-cards-item").first()).toBeAttached();
             }
-            await expect.poll(() => currentMatch(page)).toEqual({ text: "Quokka", onScreen: true });
-        } finally {
-            await page.evaluate((p) => window.app.vault.delete(window.app.vault.getFileByPath(p)!), path);
         }
+
+        // The Bases above the match fill in after the scroll lands on it.
+        test("keeps the match on screen while the Bases fill in", async ({ obsidian }) => {
+            const { page } = obsidian;
+            await openStream(page);
+
+            await stepToMatch(page);
+
+            await expect.poll(() => currentMatch(page)).toEqual({ text: "Quokka", onScreen: true });
+        });
+
+        // A remembered note is held at that height, so the Bases fill in
+        // inside it and the stream around it never resizes. Remembered taller
+        // than it draws, as after a Base lost rows, no rounding resizes it
+        // either. iOS anchors the scroll nowhere, as the stream does here.
+        test("keeps the match on screen in a note held taller", async ({ obsidian }) => {
+            const { page } = obsidian;
+            await scrollThroughStream(await openStream(page));
+            await page.evaluate((path) => {
+                const { notes } = window.app.plugins.plugins["daily-notes-stream"].layoutMemory;
+                const saved: [string, [string, number][]][] = notes.toJSON();
+                for (const [layout, heights] of saved) {
+                    for (const [key, height] of heights) if (key === path) notes.keep(layout, path, height + 400);
+                }
+            }, path);
+            await withoutScrollAnchoring(page);
+            try {
+                await openStream(page);
+
+                await stepToMatch(page);
+
+                await expect.poll(() => currentMatch(page)).toEqual({ text: "Quokka", onScreen: true });
+            } finally {
+                await restoreScrollAnchoring(page);
+            }
+        });
     });
 
     // Typing marks what the reader already sees, as Obsidian's own bar does,

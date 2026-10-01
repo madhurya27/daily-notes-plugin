@@ -228,16 +228,21 @@ describe("keepInPlace", () => {
     class FakeResizeObserver {
         static last: FakeResizeObserver;
         disconnected = false;
+        readonly observed = new Set<Element>();
         constructor(readonly callback: () => void) {
             FakeResizeObserver.last = this;
         }
-        observe() {}
+        observe(el: Element) {
+            this.observed.add(el);
+        }
         disconnect() {
             this.disconnected = true;
+            this.observed.clear();
         }
     }
-    // A real observer reports nothing once disconnected.
-    const resized = () => FakeResizeObserver.last.disconnected || FakeResizeObserver.last.callback();
+    // A real observer reports only what it observes, and nothing once disconnected.
+    const resized = (el: Element = stream) =>
+        FakeResizeObserver.last.observed.has(el) && FakeResizeObserver.last.callback();
 
     const pane = document.createElement("div");
     pane.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
@@ -273,6 +278,24 @@ describe("keepInPlace", () => {
         resized();
 
         expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+    });
+
+    // A remembered note is held at its full height: a Base filling in inside
+    // it moves the match, and resizes nothing outside the note.
+    it("centers it again when a Base above it in its note fills in", () => {
+        const center = { at: 400 };
+        const block = stream.createDiv({ cls: "daily-note-block" });
+        const section = block.createDiv();
+        const base = section.createDiv();
+        const heading = section.createDiv().createEl("h3");
+        heading.scrollIntoView = vi.fn();
+        heading.getBoundingClientRect = () => ({ top: center.at - 10, bottom: center.at + 10 }) as DOMRect;
+        keepInPlace(heading, "center", pane, stream);
+
+        center.at = 1300;
+        resized(base);
+
+        expect(heading.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
     });
 
     it("leaves it alone while it is still in place", () => {
