@@ -1267,3 +1267,21 @@ its template plus writing (ADR 0011). Mean error for text notes falls from 85px
   and tables in landscape.
 - Heights stored per Base — a vault's Bases differ, and one Base's height varies
   with what it draws.
+
+## D-080 — A turned note's Bases change by what the same Base changed elsewhere (2026-10-01)
+
+**Decision:** a note estimated from its height at another width (D-079) adds,
+per Base it embeds, the median change per Base, beyond re-wrapped text, of other
+notes embedding that Base and measured at both widths. None measured at both: no
+change.
+
+**Why:** only a Base switching between table and cards changes much on a turn
+(up to ~1400px), and the same Base switches the same way in every note. Embed
+error after a turn: 378px → 35px.
+
+**Rejected:**
+
+- One change per embed, or per Base — images barely change, and Bases differ:
+  the median is near zero, or half of a switching Base's change.
+- Adjusting only Bases flagged too wide (`BaseMeasurements`) — known per note
+  only once drawn at the new width; learning per Base gets there without it.

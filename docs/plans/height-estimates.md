@@ -68,7 +68,8 @@ Terms:
 Steps 1–6 done on this branch: the benchmark (embeds varied in the spec's own
 vault, so the demo and README captures stay), `note-lines.ts`,
 `template-height.ts`, `height-estimates.ts`, wired through `NoteStream`, and the
-benchmark command in `CLAUDE.md`. Left: the phone check under Gates.
+benchmark command in `CLAUDE.md`. Then D-080, for Bases on a turn. Left: the
+phone check after a turn.
 
 Scored with the plugin's own estimator, called in the page (mean error, px,
 portrait / landscape):
@@ -79,6 +80,7 @@ portrait / landscape):
 | Text, never measured, rate learned  | ≤ 90         | 44 / 50       |
 | Text, never measured, line height   | ≤ 130        | **149 / 135** |
 | Embeds, stored at the other layout  | < 389        | 378 / 378     |
+| Embeds, turned, others at both      | < 389        | 35 / 35       |
 | Embeds, never measured, learned     | < 1048 / 665 | 531 / 174     |
 | Embeds, never measured, nothing yet | < 1048 / 665 | 577 / 182     |
 
