@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { DAILY_TEMPLATE, demoVault } from "../../scripts/demo-vault.mjs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, utimesSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { dirname, join } from "path";
+import { DAILY_TEMPLATE, demoVault, writeVault } from "../../scripts/demo-vault.mjs";
 
 const UNTIL = new Date(Date.UTC(2026, 8, 25)); // a Friday
 const vault = demoVault({ until: UNTIL, days: 90 });
@@ -130,5 +133,52 @@ describe("demoVault", () => {
 
         expect(targets.length).toBeGreaterThan(0);
         expect(new Set(targets)).toEqual(new Set(["2026-09-25"]));
+    });
+});
+
+// An iCloud vault: a note deleted and written again while a device holds it comes back as "Mara 2.md".
+describe("writeVault", () => {
+    const FOLDERS = ["Journal", "People"];
+
+    function vaultHolding(files: Record<string, string>) {
+        const root = mkdtempSync(join(tmpdir(), "demo-vault-"));
+        for (const [path, contents] of Object.entries(files)) {
+            mkdirSync(dirname(join(root, path)), { recursive: true });
+            writeFileSync(join(root, path), contents);
+        }
+        return root;
+    }
+    const modified = (root: string, path: string) => statSync(join(root, path)).mtimeMs;
+    const age = (root: string, path: string) => {
+        const old = new Date(2020, 0, 1);
+        utimesSync(join(root, path), old, old);
+    };
+
+    it("leaves a note that is already as seeded untouched", () => {
+        const root = vaultHolding({ "People/Mara.md": "Mara" });
+        age(root, "People/Mara.md");
+        const before = modified(root, "People/Mara.md");
+
+        writeVault(root, { "People/Mara.md": "Mara" }, FOLDERS);
+
+        expect(modified(root, "People/Mara.md")).toBe(before);
+    });
+
+    it("writes a note that changed or is new", () => {
+        const root = vaultHolding({ "People/Mara.md": "old" });
+
+        writeVault(root, { "People/Mara.md": "Mara", "Journal/2026-10-01.md": "today" }, FOLDERS);
+
+        expect(readFileSync(join(root, "People/Mara.md"), "utf8")).toBe("Mara");
+        expect(readFileSync(join(root, "Journal/2026-10-01.md"), "utf8")).toBe("today");
+    });
+
+    it("deletes what the seed no longer holds in its folders, and nothing outside them", () => {
+        const root = vaultHolding({ "Journal/2026-06-01.md": "gone", "Inbox/mine.md": "mine" });
+
+        writeVault(root, { "Journal/2026-10-01.md": "today" }, FOLDERS);
+
+        expect(existsSync(join(root, "Journal/2026-06-01.md"))).toBe(false);
+        expect(existsSync(join(root, "Inbox/mine.md"))).toBe(true);
     });
 });

@@ -8,10 +8,11 @@
  *
  * Each note is drawn from a generator seeded by its own date, and its lines are
  * dealt from decks keyed by its day or week, so a date reads the same on every
- * run and a recording can be retaken. Destructive like `seed --test`:
- * the notes are rewritten, `.obsidian` is written only when absent.
+ * run and a recording can be retaken. Destructive like `seed --test`: notes
+ * it no longer holds are deleted, changed ones rewritten; `.obsidian` is
+ * written only when absent.
  */
-import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { isMain } from "./reload-plugin.mjs";
@@ -528,6 +529,29 @@ export function demoVault({ until, days }) {
     return vault;
 }
 
+/**
+ * Makes `folders` in `vault` hold exactly `files`, writing only what differs.
+ * A note deleted and written again in an iCloud vault, while a device holds
+ * it, comes back beside itself as "Mara 2.md".
+ */
+export function writeVault(vault, files, folders) {
+    for (const folder of folders) {
+        const root = join(vault, folder);
+        if (!existsSync(root)) continue;
+        for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
+            const path = join(entry.parentPath, entry.name);
+            const relative = path.slice(vault.length + 1);
+            if (entry.isFile() && !(relative in files)) rmSync(path);
+        }
+    }
+    for (const [relative, contents] of Object.entries(files)) {
+        const target = join(vault, relative);
+        if (existsSync(target) && readFileSync(target, "utf8") === contents) continue;
+        mkdirSync(dirname(target), { recursive: true });
+        writeFileSync(target, contents);
+    }
+}
+
 export function main() {
     const args = process.argv.slice(2);
     const flag = (name) => {
@@ -555,10 +579,7 @@ export function main() {
         if (!existsSync(join(vault, relative))) write(relative, JSON.stringify(value, null, 2));
     };
 
-    for (const folder of [JOURNAL, "Books", "People", "Projects", "Attachments", "Templates"]) {
-        rmSync(join(vault, folder), { recursive: true, force: true });
-    }
-    for (const [path, contents] of Object.entries(demoVault({ until, days }))) write(path, contents);
+    writeVault(vault, demoVault({ until, days }), [JOURNAL, "Books", "People", "Projects", "Attachments", "Templates"]);
 
     writeConfigOnce(".obsidian/daily-notes.json", { folder: JOURNAL, format: "YYYY-MM-DD", template: DAILY_TEMPLATE });
     writeConfigOnce(".obsidian/core-plugins.json", { "daily-notes": true, bases: true });
