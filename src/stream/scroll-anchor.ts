@@ -95,6 +95,26 @@ export class ScrollAnchor {
         if (this.scrollRoot) this.hold();
     }
 
+    /**
+     * The blocks above the place are about to move it by `moved`: drawn now,
+     * before a layout reads the stream shortened and clamps the scroll. Told
+     * of the resize after, the anchor finds nothing more owed (ADR 0015).
+     */
+    anticipate(moved: number): void {
+        const stream = this.stream();
+        if (!this.scrollRoot || !stream || moved === 0) return;
+        this.owed += moved;
+        this.shift(stream);
+        this.settleOnceStill();
+    }
+
+    /** The scroll is still now: what is owed goes to it at once, not once still again. */
+    handOver(): void {
+        if (!this.scrollRoot) return;
+        this.settleOnceStill.cancel();
+        this.settle();
+    }
+
     /** A scroll moves the place, and puts off the hand-over until it stops. */
     onScroll(): void {
         if (!this.scrollRoot) return;

@@ -1,6 +1,7 @@
 # 0014. Re-reserve placeholders once the scroll is still
 
-- **Status:** Accepted; supersedes D-055
+- **Status:** Accepted; supersedes D-055. Superseded in part by
+  [0015](0015-shift-before-shrinking-above.md)
 - **Date:** 2026-10-01
 
 ## Context

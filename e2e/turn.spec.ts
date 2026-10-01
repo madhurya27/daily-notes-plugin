@@ -116,18 +116,21 @@ test.describe("a phone turned", () => {
         expect(Math.abs(after.top)).toBeLessThan(5);
     });
 
-    // ADR 0014: the stream would shorten past the pane's bottom, and the browser clamp the scroll first.
-    test("puts off a shrink larger than the stream below, at its end", async ({ obsidian }) => {
+    // At the stream's end, the notes above shrink by more than lies below: drawn
+    // as a shift first, the scroll is not clamped (ADR 0015).
+    test("re-reserves at the stream's end, keeping the note at the pane's top", async ({ obsidian }) => {
         const { page } = obsidian;
-        const { container } = await measuredBothWays(page);
-        const before = await reserved(container);
-        const { path } = await place(container);
+        const { container, landscape } = await measuredBothWays(page);
+        const before = await place(container);
 
         await turn(page, LANDSCAPE);
         await rest(page);
 
-        const after = await reserved(container);
-        for (const [path, height] of Object.entries(before)) expect(after[path], path).toBe(height);
-        expect((await place(container)).path).toBe(path);
+        const now = Object.entries(await reserved(container));
+        expect(now.length).toBeGreaterThan(0);
+        for (const [path, height] of now) expect(height, path).toBe(landscape[path]);
+        const after = await place(container);
+        expect(after.path).toBe(before.path);
+        expect(Math.abs(after.top - before.top)).toBeLessThan(5);
     });
 });

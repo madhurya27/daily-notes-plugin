@@ -710,12 +710,17 @@ describe("NoteWindowManager after the pane's width changes", () => {
         expect(vi.getTimerCount()).toBe(1);
     });
 
+    /** Lays `block` out `top` px from the pane's top, `height` tall. */
+    const layOut = (block: HTMLElement, top: number, height: number) =>
+        (block.getBoundingClientRect = () => ({ top, bottom: top + height, height }) as DOMRect);
+
     // ADR 0014: a stream shortened past the pane's bottom clamps the scroll first.
-    it("puts off a shrink larger than the stream below the pane", async () => {
+    it("puts off a shrink below the pane's top larger than the stream below the pane", async () => {
         let estimated = 900;
         const { manager, learn } = makeResizable({ estimate: () => estimated, below: 300 });
         const block = manager.add(new TFile("b.md"));
         document.body.appendChild(block);
+        layOut(block, 700, 900);
 
         estimated = 500;
         learn();
@@ -728,6 +733,65 @@ describe("NoteWindowManager after the pane's width changes", () => {
         manager.onScroll();
         await still();
         expect(placeholderHeight(block)).toBe("700px");
+    });
+
+    // ADR 0015: drawn as a shift first, a shrink above the pane keeps the scroll range.
+    it("re-reserves a shrink above the pane larger than the stream below it", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated, below: 300 });
+        const block = manager.add(new TFile("b.md"));
+        document.body.appendChild(block);
+        layOut(block, -1000, 900);
+
+        estimated = 500;
+        learn();
+        manager.onScroll();
+        await still();
+
+        expect(placeholderHeight(block)).toBe("500px");
+    });
+
+    it("tells the anchor how far the notes above move before moving them", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated });
+        const above = manager.add(new TFile("a.md"));
+        const below = manager.add(new TFile("b.md"));
+        document.body.append(above, below);
+        layOut(above, -1000, 900);
+        layOut(below, 700, 900);
+        const reservedWhenTold: string[] = [];
+        const told = vi
+            .spyOn(ScrollAnchor.prototype, "anticipate")
+            .mockImplementation(() => reservedWhenTold.push(placeholderHeight(above)));
+        onTestFinished(() => told.mockRestore());
+
+        estimated = 500;
+        learn();
+        manager.onScroll();
+        await still();
+
+        expect(told).toHaveBeenCalledExactlyOnceWith(-400);
+        expect(reservedWhenTold).toEqual(["900px"]);
+    });
+
+    // ADR 0015: it runs only once the scroll is still, the moment a handover waits for.
+    it("hands the move to the scroll in the task it re-reserves", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated });
+        const block = manager.add(new TFile("b.md"));
+        document.body.appendChild(block);
+        const reservedAtHandOver: string[] = [];
+        const handedOver = vi
+            .spyOn(ScrollAnchor.prototype, "handOver")
+            .mockImplementation(() => reservedAtHandOver.push(placeholderHeight(block)));
+        onTestFinished(() => handedOver.mockRestore());
+
+        estimated = 500;
+        learn();
+        manager.onScroll();
+        await still();
+
+        expect(reservedAtHandOver).toEqual(["500px"]);
     });
 
     it("holds nothing on a note never measured at the new width", async () => {
