@@ -102,7 +102,7 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
   date; scroll back up by hand: the glide stops on the newest note, and nothing
   jumps once it stops. **[e2e]** with anchoring off; **[ios]**.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled.
-  **[e2e]** for the wait; the glide by hand.
+  **[e2e]** for the wait; **[ios]**.
 - Tall window, short notes: loading continues past the first batch.
 - Toggling any setting refreshes the view but keeps the scroll position.
 - The settings tab groups Properties and Linked mentions under headings; turning
@@ -209,7 +209,7 @@ Checks:
 - Scroll through a Base table with summaries: its header and summary row move
   with it, never floating over the page. **[e2e]**
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides
-  out.
+  out. **[ios]** for Bases.
 - A Base on screen gains a row from another pane: the text below never jumps and
   returns.
 - Jump to an old date, then flick up: the text under your finger does not jump
