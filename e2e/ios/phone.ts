@@ -12,6 +12,11 @@ const STREAM = ".daily-notes-stream-container:not(.daily-notes-stream-probe)";
 
 type Orientation = "PORTRAIT" | "LANDSCAPE";
 type Seen = { path: string; index: number; text: string; top: number };
+/** Where the stream is, as it keeps its place: a note, and its top's offset from the pane's. */
+export type Place = { path: string; offset: number };
+
+/** How far `placeAt` looks: past the first two batches of the harness's notes, some 20 screens each. */
+const SCREENS = 60;
 
 /** A note's blocks as the reader takes them in: its title, property rows, Markdown blocks and mentions. */
 const TEXT_BLOCKS = ".daily-note-title, .metadata-property, .daily-note-content > *, .daily-note-mention";
@@ -114,6 +119,58 @@ export class Phone {
         });
     }
 
+    /** The stream's place: the first note reaching into the pane. */
+    place(): Promise<Place> {
+        return this.run((s: string) => {
+            const pane = document.querySelector(s)!.parentElement!;
+            const paneTop = pane.getBoundingClientRect().top;
+            const first = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")].find(
+                (block) => block.getBoundingClientRect().bottom > paneTop
+            )!;
+            return { path: first.dataset.sourcePath!, offset: Math.round(first.getBoundingClientRect().top - paneTop) };
+        }, STREAM);
+    }
+
+    /**
+     * Starts noting each place the stream shows, frame by frame, as `place`
+     * reads it, even before a stream is open; `places` reports them.
+     */
+    async followPlaces(): Promise<void> {
+        await this.run((s: string) => {
+            const place = () => {
+                const pane = document.querySelector(s)?.parentElement;
+                if (!pane) return undefined;
+                const paneTop = pane.getBoundingClientRect().top;
+                const first = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")].find(
+                    (block) => block.getBoundingClientRect().bottom > paneTop
+                );
+                return (
+                    first && `${first.dataset.sourcePath}\n${Math.round(first.getBoundingClientRect().top - paneTop)}`
+                );
+            };
+            const seen: string[] = [];
+            const deadline = performance.now() + 15_000;
+            (window as unknown as { streamPlaces: Promise<Place[]> }).streamPlaces = (async () => {
+                for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
+                    await new Promise(requestAnimationFrame);
+                    const now = place();
+                    if (now === undefined) continue;
+                    quiet = now === seen.at(-1) ? quiet + 1 : 0;
+                    seen.push(now);
+                }
+                return [...new Set(seen)].map((key) => {
+                    const [path, offset] = key.split("\n");
+                    return { path: path!, offset: Number(offset) };
+                });
+            })();
+        }, STREAM);
+    }
+
+    /** Each place the stream showed since `followPlaces`, once it held still 30 frames. */
+    places(): Promise<Place[]> {
+        return this.runAsync(() => (window as unknown as { streamPlaces: Promise<Place[]> }).streamPlaces);
+    }
+
     /**
      * Quick thumb strokes, `up` to move down the stream, each caught mid-glide
      * by the next as a reader's are; returns once the last glide stops.
@@ -206,13 +263,20 @@ export class Phone {
             throw new Error("Obsidian is locked behind Face ID or Touch ID: long-press its icon → Don't Require.");
     }
 
-    /** A finger's tap on the middle of the first `selector`, as iOS delivers one: touches, then a click. */
+    /**
+     * A finger's tap, as iOS delivers one: touches, then a click. On the
+     * middle of the first `selector` a finger could reach there, on screen
+     * and under nothing else.
+     */
     async tap(selector: string): Promise<void> {
         const at = await this.run((sel: string) => {
-            const el = document.querySelector(sel);
-            if (!el) throw new Error(`Nothing to tap: no ${sel}.`);
-            const { left, top, width, height } = el.getBoundingClientRect();
-            return { x: left + width / 2, y: top + height / 2, viewport: window.innerWidth };
+            for (const el of document.querySelectorAll(sel)) {
+                const { left, top, width, height } = el.getBoundingClientRect();
+                const [x, y] = [left + width / 2, top + height / 2];
+                const hit = document.elementFromPoint(x, y);
+                if (hit && el.contains(hit)) return { x, y, viewport: window.innerWidth };
+            }
+            throw new Error(`Nothing to tap: no ${sel} on screen.`);
         }, selector);
         await this.native();
         // The web view fills the screen, so a CSS pixel is a point, scaled only if the page is zoomed.
@@ -278,7 +342,7 @@ export class Phone {
      * (ADR 0006), so it goes a screen at a time until one is.
      */
     async placeAt(target: string, depth: number): Promise<void> {
-        for (let screens = 0; screens < 20; screens++) {
+        for (let screens = 0; screens < SCREENS; screens++) {
             const placed = await this.run(
                 (s: string, t: string, d: number) => {
                     const stream = document.querySelector(s)!;
@@ -295,7 +359,23 @@ export class Phone {
             await this.rest();
             if (placed) return;
         }
-        throw new Error(`No ${target} in the stream's first 20 screens.`);
+        throw new Error(`No ${target} in the stream's first ${SCREENS} screens.`);
+    }
+
+    /** Whether a `selector` spans the pane's top edge. */
+    atTop(selector: string): Promise<boolean> {
+        return this.run(
+            (s: string, sel: string) => {
+                const stream = document.querySelector(s)!;
+                const top = stream.parentElement!.getBoundingClientRect().top;
+                return [...stream.querySelectorAll(sel)].some((el) => {
+                    const box = el.getBoundingClientRect();
+                    return box.top <= top && box.bottom > top;
+                });
+            },
+            STREAM,
+            selector
+        );
     }
 
     /** Scrolled to the bottom with nothing left to load. */

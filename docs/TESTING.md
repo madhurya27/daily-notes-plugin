@@ -223,7 +223,7 @@ Checks:
   does not move after. Try it with a Base at the top of the screen, and near the
   end of the 10th or 20th note (a batch's last). **[e2e]** for Chromium's
   timing; iOS hands the place over a frame later, so only the phone shows its
-  failures.
+  failures. **[ios]**
 - Search a word: every match on screen is highlighted, the current one in the
   selection color. A long-press selects text in a note.
 - Chevrons on headers, list items and the properties row are tappable without

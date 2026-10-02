@@ -42,11 +42,18 @@ const NEWEST = Object.keys(DEMO)
     .filter((path) => /^Journal\/\d{4}-\d\d-\d\d\.md$/.test(path))
     .sort()
     .slice(-3);
+/** Short notes mid-stream, so the next note's title is on screen below any place in them, for a finger to tap. */
+export const SHORT_NOTE = "Journal/2026-09-22.md";
+/** And one ending in a Base, for a place inside it. */
+const SHORT_NOTE_WITH_BASE = "Journal/2026-09-21.md";
+export const NOTE_AFTER_THE_BASE = "Journal/2026-09-20.md";
 const NOTES = {
     ...DEMO,
     ...Object.fromEntries(
         NEWEST.map((path) => [path, DEMO[path]!.replace(/^(---\n[\s\S]*?\n---\n\n)/, `$1${STALLERS.join("\n")}`)])
     ),
+    [SHORT_NOTE]: "A short day, one paragraph long.\n",
+    [SHORT_NOTE_WITH_BASE]: "A short day, then the reading list.\n\n![[Reading.base]]\n",
 };
 
 /** Everything the vault holds, configuration and build included, by path. */
