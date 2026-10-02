@@ -213,7 +213,7 @@ Checks:
 - A Base on screen gains a row from another pane: the text below never jumps and
   returns.
 - Jump to an old date, then flick up: the text under your finger does not jump
-  as the notes above render, and the glide is not cut short.
+  as the notes above render, and the glide is not cut short. **[ios]**
 - A Base filling just above the screen's top leaves the text below still.
   **[e2e]** with anchoring off.
 - Jump to an old date, then tap "Daily notes stream" in the header: it glides to

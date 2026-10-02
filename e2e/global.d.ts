@@ -2,6 +2,8 @@
 declare global {
     interface Window {
         app: any;
+        /** The moment.js Obsidian bundles and exposes. */
+        moment: any;
         /** Obsidian's Electron bridge; the harness hides the window through it. */
         electron: any;
         /** history.spec's reading of the stream's place, defined by its `measurePlaces`. */

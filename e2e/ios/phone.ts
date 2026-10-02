@@ -53,6 +53,67 @@ export class Phone {
         await this.rest();
     }
 
+    /** As the jump modal would, to the newest note on or before `date` (`YYYY-MM-DD`), at rest. */
+    async jumpTo(date: string): Promise<void> {
+        await this.runAsync(
+            (d: string) =>
+                window.app.workspace
+                    .getLeavesOfType("daily-notes-stream-view")[0]
+                    .view.stream.jumpToDate(window.moment(d, "YYYY-MM-DD")),
+            date
+        );
+        await this.rest();
+    }
+
+    /**
+     * Starts following the text at the pane's middle, each frame, as the
+     * reader's eye would; `stopFollowing` reports it. By its place in its
+     * note, as `topOf` finds it: a note may render again under the reader.
+     */
+    async followReader(): Promise<void> {
+        await this.run(
+            (s: string, blocks: string) => {
+                const pane = document.querySelector(s)!.parentElement!;
+                const box = pane.getBoundingClientRect();
+                const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)!;
+                const note = at.closest<HTMLElement>(".daily-note-block")!;
+                const index = [...note.querySelectorAll(blocks)].indexOf(at.closest(blocks)!);
+                if (index === -1) throw new Error("No text at the pane's middle.");
+                const path = CSS.escape(note.dataset.sourcePath!);
+                const reader = () =>
+                    pane.querySelector(`.daily-note-block[data-source-path="${path}"]`)!.querySelectorAll(blocks)[
+                        index
+                    ]!;
+                const unloaded = () => pane.querySelectorAll(".daily-note-block.is-unloaded").length;
+                const start = reader().getBoundingClientRect().top;
+                const from = pane.scrollTop;
+                const follow = { drifts: [] as number[], unloaded: unloaded(), rendered: 0, on: true };
+                (window as unknown as { streamReader: typeof follow }).streamReader = follow;
+                const frame = () => {
+                    if (!follow.on) return;
+                    // Where the text is, against where the scroll alone puts it.
+                    const top = reader().getBoundingClientRect().top;
+                    follow.drifts.push(Math.round(top - start - (from - pane.scrollTop)));
+                    follow.rendered = Math.max(follow.rendered, follow.unloaded - unloaded());
+                    requestAnimationFrame(frame);
+                };
+                requestAnimationFrame(frame);
+            },
+            STREAM,
+            TEXT_BLOCKS
+        );
+    }
+
+    /** How far, each frame since `followReader`, the text moved other than with the scroll, and how many notes rendered. */
+    stopFollowing(): Promise<{ drifts: number[]; rendered: number }> {
+        return this.run(() => {
+            const follow = (window as unknown as { streamReader: { drifts: number[]; rendered: number; on: boolean } })
+                .streamReader;
+            follow.on = false;
+            return { drifts: follow.drifts, rendered: follow.rendered };
+        });
+    }
+
     /**
      * Quick thumb strokes, `up` to move down the stream, each caught mid-glide
      * by the next as a reader's are; returns once the last glide stops.
@@ -238,7 +299,7 @@ export class Phone {
     }
 
     /** Until the pane has held still for half a second: a glide, a turn and the loads they set off are over. */
-    private rest(): Promise<void> {
+    rest(): Promise<void> {
         return this.runAsync(async (s: string) => {
             const pane = document.querySelector(s)!.parentElement!;
             let last = "";
