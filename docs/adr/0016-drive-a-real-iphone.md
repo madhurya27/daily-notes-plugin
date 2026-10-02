@@ -23,8 +23,7 @@ answers what the stream did. The harness:
 - seeds a vault of its own, `Stream E2E`, stored on the phone rather than in
   iCloud: the demo journal up to a fixed day, so every phone and every day sees
   the same notes;
-- turns Auto-Lock off in Settings for a working session and back on at
-  `pnpm run ios:release`.
+- changes no setting on the phone: Auto-Lock is the tester's (D-086).
 
 ## Consequences
 
@@ -32,8 +31,7 @@ answers what the stream did. The harness:
   setup by hand (`docs/TESTING.md`). Not in CI.
 - A free Apple ID's profile lasts a week; each run's setup rebuilds and re-signs
   WebDriverAgent when it lapses.
-- iPhone only: an iPad's Settings is a split view the Auto-Lock step cannot
-  walk.
+- iPhone only: written and checked against iPhones.
 - A lock screen on Obsidian (Face ID, Touch ID) stops a run: no touch gets past
   it.
 - Judges what the reader sees: a turn reflows a note, so a check follows the

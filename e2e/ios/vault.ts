@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { createHash } from "crypto";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { DAILY_TEMPLATE, demoVault } from "../../scripts/demo-vault.mjs";
@@ -75,7 +75,7 @@ function contents(configDir: string): Record<string, string> {
  * through a vault's page in the chooser: that page holds Delete vault.
  */
 async function open(phone: Phone): Promise<void> {
-    const name = () => phone.run(() => window.app?.vault?.getName() as string | undefined).catch(() => undefined);
+    const name = () => openVault(phone);
     if ((await name()) === VAULT) return;
     await phone.openUrl(`obsidian://open?vault=${encodeURIComponent(VAULT)}`);
     try {
@@ -189,6 +189,28 @@ function partition(
 
 /** The harness's vault open, seeded, with this build loaded. */
 export async function useVault(phone: Phone): Promise<void> {
+    await rememberTestersVault(phone);
     await open(phone);
     await seed(phone);
+}
+
+/** The tester's vault, on disk until put back: a worker restarted by a failure finds the harness's open. */
+const TESTERS_VAULT = join(REPO, ".dev/ios-testers-vault");
+
+function openVault(phone: Phone): Promise<string | undefined> {
+    return phone.run(() => window.app?.vault?.getName() as string | undefined).catch(() => undefined);
+}
+
+async function rememberTestersVault(phone: Phone): Promise<void> {
+    const name = await openVault(phone);
+    if (name && name !== VAULT) writeFileSync(TESTERS_VAULT, name);
+}
+
+/** Opens the vault the tester had open, so Obsidian starts in it next time too. */
+export async function returnToTestersVault(phone: Phone): Promise<void> {
+    if (!existsSync(TESTERS_VAULT)) return;
+    const name = readFileSync(TESTERS_VAULT, "utf8");
+    await phone.openUrl(`obsidian://open?vault=${encodeURIComponent(name)}`);
+    await expect.poll(() => openVault(phone), { timeout: 30_000 }).toBe(name);
+    rmSync(TESTERS_VAULT);
 }

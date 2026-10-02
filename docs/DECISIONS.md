@@ -1389,3 +1389,18 @@ in v4 as unneeded; Obsidian ships v3.
 - Keeping MathJax's fonts in use — the fonts were never dropped; 28 of 54 still
   stopped.
 - Override at MathJax's own specificity — its stylesheet comes later and wins.
+
+## D-086 — The iPhone harness leaves Auto-Lock to the tester (2026-10-02)
+
+**Decision:** `test:ios` changes no setting on the phone. `docs/TESTING.md` says
+when to set Auto-Lock to Never and back.
+
+**Why:** a run takes under a minute, and a locked phone fails setup at once.
+Only many runs in a row need the phone kept awake, and setting that on someone's
+phone for them left it never locking if they forgot `pnpm run ios:release`.
+
+**Rejected:**
+
+- Setting Never through the Settings app, held until `pnpm run ios:release` —
+  navigated pages holding Delete buttons, failed under Low Power Mode and on an
+  iPad, and cost ~18 s a session.
