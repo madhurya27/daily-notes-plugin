@@ -39,26 +39,37 @@ D-001.
 
 Surveyed 2026-09 against core and the community directory. **The filter: what
 operates on a _file_ is already solved elsewhere; only what operates on _the
-stream_ is ours.** ★ marks the recommended first two.
+stream_ is ours.** Ordered by priority: worth per cost, journal-specific first.
+★ marks the first two.
 
-- [ ] ★ Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing
-      external reaches inside a view.
-- [ ] On this day — one calendar date across years, a filter over `_sorted`.
+- [ ] ★ On this day — one calendar date across years, a filter over `_sorted`.
       [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review)
       shows ~200-char excerpts; ours is the full note. Better, not new.
+- [ ] ★ Gap markers — "12 days without a note" between notes. Not a block: the
+      window manager and `StreamBlocks` must not take it for a note.
+- [ ] Month and year dividers — a break that scrolls with the notes, unlike the
+      sticky header D-012 rejected. Same caveat; build with gap markers.
+- [ ] Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing
+      external reaches inside a view.
+- [ ] Notes as `article` landmarks labelled with their date, so a screen reader
+      steps note to note. Pairs with keyboard navigation.
+- [ ] Fold a whole note to its title, with collapse-all and expand-all commands
+      — skimming a stretch of weeks. Builds on `CollapsibleManager`.
+- [ ] Weekday in the title — `2026-03-14 · Saturday`, or "Yesterday". Decide
+      first: the file name, or a label the reader configures.
 - [ ] In-stream date seek, timeline in the gutter.
       [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) and
       [Jump to Date](https://github.com/TfTHacker/obsidian42-jump-to-date) _open
       a file_; this scrolls. The modal already jumps — this is the continuous
       version of it, not another calendar widget.
+- [ ] Periodic Notes support — target
+      [Journals](https://forum.obsidian.md/t/plugin-journals/76946) (active),
+      not Periodic Notes (abandoned). Widens the audience most.
+- [ ] Period scope: this week / month / year — a slice of `_sorted`.
 - [ ] Export a contiguous range as one Markdown document — one pass over
       `_sorted`.
 - [ ] Oldest-first toggle — mind the `state.notes` / `_sorted` pagination
       invariant.
-- [ ] Period scope: this week / month / year — a slice of `_sorted`.
-- [ ] Periodic Notes support — target
-      [Journals](https://forum.obsidian.md/t/plugin-journals/76946) (active),
-      not Periodic Notes (abandoned). Widens the audience most.
 - [ ] Stats header — only scoped to the loaded stream; core Word count and the
       heatmap plugins own the rest.
 
