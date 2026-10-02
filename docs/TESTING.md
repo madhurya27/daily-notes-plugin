@@ -115,7 +115,7 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
   raises it. **[e2e]** for focus.
 - The calendar button's date wheel, driven by hand on iOS and Android: the e2e
   mobile project is desktop Chromium, which opens a picker iOS never would, and
-  checks only that a tap on the icon lands on the date input.
+  checks only that a tap on the icon lands on the date input. **[ios]** for iOS.
 - Set the daily-notes format to `DD-MM-YYYY`, then to `MMMM D, YYYY`: the list
   follows it.
 

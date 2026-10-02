@@ -326,14 +326,27 @@ export class Phone {
      * and under nothing else.
      */
     async tap(selector: string): Promise<void> {
-        const at = await this.run((sel: string) => {
-            for (const el of document.querySelectorAll(sel)) {
-                const { left, top, width, height } = el.getBoundingClientRect();
-                const [x, y] = [left + width / 2, top + height / 2];
-                const hit = document.elementFromPoint(x, y);
-                if (hit && el.contains(hit)) return { x, y, viewport: window.innerWidth };
+        const at = await this.runAsync(async (sel: string) => {
+            const target = () => {
+                for (const el of document.querySelectorAll(sel)) {
+                    const { left, top, width, height } = el.getBoundingClientRect();
+                    const [x, y] = [left + width / 2, top + height / 2];
+                    const hit = document.elementFromPoint(x, y);
+                    if (hit && el.contains(hit)) return { x, y, viewport: window.innerWidth };
+                }
+                return null;
+            };
+            // Where it holds still for 10 frames: a modal slides in as it opens.
+            let last = "";
+            for (let still = 0, frames = 0; still < 10 && frames < 120; frames++) {
+                await new Promise(requestAnimationFrame);
+                const now = JSON.stringify(target());
+                still = now === last ? still + 1 : 0;
+                last = now;
             }
-            throw new Error(`Nothing to tap: no ${sel} on screen.`);
+            const at = target();
+            if (!at) throw new Error(`Nothing to tap: no ${sel} on screen.`);
+            return at;
         }, selector);
         await this.native();
         // The web view fills the screen, so a CSS pixel is a point, scaled only if the page is zoomed.
@@ -362,6 +375,32 @@ export class Phone {
                     .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true })),
             selector
         );
+    }
+
+    /** The value of the input `selector` names. */
+    inputValue(selector: string): Promise<string> {
+        return this.run((sel: string) => document.querySelector<HTMLInputElement>(sel)!.value, selector);
+    }
+
+    /**
+     * Picks `date` (`YYYY-MM-DD`) in iOS's open calendar popover, the date
+     * input's picker, and closes it with its checkmark. Finds months and
+     * days by their English labels, as `assertUnlocked` does.
+     */
+    async pickDate(date: string): Promise<void> {
+        await this.native();
+        const day = new Date(`${date}T12:00:00Z`);
+        const month = day.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+        const shown = this.driver.$("~Month");
+        await shown.waitForExist();
+        for (let steps = 0; (await shown.getAttribute("value")) !== month; steps++) {
+            if (steps === 24) throw new Error(`The picker never showed ${month}.`);
+            const later = new Date(`1 ${await shown.getAttribute("value")} UTC`) > day;
+            await this.driver.$(later ? "~DatePicker.PreviousMonth" : "~DatePicker.NextMonth").click();
+        }
+        const label = day.toLocaleString("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
+        await this.driver.$(`-ios predicate string:label ENDSWITH ", ${label}"`).click();
+        await this.driver.$("~Done").click();
     }
 
     /** Whether anything matches `selector`. */
