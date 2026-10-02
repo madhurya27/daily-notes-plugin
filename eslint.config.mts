@@ -109,5 +109,6 @@ export default tseslint.config(
         // Typechecked by e2e/tsconfig.json; ESLint's project service covers src and tests.
         "e2e",
         "playwright.config.ts",
+        "playwright.ios.config.ts",
     ])
 );

@@ -24,6 +24,7 @@
         "typecheck:tests": "tsc -noEmit -p tests/tsconfig.json",
         "typecheck:e2e": "tsc -noEmit -p e2e/tsconfig.json",
         "test:e2e": "pnpm run build && pnpm run typecheck:e2e && playwright test",
+        "test:ios": "pnpm run build && pnpm run typecheck:e2e && playwright test -c playwright.ios.config.ts",
         "capture:screenshots": "pnpm run build && CAPTURE_SCREENSHOTS=1 E2E_SHOW_WINDOW=1 playwright test screenshots.spec.ts",
         "capture:recording": "pnpm run build && CAPTURE_RECORDING=1 E2E_SHOW_WINDOW=1 playwright test recording.spec.ts --project=desktop",
         "test:memory": "pnpm run build && pnpm run typecheck:e2e && E2E_SEED_DAYS=1095 playwright test memory.spec.ts render-cost.spec.ts"
@@ -35,6 +36,7 @@
         "@playwright/test": "1.62.1",
         "@types/node": "^20.0.0",
         "@vitest/coverage-v8": "^4.0.18",
+        "appium": "^3.8.0",
         "esbuild": "0.25.5",
         "eslint": "9.39.1",
         "eslint-config-prettier": "^10.1.8",
@@ -48,6 +50,7 @@
         "typescript": "^5.8.3",
         "typescript-eslint": "8.35.1",
         "vitest": "^4.0.18",
+        "webdriverio": "^9.32.0",
         "yaml": "2.8.1"
     },
     "dependencies": {
