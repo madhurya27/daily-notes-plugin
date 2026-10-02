@@ -2,6 +2,9 @@ import type { Page } from "@playwright/test";
 import { SEEDED_DAYS, openStream } from "./obsidian";
 import { test, expect } from "./webkit";
 
+/** A day after the newest seeded note, so the stream opens on it. */
+const MATH_NOTE = "Notes/2026-03-15.md";
+
 /** Whether clearing the page's highlights changes the pixels under the first range of `name`. */
 async function paints(page: Page, name: string): Promise<boolean> {
     const clip = await page.evaluate((n) => {
@@ -76,6 +79,26 @@ test.describe("in iOS's engine", () => {
                 .first()
                 .evaluate((el) => getComputedStyle(el).webkitUserSelect);
             expect(value, selector).toBe("text");
+        }
+    });
+
+    // MathJax 3 puts each equation on a layer of its own, in WebKit only: on
+    // an iPhone, a flick begun on a note holding math then stops dead.
+    test("puts no equation on a layer of its own", async ({ obsidian, inWebKit }) => {
+        const { page } = obsidian;
+        await page.evaluate(async (path) => void (await window.app.vault.create(path, "Effort: $CO_2$.")), MATH_NOTE);
+        try {
+            const container = await openStream(page);
+            await expect(container.locator("mjx-container")).toBeAttached();
+
+            const phone = await inWebKit();
+
+            expect(await phone.locator("mjx-container").evaluate((el) => getComputedStyle(el).willChange)).toBe("auto");
+        } finally {
+            await page.evaluate(async (path) => {
+                const file = window.app.vault.getAbstractFileByPath(path);
+                if (file) await window.app.vault.delete(file);
+            }, MATH_NOTE);
         }
     });
 });
