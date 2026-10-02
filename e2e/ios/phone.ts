@@ -1,6 +1,6 @@
 import { test as base, expect } from "@playwright/test";
 import { connect, OBSIDIAN } from "./session";
-import { useVault } from "./vault";
+import { returnToTestersVault, useVault } from "./vault";
 
 /**
  * Obsidian on a USB-connected iPhone (ADR 0016). Touches are real ones, sent
@@ -271,13 +271,17 @@ export const test = base.extend<object, { phone: Phone }>({
             // WebDriverAgent otherwise waits after each gesture for animations
             // to end, 15 s in Obsidian; rest() waits for the stream instead.
             await driver.updateSettings({ animationCoolOffTimeout: 0, waitForIdleTimeout: 0 });
+            const phone = new Phone(driver);
             try {
-                const phone = new Phone(driver);
                 await phone.assertUnlocked();
                 await useVault(phone);
                 await use(phone);
             } finally {
                 await driver.setOrientation("PORTRAIT");
+                // The phone as the tester left it: their vault, Obsidian closed, the Home Screen.
+                await returnToTestersVault(phone);
+                await driver.execute("mobile: terminateApp", { bundleId: OBSIDIAN });
+                await driver.execute("mobile: pressButton", { name: "home" });
                 await driver.deleteSession();
             }
         },

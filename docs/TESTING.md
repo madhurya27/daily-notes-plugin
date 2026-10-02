@@ -56,7 +56,8 @@ retake shows the same content; `pnpm run seed` alone takes `--days N` and
 
 Real touches on Obsidian on an iPhone plugged into the Mac, in a vault the
 harness seeds, `Stream E2E`, stored on the phone. The harness changes no setting
-on the phone. Once per Mac and phone:
+on the phone, and ends a run where it began: Obsidian back in the vault it had
+open, then closed, on the Home Screen. Once per Mac and phone:
 
 1. Install Xcode, open it once, and add an Apple ID under Settings → Accounts.
    Then Manage Certificates → + → Apple Development. A free account is enough.
