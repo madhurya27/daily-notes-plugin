@@ -221,7 +221,7 @@ Checks:
 - Chevrons on headers, list items and the properties row are tappable without
   zooming, and a tap on heading _text_ still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall;
-  repeated flicks keep loading. **[ios]** but for the stall.
+  repeated flicks keep loading. **[ios]**
 - Backgrounding and returning keeps position and keeps scrolling.
 - Editing a visible note elsewhere re-renders it in place.
 - Long-press on a date header opens the file menu; "Open to the right" does

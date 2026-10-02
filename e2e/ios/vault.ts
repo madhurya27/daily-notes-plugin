@@ -15,7 +15,39 @@ import type { Phone } from "./phone";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 export const VAULT = process.env.IOS_VAULT ?? "Stream E2E";
 const PLUGIN_ID = "daily-notes-stream";
-const NOTES = demoVault({ until: new Date(Date.UTC(2026, 8, 30)), days: 90 });
+const DEMO: Record<string, string> = demoVault({ until: new Date(Date.UTC(2026, 8, 30)), days: 21 });
+/**
+ * What once stopped iOS glides, in the newest notes, so a flick from the top
+ * starts on it: math (D-085), a Base, a wide table and a long code line
+ * (ADR 0008).
+ */
+const STALLERS = [
+    "## Stallers",
+    "",
+    "Effort: $\\dot{V}O_2 \\approx 48$, $CO_2$.",
+    "",
+    "| Route | Effort | Notes on the route, long enough to overrun a phone's width |",
+    "| --- | --- | --- |",
+    "| Old town circuit | $\\dot{V}O_2 \\approx 48$ | Cobbles after the bridge, then the long climb past the market |",
+    "",
+    "![[Reading.base]]",
+    "",
+    "```",
+    "const pace = splits.map((split) => split.seconds / split.metres).reduce((sum, each) => sum + each, 0);",
+    "```",
+    "",
+    "",
+];
+const NEWEST = Object.keys(DEMO)
+    .filter((path) => /^Journal\/\d{4}-\d\d-\d\d\.md$/.test(path))
+    .sort()
+    .slice(-3);
+const NOTES = {
+    ...DEMO,
+    ...Object.fromEntries(
+        NEWEST.map((path) => [path, DEMO[path]!.replace(/^(---\n[\s\S]*?\n---\n\n)/, `$1${STALLERS.join("\n")}`)])
+    ),
+};
 
 /** Everything the vault holds, configuration and build included, by path. */
 function contents(configDir: string): Record<string, string> {

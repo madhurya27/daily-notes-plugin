@@ -59,22 +59,7 @@ export class Phone {
      */
     async flick(direction: "up" | "down", strokes = 1): Promise<void> {
         const before = await this.scrollTop();
-        await this.native();
-        const { width, height } = await this.driver.getWindowSize();
-        const [from, to] = direction === "up" ? [0.85, 0.15] : [0.15, 0.85];
-        const x = Math.round(width / 2);
-        const stroke = [
-            { type: "pointerMove", duration: 0, x, y: Math.round(height * from) },
-            { type: "pointerDown", button: 0 },
-            { type: "pointerMove", duration: 60, x, y: Math.round(height * to) },
-            { type: "pointerUp", button: 0 },
-        ];
-        // One command per stroke: within one, WebDriverAgent drags the finger
-        // back to the start between strokes, scrolling the stream back.
-        for (let i = 0; i < strokes; i++)
-            await this.driver.performActions([
-                { type: "pointer", id: "thumb", parameters: { pointerType: "touch" }, actions: stroke },
-            ]);
+        for (let i = 0; i < strokes; i++) await this.stroke(direction, 0.7, 60);
         await this.rest();
         const after = await this.scrollTop();
         const blocked = direction === "up" ? after <= before && !(await this.atEnd()) : after >= before && before > 0;
@@ -82,6 +67,71 @@ export class Phone {
             throw new Error(
                 "A flick did not move the stream: something is in front of Obsidian, such as its Face ID lock."
             );
+    }
+
+    /**
+     * One stroke, and whether the stream still moved `ms` after the finger
+     * lifted. A thumb then catches the glide: the web view runs no script
+     * until a glide ends, and a full one runs 1–3.5 s.
+     */
+    async glidesPast(direction: "up" | "down", ms: number): Promise<boolean> {
+        await this.run((s: string) => {
+            const pane = document.querySelector(s)!.parentElement!;
+            const glide = { touches: [] as number[], lifts: [] as number[], scrolls: [] as number[] };
+            const done = new AbortController();
+            (window as unknown as { streamGlide: typeof glide & { done: AbortController } }).streamGlide = {
+                ...glide,
+                done,
+            };
+            const now = (log: number[]) => () => log.push(performance.now());
+            const { signal } = done;
+            document.addEventListener("touchstart", now(glide.touches), { capture: true, signal });
+            document.addEventListener("touchend", now(glide.lifts), { capture: true, signal });
+            pane.addEventListener("scroll", now(glide.scrolls), { passive: true, signal });
+        }, STREAM);
+        await this.stroke(direction, 0.7, 60);
+        await new Promise((resolve) => setTimeout(resolve, ms + 100));
+        // Slow and short: it stops the glide without a flick or a tap of its own.
+        await this.stroke(direction, 0.02, 100);
+        const [moved, failure] = await this.run((wait: number) => {
+            const { touches, lifts, scrolls, done } = (
+                window as unknown as {
+                    streamGlide: { touches: number[]; lifts: number[]; scrolls: number[]; done: AbortController };
+                }
+            ).streamGlide;
+            done.abort();
+            const [lift] = lifts;
+            if (lift === undefined) return [false, "the stroke never lifted"];
+            // A touch that stops a glide stays with iOS: the page sees it only if the stream had stopped.
+            const caught = touches[1] ?? Infinity;
+            if (caught < lift + wait) return [false, `the glide was caught ${Math.round(caught - lift)} ms in`];
+            return [scrolls.some((t) => t > lift + wait && t < caught), ""];
+        }, ms);
+        if (failure) throw new Error(`Cannot tell how far a flick glided: ${failure}.`);
+        return moved;
+    }
+
+    /** A thumb stroke `share` of the screen tall over `duration` ms, centred; returns as the finger lifts. */
+    private async stroke(direction: "up" | "down", share: number, duration: number): Promise<void> {
+        await this.native();
+        const { width, height } = await this.driver.getWindowSize();
+        const [from, to] = direction === "up" ? [0.5 + share / 2, 0.5 - share / 2] : [0.5 - share / 2, 0.5 + share / 2];
+        const x = Math.round(width / 2);
+        // One command per stroke: within one, WebDriverAgent drags the finger
+        // back to the start between strokes, scrolling the stream back.
+        await this.driver.performActions([
+            {
+                type: "pointer",
+                id: "thumb",
+                parameters: { pointerType: "touch" },
+                actions: [
+                    { type: "pointerMove", duration: 0, x, y: Math.round(height * from) },
+                    { type: "pointerDown", button: 0 },
+                    { type: "pointerMove", duration, x, y: Math.round(height * to) },
+                    { type: "pointerUp", button: 0 },
+                ],
+            },
+        ]);
     }
 
     /** Fails if iOS holds Obsidian behind Face ID or Touch ID: no touch reaches the app until someone unlocks it. */

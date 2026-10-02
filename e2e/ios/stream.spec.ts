@@ -16,6 +16,15 @@ test("flicks reach the oldest note, each note once, newest first", async ({ phon
     expect(paths).toEqual([...paths].sort().reverse());
 });
 
+// Each flick starts on the newest notes, which hold what once stopped a
+// glide dead within 0.4 s (STALLERS in vault.ts).
+test("flicks from the top glide on", async ({ phone }) => {
+    for (const flick of [1, 2, 3]) {
+        await phone.openStream();
+        expect(await phone.glidesPast("up", 500), `flick ${flick}`).toBe(true);
+    }
+});
+
 for (const [what, target, depth] of [
     ["text", ".daily-note-content > p", -20],
     // A Base redraws on each turn, as cards or a table.
