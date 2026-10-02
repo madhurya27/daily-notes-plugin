@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "child_process";
+import { execFileSync, spawn, spawnSync, type ChildProcess } from "child_process";
 import { X509Certificate } from "crypto";
 import { mkdirSync, openSync, readFileSync } from "fs";
 import { dirname, join, resolve } from "path";
@@ -111,10 +111,19 @@ export async function startAppium(): Promise<() => void> {
     try {
         await waitForAppium();
     } catch (e) {
-        appium.kill();
+        stopAppium(appium);
         throw e;
     }
-    return () => appium.kill();
+    return () => stopAppium(appium);
+}
+
+/**
+ * Appium, and the WebDriverAgent it started on the phone: Appium runs its
+ * xcodebuild in a process group of its own, which outlives Appium.
+ */
+function stopAppium(appium: ChildProcess): void {
+    appium.kill();
+    spawnSync("pkill", ["-f", `xcodebuild test-without-building .* -derivedDataPath ${process.env.IOS_WDA_DATA} `]);
 }
 
 /** In a session of its own, before the tests': it lasts the run and beyond, outliving a worker restarted by a failure. */
