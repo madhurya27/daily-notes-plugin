@@ -21,16 +21,20 @@ Ordered by priority, from the 2026-09 comparison against
       in `docs/IMPROVEMENTS.md`:
     - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**;
           includes the jump suggester's date wheel, which the e2e mobile project
-          cannot reach (desktop Chromium), and the scroll stall on Android
+          cannot reach (desktop Chromium), and the scroll stall on Android.
+          `pnpm run test:ios` runs the items marked **[ios]**
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
           review the history first, then publish the `0.1.0` draft release (its
           assets match the local build)
 - [ ] Position the README against Daily Notes Editor — a live-updating reading
       feed, not an inline editor.
+- [ ] Move the rest of the Mobile checklist in `docs/TESTING.md` into `e2e/ios/`
+      specs (ADR 0016). First: jump to an old date then flick up, nothing jumps;
+      the title-bar tap; backgrounding and returning; the date wheel, a native
+      picker XCUITest can turn.
 - [ ] A phone recording for the README. Desktop Chromium can't fake a phone
-      convincingly: a touch swipe lacks a thumb's feel, there is no on-screen
-      keyboard to type with, and the phone's own chrome (tapping the title bar
-      to scroll to the top) can't be tapped.
+      convincingly; `e2e/ios/` drives a real one, title-bar taps included, and
+      Appium can record its screen.
 
 ## Features
 
