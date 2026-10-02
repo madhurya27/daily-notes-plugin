@@ -48,6 +48,12 @@ export class Phone {
         await this.driver.execute("mobile: deepLink", { url, bundleId: OBSIDIAN });
     }
 
+    /** To the Home Screen for `seconds`, then back into Obsidian, as a reader switching apps. */
+    async background(seconds: number): Promise<void> {
+        await this.native();
+        await this.driver.execute("mobile: backgroundApp", { seconds });
+    }
+
     /** The stream, at its top and at rest. */
     async openStream(): Promise<void> {
         await this.run(() => window.app.commands.executeCommandById("daily-notes-stream:open-stream"));
@@ -133,37 +139,50 @@ export class Phone {
 
     /**
      * Starts noting each place the stream shows, frame by frame, as `place`
-     * reads it, even before a stream is open; `places` reports them.
+     * reads it, even before a stream is open; `places` reports them. From
+     * `now`, or from Obsidian's return from the background: a still stream
+     * would be done before it left.
      */
-    async followPlaces(): Promise<void> {
-        await this.run((s: string) => {
-            const place = () => {
-                const pane = document.querySelector(s)?.parentElement;
-                if (!pane) return undefined;
-                const paneTop = pane.getBoundingClientRect().top;
-                const first = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")].find(
-                    (block) => block.getBoundingClientRect().bottom > paneTop
-                );
-                return (
-                    first && `${first.dataset.sourcePath}\n${Math.round(first.getBoundingClientRect().top - paneTop)}`
-                );
-            };
-            const seen: string[] = [];
-            const deadline = performance.now() + 15_000;
-            (window as unknown as { streamPlaces: Promise<Place[]> }).streamPlaces = (async () => {
-                for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
-                    await new Promise(requestAnimationFrame);
-                    const now = place();
-                    if (now === undefined) continue;
-                    quiet = now === seen.at(-1) ? quiet + 1 : 0;
-                    seen.push(now);
-                }
-                return [...new Set(seen)].map((key) => {
-                    const [path, offset] = key.split("\n");
-                    return { path: path!, offset: Number(offset) };
+    async followPlaces(from: "now" | "return" = "now"): Promise<void> {
+        await this.run(
+            (s: string, start: "now" | "return") => {
+                const place = () => {
+                    const pane = document.querySelector(s)?.parentElement;
+                    if (!pane) return undefined;
+                    const paneTop = pane.getBoundingClientRect().top;
+                    const first = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")].find(
+                        (block) => block.getBoundingClientRect().bottom > paneTop
+                    );
+                    return (
+                        first &&
+                        `${first.dataset.sourcePath}\n${Math.round(first.getBoundingClientRect().top - paneTop)}`
+                    );
+                };
+                const seen: string[] = [];
+                const returned = new Promise<void>((resolve) => {
+                    const back = () =>
+                        document.hidden || resolve(document.removeEventListener("visibilitychange", back));
+                    document.addEventListener("visibilitychange", back);
                 });
-            })();
-        }, STREAM);
+                (window as unknown as { streamPlaces: Promise<Place[]> }).streamPlaces = (async () => {
+                    if (start === "return") await returned;
+                    const deadline = performance.now() + 15_000;
+                    for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
+                        await new Promise(requestAnimationFrame);
+                        const now = place();
+                        if (now === undefined) continue;
+                        quiet = now === seen.at(-1) ? quiet + 1 : 0;
+                        seen.push(now);
+                    }
+                    return [...new Set(seen)].map((key) => {
+                        const [path, offset] = key.split("\n");
+                        return { path: path!, offset: Number(offset) };
+                    });
+                })();
+            },
+            STREAM,
+            from
+        );
     }
 
     /** Each place the stream showed since `followPlaces`, once it held still 30 frames. */

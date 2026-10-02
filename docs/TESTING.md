@@ -230,7 +230,7 @@ Checks:
   zooming, and a tap on heading _text_ still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall;
   repeated flicks keep loading. **[ios]**
-- Backgrounding and returning keeps position and keeps scrolling.
+- Backgrounding and returning keeps position and keeps scrolling. **[ios]**
 - Editing a visible note elsewhere re-renders it in place.
 - Long-press on a date header opens the file menu; "Open to the right" does
   something sensible on a phone.
