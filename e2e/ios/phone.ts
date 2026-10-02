@@ -206,8 +206,59 @@ export class Phone {
             throw new Error("Obsidian is locked behind Face ID or Touch ID: long-press its icon → Don't Require.");
     }
 
-    private scrollTop(): Promise<number> {
+    /** A finger's tap on the middle of the first `selector`, as iOS delivers one: touches, then a click. */
+    async tap(selector: string): Promise<void> {
+        const at = await this.run((sel: string) => {
+            const el = document.querySelector(sel);
+            if (!el) throw new Error(`Nothing to tap: no ${sel}.`);
+            const { left, top, width, height } = el.getBoundingClientRect();
+            return { x: left + width / 2, y: top + height / 2, viewport: window.innerWidth };
+        }, selector);
+        await this.native();
+        // The web view fills the screen, so a CSS pixel is a point, scaled only if the page is zoomed.
+        const scale = (await this.driver.getWindowSize()).width / at.viewport;
+        await this.driver.performActions([
+            {
+                type: "pointer",
+                id: "finger",
+                parameters: { pointerType: "touch" },
+                actions: [
+                    { type: "pointerMove", duration: 0, x: Math.round(at.x * scale), y: Math.round(at.y * scale) },
+                    { type: "pointerDown", button: 0 },
+                    { type: "pause", duration: 50 },
+                    { type: "pointerUp", button: 0 },
+                ],
+            },
+        ]);
+    }
+
+    /** Escape, as a hardware keyboard sends it, at `selector`: what closes a modal or the search bar. */
+    async escape(selector: string): Promise<void> {
+        await this.run(
+            (sel: string) =>
+                document
+                    .querySelector(sel)!
+                    .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true })),
+            selector
+        );
+    }
+
+    /** Whether anything matches `selector`. */
+    has(selector: string): Promise<boolean> {
+        return this.run((sel: string) => !!document.querySelector(sel), selector);
+    }
+
+    scrollTop(): Promise<number> {
         return this.run((s: string) => document.querySelector(s)!.parentElement!.scrollTop, STREAM);
+    }
+
+    /** How far the newest note's top sits below the pane's. */
+    newestOffset(): Promise<number> {
+        return this.run((s: string) => {
+            const stream = document.querySelector(s)!;
+            const newest = stream.querySelector(".daily-note-block")!.getBoundingClientRect().top;
+            return Math.round(newest - stream.parentElement!.getBoundingClientRect().top);
+        }, STREAM);
     }
 
     /** Returns once the pane has its new width and holds still: a turn starts some frames after it is asked for. */

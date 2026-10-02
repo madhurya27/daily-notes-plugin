@@ -218,7 +218,7 @@ Checks:
   **[e2e]** with anchoring off.
 - Jump to an old date, then tap "Daily notes stream" in the header: it glides to
   the newest note and stays at the very top. Tapping the search or jump action
-  does not scroll. **[e2e]**
+  does not scroll. **[e2e]** **[ios]**
 - Tap a note's title, then Back: the stream comes back at the same place and
   does not move after. Try it with a Base at the top of the screen, and near the
   end of the 10th or 20th note (a batch's last). **[e2e]** for Chromium's
