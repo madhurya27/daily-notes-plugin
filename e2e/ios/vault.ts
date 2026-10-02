@@ -4,6 +4,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { DAILY_TEMPLATE, demoVault } from "../../scripts/demo-vault.mjs";
+import { testVault } from "../../scripts/seed-test-vault.mjs";
 import type { Phone } from "./phone";
 
 /**
@@ -49,8 +50,21 @@ const NEWEST = Object.keys(DEMO)
  */
 const SHORT_NOTE_WITH_BASE = "Journal/2026-09-22.md";
 export const SHORT_NOTE = "Journal/2026-09-21.md";
+/**
+ * The test vault's note of one of each embed (docs/TESTING.md), the oldest
+ * here, and the files it embeds.
+ */
+export const EMBEDS_NOTE = "Journal/2026-08-30.md";
+const TEST: Record<string, string> = testVault({ days: 0 });
+const EMBEDS = {
+    [EMBEDS_NOTE]: TEST["Notes/2026-08-30.md"]!,
+    ...Object.fromEntries(Object.entries(TEST).filter(([path]) => path.startsWith("Bases/"))),
+    "Attachments/Manual.pdf": TEST["Attachments/Manual.pdf"]!,
+    "Reading list.md": TEST["Reading list.md"]!,
+};
 const NOTES = {
     ...DEMO,
+    ...EMBEDS,
     ...Object.fromEntries(
         NEWEST.map((path) => [path, DEMO[path]!.replace(/^(---\n[\s\S]*?\n---\n\n)/, `$1${STALLERS.join("\n")}`)])
     ),

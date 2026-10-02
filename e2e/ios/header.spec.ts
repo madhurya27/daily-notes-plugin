@@ -1,13 +1,13 @@
 import { test, expect } from "./phone";
 
 const HEADER = '.workspace-leaf-content[data-type="daily-notes-stream-view"] .view-header';
-/** The oldest note: every note between it and the top was never drawn. */
-const OLDEST = "2026-09-10";
+/** An old note: every note between it and the top was never drawn. */
+const OLD = "2026-09-10";
 
 test("a tap on the title glides to the newest note and holds it at the very top", async ({ phone }) => {
     await phone.openStream();
     const top = await phone.newestOffset();
-    await phone.jumpTo(OLDEST);
+    await phone.jumpTo(OLD);
 
     await phone.tap(`${HEADER} .view-header-title`);
     await phone.rest();
@@ -23,7 +23,7 @@ for (const [action, opened] of [
 ] as const)
     test(`a tap on ${action} leaves the scroll alone`, async ({ phone }) => {
         await phone.openStream();
-        await phone.jumpTo(OLDEST);
+        await phone.jumpTo(OLD);
         const before = await phone.scrollTop();
 
         await phone.tap(`${HEADER} .view-action[aria-label="${action}"]`);

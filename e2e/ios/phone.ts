@@ -472,7 +472,8 @@ export class Phone {
                 depth
             );
             await this.rest();
-            if (off !== null && Math.abs(off) <= 1) return;
+            // Or as near as the pane scrolls: a target near the stream's end cannot reach its top.
+            if (off !== null && (Math.abs(off) <= 1 || (await this.atEnd()))) return;
         }
         throw new Error(`Could not hold the pane's top at ${target} in ${SCREENS} screens.`);
     }

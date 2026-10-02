@@ -196,11 +196,12 @@ Then a real device:
 Checks:
 
 - Nothing scrolls sideways: code and URLs wrap, wide tables stack, wide Bases
-  draw as cards, wide equations shrink to fit. **[e2e]** Each case is in
-  **2026-08-30**.
+  draw as cards, wide equations shrink to fit. **[e2e]** **[ios]** Each case is
+  in **2026-08-30**.
 - A PDF shows its first page without a toolbar; a tap opens the PDF. **[e2e]**
 - Rotation reflows without clipping. With a Base on screen, a wide one turns to
   cards or back to a table; a wide equation grows or shrinks with the note.
+  **[ios]**
 - Turn the phone both ways with a title just below the screen's top, then with
   the top on a Base's last card and a heading below: what was at the top stays
   there, and no note is skipped. **[e2e]** with anchoring off, but Chromium

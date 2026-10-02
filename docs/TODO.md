@@ -12,6 +12,18 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] iOS: a change inside the note the pane's top crosses, such as an image
       loading above the reader, can still jump a frame: pinning holds only the
       notes around it (ADR 0013).
+- [ ] iOS: a turn loses the place inside a tall note with Bases above the
+      screen's top, by thousands of pixels: in the iPhone harness's 2026-08-30,
+      the paragraph before Middle.base moved 5,700–11,300 px on a turn and
+      15,800–19,900 px on the turn back. Same cause as the item above, at scale.
+      `e2e/ios/layout.spec.ts` places again after each turn; once fixed, check
+      the place there instead.
+- [ ] iOS: a flick up over the Base in the iPhone harness's 2026-09-13 stops
+      dead some runs (1 in 3 flicks, 2 of 3 runs) since 2026-08-30, the note of
+      every embed, sits below it: something in that note stalls a glide toward
+      it as it renders. `e2e/ios/stream.spec.ts` fails until it is found.
+- [ ] iOS: a Base's toolbar overruns a phone's width; its New button is clipped
+      off screen. `e2e/ios/layout.spec.ts` leaves the toolbar out of its census.
 - [ ] Remember each image's aspect ratio by path once it loads: its placeholder
       height is then exact, not the per-embed buffer (D-079), and a rendered
       image could reserve its height before loading, which may fix the item
