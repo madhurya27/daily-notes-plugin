@@ -7,6 +7,8 @@ pnpm test                            # unit
 pnpm run test:e2e                    # every spec twice, desktop and mobile
 pnpm run test:e2e --project=mobile   # one project
 pnpm run test:e2e webkit.spec.ts     # the phone layout in iOS's engine (ADR 0009)
+pnpm run test:ios                    # Obsidian on a plugged-in iPhone (ADR 0016)
+pnpm run ios:release                 # the phone's own Auto-Lock back, after a session's runs
 pnpm run demo --test                 # the test vault, below; --help lists every option
 ```
 
@@ -51,10 +53,31 @@ and project logs linking the newest days. Each note is seeded by its date, so a
 retake shows the same content; `pnpm run seed` alone takes `--days N` and
 `--until YYYY-MM-DD`. Screenshots and recordings come from it.
 
+### iPhone: `pnpm run test:ios`
+
+Real touches on Obsidian on an iPhone plugged into the Mac, in a vault the
+harness seeds, `Stream E2E`, stored on the phone. A run needs the phone unlocked
+as it starts; the first of a session sets Auto-Lock to Never, and
+`pnpm run ios:release` puts it back. Once per Mac and phone:
+
+1. Install Xcode, open it once, and add an Apple ID under Settings → Accounts.
+   Then Manage Certificates → + → Apple Development. A free account is enough.
+2. Plug the phone in, unlock it and tap Trust.
+3. On the phone: Settings → Privacy & Security → Developer Mode on (it
+   restarts), and Settings → Apps → Safari → Advanced → Web Inspector on.
+4. Run `pnpm run test:ios`. Its first run fails to launch WebDriverAgent until
+   the phone trusts the certificate: Settings → General → VPN & Device
+   Management → Apple Development → Trust. Run it again.
+
+Obsidian must open without Face ID or Touch ID: long-press its icon → Don't
+Require. Low Power Mode holds Auto-Lock at 30 seconds. Appium's log is
+`.dev/appium.log`.
+
 ## Verification
 
 What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
-**[e2e]** marks an item the suite covers in part.
+**[e2e]** marks an item the suite covers in part, **[ios]** one
+`pnpm run test:ios` does.
 
 ### Core
 
@@ -173,7 +196,8 @@ Checks:
 - Turn the phone both ways with a title just below the screen's top, then with
   the top on a Base's last card and a heading below: what was at the top stays
   there, and no note is skipped. **[e2e]** with anchoring off, but Chromium
-  redraws a Base in another order: only the device proves it.
+  redraws a Base in another order: only the device proves it. **[ios]** for text
+  and a Base at the top, turned to landscape and back.
 - Scroll through a Base table with summaries: its header and summary row move
   with it, never floating over the page. **[e2e]**
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides
@@ -197,7 +221,7 @@ Checks:
 - Chevrons on headers, list items and the properties row are tappable without
   zooming, and a tap on heading _text_ still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall;
-  repeated flicks keep loading.
+  repeated flicks keep loading. **[ios]** but for the stall.
 - Backgrounding and returning keeps position and keeps scrolling.
 - Editing a visible note elsewhere re-renders it in place.
 - Long-press on a date header opens the file menu; "Open to the right" does
