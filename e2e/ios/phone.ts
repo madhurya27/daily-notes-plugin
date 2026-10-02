@@ -114,7 +114,7 @@ export class Phone {
     }
 
     /**
-     * Starts following the text at the pane's middle, each frame, as the
+     * Starts following the text at or just below the pane's middle, each frame, as the
      * reader's eye would; `stopFollowing` reports it. By its place in its
      * note, as `topOf` finds it: a note may render again under the reader.
      */
@@ -123,10 +123,11 @@ export class Phone {
             (s: string, blocks: string) => {
                 const pane = document.querySelector(s)!.parentElement!;
                 const box = pane.getBoundingClientRect();
-                const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)!;
+                const middle = box.top + box.height / 2;
+                const at = [...pane.querySelectorAll(blocks)].find((el) => el.getBoundingClientRect().bottom > middle);
+                if (!at) throw new Error("No text at or below the pane's middle.");
                 const note = at.closest<HTMLElement>(".daily-note-block")!;
-                const index = [...note.querySelectorAll(blocks)].indexOf(at.closest(blocks)!);
-                if (index === -1) throw new Error("No text at the pane's middle.");
+                const index = [...note.querySelectorAll(blocks)].indexOf(at);
                 const path = CSS.escape(note.dataset.sourcePath!);
                 const reader = () =>
                     pane.querySelector(`.daily-note-block[data-source-path="${path}"]`)!.querySelectorAll(blocks)[
@@ -135,13 +136,21 @@ export class Phone {
                 const unloaded = () => pane.querySelectorAll(".daily-note-block.is-unloaded").length;
                 const start = reader().getBoundingClientRect().top;
                 const from = pane.scrollTop;
-                const follow = { drifts: [] as number[], unloaded: unloaded(), rendered: 0, on: true };
+                const follow = {
+                    drifts: [] as number[],
+                    moves: [] as number[],
+                    unloaded: unloaded(),
+                    rendered: 0,
+                    on: true,
+                };
                 (window as unknown as { streamReader: typeof follow }).streamReader = follow;
                 const frame = () => {
                     if (!follow.on) return;
                     // Where the text is, against where the scroll alone puts it.
                     const top = reader().getBoundingClientRect().top;
                     follow.drifts.push(Math.round(top - start - (from - pane.scrollTop)));
+                    // Where the text is on screen, as a still reader sees it.
+                    follow.moves.push(Math.round(top - start));
                     follow.rendered = Math.max(follow.rendered, follow.unloaded - unloaded());
                     requestAnimationFrame(frame);
                 };
@@ -152,13 +161,20 @@ export class Phone {
         );
     }
 
-    /** How far, each frame since `followReader`, the text moved other than with the scroll, and how many notes rendered. */
-    stopFollowing(): Promise<{ drifts: number[]; rendered: number }> {
+    /**
+     * Since `followReader`, each frame: how far the text moved other than
+     * with the scroll (`drifts`, for a glide), and on screen (`moves`, for a
+     * still reader); and how many notes rendered.
+     */
+    stopFollowing(): Promise<{ drifts: number[]; moves: number[]; rendered: number }> {
         return this.run(() => {
-            const follow = (window as unknown as { streamReader: { drifts: number[]; rendered: number; on: boolean } })
-                .streamReader;
+            const follow = (
+                window as unknown as {
+                    streamReader: { drifts: number[]; moves: number[]; rendered: number; on: boolean };
+                }
+            ).streamReader;
             follow.on = false;
-            return { drifts: follow.drifts, rendered: follow.rendered };
+            return { drifts: follow.drifts, moves: follow.moves, rendered: follow.rendered };
         });
     }
 
@@ -434,28 +450,31 @@ export class Phone {
     /**
      * Scrolls the pane's top `depth` px into the first `target` at least a
      * screen down the stream, or with a negative `depth` that far above it,
-     * and waits for it to hold still. Only notes near the screen are rendered
-     * (ADR 0006), so it goes a screen at a time until one is.
+     * and waits for it to hold still there. Only notes near the screen are
+     * rendered (ADR 0006), so it goes a screen at a time until one is; and
+     * what renders, a Base filling above the target, may move it, so it
+     * scrolls again until the target is where it was put.
      */
     async placeAt(target: string, depth: number): Promise<void> {
-        for (let screens = 0; screens < SCREENS; screens++) {
-            const placed = await this.run(
+        for (let steps = 0; steps < SCREENS; steps++) {
+            const off = await this.run(
                 (s: string, t: string, d: number) => {
                     const stream = document.querySelector(s)!;
                     const pane = stream.parentElement!;
                     const top = (el: Element) => el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
                     const el = [...stream.querySelectorAll(t)].find((e) => top(e) + pane.scrollTop > pane.clientHeight);
-                    pane.scrollTop += el ? top(el) + d : pane.clientHeight;
-                    return !!el;
+                    const off = el ? top(el) + d : null;
+                    pane.scrollTop += off ?? pane.clientHeight;
+                    return off;
                 },
                 STREAM,
                 target,
                 depth
             );
             await this.rest();
-            if (placed) return;
+            if (off !== null && Math.abs(off) <= 1) return;
         }
-        throw new Error(`No ${target} in the stream's first ${SCREENS} screens.`);
+        throw new Error(`Could not hold the pane's top at ${target} in ${SCREENS} screens.`);
     }
 
     /** Whether a `selector` spans the pane's top edge. */

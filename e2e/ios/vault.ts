@@ -42,11 +42,13 @@ const NEWEST = Object.keys(DEMO)
     .filter((path) => /^Journal\/\d{4}-\d\d-\d\d\.md$/.test(path))
     .sort()
     .slice(-3);
-/** Short notes mid-stream, so the next note's title is on screen below any place in them, for a finger to tap. */
-export const SHORT_NOTE = "Journal/2026-09-22.md";
-/** And one ending in a Base, for a place inside it. */
-const SHORT_NOTE_WITH_BASE = "Journal/2026-09-21.md";
-export const NOTE_AFTER_THE_BASE = "Journal/2026-09-20.md";
+/**
+ * Two short notes mid-stream, so the next note's title is on screen below any
+ * place in them, for a finger to tap: one ending in a Base, for a place inside
+ * it, then one with no Base, below it. 2026-09-20, a Sunday, has its own.
+ */
+const SHORT_NOTE_WITH_BASE = "Journal/2026-09-22.md";
+export const SHORT_NOTE = "Journal/2026-09-21.md";
 const NOTES = {
     ...DEMO,
     ...Object.fromEntries(

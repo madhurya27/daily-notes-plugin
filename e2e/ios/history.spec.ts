@@ -1,5 +1,5 @@
 import { test, expect } from "./phone";
-import { SHORT_NOTE, NOTE_AFTER_THE_BASE } from "./vault";
+import { SHORT_NOTE } from "./vault";
 
 const inNote = (path: string, selector: string) => `.daily-note-block[data-source-path="${path}"] ${selector}`;
 
@@ -10,12 +10,12 @@ for (const [what, target, depth, atTop] of [
     ["text", inNote(SHORT_NOTE, ".daily-note-content > p"), -20, ".daily-note-block"],
     // Bases fills a view after drawing it: the note shrinks, then grows back.
     // Near its end, so the next note's title is on screen to tap.
-    ["a Base", inNote(NOTE_AFTER_THE_BASE, ".daily-note-title"), -400, ".daily-note-base"],
+    ["a Base", inNote(SHORT_NOTE, ".daily-note-title"), -400, ".daily-note-base"],
     // The tenth note ends the first batch: nothing below it is loaded on return.
     [
         "the end of a batch's last note",
-        ".daily-note-block:nth-child(11 of .daily-note-block)",
-        -300,
+        ".daily-note-block:nth-child(10 of .daily-note-block) .daily-note-content > :last-child",
+        0,
         ".daily-note-block:nth-child(10 of .daily-note-block)",
     ],
 ] as const)

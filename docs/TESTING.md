@@ -211,11 +211,11 @@ Checks:
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides
   out. **[ios]** for Bases.
 - A Base on screen gains a row from another pane: the text below never jumps and
-  returns.
+  returns. **[ios]**
 - Jump to an old date, then flick up: the text under your finger does not jump
   as the notes above render, and the glide is not cut short. **[ios]**
 - A Base filling just above the screen's top leaves the text below still.
-  **[e2e]** with anchoring off.
+  **[e2e]** with anchoring off; **[ios]**.
 - Jump to an old date, then tap "Daily notes stream" in the header: it glides to
   the newest note and stays at the very top. Tapping the search or jump action
   does not scroll. **[e2e]** **[ios]**
