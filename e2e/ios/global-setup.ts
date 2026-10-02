@@ -3,7 +3,7 @@ import { X509Certificate } from "crypto";
 import { mkdirSync, openSync, readFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { holdAwake, SETTINGS } from "./auto-lock";
+import { holdAwake, isHeld, SETTINGS } from "./auto-lock";
 import { APPIUM_PORT, connect } from "./session";
 
 /**
@@ -84,7 +84,8 @@ async function waitForAppium(): Promise<void> {
     throw new Error(`Appium did not start: see ${join(DEV, "appium.log")}`);
 }
 
-export default async function globalSetup(): Promise<() => Promise<void>> {
+/** Appium serving the phone on the cable; returns what stops it. */
+export async function startAppium(): Promise<() => void> {
     mkdirSync(DEV, { recursive: true });
     const team = teamId();
     // Set here, the workers inherit them.
@@ -102,28 +103,35 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     const appium = spawn(
         APPIUM,
         ["--port", String(APPIUM_PORT), "--log", join(DEV, "appium.log"), "--log-level", "info:debug"],
-        {
-            env: process.env,
-            stdio: "ignore",
-        }
+        { env: process.env, stdio: "ignore" }
     );
-    await waitForAppium();
-    // Not per worker: a worker restarts after a failure, and the phone could lock between.
-    const restoreAutoLock = await (async () => {
-        const driver = await connect(SETTINGS);
-        try {
-            return await holdAwake(driver);
-        } finally {
-            await driver.deleteSession();
-        }
-    })();
-    return async () => {
-        const driver = await connect(SETTINGS);
-        try {
-            await restoreAutoLock(driver);
-        } finally {
-            await driver.deleteSession();
-            appium.kill();
-        }
-    };
+    try {
+        await waitForAppium();
+    } catch (e) {
+        appium.kill();
+        throw e;
+    }
+    return () => appium.kill();
+}
+
+/** In a session of its own, before the tests': it lasts the run and beyond, outliving a worker restarted by a failure. */
+async function holdAwakeOnce(): Promise<void> {
+    if (isHeld()) return;
+    const driver = await connect(SETTINGS);
+    try {
+        await holdAwake(driver);
+    } finally {
+        await driver.deleteSession();
+    }
+}
+
+export default async function globalSetup(): Promise<() => void> {
+    const stopAppium = await startAppium();
+    try {
+        await holdAwakeOnce();
+    } catch (e) {
+        stopAppium();
+        throw e;
+    }
+    return stopAppium;
 }

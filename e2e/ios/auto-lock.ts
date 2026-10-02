@@ -3,10 +3,10 @@ import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 /**
- * Turns the phone's Auto-Lock off for a run, through the Settings app, and
- * back to what it was after: a phone that locks mid-run fails every test after
- * it. The setting is kept on disk until restored, so a run killed halfway is
- * put right by the next.
+ * Turns the phone's Auto-Lock off through the Settings app, and back on
+ * `pnpm run ios:release`: a phone that locks mid-run fails every test after
+ * it. Held across runs, since a working session runs many; the phone's own
+ * setting waits on disk until released.
  */
 
 export const SETTINGS = "com.apple.Preferences";
@@ -51,20 +51,23 @@ async function choose(driver: WebdriverIO.Browser, seconds: string): Promise<voi
     await driver.execute("mobile: terminateApp", { bundleId: SETTINGS });
 }
 
-/** Sets Never, in the same visit that reads the phone's own setting; returns what restores it, in a later session. */
-export async function holdAwake(driver: WebdriverIO.Browser): Promise<(driver: WebdriverIO.Browser) => Promise<void>> {
+export function isHeld(): boolean {
+    return existsSync(SAVED);
+}
+
+/** Sets Never, in the same visit that reads the phone's own setting. */
+export async function holdAwake(driver: WebdriverIO.Browser): Promise<void> {
     await openAutoLock(driver);
-    if (!existsSync(SAVED)) {
-        const chosen = await driver.$(`-ios predicate string:type == "XCUIElementTypeCell" AND selected == 1`);
-        const seconds = await chosen.getAttribute("name");
-        if (!seconds) throw new Error("Auto-Lock shows no choice selected.");
-        writeFileSync(SAVED, seconds);
-    }
-    const own = readFileSync(SAVED, "utf8");
+    const chosen = await driver.$(`-ios predicate string:type == "XCUIElementTypeCell" AND selected == 1`);
+    const seconds = await chosen.getAttribute("name");
+    if (!seconds) throw new Error("Auto-Lock shows no choice selected.");
+    writeFileSync(SAVED, seconds);
     await choose(driver, NEVER);
-    return async (later) => {
-        await openAutoLock(later);
-        await choose(later, own);
-        rmSync(SAVED);
-    };
+}
+
+/** Puts the phone's own setting back. */
+export async function release(driver: WebdriverIO.Browser): Promise<void> {
+    await openAutoLock(driver);
+    await choose(driver, readFileSync(SAVED, "utf8"));
+    rmSync(SAVED);
 }
