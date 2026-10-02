@@ -14,6 +14,10 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] iOS: a change inside the note the pane's top crosses, such as an image
       loading above the reader, can still jump a frame: pinning holds only the
       notes around it (ADR 0013).
+- [ ] Remember each image's aspect ratio by path once it loads: its placeholder
+      height is then exact, not the per-embed buffer (D-079), and a rendered
+      image could reserve its height before loading, which may fix the item
+      above.
 - [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
       box guard cannot see; a video player does not. Check that a flick over one
       still glides.
@@ -35,6 +39,12 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] A phone recording for the README. Desktop Chromium can't fake a phone
       convincingly; `e2e/ios/` drives a real one, title-bar taps included, and
       Appium can record its screen.
+- [ ] Only if a phone recording still shows a gap or jump from an estimate:
+      measure never-measured notes in a hidden probe while the reader is still,
+      at both orientations' widths, so a turn finds real heights too. Open: CPU
+      and battery (~16ms a Base, 1,095 notes a three-year vault), no
+      `requestIdleCallback` on iOS, Bases' queries and other plugins'
+      post-processors. Its own ADR.
 
 ## Features
 

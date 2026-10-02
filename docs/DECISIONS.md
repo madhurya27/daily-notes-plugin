@@ -1264,7 +1264,8 @@ lines' difference × line height; else the template's measured height here, plus
 its lines past the template's × a per-line rate learned from text-only notes,
 plus its embeds × a per-embed height learned at this layout (the pane's height
 until one is); else the layout's median. Lines come from the metadata cache, so
-adding a block stays synchronous. Benchmark: `docs/plans/height-estimates.md`.
+adding a block stays synchronous. Benchmark: `e2e/estimates.spec.ts`, scored by
+`scripts/score-estimates.mjs`.
 
 **Why:** a turn changes a text note only by re-wrapping it, and every note is
 its template plus writing (ADR 0011). Mean error for text notes falls from 85px
