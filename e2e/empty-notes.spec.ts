@@ -11,6 +11,8 @@ const EMPTY_DAY = "2026-03-15";
 const EMPTY_NOTE = `Notes/${EMPTY_DAY}.md`;
 /** Not a daily note: it links to the empty one. */
 const MENTIONING_NOTE = "Meeting.md";
+/** Not a daily note: embedded in one. */
+const EMBEDDED_NOTE = "Embedded.md";
 const EMPTY_TEXT = "---\ntags: daily\n---\n# Sunday, March 15\n\n## Log\n- \n";
 /** Empty notes older than every other, together taller than the pane: the stream's whole end. */
 const OLD_EMPTY_NOTES = ["01", "02", "03", "04", "05", "06"].map((day) => `Notes/2020-01-${day}.md`);
@@ -68,7 +70,14 @@ test.describe("empty daily notes", () => {
         const { page, vaultPath } = obsidian;
         await setHideEmptyNotes(page, true);
         writeDailyNotesConfig(vaultPath, CONFIG);
-        const paths = [TEMPLATE_PATH, EMPTY_NOTE, MENTIONING_NOTE, ...OLD_EMPTY_NOTES, await todayNote(page)];
+        const paths = [
+            TEMPLATE_PATH,
+            EMPTY_NOTE,
+            MENTIONING_NOTE,
+            EMBEDDED_NOTE,
+            ...OLD_EMPTY_NOTES,
+            await todayNote(page),
+        ];
         await page.evaluate(async (paths) => {
             for (const path of paths) {
                 const file = window.app.vault.getAbstractFileByPath(path);
@@ -228,22 +237,6 @@ test.describe("empty daily notes", () => {
         const readAt = (page: Page, path: string) =>
             block(page, path).evaluate((el) => el.scrollIntoView({ block: "start", behavior: "instant" }));
 
-        /** Waits until every note drawn has its height remembered, as by the time a reader reaches a setting. */
-        const settled = (page: Page) =>
-            expect
-                .poll(() =>
-                    page.evaluate(() => {
-                        const drawn = [
-                            ...document.querySelectorAll<HTMLElement>(".daily-note-block:not(.is-unloaded)"),
-                        ];
-                        const notes: [string, [string, number][]][] =
-                            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON();
-                        const kept = new Set(notes.flatMap(([, heights]) => heights.map(([path]) => path)));
-                        return drawn.every((block) => kept.has(block.dataset.sourcePath!));
-                    })
-                )
-                .toBe(true);
-
         /** How far below the pane's top the note at `path` starts. */
         const offsetOf = (page: Page, path: string) =>
             block(page, path).evaluate((el) => {
@@ -251,17 +244,27 @@ test.describe("empty daily notes", () => {
                 return el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
             });
 
-        test("keeps the note being read at the top", async ({ obsidian }) => {
+        test("keeps the note being read at the top right after scrolling to it", async ({ obsidian }) => {
             const { page } = obsidian;
-            const reading = `Notes/${seededDate(3)}.md`;
-            await titles(page);
-            await readAt(page, reading);
-            await settled(page);
+            const reading = `Notes/${seededDate(10)}.md`;
+            // Above the reader, far taller than its text: its estimate is short.
+            const tall = `Notes/${seededDate(8)}.md`;
+            const text = await page.evaluate((path) => window.app.vault.adapter.read(path), tall);
+            await write(page, EMBEDDED_NOTE, Array.from({ length: 80 }, (_, i) => `Line ${i}`).join("\n\n"));
+            await write(page, tall, `${text}\n![[Embedded]]\n`);
+            try {
+                const pane = (await openStream(page)).locator("xpath=..");
+                // Its batch loads as the end comes into view.
+                await pane.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
+                await readAt(page, reading);
 
-            await setHideEmptyNotes(page, false);
+                await setHideEmptyNotes(page, false);
 
-            await expect(block(page, EMPTY_NOTE)).toHaveCount(1);
-            await expect.poll(() => offsetOf(page, reading)).toBeCloseTo(0, 0);
+                await expect(block(page, EMPTY_NOTE)).toHaveCount(1);
+                await expect.poll(() => offsetOf(page, reading)).toBeCloseTo(0, 0);
+            } finally {
+                await write(page, tall, text);
+            }
         });
 
         test("moves to the next older note when the one being read is hidden", async ({ obsidian }) => {
@@ -269,7 +272,6 @@ test.describe("empty daily notes", () => {
             await setHideEmptyNotes(page, false);
             await titles(page);
             await readAt(page, EMPTY_NOTE);
-            await settled(page);
 
             await setHideEmptyNotes(page, true);
 
@@ -292,7 +294,6 @@ test.describe("empty daily notes", () => {
                     return block(page, oldest).count();
                 })
                 .toBe(1);
-            await settled(page);
             await pane.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
 
             await setHideEmptyNotes(page, true);

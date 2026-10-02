@@ -17,9 +17,6 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
       box guard cannot see; a video player does not. Check that a flick over one
       still glides.
-- [ ] Desktop: a setting toggled within ~3 s of scrolling loses the reader's
-      place. The notes above have no remembered height yet, and Chromium's
-      anchoring does not absorb their growth once they render.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**;
