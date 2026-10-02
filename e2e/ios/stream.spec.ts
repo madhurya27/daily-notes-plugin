@@ -16,15 +16,14 @@ test("flicks reach the oldest note, each note once, newest first", async ({ phon
     expect(paths).toEqual([...paths].sort().reverse());
 });
 
-// The demo vault's fifth note is two screens long: 225 px in, text is at the
-// pane's top; 749 px in, a Base, which redraws on each turn.
-for (const [depth, top] of [
-    [225, "text"],
-    [749, "a Base"],
+for (const [what, target, depth] of [
+    ["text", ".daily-note-content > p", -20],
+    // A Base redraws on each turn, as cards or a table.
+    ["a Base", ".daily-note-base", 300],
 ] as const)
-    test(`a turn and back leaves what was in view, with ${top} at the top`, async ({ phone }) => {
+    test(`a turn and back leaves what was in view, with ${what} at the top`, async ({ phone }) => {
         await phone.openStream();
-        await phone.placeAt(4, depth);
+        await phone.placeAt(target, depth);
         const seen = await phone.seen();
 
         await phone.turn("LANDSCAPE");

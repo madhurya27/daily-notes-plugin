@@ -1,8 +1,6 @@
 import { test as base, expect } from "@playwright/test";
-import { readFileSync } from "fs";
-import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
 import { connect, OBSIDIAN } from "./session";
+import { useVault } from "./vault";
 
 /**
  * Obsidian on a USB-connected iPhone (ADR 0016). Touches are real ones, sent
@@ -10,9 +8,6 @@ import { connect, OBSIDIAN } from "./session";
  * did is read from Obsidian's web view.
  */
 
-const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const VAULT = process.env.IOS_VAULT ?? "Demo";
-const PLUGIN_ID = "daily-notes-stream";
 const STREAM = ".daily-notes-stream-container:not(.daily-notes-stream-probe)";
 
 type Orientation = "PORTRAIT" | "LANDSCAPE";
@@ -33,26 +28,19 @@ export class Phone {
     /** `run` for a function that settles later. */
     async runAsync<R, A extends unknown[]>(fn: (...args: A) => Promise<R>, ...args: A): Promise<R> {
         await this.inWebView();
-        const script = `const done = arguments[arguments.length - 1]; (${fn.toString()})(...arguments[0]).then(done);`;
-        return (await this.driver.executeAsync(script, args)) as R;
+        // A rejection has to answer too, or the driver waits out its script
+        // timeout. Not as `error`: WebdriverIO takes that key for its own.
+        const script = `const done = arguments[arguments.length - 1];
+            (${fn.toString()})(...arguments[0]).then((value) => done({ value }), (e) => done({ failure: String(e) }));`;
+        const { value, failure } = (await this.driver.executeAsync(script, args)) as { value: R; failure?: string };
+        if (failure !== undefined) throw new Error(`On the phone: ${failure}\nin: ${fn.toString().slice(0, 200)}`);
+        return value;
     }
 
-    /** Copies the repo's build into the vault and reloads the plugin. */
-    async install(): Promise<void> {
-        const files = Object.fromEntries(
-            ["main.js", "manifest.json", "styles.css"].map((name) => [name, readFileSync(join(REPO, name), "utf8")])
-        );
-        await this.runAsync(
-            async (id: string, built: Record<string, string>) => {
-                const dir = `${window.app.vault.configDir}/plugins/${id}`;
-                for (const [name, text] of Object.entries(built))
-                    await window.app.vault.adapter.write(`${dir}/${name}`, text);
-                await window.app.plugins.disablePlugin(id);
-                await window.app.plugins.enablePlugin(id);
-            },
-            PLUGIN_ID,
-            files
-        );
+    /** Opens `url` as a tapped link would, in whatever app claims it. */
+    async openUrl(url: string): Promise<void> {
+        await this.native();
+        await this.driver.execute("mobile: deepLink", { url, bundleId: OBSIDIAN });
     }
 
     /** The stream, at its top and at rest. */
@@ -120,20 +108,31 @@ export class Phone {
         await this.rest();
     }
 
-    /** Scrolls the pane's top `depth` px into the stream's `index`th note, and waits for it to hold still. */
-    async placeAt(index: number, depth: number): Promise<void> {
-        await this.run(
-            (s: string, i: number, d: number) => {
-                const stream = document.querySelector(s)!;
-                const pane = stream.parentElement!;
-                const block = stream.querySelectorAll(".daily-note-block")[i]!;
-                pane.scrollTop += block.getBoundingClientRect().top - pane.getBoundingClientRect().top + d;
-            },
-            STREAM,
-            index,
-            depth
-        );
-        await this.rest();
+    /**
+     * Scrolls the pane's top `depth` px into the first `target` at least a
+     * screen down the stream, or with a negative `depth` that far above it,
+     * and waits for it to hold still. Only notes near the screen are rendered
+     * (ADR 0006), so it goes a screen at a time until one is.
+     */
+    async placeAt(target: string, depth: number): Promise<void> {
+        for (let screens = 0; screens < 20; screens++) {
+            const placed = await this.run(
+                (s: string, t: string, d: number) => {
+                    const stream = document.querySelector(s)!;
+                    const pane = stream.parentElement!;
+                    const top = (el: Element) => el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+                    const el = [...stream.querySelectorAll(t)].find((e) => top(e) + pane.scrollTop > pane.clientHeight);
+                    pane.scrollTop += el ? top(el) + d : pane.clientHeight;
+                    return !!el;
+                },
+                STREAM,
+                target,
+                depth
+            );
+            await this.rest();
+            if (placed) return;
+        }
+        throw new Error(`No ${target} in the stream's first 20 screens.`);
     }
 
     /** Scrolled to the bottom with nothing left to load. */
@@ -224,18 +223,7 @@ export const test = base.extend<object, { phone: Phone }>({
             try {
                 const phone = new Phone(driver);
                 await phone.assertUnlocked();
-                if ((await phone.run(() => window.app.vault.getName() as string)) !== VAULT) {
-                    await driver.execute("mobile: deepLink", {
-                        url: `obsidian://open?vault=${encodeURIComponent(VAULT)}`,
-                        bundleId: OBSIDIAN,
-                    });
-                    await expect
-                        .poll(() => phone.run(() => window.app?.vault?.getName() as string | undefined), {
-                            timeout: 30_000,
-                        })
-                        .toBe(VAULT);
-                }
-                await phone.install();
+                await useVault(phone);
                 await use(phone);
             } finally {
                 await driver.setOrientation("PORTRAIT");

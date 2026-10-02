@@ -9,6 +9,8 @@ export async function connect(app = OBSIDIAN): Promise<WebdriverIO.Browser> {
         hostname: "127.0.0.1",
         port: APPIUM_PORT,
         logLevel: "warn",
+        // A command that fails on the phone fails the same way again.
+        connectionRetryCount: 0,
         capabilities: {
             platformName: "iOS",
             "appium:automationName": "XCUITest",
