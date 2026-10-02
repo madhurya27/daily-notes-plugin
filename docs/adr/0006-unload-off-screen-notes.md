@@ -25,8 +25,7 @@ renders into its own `Component`, discarded with its DOM.
 The block element, not its content, carries `data-source-path` and is what the
 view's path→element index holds, so a note stays addressable while unloaded.
 `loadBatch` appends placeholders rather than rendered notes: appending is O(1)
-DOM per note, which is what keeps a jump to a distant date
-(`docs/IMPROVEMENTS.md` §F1) cheap.
+DOM per note, which is what keeps a jump to a distant date cheap.
 
 ## Consequences
 

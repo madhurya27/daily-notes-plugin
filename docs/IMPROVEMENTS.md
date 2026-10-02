@@ -8,11 +8,6 @@ of what is open.
 
 `tests/repo/compliance.test.ts` and the Obsidian ESLint rules guard every
 automatable submission rule, so a regression fails there rather than in review.
-Three things it cannot check, to confirm by hand before submitting:
-
-- Settings has no headings, and no setting name repeats the plugin name.
-- `normalizePath` guards the constructed path in `DailyNoteService`.
-- A clean clone installs from the frozen lockfile and builds.
 
 **Blocking:** run the `docs/TESTING.md` checklist on iOS or Android.
 `isDesktopOnly: false` is a promise no static check can keep.
