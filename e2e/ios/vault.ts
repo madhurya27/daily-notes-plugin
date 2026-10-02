@@ -134,8 +134,14 @@ async function seed(phone: Phone): Promise<void> {
         )
         .catch(() => undefined);
     await expect.poll(ready).toBe(true);
-    await phone.run(() => window.app.commands.executeCommandById("app:reload"));
-    await expect.poll(() => phone.run(loaded, PLUGIN_ID).catch(() => false), { timeout: 30_000 }).toBe(true);
+    // The old page answers until the reload lands: marked, it cannot pass for the new one.
+    await phone.run(() => {
+        (window as unknown as { staleVault: boolean }).staleVault = true;
+        window.app.commands.executeCommandById("app:reload");
+    });
+    const reloaded = (id: string) =>
+        !(window as unknown as { staleVault?: boolean }).staleVault && !!window.app?.plugins?.plugins?.[id];
+    await expect.poll(() => phone.run(reloaded, PLUGIN_ID).catch(() => false), { timeout: 30_000 }).toBe(true);
 }
 
 function partition(
