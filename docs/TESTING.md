@@ -100,7 +100,7 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 - `Daily notes stream: Scroll to top` is not offered with another view open.
 - On iOS, scroll through the stream, quit Obsidian, reopen it and jump to an old
   date; scroll back up by hand: the glide stops on the newest note, and nothing
-  jumps once it stops. **[e2e]** with anchoring off.
+  jumps once it stops. **[e2e]** with anchoring off; **[ios]**.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled.
   **[e2e]** for the wait; the glide by hand.
 - Tall window, short notes: loading continues past the first batch.

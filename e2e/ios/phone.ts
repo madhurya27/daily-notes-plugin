@@ -54,9 +54,46 @@ export class Phone {
         await this.driver.execute("mobile: backgroundApp", { seconds });
     }
 
+    /** Quits Obsidian and opens it again, as from its icon; returns once the plugin is loaded. */
+    async relaunch(): Promise<void> {
+        await this.native();
+        await this.driver.execute("mobile: terminateApp", { bundleId: OBSIDIAN });
+        await this.driver.execute("mobile: activateApp", { bundleId: OBSIDIAN });
+        await expect
+            .poll(() => this.run(() => !!window.app?.plugins?.plugins?.["daily-notes-stream"]).catch(() => false), {
+                timeout: 30_000,
+            })
+            .toBe(true);
+    }
+
+    /** Closes the stream and forgets every note's measured height: an open stream lays out by estimates. */
+    async forgetHeights(): Promise<void> {
+        await this.run(() => {
+            window.app.workspace.detachLeavesOfType("daily-notes-stream-view");
+            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.restore(null);
+        });
+    }
+
+    /**
+     * Shortens every unrendered note's placeholder, then waits for rest.
+     * Measured on an earlier run, a placeholder is exact and a render moves
+     * nothing; short, every note grows as it renders: the case that jumped.
+     */
+    async shortenPlaceholders(): Promise<void> {
+        await this.run(() => {
+            for (const block of document.querySelectorAll<HTMLElement>(".daily-note-block.is-unloaded"))
+                block.style.setProperty("--daily-note-placeholder-height", "100px");
+        });
+        await this.rest();
+    }
+
     /** The stream, at its top and at rest. */
     async openStream(): Promise<void> {
-        await this.run(() => window.app.commands.executeCommandById("daily-notes-stream:open-stream"));
+        await this.run(() => {
+            // A pull past the top, as a flick up the stream can end, opens Obsidian's command palette.
+            for (const modal of document.querySelectorAll<HTMLElement>(".modal-container .modal-bg")) modal.click();
+            window.app.commands.executeCommandById("daily-notes-stream:open-stream");
+        });
         await expect
             .poll(() => this.run((s: string) => document.querySelectorAll(`${s} .daily-note-block`).length, STREAM))
             .toBeGreaterThan(0);
@@ -202,7 +239,8 @@ export class Phone {
         const blocked = direction === "up" ? after <= before && !(await this.atEnd()) : after >= before && before > 0;
         if (blocked)
             throw new Error(
-                "A flick did not move the stream: something is in front of Obsidian, such as its Face ID lock."
+                `A flick ended no further than ${before}, at ${after}: the stream moved itself back, ` +
+                    "or something is in front of Obsidian, such as its Face ID lock."
             );
     }
 
