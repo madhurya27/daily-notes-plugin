@@ -44,9 +44,12 @@ async function choose(driver: WebdriverIO.Browser, seconds: string): Promise<voi
     await choice.click();
     await driver.$("~BackButton").click();
     const shown = await driver.$("~AUTOLOCK").getAttribute("label");
-    if (shown !== `Auto-Lock, ${label}`) {
+    // The row reads "Auto-Lock, 1 minute" in English: only the choice's own label is the same in every language.
+    if (!label || !shown?.endsWith(label)) {
         await driver.saveScreenshot(join(DEV, "ios-auto-lock.png"));
-        throw new Error(`Auto-Lock reads "${shown}", not ${label}: see .dev/ios-auto-lock.png.`);
+        throw new Error(
+            `Auto-Lock reads "${shown}", not ${label}: see .dev/ios-auto-lock.png. Low Power Mode holds it at 30 seconds.`
+        );
     }
     await driver.execute("mobile: terminateApp", { bundleId: SETTINGS });
 }

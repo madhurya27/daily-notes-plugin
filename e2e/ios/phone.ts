@@ -84,14 +84,15 @@ export class Phone {
             );
     }
 
-    /** Fails if iOS holds Obsidian behind Face ID: no touch reaches the app until someone looks at the phone. */
+    /** Fails if iOS holds Obsidian behind Face ID or Touch ID: no touch reaches the app until someone unlocks it. */
     async assertUnlocked(): Promise<void> {
         await this.native();
         const lock = await this.driver.$(
-            `-ios predicate string:label BEGINSWITH "Face ID Required" OR label BEGINSWITH "Passcode Required"`
+            // In English only; flick() catches a lock in any language by the stream not moving.
+            `-ios predicate string:label CONTAINS " ID Required" OR label BEGINSWITH "Passcode Required"`
         );
         if (await lock.isExisting())
-            throw new Error("Obsidian is behind Face ID: long-press its icon → Don't Require Face ID.");
+            throw new Error("Obsidian is locked behind Face ID or Touch ID: long-press its icon → Don't Require.");
     }
 
     private scrollTop(): Promise<number> {

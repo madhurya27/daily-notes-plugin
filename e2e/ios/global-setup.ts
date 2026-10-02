@@ -43,6 +43,9 @@ function connectedPhone(env: NodeJS.ProcessEnv): string {
         (d) => d.connectionProperties.transportType === "wired" && d.hardwareProperties.reality === "physical"
     );
     if (!phone) throw new Error("No iPhone on USB.");
+    // An iPad's Settings is a split view with no Back button: auto-lock.ts would not find its way.
+    if (phone.hardwareProperties.deviceType !== "iPhone")
+        throw new Error(`${phone.deviceProperties.name} is not an iPhone: the harness drives iPhones only.`);
     const { udid } = phone.hardwareProperties;
     if (devicectl(env, "device", "info", "lockState", "--device", udid).passcodeRequired)
         throw new Error(`Unlock ${phone.deviceProperties.name}.`);
