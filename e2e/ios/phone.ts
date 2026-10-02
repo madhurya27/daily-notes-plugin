@@ -16,6 +16,10 @@ const PLUGIN_ID = "daily-notes-stream";
 const STREAM = ".daily-notes-stream-container:not(.daily-notes-stream-probe)";
 
 type Orientation = "PORTRAIT" | "LANDSCAPE";
+type Seen = { path: string; index: number; text: string; top: number };
+
+/** A note's blocks as the reader takes them in: its title, property rows, Markdown blocks and mentions. */
+const TEXT_BLOCKS = ".daily-note-title, .metadata-property, .daily-note-content > *, .daily-note-mention";
 
 export class Phone {
     constructor(private readonly driver: WebdriverIO.Browser) {}
@@ -61,25 +65,28 @@ export class Phone {
         await this.rest();
     }
 
-    /** One quick thumb stroke, `up` to move down the stream; returns once the glide stops. */
-    async flick(direction: "up" | "down"): Promise<void> {
+    /**
+     * Quick thumb strokes, `up` to move down the stream, each caught mid-glide
+     * by the next as a reader's are; returns once the last glide stops.
+     */
+    async flick(direction: "up" | "down", strokes = 1): Promise<void> {
         const before = await this.scrollTop();
         await this.native();
         const { width, height } = await this.driver.getWindowSize();
-        const [from, to] = direction === "up" ? [0.75, 0.3] : [0.3, 0.75];
-        await this.driver.performActions([
-            {
-                type: "pointer",
-                id: "thumb",
-                parameters: { pointerType: "touch" },
-                actions: [
-                    { type: "pointerMove", duration: 0, x: Math.round(width / 2), y: Math.round(height * from) },
-                    { type: "pointerDown", button: 0 },
-                    { type: "pointerMove", duration: 120, x: Math.round(width / 2), y: Math.round(height * to) },
-                    { type: "pointerUp", button: 0 },
-                ],
-            },
-        ]);
+        const [from, to] = direction === "up" ? [0.85, 0.15] : [0.15, 0.85];
+        const x = Math.round(width / 2);
+        const stroke = [
+            { type: "pointerMove", duration: 0, x, y: Math.round(height * from) },
+            { type: "pointerDown", button: 0 },
+            { type: "pointerMove", duration: 60, x, y: Math.round(height * to) },
+            { type: "pointerUp", button: 0 },
+        ];
+        // One command per stroke: within one, WebDriverAgent drags the finger
+        // back to the start between strokes, scrolling the stream back.
+        for (let i = 0; i < strokes; i++)
+            await this.driver.performActions([
+                { type: "pointer", id: "thumb", parameters: { pointerType: "touch" }, actions: stroke },
+            ]);
         await this.rest();
         const after = await this.scrollTop();
         const blocked = direction === "up" ? after <= before && !(await this.atEnd()) : after >= before && before > 0;
@@ -103,9 +110,29 @@ export class Phone {
         return this.run((s: string) => document.querySelector(s)!.parentElement!.scrollTop, STREAM);
     }
 
+    /** Returns once the pane has its new width and holds still: a turn starts some frames after it is asked for. */
     async turn(orientation: Orientation): Promise<void> {
+        const width = () => this.run((s: string) => document.querySelector(s)!.parentElement!.clientWidth, STREAM);
+        const before = await width();
         await this.native();
         await this.driver.setOrientation(orientation);
+        await expect.poll(width).not.toBe(before);
+        await this.rest();
+    }
+
+    /** Scrolls the pane's top `depth` px into the stream's `index`th note, and waits for it to hold still. */
+    async placeAt(index: number, depth: number): Promise<void> {
+        await this.run(
+            (s: string, i: number, d: number) => {
+                const stream = document.querySelector(s)!;
+                const pane = stream.parentElement!;
+                const block = stream.querySelectorAll(".daily-note-block")[i]!;
+                pane.scrollTop += block.getBoundingClientRect().top - pane.getBoundingClientRect().top + d;
+            },
+            STREAM,
+            index,
+            depth
+        );
         await this.rest();
     }
 
@@ -117,16 +144,47 @@ export class Phone {
         }, STREAM);
     }
 
-    /** The note at the pane's top, and how far its top is from the pane's. */
-    place(): Promise<{ path: string; top: number }> {
-        return this.run((s: string) => {
-            const stream = document.querySelector(s)!;
-            const pane = stream.parentElement!.getBoundingClientRect();
-            const block = [...stream.querySelectorAll<HTMLElement>(".daily-note-block")].find(
-                (b) => b.getBoundingClientRect().bottom > pane.top
-            )!;
-            return { path: block.dataset.sourcePath!, top: Math.round(block.getBoundingClientRect().top - pane.top) };
-        }, STREAM);
+    /**
+     * What the reader sees at the pane's top: the first of the top note's
+     * blocks still in view, by its text, and how far its top is from the
+     * pane's. A turn reflows the note, so the note's own offset says nothing
+     * about which text is in view; follow it with `topOf`.
+     */
+    seen(): Promise<Seen> {
+        return this.run(
+            (s: string, blocks: string) => {
+                const stream = document.querySelector(s)!;
+                const pane = stream.parentElement!.getBoundingClientRect();
+                for (const note of stream.querySelectorAll<HTMLElement>(".daily-note-block")) {
+                    if (note.getBoundingClientRect().bottom <= pane.top) continue;
+                    const all = [...note.querySelectorAll<HTMLElement>(blocks)];
+                    const index = all.findIndex((b) => b.getBoundingClientRect().bottom > pane.top);
+                    if (index === -1) continue;
+                    const el = all[index]!;
+                    const top = Math.round(el.getBoundingClientRect().top - pane.top);
+                    return { path: note.dataset.sourcePath!, index, text: el.innerText.trim().slice(0, 60), top };
+                }
+                throw new Error("No text in view.");
+            },
+            STREAM,
+            TEXT_BLOCKS
+        );
+    }
+
+    /** Where `seen`'s block is now, from the pane's top: found by its place in the note, since a Base redraws its text on a turn. */
+    topOf(seen: Seen): Promise<number> {
+        return this.run(
+            (s: string, blocks: string, { path, index, text }: Seen) => {
+                const stream = document.querySelector(s)!;
+                const note = stream.querySelector(`.daily-note-block[data-source-path="${CSS.escape(path)}"]`)!;
+                const el = note.querySelectorAll<HTMLElement>(blocks)[index];
+                if (!el) throw new Error(`"${text}" is gone from ${path}.`);
+                return Math.round(el.getBoundingClientRect().top - stream.parentElement!.getBoundingClientRect().top);
+            },
+            STREAM,
+            TEXT_BLOCKS,
+            seen
+        );
     }
 
     /** Until the pane has held still for half a second: a glide, a turn and the loads they set off are over. */
