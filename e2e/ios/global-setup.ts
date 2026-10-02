@@ -3,8 +3,7 @@ import { X509Certificate } from "crypto";
 import { mkdirSync, openSync, readFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { holdAwake, isHeld, SETTINGS } from "./auto-lock";
-import { APPIUM_PORT, connect } from "./session";
+import { APPIUM_PORT } from "./session";
 
 /**
  * Readies a USB-connected iPhone for `phone.ts`: the XCUITest driver, a
@@ -43,7 +42,7 @@ function connectedPhone(env: NodeJS.ProcessEnv): string {
         (d) => d.connectionProperties.transportType === "wired" && d.hardwareProperties.reality === "physical"
     );
     if (!phone) throw new Error("No iPhone on USB.");
-    // An iPad's Settings is a split view with no Back button: auto-lock.ts would not find its way.
+    // Written and checked against iPhones only.
     if (phone.hardwareProperties.deviceType !== "iPhone")
         throw new Error(`${phone.deviceProperties.name} is not an iPhone: the harness drives iPhones only.`);
     const { udid } = phone.hardwareProperties;
@@ -88,7 +87,7 @@ async function waitForAppium(): Promise<void> {
 }
 
 /** Appium serving the phone on the cable; returns what stops it. */
-export async function startAppium(): Promise<() => void> {
+export default async function startAppium(): Promise<() => void> {
     mkdirSync(DEV, { recursive: true });
     const team = teamId();
     // Set here, the workers inherit them.
@@ -124,26 +123,4 @@ export async function startAppium(): Promise<() => void> {
 function stopAppium(appium: ChildProcess): void {
     appium.kill();
     spawnSync("pkill", ["-f", `xcodebuild test-without-building .* -derivedDataPath ${process.env.IOS_WDA_DATA} `]);
-}
-
-/** In a session of its own, before the tests': it lasts the run and beyond, outliving a worker restarted by a failure. */
-async function holdAwakeOnce(): Promise<void> {
-    if (isHeld()) return;
-    const driver = await connect(SETTINGS);
-    try {
-        await holdAwake(driver);
-    } finally {
-        await driver.deleteSession();
-    }
-}
-
-export default async function globalSetup(): Promise<() => void> {
-    const stopAppium = await startAppium();
-    try {
-        await holdAwakeOnce();
-    } catch (e) {
-        stopAppium();
-        throw e;
-    }
-    return stopAppium;
 }

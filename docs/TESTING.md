@@ -8,7 +8,6 @@ pnpm run test:e2e                    # every spec twice, desktop and mobile
 pnpm run test:e2e --project=mobile   # one project
 pnpm run test:e2e webkit.spec.ts     # the phone layout in iOS's engine (ADR 0009)
 pnpm run test:ios                    # Obsidian on a plugged-in iPhone (ADR 0016)
-pnpm run ios:release                 # the phone's own Auto-Lock back, after a session's runs
 pnpm run demo --test                 # the test vault, below; --help lists every option
 ```
 
@@ -56,22 +55,30 @@ retake shows the same content; `pnpm run seed` alone takes `--days N` and
 ### iPhone: `pnpm run test:ios`
 
 Real touches on Obsidian on an iPhone plugged into the Mac, in a vault the
-harness seeds, `Stream E2E`, stored on the phone. A run needs the phone unlocked
-as it starts; the first of a session sets Auto-Lock to Never, and
-`pnpm run ios:release` puts it back. Once per Mac and phone:
+harness seeds, `Stream E2E`, stored on the phone. The harness changes no setting
+on the phone. Once per Mac and phone:
 
 1. Install Xcode, open it once, and add an Apple ID under Settings → Accounts.
    Then Manage Certificates → + → Apple Development. A free account is enough.
 2. Plug the phone in, unlock it and tap Trust.
 3. On the phone: Settings → Privacy & Security → Developer Mode on (it
    restarts), and Settings → Apps → Safari → Advanced → Web Inspector on.
-4. Run `pnpm run test:ios`. Its first run fails to launch WebDriverAgent until
+4. Obsidian must open without Face ID or Touch ID: long-press its icon → Don't
+   Require.
+5. Run `pnpm run test:ios`. Its first run fails to launch WebDriverAgent until
    the phone trusts the certificate: Settings → General → VPN & Device
    Management → Apple Development → Trust. Run it again.
 
-Obsidian must open without Face ID or Touch ID: long-press its icon → Don't
-Require. Low Power Mode holds Auto-Lock at 30 seconds. Appium's log is
-`.dev/appium.log`.
+Each run:
+
+- **Before:** plug the phone in and unlock it. Auto-Lock must outlast a run,
+  under a minute: a locked phone fails the run at once, and one that locks
+  mid-run fails every test after. Low Power Mode holds Auto-Lock at 30 seconds.
+- **For many runs in a row**, as an agent's session makes: Settings → Display &
+  Brightness → Auto-Lock → Never, or the phone locks between them.
+- **After:** set Auto-Lock back. At Never the phone does not lock.
+
+Appium's log is `.dev/appium.log`.
 
 ## Verification
 

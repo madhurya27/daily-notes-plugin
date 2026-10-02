@@ -25,7 +25,6 @@
         "typecheck:e2e": "tsc -noEmit -p e2e/tsconfig.json",
         "test:e2e": "pnpm run build && pnpm run typecheck:e2e && playwright test",
         "test:ios": "pnpm run build && pnpm run typecheck:e2e && playwright test -c playwright.ios.config.ts",
-        "ios:release": "jiti e2e/ios/release.ts",
         "capture:screenshots": "pnpm run build && CAPTURE_SCREENSHOTS=1 E2E_SHOW_WINDOW=1 playwright test screenshots.spec.ts",
         "capture:recording": "pnpm run build && CAPTURE_RECORDING=1 E2E_SHOW_WINDOW=1 playwright test recording.spec.ts --project=desktop",
         "test:memory": "pnpm run build && pnpm run typecheck:e2e && E2E_SEED_DAYS=1095 playwright test memory.spec.ts render-cost.spec.ts"
