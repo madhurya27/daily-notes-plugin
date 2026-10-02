@@ -17,6 +17,8 @@ pnpm test               # typecheck tests/ (tests/tsconfig.json), then vitest ru
 pnpm run test:coverage  # the same, 100% coverage required
 pnpm run test:e2e       # build + typecheck e2e + playwright against real Obsidian; fetches Dataview into .dev/ once
 pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
+pnpm run test:ios       # build + e2e/ios/ on a plugged-in, unlocked iPhone (ADR 0016); setup in docs/TESTING.md
+pnpm run ios:release    # the phone's own Auto-Lock back: run at the end of a session that ran test:ios
 pnpm run test:memory    # memory.spec.ts, render-cost.spec.ts on a seeded three-year vault (E2E_SEED_DAYS)
 MEASURE_ESTIMATES=1 E2E_SHOW_WINDOW=1 pnpm exec playwright test estimates.spec.ts --project=mobile
 node scripts/score-estimates.mjs   # the placeholder-estimate benchmark (D-079), after a build
@@ -48,6 +50,9 @@ needs the other gates, plus a run of whatever the change touches.
   engine paints or computes differently is checked in `e2e/webkit.spec.ts`, on a
   snapshot of the mobile run
   ([ADR 0009](docs/adr/0009-webkit-render-checks.md)).
+- `e2e/ios/` drives Obsidian on a real iPhone: real touches, real glides, real
+  turns ([ADR 0016](docs/adr/0016-drive-a-real-iphone.md)). Run it, with a phone
+  plugged in, for any change to how the stream scrolls, loads or turns.
 - **Look at a UI change before handing it over.** Screenshot it from the e2e
   harness, desktop and mobile, and inspect the image: measurements prove a rule
   was matched, not that the result looks right.

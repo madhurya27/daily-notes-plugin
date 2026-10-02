@@ -6,6 +6,8 @@ const runStamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
 
 export default defineConfig<MobileLayoutOptions>({
     testDir: "e2e",
+    // A phone, not Obsidian on this Mac: playwright.ios.config.ts.
+    testIgnore: "ios/**",
     globalSetup: "./e2e/global-setup.ts",
     // One Obsidian instance and vault per worker; more starves them of CPU.
     workers: 4,
