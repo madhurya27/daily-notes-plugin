@@ -1372,3 +1372,20 @@ guard caught it at rest.
 - A stand-in plugin drawing late tables in e2e — proves nothing about Dataview's
   own stylesheet or render passes.
 - Dataview committed to the repo — 2.3 MB of someone else's build.
+
+## D-085 — No equation gets a layer of its own (2026-10-02)
+
+**Decision:** the stylesheet sets `will-change: auto` on every `mjx-container`
+in the stream, undoing MathJax 3's WebKit-only `will-change: opacity`.
+
+**Why:** with the layers, an iPhone stopped 34 of 58 flicks dead within 0.4 s,
+math in a table or a line alike; without them, 0 of 30, as with no math at all.
+MathJax added the rule for a 2020 pinch-zoom flicker
+([MathJax#2435](https://github.com/mathjax/MathJax/issues/2435)) and dropped it
+in v4 as unneeded; Obsidian ships v3.
+
+**Rejected:**
+
+- Keeping MathJax's fonts in use — the fonts were never dropped; 28 of 54 still
+  stopped.
+- Override at MathJax's own specificity — its stylesheet comes later and wins.
