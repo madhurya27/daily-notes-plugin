@@ -100,9 +100,9 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 - `Daily notes stream: Scroll to top` is not offered with another view open.
 - On iOS, scroll through the stream, quit Obsidian, reopen it and jump to an old
   date; scroll back up by hand: the glide stops on the newest note, and nothing
-  jumps once it stops. **[e2e]** with anchoring off.
+  jumps once it stops. **[e2e]** with anchoring off; **[ios]**.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled.
-  **[e2e]** for the wait; the glide by hand.
+  **[e2e]** for the wait; **[ios]**.
 - Tall window, short notes: loading continues past the first batch.
 - Toggling any setting refreshes the view but keeps the scroll position.
 - The settings tab groups Properties and Linked mentions under headings; turning
@@ -115,7 +115,7 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
   raises it. **[e2e]** for focus.
 - The calendar button's date wheel, driven by hand on iOS and Android: the e2e
   mobile project is desktop Chromium, which opens a picker iOS never would, and
-  checks only that a tap on the icon lands on the date input.
+  checks only that a tap on the icon lands on the date input. **[ios]** for iOS.
 - Set the daily-notes format to `DD-MM-YYYY`, then to `MMMM D, YYYY`: the list
   follows it.
 
@@ -196,11 +196,12 @@ Then a real device:
 Checks:
 
 - Nothing scrolls sideways: code and URLs wrap, wide tables stack, wide Bases
-  draw as cards, wide equations shrink to fit. **[e2e]** Each case is in
-  **2026-08-30**.
+  draw as cards, wide equations shrink to fit. **[e2e]** **[ios]** Each case is
+  in **2026-08-30**.
 - A PDF shows its first page without a toolbar; a tap opens the PDF. **[e2e]**
 - Rotation reflows without clipping. With a Base on screen, a wide one turns to
   cards or back to a table; a wide equation grows or shrinks with the note.
+  **[ios]**
 - Turn the phone both ways with a title just below the screen's top, then with
   the top on a Base's last card and a heading below: what was at the top stays
   there, and no note is skipped. **[e2e]** with anchoring off, but Chromium
@@ -209,28 +210,28 @@ Checks:
 - Scroll through a Base table with summaries: its header and summary row move
   with it, never floating over the page. **[e2e]**
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides
-  out.
+  out. **[ios]** for Bases.
 - A Base on screen gains a row from another pane: the text below never jumps and
-  returns.
+  returns. **[ios]**
 - Jump to an old date, then flick up: the text under your finger does not jump
-  as the notes above render, and the glide is not cut short.
+  as the notes above render, and the glide is not cut short. **[ios]**
 - A Base filling just above the screen's top leaves the text below still.
-  **[e2e]** with anchoring off.
+  **[e2e]** with anchoring off; **[ios]**.
 - Jump to an old date, then tap "Daily notes stream" in the header: it glides to
   the newest note and stays at the very top. Tapping the search or jump action
-  does not scroll. **[e2e]**
+  does not scroll. **[e2e]** **[ios]**
 - Tap a note's title, then Back: the stream comes back at the same place and
   does not move after. Try it with a Base at the top of the screen, and near the
   end of the 10th or 20th note (a batch's last). **[e2e]** for Chromium's
   timing; iOS hands the place over a frame later, so only the phone shows its
-  failures.
+  failures. **[ios]**
 - Search a word: every match on screen is highlighted, the current one in the
   selection color. A long-press selects text in a note.
 - Chevrons on headers, list items and the properties row are tappable without
   zooming, and a tap on heading _text_ still selects.
 - A hard flick to the bottom loads the next batch without duplicates or a stall;
   repeated flicks keep loading. **[ios]**
-- Backgrounding and returning keeps position and keeps scrolling.
+- Backgrounding and returning keeps position and keeps scrolling. **[ios]**
 - Editing a visible note elsewhere re-renders it in place.
 - Long-press on a date header opens the file menu; "Open to the right" does
   something sensible on a phone.

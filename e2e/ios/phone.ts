@@ -12,6 +12,11 @@ const STREAM = ".daily-notes-stream-container:not(.daily-notes-stream-probe)";
 
 type Orientation = "PORTRAIT" | "LANDSCAPE";
 type Seen = { path: string; index: number; text: string; top: number };
+/** Where the stream is, as it keeps its place: a note, and its top's offset from the pane's. */
+export type Place = { path: string; offset: number };
+
+/** How far `placeAt` looks: past the first two batches of the harness's notes, some 20 screens each. */
+const SCREENS = 60;
 
 /** A note's blocks as the reader takes them in: its title, property rows, Markdown blocks and mentions. */
 const TEXT_BLOCKS = ".daily-note-title, .metadata-property, .daily-note-content > *, .daily-note-mention";
@@ -43,14 +48,199 @@ export class Phone {
         await this.driver.execute("mobile: deepLink", { url, bundleId: OBSIDIAN });
     }
 
+    /** To the Home Screen for `seconds`, then back into Obsidian, as a reader switching apps. */
+    async background(seconds: number): Promise<void> {
+        await this.native();
+        await this.driver.execute("mobile: backgroundApp", { seconds });
+    }
+
+    /** Quits Obsidian and opens it again, as from its icon; returns once the plugin is loaded. */
+    async relaunch(): Promise<void> {
+        await this.native();
+        await this.driver.execute("mobile: terminateApp", { bundleId: OBSIDIAN });
+        await this.driver.execute("mobile: activateApp", { bundleId: OBSIDIAN });
+        await expect
+            .poll(() => this.run(() => !!window.app?.plugins?.plugins?.["daily-notes-stream"]).catch(() => false), {
+                timeout: 30_000,
+            })
+            .toBe(true);
+    }
+
+    /** Closes the stream and forgets every note's measured height: an open stream lays out by estimates. */
+    async forgetHeights(): Promise<void> {
+        await this.run(() => {
+            window.app.workspace.detachLeavesOfType("daily-notes-stream-view");
+            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.restore(null);
+        });
+    }
+
+    /**
+     * Shortens every unrendered note's placeholder, then waits for rest.
+     * Measured on an earlier run, a placeholder is exact and a render moves
+     * nothing; short, every note grows as it renders: the case that jumped.
+     */
+    async shortenPlaceholders(): Promise<void> {
+        await this.run(() => {
+            for (const block of document.querySelectorAll<HTMLElement>(".daily-note-block.is-unloaded"))
+                block.style.setProperty("--daily-note-placeholder-height", "100px");
+        });
+        await this.rest();
+    }
+
     /** The stream, at its top and at rest. */
     async openStream(): Promise<void> {
-        await this.run(() => window.app.commands.executeCommandById("daily-notes-stream:open-stream"));
+        await this.run(() => {
+            // A pull past the top, as a flick up the stream can end, opens Obsidian's command palette.
+            for (const modal of document.querySelectorAll<HTMLElement>(".modal-container .modal-bg")) modal.click();
+            window.app.commands.executeCommandById("daily-notes-stream:open-stream");
+        });
         await expect
             .poll(() => this.run((s: string) => document.querySelectorAll(`${s} .daily-note-block`).length, STREAM))
             .toBeGreaterThan(0);
         await this.run((s: string) => document.querySelector(s)!.parentElement!.scrollTo({ top: 0 }), STREAM);
         await this.rest();
+    }
+
+    /** As the jump modal would, to the newest note on or before `date` (`YYYY-MM-DD`), at rest. */
+    async jumpTo(date: string): Promise<void> {
+        await this.runAsync(
+            (d: string) =>
+                window.app.workspace
+                    .getLeavesOfType("daily-notes-stream-view")[0]
+                    .view.stream.jumpToDate(window.moment(d, "YYYY-MM-DD")),
+            date
+        );
+        await this.rest();
+    }
+
+    /**
+     * Starts following the text at or just below the pane's middle, each frame, as the
+     * reader's eye would; `stopFollowing` reports it. By its place in its
+     * note, as `topOf` finds it: a note may render again under the reader.
+     */
+    async followReader(): Promise<void> {
+        await this.run(
+            (s: string, blocks: string) => {
+                const pane = document.querySelector(s)!.parentElement!;
+                const box = pane.getBoundingClientRect();
+                const middle = box.top + box.height / 2;
+                const at = [...pane.querySelectorAll(blocks)].find((el) => el.getBoundingClientRect().bottom > middle);
+                if (!at) throw new Error("No text at or below the pane's middle.");
+                const note = at.closest<HTMLElement>(".daily-note-block")!;
+                const index = [...note.querySelectorAll(blocks)].indexOf(at);
+                const path = CSS.escape(note.dataset.sourcePath!);
+                const reader = () =>
+                    pane.querySelector(`.daily-note-block[data-source-path="${path}"]`)!.querySelectorAll(blocks)[
+                        index
+                    ]!;
+                const unloaded = () => pane.querySelectorAll(".daily-note-block.is-unloaded").length;
+                const start = reader().getBoundingClientRect().top;
+                const from = pane.scrollTop;
+                const follow = {
+                    drifts: [] as number[],
+                    moves: [] as number[],
+                    unloaded: unloaded(),
+                    rendered: 0,
+                    on: true,
+                };
+                (window as unknown as { streamReader: typeof follow }).streamReader = follow;
+                const frame = () => {
+                    if (!follow.on) return;
+                    // Where the text is, against where the scroll alone puts it.
+                    const top = reader().getBoundingClientRect().top;
+                    follow.drifts.push(Math.round(top - start - (from - pane.scrollTop)));
+                    // Where the text is on screen, as a still reader sees it.
+                    follow.moves.push(Math.round(top - start));
+                    follow.rendered = Math.max(follow.rendered, follow.unloaded - unloaded());
+                    requestAnimationFrame(frame);
+                };
+                requestAnimationFrame(frame);
+            },
+            STREAM,
+            TEXT_BLOCKS
+        );
+    }
+
+    /**
+     * Since `followReader`, each frame: how far the text moved other than
+     * with the scroll (`drifts`, for a glide), and on screen (`moves`, for a
+     * still reader); and how many notes rendered.
+     */
+    stopFollowing(): Promise<{ drifts: number[]; moves: number[]; rendered: number }> {
+        return this.run(() => {
+            const follow = (
+                window as unknown as {
+                    streamReader: { drifts: number[]; moves: number[]; rendered: number; on: boolean };
+                }
+            ).streamReader;
+            follow.on = false;
+            return { drifts: follow.drifts, moves: follow.moves, rendered: follow.rendered };
+        });
+    }
+
+    /** The stream's place: the first note reaching into the pane. */
+    place(): Promise<Place> {
+        return this.run((s: string) => {
+            const pane = document.querySelector(s)!.parentElement!;
+            const paneTop = pane.getBoundingClientRect().top;
+            const first = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")].find(
+                (block) => block.getBoundingClientRect().bottom > paneTop
+            )!;
+            return { path: first.dataset.sourcePath!, offset: Math.round(first.getBoundingClientRect().top - paneTop) };
+        }, STREAM);
+    }
+
+    /**
+     * Starts noting each place the stream shows, frame by frame, as `place`
+     * reads it, even before a stream is open; `places` reports them. From
+     * `now`, or from Obsidian's return from the background: a still stream
+     * would be done before it left.
+     */
+    async followPlaces(from: "now" | "return" = "now"): Promise<void> {
+        await this.run(
+            (s: string, start: "now" | "return") => {
+                const place = () => {
+                    const pane = document.querySelector(s)?.parentElement;
+                    if (!pane) return undefined;
+                    const paneTop = pane.getBoundingClientRect().top;
+                    const first = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")].find(
+                        (block) => block.getBoundingClientRect().bottom > paneTop
+                    );
+                    return (
+                        first &&
+                        `${first.dataset.sourcePath}\n${Math.round(first.getBoundingClientRect().top - paneTop)}`
+                    );
+                };
+                const seen: string[] = [];
+                const returned = new Promise<void>((resolve) => {
+                    const back = () =>
+                        document.hidden || resolve(document.removeEventListener("visibilitychange", back));
+                    document.addEventListener("visibilitychange", back);
+                });
+                (window as unknown as { streamPlaces: Promise<Place[]> }).streamPlaces = (async () => {
+                    if (start === "return") await returned;
+                    const deadline = performance.now() + 15_000;
+                    for (let quiet = 0; quiet < 30 && performance.now() < deadline;) {
+                        await new Promise(requestAnimationFrame);
+                        const now = place();
+                        if (now === undefined) continue;
+                        quiet = now === seen.at(-1) ? quiet + 1 : 0;
+                        seen.push(now);
+                    }
+                    return [...new Set(seen)].map((key) => {
+                        const [path, offset] = key.split("\n");
+                        return { path: path!, offset: Number(offset) };
+                    });
+                })();
+            },
+            STREAM,
+            from
+        );
+    }
+
+    /** Each place the stream showed since `followPlaces`, once it held still 30 frames. */
+    places(): Promise<Place[]> {
+        return this.runAsync(() => (window as unknown as { streamPlaces: Promise<Place[]> }).streamPlaces);
     }
 
     /**
@@ -65,7 +255,8 @@ export class Phone {
         const blocked = direction === "up" ? after <= before && !(await this.atEnd()) : after >= before && before > 0;
         if (blocked)
             throw new Error(
-                "A flick did not move the stream: something is in front of Obsidian, such as its Face ID lock."
+                `A flick ended no further than ${before}, at ${after}: the stream moved itself back, ` +
+                    "or something is in front of Obsidian, such as its Face ID lock."
             );
     }
 
@@ -145,8 +336,105 @@ export class Phone {
             throw new Error("Obsidian is locked behind Face ID or Touch ID: long-press its icon → Don't Require.");
     }
 
-    private scrollTop(): Promise<number> {
+    /**
+     * A finger's tap, as iOS delivers one: touches, then a click. On the
+     * middle of the first `selector` a finger could reach there, on screen
+     * and under nothing else.
+     */
+    async tap(selector: string): Promise<void> {
+        const at = await this.runAsync(async (sel: string) => {
+            const target = () => {
+                for (const el of document.querySelectorAll(sel)) {
+                    const { left, top, width, height } = el.getBoundingClientRect();
+                    const [x, y] = [left + width / 2, top + height / 2];
+                    const hit = document.elementFromPoint(x, y);
+                    if (hit && el.contains(hit)) return { x, y, viewport: window.innerWidth };
+                }
+                return null;
+            };
+            // Where it holds still for 10 frames: a modal slides in as it opens.
+            let last = "";
+            for (let still = 0, frames = 0; still < 10 && frames < 120; frames++) {
+                await new Promise(requestAnimationFrame);
+                const now = JSON.stringify(target());
+                still = now === last ? still + 1 : 0;
+                last = now;
+            }
+            const at = target();
+            if (!at) throw new Error(`Nothing to tap: no ${sel} on screen.`);
+            return at;
+        }, selector);
+        await this.native();
+        // The web view fills the screen, so a CSS pixel is a point, scaled only if the page is zoomed.
+        const scale = (await this.driver.getWindowSize()).width / at.viewport;
+        await this.driver.performActions([
+            {
+                type: "pointer",
+                id: "finger",
+                parameters: { pointerType: "touch" },
+                actions: [
+                    { type: "pointerMove", duration: 0, x: Math.round(at.x * scale), y: Math.round(at.y * scale) },
+                    { type: "pointerDown", button: 0 },
+                    { type: "pause", duration: 50 },
+                    { type: "pointerUp", button: 0 },
+                ],
+            },
+        ]);
+    }
+
+    /** Escape, as a hardware keyboard sends it, at `selector`: what closes a modal or the search bar. */
+    async escape(selector: string): Promise<void> {
+        await this.run(
+            (sel: string) =>
+                document
+                    .querySelector(sel)!
+                    .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true })),
+            selector
+        );
+    }
+
+    /** The value of the input `selector` names. */
+    inputValue(selector: string): Promise<string> {
+        return this.run((sel: string) => document.querySelector<HTMLInputElement>(sel)!.value, selector);
+    }
+
+    /**
+     * Picks `date` (`YYYY-MM-DD`) in iOS's open calendar popover, the date
+     * input's picker, and closes it with its checkmark. Finds months and
+     * days by their English labels, as `assertUnlocked` does.
+     */
+    async pickDate(date: string): Promise<void> {
+        await this.native();
+        const day = new Date(`${date}T12:00:00Z`);
+        const month = day.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+        const shown = this.driver.$("~Month");
+        await shown.waitForExist();
+        for (let steps = 0; (await shown.getAttribute("value")) !== month; steps++) {
+            if (steps === 24) throw new Error(`The picker never showed ${month}.`);
+            const later = new Date(`1 ${await shown.getAttribute("value")} UTC`) > day;
+            await this.driver.$(later ? "~DatePicker.PreviousMonth" : "~DatePicker.NextMonth").click();
+        }
+        const label = day.toLocaleString("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
+        await this.driver.$(`-ios predicate string:label ENDSWITH ", ${label}"`).click();
+        await this.driver.$("~Done").click();
+    }
+
+    /** Whether anything matches `selector`. */
+    has(selector: string): Promise<boolean> {
+        return this.run((sel: string) => !!document.querySelector(sel), selector);
+    }
+
+    scrollTop(): Promise<number> {
         return this.run((s: string) => document.querySelector(s)!.parentElement!.scrollTop, STREAM);
+    }
+
+    /** How far the newest note's top sits below the pane's. */
+    newestOffset(): Promise<number> {
+        return this.run((s: string) => {
+            const stream = document.querySelector(s)!;
+            const newest = stream.querySelector(".daily-note-block")!.getBoundingClientRect().top;
+            return Math.round(newest - stream.parentElement!.getBoundingClientRect().top);
+        }, STREAM);
     }
 
     /** Returns once the pane has its new width and holds still: a turn starts some frames after it is asked for. */
@@ -162,28 +450,48 @@ export class Phone {
     /**
      * Scrolls the pane's top `depth` px into the first `target` at least a
      * screen down the stream, or with a negative `depth` that far above it,
-     * and waits for it to hold still. Only notes near the screen are rendered
-     * (ADR 0006), so it goes a screen at a time until one is.
+     * and waits for it to hold still there. Only notes near the screen are
+     * rendered (ADR 0006), so it goes a screen at a time until one is; and
+     * what renders, a Base filling above the target, may move it, so it
+     * scrolls again until the target is where it was put.
      */
     async placeAt(target: string, depth: number): Promise<void> {
-        for (let screens = 0; screens < 20; screens++) {
-            const placed = await this.run(
+        for (let steps = 0; steps < SCREENS; steps++) {
+            const off = await this.run(
                 (s: string, t: string, d: number) => {
                     const stream = document.querySelector(s)!;
                     const pane = stream.parentElement!;
                     const top = (el: Element) => el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
                     const el = [...stream.querySelectorAll(t)].find((e) => top(e) + pane.scrollTop > pane.clientHeight);
-                    pane.scrollTop += el ? top(el) + d : pane.clientHeight;
-                    return !!el;
+                    const off = el ? top(el) + d : null;
+                    pane.scrollTop += off ?? pane.clientHeight;
+                    return off;
                 },
                 STREAM,
                 target,
                 depth
             );
             await this.rest();
-            if (placed) return;
+            // Or as near as the pane scrolls: a target near the stream's end cannot reach its top.
+            if (off !== null && (Math.abs(off) <= 1 || (await this.atEnd()))) return;
         }
-        throw new Error(`No ${target} in the stream's first 20 screens.`);
+        throw new Error(`Could not hold the pane's top at ${target} in ${SCREENS} screens.`);
+    }
+
+    /** Whether a `selector` spans the pane's top edge. */
+    atTop(selector: string): Promise<boolean> {
+        return this.run(
+            (s: string, sel: string) => {
+                const stream = document.querySelector(s)!;
+                const top = stream.parentElement!.getBoundingClientRect().top;
+                return [...stream.querySelectorAll(sel)].some((el) => {
+                    const box = el.getBoundingClientRect();
+                    return box.top <= top && box.bottom > top;
+                });
+            },
+            STREAM,
+            selector
+        );
     }
 
     /** Scrolled to the bottom with nothing left to load. */
@@ -238,7 +546,7 @@ export class Phone {
     }
 
     /** Until the pane has held still for half a second: a glide, a turn and the loads they set off are over. */
-    private rest(): Promise<void> {
+    rest(): Promise<void> {
         return this.runAsync(async (s: string) => {
             const pane = document.querySelector(s)!.parentElement!;
             let last = "";
