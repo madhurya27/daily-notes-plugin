@@ -10,6 +10,8 @@ const still = () => vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS);
 
 let container: HTMLElement;
 let frames: FrameDeferral;
+/** What a frame shows in its place, if anything; none unless a test sets one. */
+let standIn: (frame: HTMLIFrameElement, src: string) => HTMLElement | null;
 
 function frame(src = PAGE): HTMLIFrameElement {
     const el = document.createElement("iframe");
@@ -21,7 +23,8 @@ beforeEach(() => {
     vi.useFakeTimers();
     container = document.createElement("div");
     document.body.appendChild(container);
-    frames = new FrameDeferral();
+    standIn = () => null;
+    frames = new FrameDeferral((frame, src) => standIn(frame, src));
     frames.attach(container);
 });
 
@@ -91,6 +94,20 @@ describe("FrameDeferral", () => {
         expect(added.hasAttribute("src")).toBe(false);
         await vi.advanceTimersByTimeAsync(1);
         expect(added.getAttribute("src")).toBe(PAGE);
+    });
+
+    it("puts a frame's stand-in in its place, and holds nothing", async () => {
+        const link = document.createElement("a");
+        standIn = (_frame, src) => (src === PAGE ? link : null);
+        const note = container.appendChild(document.createElement("div"));
+        const added = note.appendChild(frame());
+
+        await observed();
+        await still();
+
+        expect(added.isConnected).toBe(false);
+        expect(Array.from(note.children)).toEqual([link]);
+        expect(link.classList.contains("is-frame-held")).toBe(false);
     });
 
     it("leaves a frame with no page alone", async () => {

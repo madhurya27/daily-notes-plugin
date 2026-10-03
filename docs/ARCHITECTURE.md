@@ -74,7 +74,7 @@ through one promise queue, so none interleaves at an `await`
   boxes ([ADR 0008](adr/0008-nothing-scrolls-on-mobile.md)), and a PDF is its
   first page, opened by a tap (D-083). Desktop keeps Obsidian's scroll boxes.
 - On mobile `FrameDeferral` holds back a frame's page until the scroll is still
-  (D-087).
+  (D-087), and puts a YouTube embed's thumbnail in its place (D-088).
 - The linked mentions footer draws after the note and redraws itself on
   `resolved`; `notes/linked-mentions.ts` finds each link's list item or section.
 

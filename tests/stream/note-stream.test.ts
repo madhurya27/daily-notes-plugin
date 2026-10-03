@@ -9,6 +9,7 @@ import type { FrameDeferral } from "../../src/stream/frame-deferral";
 import type { DailyNoteService } from "../../src/notes/daily-note-service";
 import type { CollapsibleStateStore } from "../../src/render/collapse-store";
 import { NoteHeights } from "../../src/stream/note-heights";
+import { youtubeThumbnail } from "../../src/render/video-thumbnails";
 import { BASE_SLOT_CLASS } from "../../src/render/bases/bases-as-cards";
 import type { TemplateHeight } from "../../src/stream/template-height";
 import { measureText, type EstimateSources, type HeightEstimates } from "../../src/stream/height-estimates";
@@ -127,7 +128,7 @@ vi.mock("../../src/stream/frame-deferral", () => ({
         attach = vi.fn();
         detach = vi.fn();
         onScroll = vi.fn();
-        constructor() {
+        constructor(readonly standIn: unknown) {
             fakes.frames.push(this as unknown as FakeFrames);
         }
     },
@@ -743,6 +744,11 @@ describe("the pane", () => {
             Platform.isMobile = false;
         }
         expect(frames.attach).toHaveBeenCalledWith(container);
+    });
+
+    // The player fails inside the app, and its page would end a glide (D-088).
+    it("shows a YouTube embed as its thumbnail", () => {
+        expect((frames as unknown as { standIn: unknown }).standIn).toBe(youtubeThumbnail);
     });
 
     it("lets desktop's frames load at once", () => {

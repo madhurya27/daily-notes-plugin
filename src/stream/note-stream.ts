@@ -12,6 +12,7 @@ import { HeightEstimates, measureText, type EstimateSources } from "./height-est
 import { TemplateHeight } from "./template-height";
 import { ScrollBoxGuard } from "./scroll-box-guard";
 import { FrameDeferral } from "./frame-deferral";
+import { youtubeThumbnail } from "../render/video-thumbnails";
 import {
     captureAnchor,
     keepInPlace,
@@ -50,7 +51,7 @@ export class NoteStream {
     private scrollRoot!: HTMLElement;
     private blocks = new StreamBlocks(() => this.scroll.getSentinel());
     private scrollBoxes: ScrollBoxGuard;
-    private readonly frames = new FrameDeferral();
+    private readonly frames = new FrameDeferral(youtubeThumbnail);
 
     // Serialized: an event interleaving with an in-flight batch would leave
     // state and the service cache disagreeing.

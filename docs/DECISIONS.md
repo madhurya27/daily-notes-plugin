@@ -1419,6 +1419,23 @@ none: starting the page is what ends the glide.
 **Rejected:**
 
 - `scrolling="no"` on the frame — 8 of 20 still stopped.
-- A tap to load, like the PDF (D-083) — hides a player that can play in place.
+- A tap to load every frame, like the PDF (D-083) — hides a page that can work
+  in place. YouTube's player fails in the app, so it is a thumbnail (D-088).
 - Rewriting `src` in the Markdown before rendering — a code block showing an
   iframe would show the rewrite.
+
+## D-088 — On mobile a YouTube embed is its thumbnail, a link to the video (2026-10-03)
+
+**Decision:** on mobile `FrameDeferral` swaps a YouTube embed's frame for
+`youtubeThumbnail`: the video's thumbnail under YouTube's play button, in the
+player's box, linking to the video at the embed's start. Desktop keeps the
+player.
+
+**Why:** in the iOS app the player shows only "Error 153", and a frame held back
+(D-087) is a grey box that names nothing. A tap opens YouTube, or its app. The
+thumbnail is an image: 0 of 20 flicks stopped over it.
+
+**Rejected:**
+
+- The grey placeholder, then the player once still — the player fails anyway.
+- A wrapper labelled over the held frame — more DOM, still a player that fails.

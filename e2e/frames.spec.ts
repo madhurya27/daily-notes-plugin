@@ -54,3 +54,47 @@ test("a frame in a note gets its page, on mobile once the stream is still, shade
         }, NOTE);
     }
 });
+
+// The player fails inside the app, and its page would end a glide (D-088).
+test("on mobile a YouTube embed is its thumbnail, a link to the video", async ({ obsidian, mobileLayout }) => {
+    const { page } = obsidian;
+    await page.evaluate(
+        // Returning the TFile would serialize the whole app.
+        async (note) => {
+            await window.app.vault.create(
+                note,
+                '## Video\n\n<iframe src="https://www.youtube.com/embed/aqz-KE-bpKQ?start=30" width="560" height="315"></iframe>\n'
+            );
+        },
+        NOTE
+    );
+    try {
+        const block = (await openStream(page)).locator(`.daily-note-block[data-source-path="${NOTE}"]`);
+        await expect(block.locator(".daily-note-content")).toBeVisible();
+
+        if (!mobileLayout) {
+            await expect(block.locator("iframe")).toHaveAttribute("src", /youtube\.com\/embed/);
+            return;
+        }
+        await expect(block.locator("iframe")).toHaveCount(0);
+        const link = block.locator("a.daily-note-video");
+        await expect(link).toHaveAttribute("href", "https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=30");
+        // The player's shape, across the note, the play button at its middle.
+        const [box, play, content] = await Promise.all([
+            link.boundingBox(),
+            link.locator(".daily-note-video-play").boundingBox(),
+            block.locator(".daily-note-content").boundingBox(),
+        ]);
+        expect(box!.width).toBeCloseTo(Math.min(560, content!.width), 0);
+        expect(box!.height).toBeCloseTo((box!.width * 315) / 560, 0);
+        expect(play!.x + play!.width / 2).toBeCloseTo(box!.x + box!.width / 2, 0);
+        expect(play!.y + play!.height / 2).toBeCloseTo(box!.y + box!.height / 2, 0);
+        // No arrow after it, as Obsidian draws after a web link.
+        expect(await link.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe("none");
+    } finally {
+        await page.evaluate(async (note) => {
+            const file = window.app.vault.getFileByPath(note);
+            if (file) await window.app.vault.delete(file);
+        }, NOTE);
+    }
+});
