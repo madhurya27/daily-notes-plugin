@@ -136,6 +136,27 @@ test.describe("Bases on mobile", () => {
         expect(clipped).toEqual([]);
     });
 
+    // Bases insets its cards and its header's first icon; the note's text does
+    // not. The ring is the card's border.
+    test("lines a card's border and the header's first icon up with the note's text", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await seed(page, block("views:", ...table("Wide", HEADERS_WIDE)));
+        const base = (await openStream(page)).locator(".daily-note-base").first();
+        await expect(cards(base).first()).toBeVisible();
+
+        const offsets = await base.evaluate((el) => {
+            const text = el.closest(".daily-note-content")!.getBoundingClientRect();
+            const card = el.querySelector(".bases-cards-item[draggable]")!.getBoundingClientRect();
+            const icon = el.querySelector(".bases-toolbar svg")!.getBoundingClientRect();
+            return {
+                ringLeft: Math.round(card.left - 1 - text.left),
+                ringRight: Math.round(text.right - card.right - 1),
+                icon: Math.round(icon.left - text.left),
+            };
+        });
+        expect(offsets).toEqual({ ringLeft: 0, ringRight: 0, icon: 0 });
+    });
+
     // Bases draws a card's line at a fixed height, which a pill outgrows as
     // the font grows.
     test("fits a tag pill inside its card line at a large font", async ({ obsidian }) => {

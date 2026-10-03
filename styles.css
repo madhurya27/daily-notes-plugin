@@ -581,6 +581,17 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
     overflow: visible !important;
 }
 
+/* Cards and the header's first icon line up with the note's text (D-089). The
+   view keeps 1px each side for the cards' ring; the header gives back its own
+   padding and its first button's. */
+.is-mobile .daily-note-block .bases-view[data-view-type="cards"] {
+    --bases-view-padding: var(--size-4-3) 1px;
+}
+
+.is-mobile .daily-note-block .bases-header {
+    margin-inline-start: calc(-1 * (var(--bases-header-padding-start) + var(--size-2-2)));
+}
+
 /* Clipped, a Base has no scroll box to pin its header and summaries to
    (D-059). */
 .is-mobile .daily-note-block .bases-thead {

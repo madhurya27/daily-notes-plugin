@@ -1443,3 +1443,18 @@ thumbnail is an image: 0 of 20 flicks stopped over it.
 - A still with YouTube's button drawn in — YouTube serves none; its stills and
   oEmbed are plain.
 - The 480 px thumbnail alone — 2.2x upscaled across a phone at 3x, blurred.
+
+## D-089 — On mobile a Base's cards and header line up with the note's text (2026-10-03)
+
+**Decision:** under `.is-mobile`, a cards view keeps 1px of
+`--bases-view-padding` each side, for the cards' ring, and the header gives back
+its own padding and its first button's: card borders and the first icon sit on
+the text's edges.
+
+**Why:** Bases insets cards 12px and the icon 6px inside a note's text column,
+which reads as a stray margin under a heading.
+
+**Rejected:**
+
+- Edge to edge, as Obsidian's reading view draws a Base — past the text column
+  on both sides, unlike everything else in the stream's notes.
