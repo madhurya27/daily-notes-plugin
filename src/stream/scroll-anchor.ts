@@ -120,16 +120,24 @@ export class ScrollAnchor {
     /**
      * A scroll moves the place, and puts off the hand-over until it stops. A
      * bounce at the top ends a glide: handed over then, not once still, a flick
-     * meanwhile finds room above. Mid-bounce, iOS undoes a write.
+     * meanwhile finds room above. Mid-bounce, iOS undoes a write. A glide
+     * reaching the stream's top drawn lower than its scroll is handed over
+     * there: the write stops it, short of the blank above.
      */
     onScroll(): void {
         if (!this.scrollRoot) return;
         this.hold();
         const bounced = this.bouncing && this.scrollRoot.scrollTop >= 0;
         this.bouncing = this.scrollRoot.scrollTop < 0;
-        if (bounced && this.owed !== 0) this.handOver();
+        if (this.owed !== 0 && (bounced || this.topInView())) this.handOver();
         else if (this.owed !== 0) this.settleOnceStill();
         else if (this.scrollRoot.scrollTop === 0) this.headedForTop = false;
+    }
+
+    /** The stream, drawn lower than its scroll, starts inside the pane: what is above it is blank. */
+    private topInView(): boolean {
+        const stream = this.stream();
+        return this.owed < 0 && !!stream && this.topInPane(stream) >= 0;
     }
 
     /**

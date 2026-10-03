@@ -72,15 +72,20 @@ function makePane(layout: (number | number[])[]) {
         const before = Array.from(parent.children).slice(0, Array.from(parent.children).indexOf(el));
         return before.reduce((top, sibling) => top + heightOf(sibling), topOf(parent));
     };
-    /** Appends an element `height` tall to `parent`, laid out as the rest. */
-    const add = (parent: HTMLElement, height?: number) => {
-        const el = parent.createDiv();
-        if (height !== undefined) el.dataset.height = String(height);
+    /** Gives `el` the rect the layout's arithmetic puts it at. */
+    const layOut = (el: HTMLElement) => {
         el.getBoundingClientRect = () => {
             const top = topOf(el);
             const height = heightOf(el);
             return { top, height, bottom: top + height } as DOMRect;
         };
+        return el;
+    };
+    layOut(content);
+    /** Appends an element `height` tall to `parent`, laid out as the rest. */
+    const add = (parent: HTMLElement, height?: number) => {
+        const el = layOut(parent.createDiv());
+        if (height !== undefined) el.dataset.height = String(height);
         return el;
     };
 
@@ -844,6 +849,40 @@ describe("ScrollAnchor", () => {
         expect(pane.scrollTop).toBe(900);
         expect(shift(content)).toBe(0);
         expect(vi.getTimerCount()).toBe(0);
+    });
+
+    // Notes above shrinking leave the stream drawn lower than its scroll: a
+    // glide up reaches the newest note with scroll to spare, and went on into
+    // blank. The write stops the glide there.
+    it("hands over the moment the stream's top comes into the pane", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 100);
+        observer().resized(blocks[0]!);
+
+        pane.scrollTop = 301;
+        anchor.onScroll();
+        expect(pane.scrollTop).toBe(301);
+        expect(shift(content)).toBe(300);
+
+        pane.scrollTop = 290;
+        const drawn = readerTop(blocks);
+        anchor.onScroll();
+
+        expect(readerTop(blocks)).toBe(drawn);
+        expect(shift(content)).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("waits as usual for a scroll owing a shrink once no block is watched", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 100);
+        observer().resized(blocks[0]!);
+        for (const block of blocks) anchor.unobserve(block);
+
+        pane.scrollTop = 290;
+        anchor.onScroll();
+
+        expect(vi.getTimerCount()).toBe(1);
     });
 
     it("waits as usual after a bounce at the top that owed nothing", () => {

@@ -1,4 +1,4 @@
-import { test, expect } from "./phone";
+import { test, expect, type Phone } from "./phone";
 
 // The notes above a jump's target were never drawn: each renders as a flick
 // up reaches it, while iOS owns the scroll (ADR 0013).
@@ -15,7 +15,35 @@ test("a flick up from an old date glides on, the text under the thumb moving onl
     expect(Math.max(...drifts.map(Math.abs)), `drifts: ${drifts.join(", ")}`).toBeLessThan(5);
 });
 
-type Frame = { at: number; top: number; shifted: boolean };
+/** A frame of the stream: its scroll, how far it is drawn off it, and its top below where it rests at the top. */
+type Frame = { at: number; top: number; shift: number; streamTop: number };
+
+/** Starts noting each frame, up to 600; `frames` reports them. */
+async function recordFrames(phone: Phone): Promise<void> {
+    await phone.run(() => {
+        const stream = document.querySelector<HTMLElement>(
+            ".daily-notes-stream-container:not(.daily-notes-stream-probe)"
+        )!;
+        const pane = stream.parentElement!;
+        const below = () => stream.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+        // Read at rest, nothing owed: where the stream sits at scroll 0.
+        const atTop = below() + pane.scrollTop;
+        const frames: Frame[] = [];
+        (window as unknown as { streamFrames: Frame[] }).streamFrames = frames;
+        const frame = () => {
+            frames.push({
+                at: performance.now(),
+                top: pane.scrollTop,
+                shift: parseFloat(stream.style.getPropertyValue("--daily-notes-scroll-shift")) || 0,
+                streamTop: below() - atTop,
+            });
+            if (frames.length < 600) requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+    });
+}
+
+const frames = (phone: Phone) => phone.run(() => (window as unknown as { streamFrames: Frame[] }).streamFrames);
 
 // Placeholders far too short leave the glide less scroll than lies above:
 // it bounces at the top, owing the rest (ADR 0010). iOS undoes a write
@@ -24,29 +52,61 @@ test("a glide that bounces at the top owing the notes above hands them over as t
     await phone.openStream();
     await phone.jumpTo("2026-09-12");
     await phone.shortenPlaceholders();
-    await phone.run(() => {
-        const stream = document.querySelector<HTMLElement>(
-            ".daily-notes-stream-container:not(.daily-notes-stream-probe)"
-        )!;
-        const pane = stream.parentElement!;
-        const frames: Frame[] = [];
-        (window as unknown as { streamFrames: Frame[] }).streamFrames = frames;
-        const frame = () => {
-            const shifted = stream.style.getPropertyValue("--daily-notes-scroll-shift") !== "";
-            frames.push({ at: performance.now(), top: pane.scrollTop, shifted });
-            if (frames.length < 600) requestAnimationFrame(frame);
-        };
-        requestAnimationFrame(frame);
-    });
+    await recordFrames(phone);
 
     await phone.flick("down");
 
-    const frames = await phone.run(() => (window as unknown as { streamFrames: Frame[] }).streamFrames);
+    const seen = await frames(phone);
     // Its first frame back at the top, or past it: handed over in that frame, the scroll is far below.
-    const bounced = frames.findIndex((f, i) => i > 0 && frames[i - 1]!.shifted && frames[i - 1]!.top < 0 && f.top >= 0);
+    const bounced = seen.findIndex((f, i) => i > 0 && seen[i - 1]!.shift !== 0 && seen[i - 1]!.top < 0 && f.top >= 0);
     expect(bounced, "the glide bounced at the top, owing").toBeGreaterThan(0);
-    const handed = frames.findIndex((f, i) => i >= bounced && !f.shifted);
-    expect(frames[handed]!.at - frames[bounced]!.at).toBeLessThan(100);
+    const handed = seen.findIndex((f, i) => i >= bounced && f.shift === 0);
+    expect(seen[handed]!.at - seen[bounced]!.at).toBeLessThan(100);
+});
+
+// Notes above shorter than their stored heights, as edited on another device,
+// leave the glide more scroll than lies above: the stream, drawn lower,
+// reached the pane's top with scroll to spare, and the glide went on into
+// blank.
+test("a glide that reaches the newest note with scroll to spare stops there", async ({ phone }) => {
+    const above = ["Journal/2026-09-28.md", "Journal/2026-09-29.md", "Journal/2026-09-30.md"];
+    await phone.openStream();
+    await phone.jumpTo("2026-09-27");
+    const texts = await phone.runAsync(
+        (paths: string[]) => Promise.all(paths.map((path) => window.app.vault.adapter.read(path))),
+        above
+    );
+    try {
+        await phone.runAsync(async (paths: string[]) => {
+            for (const path of paths) await window.app.vault.modify(window.app.vault.getFileByPath(path)!, "Short.\n");
+        }, above);
+        await phone.rest();
+        await recordFrames(phone);
+
+        await phone.flick("down", 2);
+
+        const seen = await frames(phone);
+        expect(
+            seen.some((f) => f.shift > 0),
+            "the notes above shrank as they rendered"
+        ).toBe(true);
+        expect(
+            seen.some((f) => f.top === 0),
+            "the glide reached the top"
+        ).toBe(true);
+        // A bounce draws the stream below the pane's top; nothing else may.
+        const blank = Math.max(...seen.filter((f) => f.top >= 0).map((f) => f.streamTop));
+        expect(blank).toBeLessThanOrEqual(1);
+    } finally {
+        await phone.runAsync(
+            async (paths: string[], texts: string[]) => {
+                for (const [i, path] of paths.entries())
+                    await window.app.vault.modify(window.app.vault.getFileByPath(path)!, texts[i]!);
+            },
+            above,
+            texts
+        );
+    }
 });
 
 // The picker is the platform's: desktop Chromium opens another one, so only
