@@ -97,6 +97,10 @@ test("a glide that reaches the newest note with scroll to spare stops there", as
         // A bounce draws the stream below the pane's top; nothing else may.
         const blank = Math.max(...seen.filter((f) => f.top >= 0).map((f) => f.streamTop));
         expect(blank).toBeLessThanOrEqual(1);
+        // iOS carries a glide on from a write: the stop held only if the stream never came back down.
+        const stopped = seen.findIndex((f) => f.top === 0);
+        const after = Math.min(...seen.slice(stopped).map((f) => f.streamTop));
+        expect(after, "the glide went on past the stop").toBeGreaterThanOrEqual(-1);
     } finally {
         await phone.runAsync(
             async (paths: string[], texts: string[]) => {

@@ -121,23 +121,47 @@ export class ScrollAnchor {
      * A scroll moves the place, and puts off the hand-over until it stops. A
      * bounce at the top ends a glide: handed over then, not once still, a flick
      * meanwhile finds room above. Mid-bounce, iOS undoes a write. A glide
-     * reaching the stream's top drawn lower than its scroll is handed over
-     * there: the write stops it, short of the blank above.
+     * about to bring the stream's top, drawn lower than its scroll, into the
+     * pane stops at it, short of the blank above.
      */
     onScroll(): void {
         if (!this.scrollRoot) return;
+        // Since the place was read, at the last scroll or the anchor's own write: a glide's
+        // step. A clamp to the stream's end is none.
+        const moved = this.clamped() ? 0 : this.placeScroll - this.scrollRoot.scrollTop;
         this.hold();
         const bounced = this.bouncing && this.scrollRoot.scrollTop >= 0;
         this.bouncing = this.scrollRoot.scrollTop < 0;
-        if (this.owed !== 0 && (bounced || this.topInView())) this.handOver();
+        if (this.owed !== 0 && bounced) this.handOver();
+        else if (this.owed !== 0 && this.topDueInView(moved)) this.stopGlide();
         else if (this.owed !== 0) this.settleOnceStill();
         else if (this.scrollRoot.scrollTop === 0) this.headedForTop = false;
     }
 
-    /** The stream, drawn lower than its scroll, starts inside the pane: what is above it is blank. */
-    private topInView(): boolean {
+    /**
+     * Stops a glide with the stream's top at the pane's: its last step, short.
+     * iOS carries a glide on from a write, undoing it the next frame; with
+     * nothing to scroll for that frame, the glide ends where the write puts it.
+     */
+    private stopGlide(): void {
+        const root = this.scrollRoot!;
+        root.addClass("is-scroll-frozen");
+        requestAnimationFrame(() => root.removeClass("is-scroll-frozen"));
+        this.settleOnceStill.cancel();
+        root.scrollTop = 0;
+        this.headedForTop = false;
+        this.unshift();
+        this.pick();
+    }
+
+    /**
+     * The stream, drawn lower than its scroll, starts inside the pane within
+     * two more steps of `moved`: what is above it is blank. Stopped once in
+     * view, iOS had drawn it a frame past already; a dropped frame doubles a step.
+     */
+    private topDueInView(moved: number): boolean {
         const stream = this.stream();
-        return this.owed < 0 && !!stream && this.topInPane(stream) >= 0;
+        return this.owed < 0 && !!stream && this.topInPane(stream) + 2 * Math.max(moved, 0) >= 0;
     }
 
     /**

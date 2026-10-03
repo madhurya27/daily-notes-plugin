@@ -851,26 +851,90 @@ describe("ScrollAnchor", () => {
         expect(vi.getTimerCount()).toBe(0);
     });
 
+    /** A glide up, `step` px a frame, until `until` or the anchor freezes it: the scroll it froze at. */
+    function glideUp(pane: HTMLElement, step: number, until: number): number | null {
+        for (let top = pane.scrollTop - step; top >= until; top -= step) {
+            pane.scrollTop = top;
+            anchor.onScroll();
+            if (pane.hasClass("is-scroll-frozen")) return top;
+        }
+        return null;
+    }
+
     // Notes above shrinking leave the stream drawn lower than its scroll: a
     // glide up reaches the newest note with scroll to spare, and went on into
-    // blank. The write stops the glide there.
-    it("hands over the moment the stream's top comes into the pane", () => {
+    // blank. Stopped as it arrived, iOS had drawn it a frame past already: so
+    // it stops before, by two steps, as iOS drops a frame and steps double,
+    // landing the stream's top on the pane's.
+    it("stops a glide two steps before the stream's top would come into the pane", () => {
         const { pane, content, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
         resize(blocks[0]!, 100);
         observer().resized(blocks[0]!);
 
-        pane.scrollTop = 301;
-        anchor.onScroll();
-        expect(pane.scrollTop).toBe(301);
-        expect(shift(content)).toBe(300);
+        const stopped = glideUp(pane, 20, 0);
 
-        pane.scrollTop = 290;
-        const drawn = readerTop(blocks);
-        anchor.onScroll();
-
-        expect(readerTop(blocks)).toBe(drawn);
+        expect(stopped).toBe(340);
+        expect(pane.scrollTop).toBe(0);
+        expect(content.getBoundingClientRect().top).toBe(0);
         expect(shift(content)).toBe(0);
+        vi.advanceTimersToNextFrame();
         expect(vi.getTimerCount()).toBe(0);
+    });
+
+    // A hand-over's write is heard as a scroll a task later: not a glide's step.
+    it("takes its own write for no step of a glide", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 100);
+        observer().resized(blocks[0]!);
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+        expect(pane.scrollTop).toBe(600);
+
+        resize(blocks[1]!, 100);
+        observer().resized(blocks[1]!);
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(600);
+        expect(shift(content)).toBe(300);
+    });
+
+    // Placeholders re-reserved shorter, above and below: the browser pulls the
+    // scroll back to the stream's new end, a drop no glide makes.
+    it("takes a scroll clamped to the stream's end for no step of a glide", () => {
+        const { pane, blocks, resize } = watch([1000, 1000, 1000, 400, 400], 2100);
+        resize(blocks[0]!, 100);
+        resize(blocks[1]!, 100);
+        resize(blocks[4]!, 100);
+
+        pane.scrollTop = 1100;
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(1100);
+        expect(pane.hasClass("is-scroll-frozen")).toBe(false);
+    });
+
+    it("leaves a glide alone while the stream's top is more than a frame away", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 100);
+        observer().resized(blocks[0]!);
+
+        expect(glideUp(pane, 20, 360)).toBeNull();
+
+        expect(pane.scrollTop).toBe(360);
+        expect(shift(content)).toBe(300);
+    });
+
+    // iOS carries a glide on from a write, undoing it the next frame. With
+    // nothing to scroll, the glide ends where it is, and the write holds.
+    it("freezes the pane's scroll for a frame around the write that stops a glide", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 100);
+        observer().resized(blocks[0]!);
+
+        expect(glideUp(pane, 20, 0)).not.toBeNull();
+        expect(pane.hasClass("is-scroll-frozen")).toBe(true);
+
+        vi.advanceTimersToNextFrame();
+        expect(pane.hasClass("is-scroll-frozen")).toBe(false);
     });
 
     it("waits as usual for a scroll owing a shrink once no block is watched", () => {
