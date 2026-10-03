@@ -5,6 +5,9 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
+- [ ] `styles.css` hides every `.is-hidden` in Obsidian, not only in notes: the
+      bare selector before `.daily-note-content .is-hidden.is-hidden` reaches
+      the whole app. Drop it; folded sections need only the scoped rule.
 - [ ] iOS: a Base's table draws some rows blank for a frame as a note above it
       renders mid-glide. Bases draws only rows it measured in view, and
       re-measures after the paint. The probe that traced it is `src/probe.ts` on
@@ -27,6 +30,34 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
       box guard cannot see; a video player does not. Check that a flick over one
       still glides.
+- [ ] A command, "Forget measured note heights", that empties `LayoutMemory` and
+      re-reserves the stream: testing on the phone from no stored heights now
+      takes a build with `VERSION` bumped (`.claude/skills/phone-demo`).
+- [ ] iOS: make the stream's height errors fall on the tall side, so a glide up
+      ends in D-091's stop at the newest note, never a bounce short of it
+      (D-090). Three parts, estimates first:
+    - [ ] Estimate a never-measured note taller than the best guess. Weigh what
+          extra shrinking below the reader costs (ADR 0014).
+    - [ ] Keep each saved height with its note's mtime, as `EmptyNotes` keeps
+          its verdicts: a note edited since, even between sessions or on another
+          device, is then re-estimated from its text, tall, not held at its old
+          height (ADR 0010). A new store format: bump `VERSION` in
+          `src/stream/layout-memory.ts`.
+    - [ ] A small buffer above the newest note, for what no mtime shows: a note
+          grown with what it embeds, a Base gaining rows or an embedded note
+          edited. A spike without D-091's freeze failed: iOS carried the glide
+          on from a mid-range write. With the freeze, a mid-range write holds.
+          On `spike/top-buffer-shift` (stashed): padding put back at rest away
+          from the top, the stop moving the scroll into the shift. Its D-092
+          draft on `docs/top-buffer-spike` predates the freeze. ADR 0010
+          rejected a buffer: a new ADR. Check scroll to top, jumps, Back and
+          search land on notes, not the buffer.
+- [ ] iOS: D-091's stop writes the scroll mid-touch if a finger drags slowly
+      past the newest note while the stream is drawn lower. Untested: the
+      harness only flicks.
+- [ ] iOS: the iPhone harness hears a scroll after iOS draws it, so it cannot
+      see a frame drawn past the newest note (D-091). Only a screen recording
+      showed it; any change to the stop needs one.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**;
