@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { youtubeThumbnail } from "../../src/render/video-thumbnails";
+import { fallBackToSmallThumbnail, youtubeThumbnail } from "../../src/render/video-thumbnails";
 
 const ID = "aqz-KE-bpKQ";
 
@@ -40,10 +40,11 @@ describe("youtubeThumbnail", () => {
         expect(link.rel).toBe("noopener");
     });
 
-    it("shows the video's thumbnail under a play button", () => {
+    // Sharp across a phone at 3x: 1,280 px wide, where hqdefault is 480.
+    it("shows the video's largest thumbnail under a play button", () => {
         const link = thumbnail(`https://www.youtube.com/embed/${ID}`);
 
-        expect(link.querySelector("img")?.getAttribute("src")).toBe(`https://i.ytimg.com/vi/${ID}/hqdefault.jpg`);
+        expect(link.querySelector("img")?.getAttribute("src")).toBe(`https://i.ytimg.com/vi/${ID}/maxresdefault.jpg`);
         expect(link.querySelector(".daily-note-video-play")).not.toBeNull();
     });
 
@@ -80,5 +81,63 @@ describe("youtubeThumbnail", () => {
         "not a url at all",
     ])("leaves %s a frame", (src) => {
         expect(youtubeThumbnail(frame(), src)).toBeNull();
+    });
+});
+
+describe("fallBackToSmallThumbnail", () => {
+    const MAX = `https://i.ytimg.com/vi/${ID}/maxresdefault.jpg`;
+    const HQ = `https://i.ytimg.com/vi/${ID}/hqdefault.jpg`;
+    const image = () => thumbnail(`https://www.youtube.com/embed/${ID}`).querySelector("img")!;
+    /** As the stream's capture listener hands it on. */
+    const event = (type: "load" | "error", target: EventTarget) => ({ type, target }) as unknown as Event;
+    const loaded = (img: HTMLImageElement, width: number) => {
+        Object.defineProperty(img, "naturalWidth", { configurable: true, value: width });
+        fallBackToSmallThumbnail(event("load", img));
+    };
+
+    it("falls back to the one every video has when the large one fails", () => {
+        const img = image();
+
+        fallBackToSmallThumbnail(event("error", img));
+
+        expect(img.getAttribute("src")).toBe(HQ);
+    });
+
+    // YouTube answers a missing one with a 120 px grey stand-in.
+    it("falls back when YouTube sends its stand-in", () => {
+        const img = image();
+
+        loaded(img, 120);
+
+        expect(img.getAttribute("src")).toBe(HQ);
+    });
+
+    it("keeps a large thumbnail that loads", () => {
+        const img = image();
+
+        loaded(img, 1280);
+
+        expect(img.getAttribute("src")).toBe(MAX);
+    });
+
+    // Setting the same src again would load it again, and fail again.
+    it("falls back once, not again when the fallback fails", () => {
+        const img = image();
+        fallBackToSmallThumbnail(event("error", img));
+
+        fallBackToSmallThumbnail(event("error", img));
+        loaded(img, 120);
+
+        expect(img.getAttribute("src")).toBe(HQ);
+    });
+
+    it("leaves any other image alone", () => {
+        const other = document.createElement("img");
+        other.src = MAX;
+
+        fallBackToSmallThumbnail(event("error", other));
+        fallBackToSmallThumbnail(event("error", document.createElement("div")));
+
+        expect(other.getAttribute("src")).toBe(MAX);
     });
 });

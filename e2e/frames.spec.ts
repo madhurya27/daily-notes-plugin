@@ -89,6 +89,16 @@ test("on mobile a YouTube embed is its thumbnail, a link to the video", async ({
         expect(box!.height).toBeCloseTo((box!.width * 315) / 560, 0);
         expect(play!.x + play!.width / 2).toBeCloseTo(box!.x + box!.width / 2, 0);
         expect(play!.y + play!.height / 2).toBeCloseTo(box!.y + box!.height / 2, 0);
+        // Spaced as a paragraph is, where the player sat in a line of its own.
+        const [margins, paragraph] = await link.evaluate((el) => {
+            const probe = document.body.appendChild(document.createElement("p"));
+            probe.style.marginBlock = "var(--p-spacing)";
+            const spacing = getComputedStyle(probe).marginTop;
+            probe.remove();
+            const style = getComputedStyle(el);
+            return [[style.marginTop, style.marginBottom], spacing];
+        });
+        expect(margins).toEqual([paragraph, paragraph]);
         // No arrow after it, as Obsidian draws after a web link.
         expect(await link.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe("none");
     } finally {

@@ -432,6 +432,7 @@
     width: var(--daily-note-video-width, auto);
     max-width: 100%;
     aspect-ratio: var(--daily-note-video-ratio, 16 / 9);
+    margin-block: var(--p-spacing);
     padding: 0;
     background: var(--background-secondary);
     border-radius: var(--radius-m);

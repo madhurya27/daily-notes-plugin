@@ -17,6 +17,7 @@ import { CollapsibleManager, PROPERTIES_SECTION_KEY } from "./collapsible";
 import type { SearchHighlighter } from "./search-highlights";
 import { stackWideTables } from "./wide-tables";
 import { fitWideEquations } from "./wide-equations";
+import { fallBackToSmallThumbnail } from "./video-thumbnails";
 import { extractBases } from "./bases/bases-as-cards";
 import { NoteBases } from "./bases/note-bases";
 import type { BaseMeasurements } from "./bases/base-measurements";
@@ -278,6 +279,10 @@ export class NoteRenderer {
             evt.preventDefault();
             note.open("tab");
         });
+
+        // On mobile a video is its thumbnail (D-088); load and error do not bubble.
+        view.registerDomEvent(root, "load", fallBackToSmallThumbnail, { capture: true });
+        view.registerDomEvent(root, "error", fallBackToSmallThumbnail, { capture: true });
 
         view.registerDomEvent(root, "contextmenu", (evt) => {
             const note = this.noteAt(evt.target as HTMLElement);

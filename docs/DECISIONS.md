@@ -1427,9 +1427,10 @@ none: starting the page is what ends the glide.
 ## D-088 — On mobile a YouTube embed is its thumbnail, a link to the video (2026-10-03)
 
 **Decision:** on mobile `FrameDeferral` swaps a YouTube embed's frame for
-`youtubeThumbnail`: the video's thumbnail under YouTube's play button, in the
-player's box, linking to the video at the embed's start. Desktop keeps the
-player.
+`youtubeThumbnail`: the video's thumbnail under the play button of YouTube's
+player, in the player's box, linking to the video at the embed's start. The
+thumbnail is the 1,280 px one, else the 480 px one every video has. Desktop
+keeps the player.
 
 **Why:** in the iOS app the player shows only "Error 153", and a frame held back
 (D-087) is a grey box that names nothing. A tap opens YouTube, or its app. The
@@ -1439,3 +1440,6 @@ thumbnail is an image: 0 of 20 flicks stopped over it.
 
 - The grey placeholder, then the player once still — the player fails anyway.
 - A wrapper labelled over the held frame — more DOM, still a player that fails.
+- A still with YouTube's button drawn in — YouTube serves none; its stills and
+  oEmbed are plain.
+- The 480 px thumbnail alone — 2.2x upscaled across a phone at 3x, blurred.
