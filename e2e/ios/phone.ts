@@ -129,25 +129,42 @@ export class Phone {
      * Starts following the text at or just below the pane's middle, each frame, as the
      * reader's eye would; `stopFollowing` reports it. By its place in its
      * note, as `topOf` finds it: a note may render again under the reader.
+     * Text that leaves the screen hands the eye to the text then at the
+     * middle; a blank where it was on screen is a drift of NaN.
      */
     async followReader(): Promise<void> {
         await this.run(
             (s: string, blocks: string) => {
                 const pane = document.querySelector(s)!.parentElement!;
+                const stream = document.querySelector<HTMLElement>(s)!;
                 const box = pane.getBoundingClientRect();
                 const middle = box.top + box.height / 2;
-                const at = [...pane.querySelectorAll(blocks)].find((el) => el.getBoundingClientRect().bottom > middle);
-                if (!at) throw new Error("No text at or below the pane's middle.");
-                const note = at.closest<HTMLElement>(".daily-note-block")!;
-                const index = [...note.querySelectorAll(blocks)].indexOf(at);
-                const path = CSS.escape(note.dataset.sourcePath!);
-                const reader = () =>
-                    pane.querySelector(`.daily-note-block[data-source-path="${path}"]`)!.querySelectorAll(blocks)[
-                        index
-                    ]!;
+                const onScreen = (el: Element) => {
+                    const { top, bottom } = el.getBoundingClientRect();
+                    return bottom > box.top && top < box.bottom;
+                };
+                const shifted = () => stream.style.getPropertyValue("--daily-notes-scroll-shift") !== "";
+                // The anchor hands its shift to the scroll in one write once still, the text staying put:
+                // no scroll of the reader's (ScrollAnchor).
+                let handedOver = 0;
+                let last = { scroll: pane.scrollTop, shifted: shifted() };
+                const scrolled = () => pane.scrollTop - handedOver;
+                const pick = () => {
+                    const at = [...pane.querySelectorAll(blocks)].find(
+                        (el) => el.getBoundingClientRect().bottom > middle
+                    );
+                    if (!at) return null;
+                    const note = at.closest<HTMLElement>(".daily-note-block")!;
+                    return {
+                        path: CSS.escape(note.dataset.sourcePath!),
+                        index: [...note.querySelectorAll(blocks)].indexOf(at),
+                        start: at.getBoundingClientRect().top,
+                        from: scrolled(),
+                    };
+                };
+                let eye = pick();
+                if (!eye) throw new Error("No text at or below the pane's middle.");
                 const unloaded = () => pane.querySelectorAll(".daily-note-block.is-unloaded").length;
-                const start = reader().getBoundingClientRect().top;
-                const from = pane.scrollTop;
                 const follow = {
                     drifts: [] as number[],
                     moves: [] as number[],
@@ -157,13 +174,25 @@ export class Phone {
                 };
                 (window as unknown as { streamReader: typeof follow }).streamReader = follow;
                 const frame = () => {
-                    if (!follow.on) return;
-                    // Where the text is, against where the scroll alone puts it.
-                    const top = reader().getBoundingClientRect().top;
-                    follow.drifts.push(Math.round(top - start - (from - pane.scrollTop)));
-                    // Where the text is on screen, as a still reader sees it.
-                    follow.moves.push(Math.round(top - start));
+                    if (!follow.on || !eye) return;
+                    const now = { scroll: pane.scrollTop, shifted: shifted() };
+                    if (last.shifted && !now.shifted) handedOver += now.scroll - last.scroll;
+                    last = now;
                     follow.rendered = Math.max(follow.rendered, follow.unloaded - unloaded());
+                    const block = pane.querySelector(`.daily-note-block[data-source-path="${eye.path}"]`);
+                    const text = block?.querySelectorAll(blocks)[eye.index];
+                    if (!text) {
+                        if (block && onScreen(block)) follow.drifts.push(NaN);
+                        eye = pick();
+                        requestAnimationFrame(frame);
+                        return;
+                    }
+                    // Where the text is, against where the scroll alone puts it.
+                    const top = text.getBoundingClientRect().top;
+                    follow.drifts.push(Math.round(top - eye.start - (eye.from - scrolled())));
+                    // Where the text is on screen, as a still reader sees it.
+                    follow.moves.push(Math.round(top - eye.start));
+                    if (!onScreen(text)) eye = pick();
                     requestAnimationFrame(frame);
                 };
                 requestAnimationFrame(frame);
