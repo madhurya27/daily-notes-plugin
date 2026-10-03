@@ -1404,3 +1404,21 @@ phone for them left it never locking if they forgot `pnpm run ios:release`.
 - Setting Never through the Settings app, held until `pnpm run ios:release` —
   navigated pages holding Delete buttons, failed under Low Power Mode and on an
   iPad, and cost ~18 s a session.
+
+## D-087 — On mobile a frame loads its page once the scroll is still (2026-10-03)
+
+**Decision:** `FrameDeferral` takes the `src` off each iframe a note renders,
+from a mutation observer, and puts it back once the scroll has been still for
+`SCROLL_IDLE_MS`. Meanwhile the frame is shaded as a placeholder.
+
+**Why:** a YouTube frame rendering mid-glide stopped 10–13 of 20 iPhone flicks
+dead. With its `src` held back, 0 of 20; a page already loading when a flick
+starts stops none. The same frame on `about:blank`, or a box its size, stops
+none: starting the page is what ends the glide.
+
+**Rejected:**
+
+- `scrolling="no"` on the frame — 8 of 20 still stopped.
+- A tap to load, like the PDF (D-083) — hides a player that can play in place.
+- Rewriting `src` in the Markdown before rendering — a code block showing an
+  iframe would show the rewrite.

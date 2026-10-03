@@ -419,6 +419,11 @@
     max-width: 100%;
 }
 
+/* A frame whose page waits for the scroll to stop (D-087). */
+:is(.daily-note-content, .daily-note-mention-excerpt) iframe.is-frame-held {
+    background-color: var(--background-secondary);
+}
+
 /* Desktop: wide content scrolls inside its own box, as in Obsidian's reading
    view, rather than widen the stream. */
 body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(table, pre) {

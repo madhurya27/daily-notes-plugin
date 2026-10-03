@@ -5,6 +5,7 @@ import type { NoteRenderer } from "../../src/render/note-renderer";
 import type { NoteWindowManager } from "../../src/stream/note-window";
 import type { InfiniteScrollController } from "../../src/stream/infinite-scroll";
 import type { ScrollBoxGuard } from "../../src/stream/scroll-box-guard";
+import type { FrameDeferral } from "../../src/stream/frame-deferral";
 import type { DailyNoteService } from "../../src/notes/daily-note-service";
 import type { CollapsibleStateStore } from "../../src/render/collapse-store";
 import { NoteHeights } from "../../src/stream/note-heights";
@@ -23,6 +24,7 @@ type FakeWindow = Mocked<NoteWindowManager> & {
 };
 type FakeScroll = Mocked<InfiniteScrollController>;
 type FakeGuard = Mocked<ScrollBoxGuard>;
+type FakeFrames = Mocked<FrameDeferral>;
 /** What the stream constructed each with, besides what it calls on it. */
 type FakeTemplateHeight = Pick<Mocked<TemplateHeight>, "measureAt"> & {
     args: { templates: NoteHeights; template: () => TFile | null };
@@ -35,6 +37,7 @@ const fakes = vi.hoisted(() => ({
     windows: [] as FakeWindow[],
     scrolls: [] as FakeScroll[],
     guards: [] as FakeGuard[],
+    frames: [] as FakeFrames[],
     templateHeights: [] as FakeTemplateHeight[],
     estimates: [] as FakeEstimates[],
 }));
@@ -118,6 +121,18 @@ vi.mock("../../src/stream/scroll-box-guard", () => ({
     },
 }));
 
+// Watches the DOM for frames, and has its own tests.
+vi.mock("../../src/stream/frame-deferral", () => ({
+    FrameDeferral: class {
+        attach = vi.fn();
+        detach = vi.fn();
+        onScroll = vi.fn();
+        constructor() {
+            fakes.frames.push(this as unknown as FakeFrames);
+        }
+    },
+}));
+
 function placeholder(path: string): HTMLElement {
     const block = document.createElement("div");
     block.dataset.sourcePath = path;
@@ -154,6 +169,7 @@ let container: HTMLElement;
 let noteWindow: FakeWindow;
 let infiniteScroll: FakeScroll;
 let guard: FakeGuard;
+let frames: FakeFrames;
 let renderer: { onBaseLayout: ReturnType<typeof vi.fn> };
 let heights: NoteHeights;
 let templates: NoteHeights;
@@ -181,6 +197,7 @@ beforeEach(() => {
     estimates = fakes.estimates.at(-1)!;
     infiniteScroll = fakes.scrolls.at(-1)!;
     guard = fakes.guards.at(-1)!;
+    frames = fakes.frames.at(-1)!;
     pane = document.createElement("div");
     container = pane.createDiv();
     stream.open(pane, container);
@@ -714,6 +731,27 @@ describe("the pane", () => {
         expect(infiniteScroll.detach).toHaveBeenCalled();
         expect(noteWindow.detach).toHaveBeenCalled();
         expect(guard.detach).toHaveBeenCalled();
+        expect(frames.detach).toHaveBeenCalled();
+    });
+
+    // A frame starting its page mid-glide ends the glide on iOS (D-087).
+    it("holds back frames' pages in the notes it holds on mobile", () => {
+        Platform.isMobile = true;
+        try {
+            stream.open(pane, container);
+        } finally {
+            Platform.isMobile = false;
+        }
+        expect(frames.attach).toHaveBeenCalledWith(container);
+    });
+
+    it("lets desktop's frames load at once", () => {
+        expect(frames.attach).not.toHaveBeenCalled();
+    });
+
+    it("passes a scroll on to the frames held back", () => {
+        stream.onScroll();
+        expect(frames.onScroll).toHaveBeenCalled();
     });
 
     // iOS ends a glide early on a scroll box; Android is held to the same rule (ADR 0008).
