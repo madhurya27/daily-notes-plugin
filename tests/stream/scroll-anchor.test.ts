@@ -870,7 +870,26 @@ describe("ScrollAnchor", () => {
 
         expect(readerTop(blocks)).toBe(drawn);
         expect(shift(content)).toBe(0);
+        vi.advanceTimersToNextFrame();
         expect(vi.getTimerCount()).toBe(0);
+    });
+
+    // iOS carries a glide on from a write, undoing it the next frame. With
+    // nothing to scroll, the glide ends where it is, and the write holds.
+    it("freezes the pane's scroll for a frame around the write that stops a glide", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 100);
+        observer().resized(blocks[0]!);
+        pane.scrollTop = 301;
+        anchor.onScroll();
+        expect(pane.hasClass("is-scroll-frozen")).toBe(false);
+
+        pane.scrollTop = 290;
+        anchor.onScroll();
+        expect(pane.hasClass("is-scroll-frozen")).toBe(true);
+
+        vi.advanceTimersToNextFrame();
+        expect(pane.hasClass("is-scroll-frozen")).toBe(false);
     });
 
     it("waits as usual for a scroll owing a shrink once no block is watched", () => {

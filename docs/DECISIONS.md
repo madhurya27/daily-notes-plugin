@@ -1479,14 +1479,19 @@ hand-over off again. A bounce ends the glide, so the write ends none.
 ## D-091 — A glide reaching the stream's top drawn lower stops there (2026-10-03)
 
 **Decision:** while `ScrollAnchor` owes a shrink, a scroll that brings the
-stream's top into the pane hands over at once. The write stops the glide with
-the newest note at the top.
+stream's top into the pane hands over at once, the pane frozen for that frame
+(`is-scroll-frozen`, `overflow: hidden`): the glide stops with the newest note
+at the top.
 
 **Why:** notes above rendering shorter than reserved leave more scroll than lies
 above. The glide reached the newest note with that to spare and went on into
-blank: 3.9–4.6k px in the iPhone harness. Unlike mid-bounce (D-090), iOS keeps
-the write.
+blank: 1.7–4.6k px in the iPhone harness. iOS carries a glide on from a write,
+undoing it the next frame; with nothing to scroll, the glide ends. Merged first
+without the freeze, the newest note jumped 1.5–1.7k px back after the write; its
+test checked only for blank.
 
 **Rejected:**
 
+- The write alone — undone the next frame, whatever it wrote: 0, mid-range, or
+  with the shift added or dropped.
 - Handing over once still — the blank is on screen until then.
