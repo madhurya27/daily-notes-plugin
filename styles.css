@@ -419,6 +419,41 @@
     max-width: 100%;
 }
 
+/* A frame whose page waits for the scroll to stop (D-087). */
+:is(.daily-note-content, .daily-note-mention-excerpt) iframe.is-frame-held {
+    background-color: var(--background-secondary);
+}
+
+/* On mobile a YouTube embed is its thumbnail, a link to the video (D-088):
+   the player's box, without the arrow Obsidian puts after a web link. */
+.daily-note-video.external-link {
+    position: relative;
+    display: block;
+    width: var(--daily-note-video-width, auto);
+    max-width: 100%;
+    aspect-ratio: var(--daily-note-video-ratio, 16 / 9);
+    margin-block: var(--p-spacing);
+    padding: 0;
+    background: var(--background-secondary);
+    border-radius: var(--radius-m);
+    overflow: clip;
+}
+
+.daily-note-video img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.daily-note-video-play {
+    position: absolute;
+    inset: 0;
+    width: 68px;
+    height: 48px;
+    margin: auto;
+}
+
 /* Desktop: wide content scrolls inside its own box, as in Obsidian's reading
    view, rather than widen the stream. */
 body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(table, pre) {

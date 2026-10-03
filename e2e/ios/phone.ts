@@ -21,6 +21,18 @@ const SCREENS = 60;
 /** A note's blocks as the reader takes them in: its title, property rows, Markdown blocks and mentions. */
 const TEXT_BLOCKS = ".daily-note-title, .metadata-property, .daily-note-content > *, .daily-note-mention";
 
+/** The `.daily-note-block` selector `target` starts with, if any: up to the first space outside brackets. */
+function blockOf(target: string): string | undefined {
+    if (!target.startsWith(".daily-note-block")) return undefined;
+    let nesting = 0;
+    for (const [i, c] of [...target].entries()) {
+        if (c === "(" || c === "[") nesting++;
+        else if (c === ")" || c === "]") nesting--;
+        else if (c === " " && nesting === 0) return target.slice(0, i);
+    }
+    return undefined;
+}
+
 export class Phone {
     constructor(private readonly driver: WebdriverIO.Browser) {}
 
@@ -451,11 +463,29 @@ export class Phone {
      * Scrolls the pane's top `depth` px into the first `target` at least a
      * screen down the stream, or with a negative `depth` that far above it,
      * and waits for it to hold still there. Only notes near the screen are
-     * rendered (ADR 0006), so it goes a screen at a time until one is; and
-     * what renders, a Base filling above the target, may move it, so it
-     * scrolls again until the target is where it was put.
+     * rendered (ADR 0006), so it goes a screen at a time until one is, or at
+     * once to the target's block, always in the stream, when the target
+     * names one; and what renders, a Base filling above the target, may move
+     * it, so it scrolls again until the target is where it was put.
      */
     async placeAt(target: string, depth: number): Promise<void> {
+        const block = blockOf(target);
+        // Or to the stream's end, until the batch with the block loads.
+        for (let found = block === undefined; !found;) {
+            found = await this.run(
+                (s: string, b: string) => {
+                    const pane = document.querySelector(s)!.parentElement!;
+                    const top = (el: Element) => el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+                    const el = [...pane.querySelectorAll(b)].find((e) => top(e) + pane.scrollTop > pane.clientHeight);
+                    pane.scrollTop = el ? pane.scrollTop + top(el) : pane.scrollHeight;
+                    return el !== undefined;
+                },
+                STREAM,
+                block!
+            );
+            await this.rest();
+            if (!found && (await this.atEnd())) break;
+        }
         for (let steps = 0; steps < SCREENS; steps++) {
             const off = await this.run(
                 (s: string, t: string, d: number) => {

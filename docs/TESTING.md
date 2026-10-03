@@ -199,6 +199,8 @@ Checks:
   draw as cards, wide equations shrink to fit. **[e2e]** **[ios]** Each case is
   in **2026-08-30**.
 - A PDF shows its first page without a toolbar; a tap opens the PDF. **[e2e]**
+- The video shows its thumbnail under a play button; a tap opens it on YouTube.
+  **[e2e]**
 - Rotation reflows without clipping. With a Base on screen, a wide one turns to
   cards or back to a table; a wide equation grows or shrinks with the note.
   **[ios]**

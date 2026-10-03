@@ -1404,3 +1404,42 @@ phone for them left it never locking if they forgot `pnpm run ios:release`.
 - Setting Never through the Settings app, held until `pnpm run ios:release` —
   navigated pages holding Delete buttons, failed under Low Power Mode and on an
   iPad, and cost ~18 s a session.
+
+## D-087 — On mobile a frame loads its page once the scroll is still (2026-10-03)
+
+**Decision:** `FrameDeferral` takes the `src` off each iframe a note renders,
+from a mutation observer, and puts it back once the scroll has been still for
+`SCROLL_IDLE_MS`. Meanwhile the frame is shaded as a placeholder.
+
+**Why:** a YouTube frame rendering mid-glide stopped 10–13 of 20 iPhone flicks
+dead. With its `src` held back, 0 of 20; a page already loading when a flick
+starts stops none. The same frame on `about:blank`, or a box its size, stops
+none: starting the page is what ends the glide.
+
+**Rejected:**
+
+- `scrolling="no"` on the frame — 8 of 20 still stopped.
+- A tap to load every frame, like the PDF (D-083) — hides a page that can work
+  in place. YouTube's player fails in the app, so it is a thumbnail (D-088).
+- Rewriting `src` in the Markdown before rendering — a code block showing an
+  iframe would show the rewrite.
+
+## D-088 — On mobile a YouTube embed is its thumbnail, a link to the video (2026-10-03)
+
+**Decision:** on mobile `FrameDeferral` swaps a YouTube embed's frame for
+`youtubeThumbnail`: the video's thumbnail under the play button of YouTube's
+player, in the player's box, linking to the video at the embed's start. The
+thumbnail is the 1,280 px one, else the 480 px one every video has. Desktop
+keeps the player.
+
+**Why:** in the iOS app the player shows only "Error 153", and a frame held back
+(D-087) is a grey box that names nothing. A tap opens YouTube, or its app. The
+thumbnail is an image: 0 of 20 flicks stopped over it.
+
+**Rejected:**
+
+- The grey placeholder, then the player once still — the player fails anyway.
+- A wrapper labelled over the held frame — more DOM, still a player that fails.
+- A still with YouTube's button drawn in — YouTube serves none; its stills and
+  oEmbed are plain.
+- The 480 px thumbnail alone — 2.2x upscaled across a phone at 3x, blurred.

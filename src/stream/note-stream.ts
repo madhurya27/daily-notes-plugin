@@ -11,6 +11,8 @@ import { layoutOf, type LayoutMemory } from "./layout-memory";
 import { HeightEstimates, measureText, type EstimateSources } from "./height-estimates";
 import { TemplateHeight } from "./template-height";
 import { ScrollBoxGuard } from "./scroll-box-guard";
+import { FrameDeferral } from "./frame-deferral";
+import { youtubeThumbnail } from "../render/video-thumbnails";
 import {
     captureAnchor,
     keepInPlace,
@@ -49,6 +51,7 @@ export class NoteStream {
     private scrollRoot!: HTMLElement;
     private blocks = new StreamBlocks(() => this.scroll.getSentinel());
     private scrollBoxes: ScrollBoxGuard;
+    private readonly frames = new FrameDeferral(youtubeThumbnail);
 
     // Serialized: an event interleaving with an in-flight batch would leave
     // state and the service cache disagreeing.
@@ -94,8 +97,12 @@ export class NoteStream {
         this.state.reset();
         this.window.attach(scrollRoot);
         this.measureTemplate();
-        // iOS ends a glide early on a scroll box; Android is held to the same rule (ADR 0008).
-        if (Platform.isMobile) this.scrollBoxes.attach(container);
+        // iOS ends a glide early on a scroll box, or on a frame starting its page;
+        // Android is held to the same rules (ADR 0008, D-087).
+        if (Platform.isMobile) {
+            this.scrollBoxes.attach(container);
+            this.frames.attach(container);
+        }
         this.attachScroll();
     }
 
@@ -106,6 +113,7 @@ export class NoteStream {
         this.scroll.detach();
         this.window.detach();
         this.scrollBoxes.detach();
+        this.frames.detach();
         this.blocks.clear();
     }
 
@@ -123,10 +131,11 @@ export class NoteStream {
         this.window.scrollToTop();
     }
 
-    /** Unloads and style reads wait for the scroll to stop. */
+    /** Unloads, style reads and frames' pages wait for the scroll to stop. */
     onScroll(): void {
         this.window.onScroll();
         this.scrollBoxes.onScroll();
+        this.frames.onScroll();
     }
 
     /** A touch is the reader's own: a match held in place is let go. */

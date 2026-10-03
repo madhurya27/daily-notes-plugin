@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { BaseMeasurements } from "../../src/render/bases/base-measurements";
 import { SearchHighlighter } from "../../src/render/search-highlights";
+import { youtubeThumbnail } from "../../src/render/video-thumbnails";
 import { NoteRenderer } from "../../src/render/note-renderer";
 import { BacklinkIndex } from "../../src/notes/backlink-index";
 import { NoteBases } from "../../src/render/bases/note-bases";
@@ -1610,6 +1611,22 @@ describe("NoteRenderer — delegated listeners", () => {
         const { root, link } = await render(app, true);
         link.click();
         expect(app._mockLeaf.openFile).toHaveBeenCalled();
+        root.remove();
+    });
+
+    // load and error do not bubble: the root catches them on the way down.
+    it("falls a video's missing large thumbnail back to the small one", async () => {
+        const { root } = await render(makeApp(), true);
+        const thumbnail = youtubeThumbnail(
+            document.createElement("iframe"),
+            "https://www.youtube.com/embed/aqz-KE-bpKQ"
+        )!;
+        root.querySelector(".daily-note-content")!.appendChild(thumbnail);
+        const img = thumbnail.querySelector("img")!;
+
+        img.dispatchEvent(new Event("error"));
+
+        expect(img.getAttribute("src")).toBe("https://i.ytimg.com/vi/aqz-KE-bpKQ/hqdefault.jpg");
         root.remove();
     });
 
