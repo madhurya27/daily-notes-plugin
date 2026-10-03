@@ -52,6 +52,8 @@ export class ScrollAnchor {
     private shifted: HTMLElement | null = null;
     /** A scroll to the top is under way; nothing above it is owed. */
     private headedForTop = false;
+    /** The scroll went past the top: iOS bounces a glide that runs out of scroll there. */
+    private bouncing = false;
     private readonly settleOnceStill = debounce(() => this.settle(), SCROLL_IDLE_MS, true);
 
     attach(scrollRoot: HTMLElement): void {
@@ -115,12 +117,27 @@ export class ScrollAnchor {
         this.settle();
     }
 
-    /** A scroll moves the place, and puts off the hand-over until it stops. */
+    /**
+     * A scroll moves the place, and puts off the hand-over until it stops. A
+     * bounce at the top ends a glide: handed over then, not once still, a flick
+     * meanwhile finds room above. Mid-bounce, iOS undoes a write. A glide
+     * reaching the stream's top drawn lower than its scroll is handed over
+     * there: the write stops it, short of the blank above.
+     */
     onScroll(): void {
         if (!this.scrollRoot) return;
         this.hold();
-        if (this.owed !== 0) this.settleOnceStill();
-        else if (this.scrollRoot?.scrollTop === 0) this.headedForTop = false;
+        const bounced = this.bouncing && this.scrollRoot.scrollTop >= 0;
+        this.bouncing = this.scrollRoot.scrollTop < 0;
+        if (this.owed !== 0 && (bounced || this.topInView())) this.handOver();
+        else if (this.owed !== 0) this.settleOnceStill();
+        else if (this.scrollRoot.scrollTop === 0) this.headedForTop = false;
+    }
+
+    /** The stream, drawn lower than its scroll, starts inside the pane: what is above it is blank. */
+    private topInView(): boolean {
+        const stream = this.stream();
+        return this.owed < 0 && !!stream && this.topInPane(stream) >= 0;
     }
 
     /**
@@ -147,6 +164,7 @@ export class ScrollAnchor {
         this.observer = null;
         this.watched.clear();
         this.drawnBase = null;
+        this.bouncing = false;
         this.place = [];
         this.scrollRoot?.removeClass("is-scroll-anchored");
         this.scrollRoot = null;

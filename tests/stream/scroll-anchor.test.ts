@@ -72,15 +72,20 @@ function makePane(layout: (number | number[])[]) {
         const before = Array.from(parent.children).slice(0, Array.from(parent.children).indexOf(el));
         return before.reduce((top, sibling) => top + heightOf(sibling), topOf(parent));
     };
-    /** Appends an element `height` tall to `parent`, laid out as the rest. */
-    const add = (parent: HTMLElement, height?: number) => {
-        const el = parent.createDiv();
-        if (height !== undefined) el.dataset.height = String(height);
+    /** Gives `el` the rect the layout's arithmetic puts it at. */
+    const layOut = (el: HTMLElement) => {
         el.getBoundingClientRect = () => {
             const top = topOf(el);
             const height = heightOf(el);
             return { top, height, bottom: top + height } as DOMRect;
         };
+        return el;
+    };
+    layOut(content);
+    /** Appends an element `height` tall to `parent`, laid out as the rest. */
+    const add = (parent: HTMLElement, height?: number) => {
+        const el = layOut(parent.createDiv());
+        if (height !== undefined) el.dataset.height = String(height);
         return el;
     };
 
@@ -825,6 +830,94 @@ describe("ScrollAnchor", () => {
         expect(pane.scrollTop).toBe(1800);
     });
 
+    // A glide that runs out of scroll before what it owes bounces at the top.
+    // A write mid-bounce iOS undoes; once it ends, the glide has, and a flick
+    // within the idle wait hit the same top again.
+    it("hands over the moment a bounce at the top ends", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+
+        pane.scrollTop = -120;
+        anchor.onScroll();
+        expect(pane.scrollTop).toBe(-120);
+        expect(shift(content)).toBe(-900);
+
+        pane.scrollTop = 0;
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(900);
+        expect(shift(content)).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    // Notes above shrinking leave the stream drawn lower than its scroll: a
+    // glide up reaches the newest note with scroll to spare, and went on into
+    // blank. The write stops the glide there.
+    it("hands over the moment the stream's top comes into the pane", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 100);
+        observer().resized(blocks[0]!);
+
+        pane.scrollTop = 301;
+        anchor.onScroll();
+        expect(pane.scrollTop).toBe(301);
+        expect(shift(content)).toBe(300);
+
+        pane.scrollTop = 290;
+        const drawn = readerTop(blocks);
+        anchor.onScroll();
+
+        expect(readerTop(blocks)).toBe(drawn);
+        expect(shift(content)).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("waits as usual for a scroll owing a shrink once no block is watched", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 100);
+        observer().resized(blocks[0]!);
+        for (const block of blocks) anchor.unobserve(block);
+
+        pane.scrollTop = 290;
+        anchor.onScroll();
+
+        expect(vi.getTimerCount()).toBe(1);
+    });
+
+    it("waits as usual after a bounce at the top that owed nothing", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400], 900);
+        pane.scrollTop = -120;
+        anchor.onScroll();
+        pane.scrollTop = 0;
+        anchor.onScroll();
+
+        pane.scrollTop = 900;
+        anchor.onScroll();
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(900);
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+        expect(pane.scrollTop).toBe(1800);
+    });
+
+    it("lands a scroll headed for the top at the top through a bounce", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        anchor.headForTop();
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+
+        pane.scrollTop = -120;
+        anchor.onScroll();
+        pane.scrollTop = 0;
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(0);
+        expect(shift(content)).toBe(0);
+    });
+
     // Nothing lies above the top, so what grew above the reader on the way
     // up is owed to no one: handing it over would stop short of the top.
     it("lands a scroll headed for the top at the top", () => {
@@ -936,6 +1029,26 @@ describe("ScrollAnchor", () => {
 
         anchor.detach();
         expect(observer().disconnected).toBe(true);
+    });
+
+    it("forgets a bounce on detach", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400], 900);
+        pane.scrollTop = -120;
+        anchor.onScroll();
+        anchor.detach();
+
+        pane.scrollTop = 900;
+        anchor.attach(pane);
+        const again = FakeResizeObserver.instances[1]!;
+        for (const block of blocks) anchor.observe(block);
+        again.resized(...blocks);
+        resize(blocks[0]!, 1300);
+        again.resized(blocks[0]!);
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(900);
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+        expect(pane.scrollTop).toBe(1800);
     });
 
     it("drops the old watch when attached again", () => {
