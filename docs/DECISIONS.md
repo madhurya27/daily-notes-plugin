@@ -602,7 +602,8 @@ back; iOS has no scroll anchoring, so the text jumped and returned.
 
 ## D-036 — The stream anchors its own scroll where the platform does not (2026-09-24)
 
-Superseded in part by D-053: what is offset.
+Superseded in part by D-053: what is offset; and by D-090: a bounce at the top
+hands over as it ends.
 
 **Decision:** in the iOS app, and wherever
 `CSS.supports("overflow-anchor", "auto")` is false, `ScrollAnchor` turns native
@@ -1458,3 +1459,19 @@ which reads as a stray margin under a heading.
 
 - Edge to edge, as Obsidian's reading view draws a Base — past the text column
   on both sides, unlike everything else in the stream's notes.
+
+## D-090 — A glide's bounce at the top hands over as it ends (2026-10-03)
+
+**Decision:** `ScrollAnchor.onScroll` hands what it owes to the scroll in the
+first scroll back at or below the top after one past it, not once the scroll has
+been still for `SCROLL_IDLE_MS`.
+
+**Why:** a glide up past notes rendering taller than reserved runs out of scroll
+first and bounces at the top owing them (ADR 0010). On a phone the hand-over
+came 328 ms after the bounce; a flick meanwhile hit the same top, and put the
+hand-over off again. A bounce ends the glide, so the write ends none.
+
+**Rejected:**
+
+- Handing over as the glide reaches the top — iOS undid the write the next
+  frame, mid-bounce: the stream jumped 3,000 px.
