@@ -41,6 +41,9 @@ Ordered by priority, from the 2026-09 comparison against
           draft on `docs/top-buffer-spike` predates the freeze. ADR 0010
           rejected a buffer: a new ADR. Check scroll to top, jumps, Back and
           search land on notes, not the buffer.
+- [ ] iOS: `e2e/ios/jump.spec.ts` "a flick up from an old date glides on" fails
+      about one run in four, on `main` too: the text under the thumb jumps 94 px
+      for three frames, or 13k px.
 - [ ] iOS: D-091's stop writes the scroll mid-touch if a finger drags slowly
       past the newest note while the stream is drawn lower. Untested: the
       harness only flicks.
