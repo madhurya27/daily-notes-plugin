@@ -103,7 +103,7 @@ test.describe("with a daily-notes template", () => {
         await expect(obsidian.page.locator(".daily-notes-stream-probe")).toHaveCount(0);
     });
 
-    test("forgets every height on the command, and measures the template again", async ({ obsidian }) => {
+    test("forgets every height on a device build's command, and measures the template again", async ({ obsidian }) => {
         const container = await openStream(obsidian.page);
         const memory = () =>
             container.evaluate((column, path) => {
@@ -118,8 +118,10 @@ test.describe("with a daily-notes template", () => {
         await expect.poll(async () => (await memory()).template).toBeGreaterThan(0);
 
         const forgotten = await obsidian.page.evaluate(() => {
-            window.app.commands.executeCommandById("daily-notes-stream:forget-note-heights");
-            const { layoutMemory } = window.app.plugins.plugins["daily-notes-stream"];
+            // A release build, as e2e runs, has no command: call what it runs.
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.forgetNoteHeights();
+            const { layoutMemory } = plugin;
             return layoutMemory.notes.layouts().flatMap((layout: string) => layoutMemory.notes.entries(layout));
         });
         expect(forgotten).toEqual([]);

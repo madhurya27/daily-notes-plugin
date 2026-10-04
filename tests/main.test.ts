@@ -123,12 +123,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
         expect(plugin.ribbonIcons.map(({ icon, title }) => ({ icon, title }))).toEqual([
             { icon: "gallery-vertical-end", title: "Open daily notes stream" },
         ]);
-        expect(plugin.commands.map((c) => c.id)).toEqual([
-            "open-stream",
-            "jump-to-date",
-            "scroll-to-top",
-            "forget-note-heights",
-        ]);
+        expect(plugin.commands.map((c) => c.id)).toEqual(["open-stream", "jump-to-date", "scroll-to-top"]);
         expect(plugin.settingTabs).toHaveLength(1);
     });
 
@@ -663,8 +658,22 @@ describe("DailyNotesStreamPlugin — scroll-to-top command", () => {
     });
 });
 
+// A testing aid: only a build put on a device offers it.
 describe("DailyNotesStreamPlugin — forget-note-heights command", () => {
+    afterEach(() => vi.unstubAllGlobals());
+    const offered = (p: DailyNotesStreamPlugin) => p.commands.some((c) => c.id === "forget-note-heights");
+
+    it.each([
+        ["a release build", ""],
+        ["an unbundled run", undefined],
+    ])("is not offered in %s", async (_label, label) => {
+        if (label !== undefined) vi.stubGlobal("BUILD_LABEL", label);
+        const { plugin } = await loadPlugin();
+        expect(offered(plugin)).toBe(false);
+    });
+
     it("empties the layout memory and re-estimates every open stream", async () => {
+        vi.stubGlobal("BUILD_LABEL", "amber otter");
         const { plugin, app } = await loadPlugin();
         const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, makeService());
         const forgetHeights = vi.spyOn(view, "forgetHeights").mockImplementation(() => {});

@@ -13,6 +13,11 @@ import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 /** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
 declare const BUILD_LABEL: string;
 
+/** Unit tests run the source unbundled, where nothing defines it. */
+function buildLabel(): string {
+    return typeof BUILD_LABEL === "string" ? BUILD_LABEL : "";
+}
+
 /** A ribbon click or command has no caller to reject to, so a failure is logged. */
 function logActivationFailure(activation: Promise<unknown>): void {
     activation.catch((error) => console.error("DailyNotesStream: Failed to activate view", error));
@@ -27,8 +32,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
     linkChanges!: LinkChanges;
 
     async onload() {
-        // Unit tests run the source unbundled, where nothing defines it.
-        if (typeof BUILD_LABEL === "string" && BUILD_LABEL) new Notice(`Daily notes stream: ${BUILD_LABEL}`);
+        if (buildLabel()) new Notice(`Daily notes stream: ${buildLabel()}`);
         await this.loadSettings();
 
         this.collapseStore = new CollapsibleStateStore(this.app);
@@ -78,11 +82,14 @@ export default class DailyNotesStreamPlugin extends Plugin {
             },
         });
 
-        this.addCommand({
-            id: "forget-note-heights",
-            name: "Forget measured note heights",
-            callback: () => this.forgetNoteHeights(),
-        });
+        // A testing aid, to start from no stored heights: only on a device build.
+        if (buildLabel()) {
+            this.addCommand({
+                id: "forget-note-heights",
+                name: "Forget measured note heights",
+                callback: () => this.forgetNoteHeights(),
+            });
+        }
 
         this.addSettingTab(new DailyNotesStreamSettingTab(this.app, this));
     }
