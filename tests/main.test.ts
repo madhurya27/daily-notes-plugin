@@ -373,12 +373,10 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
     it("forgets a note's heights as it is edited, before any view hears of it", async () => {
         const { plugin, app } = await loadPlugin();
         plugin.layoutMemory.notes.keep("600:16px", "Notes/a.md", 300);
-        plugin.layoutMemory.templates.keep("600:16px", "Notes/a.md", 360);
 
         vaultEvent(app, "modify")({ path: "Notes/a.md" });
 
         expect(plugin.layoutMemory.notes.heightOf("600:16px", "Notes/a.md")).toBeUndefined();
-        expect(plugin.layoutMemory.templates.heightOf("600:16px", "Notes/a.md")).toBe(360);
     });
 
     it("saves what it measured when the plugin unloads", async () => {

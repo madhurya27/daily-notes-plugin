@@ -91,8 +91,8 @@ export class NoteWindowManager {
         private readonly layoutOf: () => string,
         /** jsdom lays nothing out, so measurement is the one seam tests replace. */
         private readonly measure: (el: HTMLElement) => number = (el) => el.getBoundingClientRect().height,
-        /** A note's height at a layout, from its text, where none is stored (D-079). */
-        private readonly estimate: (layout: string, path: string) => number | undefined = () => undefined
+        /** What a note not measured at a layout reserves there: by default, what the vault's notes measured (D-092). */
+        private readonly estimate: (layout: string) => number | undefined = (layout) => heights.estimate(layout)
     ) {
         this.reservedFrom = this.reserveKey();
     }
@@ -446,12 +446,10 @@ export class NoteWindowManager {
         return `${this.heights.revision}\n${this.expectedIn}`;
     }
 
-    /** What `window` last measured in `layout`, or an estimate: from its text, else the layout's median. */
+    /** What `window` last measured in `layout`, or the estimate there. */
     private expect(window: NoteWindow, layout: string): void {
-        const { path } = window.file;
-        const remembered = this.heights.heightOf(layout, path);
-        window.height =
-            remembered ?? this.estimate(layout, path) ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
+        const remembered = this.heights.heightOf(layout, window.file.path);
+        window.height = remembered ?? this.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
         window.measured = remembered !== undefined;
     }
 

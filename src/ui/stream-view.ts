@@ -68,10 +68,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
             plugin.layoutMemory.bases,
             plugin.backlinks
         );
-        this.stream = new NoteStream(this.service, plugin.collapseStore, this.renderer, plugin.layoutMemory, {
-            cacheOf: (path) => this.app.metadataCache.getCache(path),
-            template: () => plugin.emptyNotes.templateFile(),
-        });
+        this.stream = new NoteStream(this.service, plugin.collapseStore, this.renderer, plugin.layoutMemory);
 
         this.search = new StreamSearch(
             {

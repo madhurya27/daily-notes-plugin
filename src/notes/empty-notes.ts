@@ -81,12 +81,6 @@ export class EmptyNotes {
         return getDailyNoteSettings().template ?? "";
     }
 
-    /** The file `templatePath` resolves to, as `obsidian-daily-notes-interface` resolves it. */
-    templateFile(): TFile | null {
-        const path = this.templatePath();
-        return path ? this.reader.resolve(path) : null;
-    }
-
     /** `refresh`, for every daily note: what the next session trusts dates from when it began. */
     async checkAll(files: TFile[]): Promise<void> {
         const startedAt = Date.now();
@@ -158,12 +152,12 @@ export class EmptyNotes {
     }
 
     /**
-     * Read again only once changed. Null when it cannot be read: nothing is
-     * empty until it is.
+     * Resolved as `obsidian-daily-notes-interface` resolves it; read again only
+     * once changed. Null when it cannot be read: nothing is empty until it is.
      */
     private async readTemplate(): Promise<Template | null> {
         const path = this.templatePath();
-        const file = this.templateFile();
+        const file = path ? this.reader.resolve(path) : null;
         const key = `${path}\u0000${file?.path}\u0000${file?.stat.mtime}`;
         if (this.template?.key === key) return this.template;
 

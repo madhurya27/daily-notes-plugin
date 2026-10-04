@@ -197,11 +197,7 @@ test.describe("empty daily notes", () => {
             try {
                 await app.plugins.enablePlugin("daily-notes-stream");
                 await app.commands.executeCommandById("daily-notes-stream:open-stream");
-                while (
-                    !document.querySelector(
-                        ".daily-notes-stream-container:not(.daily-notes-stream-probe) .daily-note-content"
-                    )
-                )
+                while (!document.querySelector(".daily-notes-stream-container .daily-note-content"))
                     await new Promise((resolve) => setTimeout(resolve, 5));
             } finally {
                 vault.cachedRead = cachedRead;

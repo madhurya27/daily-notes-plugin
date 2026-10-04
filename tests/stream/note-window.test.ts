@@ -225,6 +225,7 @@ describe("NoteWindowManager remembered heights", () => {
         expect(placeholderHeight(manager.add(FILE))).toBe("812px");
     });
 
+    // Erring tall: the 0.9 quantile (D-092).
     it("reserves what the layout's notes measured for a note never measured", () => {
         const heights = new NoteHeights();
         for (const [path, px] of [
@@ -235,12 +236,12 @@ describe("NoteWindowManager remembered heights", () => {
             heights.keep(LAYOUT, path, px);
         const { manager } = makeManager(undefined, undefined, undefined, heights);
 
-        expect(placeholderHeight(manager.add(FILE))).toBe("710px");
+        expect(placeholderHeight(manager.add(FILE))).toBe("9000px");
     });
 
-    describe("with an estimate from the note's text", () => {
+    describe("with an estimate given", () => {
         function makeEstimating(heights: NoteHeights) {
-            const estimate = vi.fn((_layout: string, path: string) => (path === FILE.path ? 950 : undefined));
+            const estimate = vi.fn((_layout: string): number | undefined => 950);
             const manager = new NoteWindowManager(
                 makeRenderer() as never,
                 makeQueue(),
@@ -253,14 +254,14 @@ describe("NoteWindowManager remembered heights", () => {
             return { manager, estimate };
         }
 
-        it("reserves it for a note not measured here, over the layout's median", () => {
+        it("reserves it for a note not measured here, and the default when it has none", () => {
             const heights = new NoteHeights();
-            heights.keep(LAYOUT, "a.md", 700);
             const { manager, estimate } = makeEstimating(heights);
 
             expect(placeholderHeight(manager.add(FILE))).toBe("950px");
-            expect(estimate).toHaveBeenCalledWith(LAYOUT, FILE.path);
-            expect(placeholderHeight(manager.add(new TFile("b.md")))).toBe("700px");
+            expect(estimate).toHaveBeenCalledWith(LAYOUT);
+            estimate.mockReturnValueOnce(undefined);
+            expect(placeholderHeight(manager.add(new TFile("b.md")))).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
 
             heights.keep(LAYOUT, FILE.path, 812);
             expect(placeholderHeight(manager.add(FILE))).toBe("812px");

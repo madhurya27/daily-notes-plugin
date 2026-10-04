@@ -23,25 +23,34 @@ describe("NoteHeights", () => {
         expect(changed).toHaveBeenCalledOnce();
     });
 
-    it("estimates a layout's unmeasured note as the median of its measured ones", () => {
+    // Erring tall: a glide up past notes taller than reserved runs out of scroll short of the top (D-092).
+    it("estimates a layout's unmeasured note at the 0.9 quantile of its measured ones", () => {
         const heights = new NoteHeights();
         expect(heights.estimate("600:16px")).toBeUndefined();
 
-        heights.keep("600:16px", "a.md", 100);
-        heights.keep("600:16px", "b.md", 900);
-        heights.keep("600:16px", "c.md", 300);
-        expect(heights.estimate("600:16px")).toBe(300);
+        for (let i = 1; i <= 11; i++) heights.keep("600:16px", `n${i}.md`, i * 100);
+        expect(heights.estimate("600:16px")).toBe(1000);
 
-        // Every placeholder of a batch asks: the median is sorted once per change.
+        // Every placeholder of a batch asks: the quantile is sorted once per change.
         const sort = vi.spyOn(Array.prototype, "sort");
-        expect(heights.estimate("600:16px")).toBe(300);
+        expect(heights.estimate("600:16px")).toBe(1000);
         expect(sort).not.toHaveBeenCalled();
         sort.mockRestore();
 
-        heights.keep("600:16px", "d.md", 50);
-        heights.keep("600:16px", "e.md", 60);
-        expect(heights.estimate("600:16px")).toBe(100);
-        expect(heights.estimate("400:16px")).toBeUndefined();
+        heights.keep("600:16px", "n12.md", 5000);
+        expect(heights.estimate("600:16px")).toBe(1100);
+    });
+
+    // Just turned, nothing is measured at the new width yet.
+    it("estimates from the nearest width of the same text size where this one measured nothing", () => {
+        const heights = new NoteHeights();
+        heights.keep("400:16px", "a.md", 900);
+        heights.keep("700:16px", "a.md", 500);
+        heights.keep("380:20px", "a.md", 2000);
+
+        expect(heights.estimate("380:16px")).toBe(900);
+        expect(heights.estimate("650:16px")).toBe(500);
+        expect(heights.estimate("380:18px")).toBeUndefined();
     });
 
     it("forgets a deleted note, and notes no longer in the vault", () => {
@@ -180,8 +189,10 @@ describe("NoteHeights", () => {
 
         it("comes back empty from a save of another shape", () => {
             const { heights } = setup();
-            heights.restore({ heights: [["a", [["x.md", 100]]]] });
-            expect(heights.heightOf("a", "x.md")).toBeUndefined();
+            for (const saved of [{ heights: [["a", [["x.md", 100]]]] }, { mtimes: [["x.md", "1"]] }, null]) {
+                heights.restore(saved);
+                expect(heights.heightOf("a", "x.md")).toBeUndefined();
+            }
         });
     });
 });

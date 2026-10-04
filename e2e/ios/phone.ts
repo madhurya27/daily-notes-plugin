@@ -8,7 +8,7 @@ import { returnToTestersVault, useVault } from "./vault";
  * did is read from Obsidian's web view.
  */
 
-const STREAM = ".daily-notes-stream-container:not(.daily-notes-stream-probe)";
+const STREAM = ".daily-notes-stream-container";
 
 type Orientation = "PORTRAIT" | "LANDSCAPE";
 type Seen = { path: string; index: number; text: string; top: number };

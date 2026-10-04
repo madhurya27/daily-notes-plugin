@@ -37,16 +37,8 @@ describe("LayoutMemory", () => {
         expect(memory.bases.isTooWide({ layout: "600:16px", path: "a.md", base: "b1" })).toBe(true);
     });
 
-    it("comes back with the template's heights a last session measured", () => {
-        const templates = [["600:16px", [["Templates/Daily.md", 360]]]];
-        const memory = new LayoutMemory(
-            asApp(makeApp({ version: 5, notes: saved([]), bases: [], templates: saved(templates) }))
-        );
-        expect(memory.templates.heightOf("600:16px", "Templates/Daily.md")).toBe(360);
-    });
-
     // Version 1 keyed Bases by their whole source; version 2 kept their heights; version 3 had no templates;
-    // version 4 kept no mtimes.
+    // version 4 kept no mtimes, and templates.
     it("starts empty from another version's save", () => {
         const memory = new LayoutMemory(asApp(makeApp({ version: 4, notes: [["600:16px", [["a.md", 300]]]] })));
         expect(memory.notes.toJSON().heights).toEqual([]);
@@ -61,7 +53,6 @@ describe("LayoutMemory", () => {
         memory.notes.keep("600:16px", "a.md", 300);
         memory.notes.keep("600:16px", "b.md", 200);
         memory.bases.markTooWide({ layout: "600:16px", path: "a.md", base: "b1" });
-        memory.templates.keep("600:16px", "t.md", 360);
         expect(app.saveLocalStorage).not.toHaveBeenCalled();
 
         vi.advanceTimersByTime(SAVE_DELAY_MS);
@@ -78,7 +69,6 @@ describe("LayoutMemory", () => {
                 ],
             ]),
             bases: [["600:16px", [["a.md\nb1", { tooWide: true }]]]],
-            templates: saved([["600:16px", [["t.md", 360]]]]),
         });
     });
 
@@ -88,7 +78,6 @@ describe("LayoutMemory", () => {
         for (const path of ["old.md", "gone.md", "stale.md"]) {
             memory.notes.keep("600:16px", path, 300);
             memory.bases.markTooWide(base(path));
-            memory.templates.keep("600:16px", path, 360);
         }
 
         memory.rename("old.md", "new.md");
@@ -97,28 +86,23 @@ describe("LayoutMemory", () => {
 
         expect(memory.notes.toJSON().heights).toEqual([["600:16px", [["new.md", 300]]]]);
         expect(memory.bases.toJSON()).toEqual([["600:16px", [["new.md\nb1", { tooWide: true }]]]]);
-        expect(memory.templates.toJSON().heights).toEqual([["600:16px", [["new.md", 360]]]]);
     });
 
     // Edited while the plugin was off, or on another device: estimated from its text again (ADR 0017).
-    it("forgets a note or template changed since it was measured, by the vault's mtimes", () => {
+    it("forgets a note changed since it was measured, by the vault's mtimes", () => {
         const mtimes = new Map([
             ["a.md", 1],
             ["b.md", 1],
-            ["t.md", 1],
         ]);
         const memory = new LayoutMemory(asApp(makeApp(null, mtimes)));
         memory.notes.keep("600:16px", "a.md", 300);
         memory.notes.keep("600:16px", "b.md", 200);
-        memory.templates.keep("600:16px", "t.md", 360);
         mtimes.set("a.md", 2);
-        mtimes.set("t.md", 2);
 
         memory.retainOnly(new Set(mtimes.keys()));
 
         expect(memory.notes.heightOf("600:16px", "a.md")).toBeUndefined();
         expect(memory.notes.heightOf("600:16px", "b.md")).toBe(200);
-        expect(memory.templates.heightOf("600:16px", "t.md")).toBeUndefined();
     });
 
     it("forgets everything it measured, and saves that", () => {
@@ -127,7 +111,6 @@ describe("LayoutMemory", () => {
         const base = { layout: "600:16px", path: "a.md", base: "b1" };
         memory.notes.keep("600:16px", "a.md", 300);
         memory.bases.markTooWide(base);
-        memory.templates.keep("600:16px", "t.md", 360);
         vi.advanceTimersByTime(SAVE_DELAY_MS);
 
         memory.forgetAll();
@@ -135,7 +118,6 @@ describe("LayoutMemory", () => {
 
         expect(memory.notes.heightOf("600:16px", "a.md")).toBeUndefined();
         expect(memory.bases.isTooWide(base)).toBe(false);
-        expect(memory.templates.heightOf("600:16px", "t.md")).toBeUndefined();
         expect(app.saveLocalStorage).toHaveBeenCalledTimes(2);
         const saved = new LayoutMemory(asApp(makeApp(app.saveLocalStorage.mock.lastCall![1])));
         expect(saved.notes.heightOf("600:16px", "a.md")).toBeUndefined();

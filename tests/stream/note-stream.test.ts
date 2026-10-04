@@ -11,8 +11,6 @@ import type { CollapsibleStateStore } from "../../src/render/collapse-store";
 import { NoteHeights } from "../../src/stream/note-heights";
 import { youtubeThumbnail } from "../../src/render/video-thumbnails";
 import { BASE_SLOT_CLASS } from "../../src/render/bases/bases-as-cards";
-import type { TemplateHeight } from "../../src/stream/template-height";
-import { measureText, type EstimateSources, type HeightEstimates } from "../../src/stream/height-estimates";
 import { flushPromises, makePlugin, makeService } from "../stream-view-fixture";
 
 /** What the stream constructed its window with, besides what it calls on it. */
@@ -20,52 +18,17 @@ type FakeWindow = Mocked<NoteWindowManager> & {
     memory: {
         heights: NoteHeights;
         layoutOf: () => string;
-        estimate: (layout: string, path: string) => number | undefined;
     };
 };
 type FakeScroll = Mocked<InfiniteScrollController>;
 type FakeGuard = Mocked<ScrollBoxGuard>;
 type FakeFrames = Mocked<FrameDeferral>;
 /** What the stream constructed each with, besides what it calls on it. */
-type FakeTemplateHeight = Pick<Mocked<TemplateHeight>, "measureAt" | "forget"> & {
-    args: { templates: NoteHeights; template: () => TFile | null };
-};
-type FakeEstimates = Pick<Mocked<HeightEstimates>, "estimate"> & {
-    args: { heights: NoteHeights; templates: NoteHeights; sources: EstimateSources };
-};
-
 const fakes = vi.hoisted(() => ({
     windows: [] as FakeWindow[],
     scrolls: [] as FakeScroll[],
     guards: [] as FakeGuard[],
     frames: [] as FakeFrames[],
-    templateHeights: [] as FakeTemplateHeight[],
-    estimates: [] as FakeEstimates[],
-}));
-
-// Both render or lay out, and have their own tests.
-vi.mock("../../src/stream/template-height", () => ({
-    TemplateHeight: class {
-        measureAt = vi.fn();
-        forget = vi.fn();
-        args: unknown;
-        constructor(_renderer: unknown, _enqueue: unknown, templates: NoteHeights, template: () => TFile | null) {
-            this.args = { templates, template };
-            fakes.templateHeights.push(this as unknown as FakeTemplateHeight);
-        }
-    },
-}));
-
-vi.mock("../../src/stream/height-estimates", () => ({
-    HeightEstimates: class {
-        estimate = vi.fn(() => 950);
-        args: unknown;
-        constructor(heights: NoteHeights, templates: NoteHeights, sources: EstimateSources) {
-            this.args = { heights, templates, sources };
-            fakes.estimates.push(this as unknown as FakeEstimates);
-        }
-    },
-    measureText: vi.fn(() => ({ charWidth: 7, lineHeight: 24 })),
 }));
 
 // Both need a layout jsdom lacks, and have their own tests. The window
@@ -89,11 +52,9 @@ vi.mock("../../src/stream/note-window", () => ({
             _renderer: unknown,
             readonly enqueue: (task: () => Promise<void>) => Promise<void>,
             heights: NoteHeights,
-            layoutOf: () => string,
-            _measure: unknown,
-            estimate: (layout: string, path: string) => number | undefined
+            layoutOf: () => string
         ) {
-            this.memory = { heights, layoutOf, estimate };
+            this.memory = { heights, layoutOf };
             fakes.windows.push(this as unknown as FakeWindow);
         }
     },
@@ -175,11 +136,6 @@ let guard: FakeGuard;
 let frames: FakeFrames;
 let renderer: { onBaseLayout: ReturnType<typeof vi.fn> };
 let heights: NoteHeights;
-let templates: NoteHeights;
-let templateHeight: FakeTemplateHeight;
-let estimates: FakeEstimates;
-const TEMPLATE = new TFile("Templates/Daily.md");
-const cacheOf = vi.fn((_path: string) => null);
 
 beforeEach(() => {
     Notice.reset();
@@ -187,17 +143,8 @@ beforeEach(() => {
     collapseStore = makePlugin().collapseStore;
     renderer = { onBaseLayout: vi.fn() };
     heights = new NoteHeights();
-    templates = new NoteHeights();
-    stream = new NoteStream(
-        service,
-        collapseStore,
-        renderer as unknown as NoteRenderer,
-        { notes: heights, templates },
-        { cacheOf, template: () => TEMPLATE }
-    );
+    stream = new NoteStream(service, collapseStore, renderer as unknown as NoteRenderer, { notes: heights });
     noteWindow = fakes.windows.at(-1)!;
-    templateHeight = fakes.templateHeights.at(-1)!;
-    estimates = fakes.estimates.at(-1)!;
     infiniteScroll = fakes.scrolls.at(-1)!;
     guard = fakes.guards.at(-1)!;
     frames = fakes.frames.at(-1)!;
@@ -1143,49 +1090,9 @@ describe("the heights the stream reserves", () => {
         expect(noteWindow.memory.layoutOf()).toBe("612:");
     });
 
-    it("are estimated, where none is stored, from the plugin's heights and the note's text", () => {
-        Object.defineProperty(pane, "clientHeight", { value: 874 });
-
-        expect(noteWindow.memory.estimate("612:", "a.md")).toBe(950);
-        expect(estimates.estimate).toHaveBeenCalledWith("612:", "a.md");
-        expect(estimates.args.heights).toBe(heights);
-        expect(estimates.args.templates).toBe(templates);
-        expect(estimates.args.sources.cacheOf).toBe(cacheOf);
-        expect(estimates.args.sources.template()).toBe(TEMPLATE);
-        expect(estimates.args.sources.text()).toEqual({ charWidth: 7, lineHeight: 24 });
-        expect(measureText).toHaveBeenCalledWith(container);
-        expect(estimates.args.sources.paneHeight()).toBe(874);
-    });
-
-    // A never-measured note is estimated up from it.
-    it("take the template's height in the column, once opened and at each new size", () => {
-        expect(templateHeight.args.templates).toBe(templates);
-        expect(templateHeight.args.template()).toBe(TEMPLATE);
-        // jsdom laid nothing out when the stream opened: no width to measure at.
-        expect(templateHeight.measureAt).not.toHaveBeenCalled();
-
-        Object.defineProperty(container, "clientWidth", { value: 612, configurable: true });
-        stream.open(pane, container);
-        expect(templateHeight.measureAt).toHaveBeenCalledWith(container, "612:");
-
-        Object.defineProperty(container, "clientWidth", { value: 400 });
-        stream.onResize();
-        expect(templateHeight.measureAt).toHaveBeenLastCalledWith(container, "400:");
-    });
-
-    // As a new session would: the template measured again, every placeholder estimated afresh.
-    it("start over once the heights are forgotten", () => {
-        Object.defineProperty(container, "clientWidth", { value: 612, configurable: true });
-        stream.open(pane, container);
-        templateHeight.measureAt.mockClear();
-
+    // Each placeholder is then estimated afresh from what is left (D-092).
+    it("pass the forgetting of every height on to the window", () => {
         stream.forgetHeights();
-
-        expect(templateHeight.forget).toHaveBeenCalled();
-        expect(templateHeight.measureAt).toHaveBeenCalledWith(container, "612:");
-        expect(templateHeight.forget.mock.invocationCallOrder[0]!).toBeLessThan(
-            templateHeight.measureAt.mock.invocationCallOrder[0]!
-        );
         expect(noteWindow.forgetHeights).toHaveBeenCalled();
     });
 });

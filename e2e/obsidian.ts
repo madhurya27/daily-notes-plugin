@@ -535,7 +535,7 @@ export interface MobileLayoutOptions {
 export const LAYOUT_VIEWPORT = { desktop: VIEWPORT, mobile: PHONE_VIEWPORT };
 
 /** The stream's column, not the copy of it the template is measured in while the stream opens. */
-export const STREAM = ".daily-notes-stream-container:not(.daily-notes-stream-probe)";
+export const STREAM = ".daily-notes-stream-container";
 
 /**
  * Opens a *fresh* stream view and returns its container locator. Tests share one

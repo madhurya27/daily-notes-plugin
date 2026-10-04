@@ -21,9 +21,7 @@ type Frame = { at: number; top: number; shift: number; streamTop: number };
 /** Starts noting each frame, up to 600; `frames` reports them. */
 async function recordFrames(phone: Phone): Promise<void> {
     await phone.run(() => {
-        const stream = document.querySelector<HTMLElement>(
-            ".daily-notes-stream-container:not(.daily-notes-stream-probe)"
-        )!;
+        const stream = document.querySelector<HTMLElement>(".daily-notes-stream-container")!;
         const pane = stream.parentElement!;
         const below = () => stream.getBoundingClientRect().top - pane.getBoundingClientRect().top;
         // Read at rest, nothing owed: where the stream sits at scroll 0.

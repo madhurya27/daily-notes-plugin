@@ -6,10 +6,10 @@
 ## Context
 
 ADR 0010 kept an edited note's last height: the layout's median was the only
-other guess, and further off. Text estimates (D-079), now erring tall (D-092),
-are nearer for a note whose text changed. A note grown since it was measured, on
-another device or while the plugin was off, reserved its old height: a glide up
-past it ran out of scroll short of the newest note (D-090).
+other guess, and further off. A note grown since it was measured, on another
+device or while the plugin was off, reserved its old height: a glide up past it
+ran out of scroll short of the newest note (D-090). The estimate now errs tall
+(D-092).
 
 ## Decision
 
@@ -22,18 +22,16 @@ store format is version 5.
 
 ## Consequences
 
-- A note edited elsewhere reserves its text's estimate until it renders here.
-- Every save of a note re-learns the estimates and re-reserves at the next rest.
+- A note edited elsewhere reserves the estimate until it renders here.
+- Every save of a note re-reserves the placeholders at the next rest.
 - A note re-measured at the same height keeps its new mtime only once something
   else is saved.
-- The template's heights carry its mtime too: one edited between sessions is
-  measured again.
 
 ## Rejected alternatives
 
 - **Keeping the old height (ADR 0010)** — short for a note grown since.
-- **The taller of the old height and the estimate** — overshoots a note cut
-  down, on top of the estimate's own tall bias.
+- **The taller of the old height and the estimate** — the estimate already errs
+  tall.
 - **Re-measuring off screen on edit** — renders a note no one is looking at.
 - **Checking mtimes on every read** — every placeholder of a batch would look
-  each note up in the vault, and cached estimates would not notice.
+  each note up in the vault, and the cached estimate would not notice.

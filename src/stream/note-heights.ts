@@ -14,8 +14,8 @@ export interface SavedNoteHeights {
  */
 export class NoteHeights {
     private readonly table: LayoutTable<number>;
-    /** Each layout's median, until one of its heights changes. */
-    private readonly medians = new Map<string, number>();
+    /** Each layout's estimate, until one of its heights changes. */
+    private readonly tails = new Map<string, number>();
     private changes = 0;
     private mtimes = new Map<string, number>();
 
@@ -28,7 +28,7 @@ export class NoteHeights {
         this.table = new LayoutTable(
             (value): value is number => typeof value === "number",
             (layout) => {
-                this.medians.delete(layout);
+                this.tails.delete(layout);
                 this.changes++;
                 changed();
             },
@@ -68,15 +68,30 @@ export class NoteHeights {
         if (this.heightOf(layout, path) !== px) this.table.set(layout, path, px);
     }
 
-    /** The median of what `layout` measured: note length varies by vault. */
+    /**
+     * A note not measured at `layout`: the 0.9 quantile of what it measured,
+     * erring tall, as a glide up past notes taller than reserved runs out of
+     * scroll short of the top (D-092). Where it measured nothing, as just
+     * turned, the nearest width's of the same text size.
+     */
     estimate(layout: string): number | undefined {
-        const known = this.medians.get(layout);
+        const here = this.tailOf(layout);
+        if (here !== undefined) return here;
+        const { width, size } = parse(layout);
+        const [nearest] = this.layouts()
+            .map(parse)
+            .filter((other) => other.size === size && this.table.values(other.layout).length > 0)
+            .sort((a, b) => Math.abs(a.width - width) - Math.abs(b.width - width));
+        return nearest && this.tailOf(nearest.layout);
+    }
+
+    private tailOf(layout: string): number | undefined {
+        const known = this.tails.get(layout);
         if (known !== undefined) return known;
         const sorted = this.table.values(layout).sort((a, b) => a - b);
-        if (sorted.length === 0) return undefined;
-        const median = sorted[sorted.length >> 1]!;
-        this.medians.set(layout, median);
-        return median;
+        const tail = sorted[Math.floor(sorted.length * 0.9)];
+        if (tail !== undefined) this.tails.set(layout, tail);
+        return tail;
     }
 
     rename(oldPath: string, newPath: string): void {
@@ -107,7 +122,7 @@ export class NoteHeights {
         const valid = isSaved(saved);
         this.table.restore(valid ? saved.heights : undefined);
         this.mtimes = new Map(valid ? saved.mtimes : []);
-        this.medians.clear();
+        this.tails.clear();
         this.changes++;
     }
 }
@@ -118,4 +133,10 @@ function isSaved(saved: unknown): saved is SavedNoteHeights {
         Array.isArray(mtimes) &&
         mtimes.every((entry) => Array.isArray(entry) && typeof entry[0] === "string" && typeof entry[1] === "number")
     );
+}
+
+/** A `layoutOf` key back into its width and text size. */
+function parse(layout: string) {
+    const colon = layout.indexOf(":");
+    return { layout, width: Number(layout.slice(0, colon)), size: layout.slice(colon + 1) };
 }
