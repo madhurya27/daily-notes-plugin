@@ -41,16 +41,12 @@ describe("NoteHeights", () => {
         expect(heights.estimate("600:16px")).toBe(1100);
     });
 
-    // Just turned, nothing is measured at the new width yet.
-    it("estimates from the nearest width of the same text size where this one measured nothing", () => {
+    // Just turned, the notes on screen are measured at the new width within moments: no guess from the old one.
+    it("estimates nothing at a width that measured nothing, whatever others did", () => {
         const heights = new NoteHeights();
         heights.keep("400:16px", "a.md", 900);
-        heights.keep("700:16px", "a.md", 500);
-        heights.keep("380:20px", "a.md", 2000);
 
-        expect(heights.estimate("380:16px")).toBe(900);
-        expect(heights.estimate("650:16px")).toBe(500);
-        expect(heights.estimate("380:18px")).toBeUndefined();
+        expect(heights.estimate("380:16px")).toBeUndefined();
     });
 
     it("forgets a deleted note, and notes no longer in the vault", () => {

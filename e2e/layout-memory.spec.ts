@@ -19,8 +19,7 @@ test("reserves a note never measured at what the vault's notes measured, erring 
         });
     await expect.poll(async () => (await reserved()).estimate).toBeGreaterThan(0);
 
-    // Placeholders made before anything was measured take it at a scroll's rest (ADR 0014).
-    await container.evaluate((column) => column.parentElement!.scrollBy({ top: 1 }));
+    // Made before anything was measured, a placeholder takes it once the notes on screen are (ADR 0014).
     await expect.poll(async () => (await reserved()).placeholder).toBe(`${(await reserved()).estimate}px`);
 });
 

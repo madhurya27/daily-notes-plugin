@@ -1508,9 +1508,11 @@ step ahead still went 43 px past when a dropped frame doubled the step.
 ## D-092 — A note never measured reserves the 0.9 quantile of those measured (2026-10-04)
 
 **Decision:** a note with no height stored at the layout reserves the 0.9
-quantile of the heights stored there; with none there, as just turned, the
-nearest width's of the same text size; else 400px. It replaces D-079–D-081's
-estimates from each note's text, template and Bases.
+quantile of the heights stored there. Where nothing is, it keeps what it
+reserves: just turned, its old width's height; never measured, two panes. A
+height kept schedules the re-reserve at the next rest (ADR 0014), so after a
+turn or on opening, the notes on screen set the rest within moments. It replaces
+D-079–D-081's estimates from each note's text, template and Bases.
 
 **Why:** an estimate shows only off the common path, after a jump, search, Back
 or turn, gliding up through notes not yet drawn; scrolling down from the top
@@ -1526,3 +1528,7 @@ input is the vault's own notes, so nothing is fitted to a journal we made up.
   notes came out short in portrait.
 - A buffer above the newest note — room above can change only at rest: a scroll
   write mid-glide is undone or ends the glide (D-090, D-091).
+- The nearest width's quantile, scaled by the widths — the notes on screen are
+  measured at the new width within moments of a turn.
+- A fixed 400px before anything is measured — the notes ADR 0006 measured ran
+  ~709px.

@@ -71,21 +71,9 @@ export class NoteHeights {
     /**
      * A note not measured at `layout`: the 0.9 quantile of what it measured,
      * erring tall, as a glide up past notes taller than reserved runs out of
-     * scroll short of the top (D-092). Where it measured nothing, as just
-     * turned, the nearest width's of the same text size.
+     * scroll short of the top (D-092). Nothing where it measured nothing.
      */
     estimate(layout: string): number | undefined {
-        const here = this.tailOf(layout);
-        if (here !== undefined) return here;
-        const { width, size } = parse(layout);
-        const [nearest] = this.layouts()
-            .map(parse)
-            .filter((other) => other.size === size && this.table.values(other.layout).length > 0)
-            .sort((a, b) => Math.abs(a.width - width) - Math.abs(b.width - width));
-        return nearest && this.tailOf(nearest.layout);
-    }
-
-    private tailOf(layout: string): number | undefined {
         const known = this.tails.get(layout);
         if (known !== undefined) return known;
         const sorted = this.table.values(layout).sort((a, b) => a - b);
@@ -133,10 +121,4 @@ function isSaved(saved: unknown): saved is SavedNoteHeights {
         Array.isArray(mtimes) &&
         mtimes.every((entry) => Array.isArray(entry) && typeof entry[0] === "string" && typeof entry[1] === "number")
     );
-}
-
-/** A `layoutOf` key back into its width and text size. */
-function parse(layout: string) {
-    const colon = layout.indexOf(":");
-    return { layout, width: Number(layout.slice(0, colon)), size: layout.slice(colon + 1) };
 }
