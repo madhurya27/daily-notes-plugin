@@ -185,7 +185,7 @@ test.describe("search the stream", () => {
             await scrollThroughStream(await openStream(page));
             await page.evaluate((path) => {
                 const { notes } = window.app.plugins.plugins["daily-notes-stream"].layoutMemory;
-                const saved: [string, [string, number][]][] = notes.toJSON();
+                const saved: [string, [string, number][]][] = notes.toJSON().heights;
                 for (const [layout, heights] of saved) {
                     for (const [key, height] of heights) if (key === path) notes.keep(layout, path, height + 400);
                 }

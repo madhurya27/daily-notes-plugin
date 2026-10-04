@@ -289,7 +289,7 @@ test.describe("jump to date", () => {
         const { layout, remembered, reserved } = await container.evaluate((column) => {
             const layout = `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-text-size").trim()}`;
             const notes: [string, [string, number][]][] =
-                window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON();
+                window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON().heights;
             const unloaded = [...column.querySelectorAll<HTMLElement>(".daily-note-block.is-unloaded")];
             return {
                 layout,

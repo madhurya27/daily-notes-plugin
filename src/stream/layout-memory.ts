@@ -6,7 +6,7 @@ import { saveLoggingOnce } from "../local-storage";
 /** Vault-scoped and per device: a height is only true on the screen that measured it. */
 export const LAYOUT_MEMORY_KEY = "daily-notes-stream:layout";
 /** A save that no longer reads what is stored bumps this, and the old one is dropped: it is a cache. */
-const VERSION = 4;
+const VERSION = 5;
 /** From the first change of a burst, so a long scroll still saves as it goes. */
 export const SAVE_DELAY_MS = 1000;
 
@@ -16,10 +16,9 @@ export const SAVE_DELAY_MS = 1000;
  * One per plugin; every view shares it.
  */
 export class LayoutMemory {
-    readonly notes = new NoteHeights(() => this.saveSoon());
+    private readonly mtimeOf = (path: string) => this.app.vault.getFileByPath(path)?.stat.mtime;
+    readonly notes = new NoteHeights(() => this.saveSoon(), this.mtimeOf);
     readonly bases = new BaseMeasurements(() => this.saveSoon());
-    /** The daily-notes template's height, the floor a never-measured note is estimated from. */
-    readonly templates = new NoteHeights(() => this.saveSoon());
     private readonly saveSoon = debounce(() => this.save(), SAVE_DELAY_MS);
     private readonly saveLogged = saveLoggingOnce("layout memory");
 
@@ -28,27 +27,23 @@ export class LayoutMemory {
         if (!isVersion(saved)) return;
         this.notes.restore(saved.notes);
         this.bases.restore(saved.bases);
-        this.templates.restore(saved.templates);
     }
 
     /** A note's measurements follow it to its new path. */
     rename(oldPath: string, newPath: string): void {
         this.notes.rename(oldPath, newPath);
         this.bases.rename(oldPath, newPath);
-        this.templates.rename(oldPath, newPath);
     }
 
     forget(path: string): void {
         this.notes.forget(path);
         this.bases.forget(path);
-        this.templates.forget(path);
     }
 
-    /** Forgets notes deleted while the plugin was not running to hear it. */
+    /** Forgets notes deleted, or changed, while the plugin was not running to hear it. */
     retainOnly(paths: ReadonlySet<string>): void {
         this.notes.retainOnly(paths);
         this.bases.retainOnly(paths);
-        this.templates.retainOnly(paths);
     }
 
     /** Starts over from nothing measured, as on a new device. */
@@ -67,13 +62,12 @@ export class LayoutMemory {
                 version: VERSION,
                 notes: this.notes.toJSON(),
                 bases: this.bases.toJSON(),
-                templates: this.templates.toJSON(),
             })
         );
     }
 }
 
-function isVersion(saved: unknown): saved is { notes: unknown; bases: unknown; templates: unknown } {
+function isVersion(saved: unknown): saved is { notes: unknown; bases: unknown } {
     return typeof saved === "object" && saved !== null && (saved as { version?: unknown }).version === VERSION;
 }
 

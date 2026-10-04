@@ -174,7 +174,7 @@ test.describe("linked mentions", () => {
                 newest.evaluate((el) =>
                     window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes
                         .toJSON()
-                        .some(([, heights]: [string, [string, number][]]) =>
+                        .heights.some(([, heights]: [string, [string, number][]]) =>
                             heights.some(([path]) => path === el.dataset.sourcePath)
                         )
                 )

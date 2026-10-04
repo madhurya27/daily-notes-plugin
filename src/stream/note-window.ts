@@ -5,10 +5,10 @@ import { SCROLL_IDLE_MS, ScrollAnchor } from "./scroll-anchor";
 import { HeightHold, SETTLE_MS } from "./height-hold";
 
 /**
- * What a block reserves before anything was measured at this layout. A guess
- * only until the first note is, after which the vault's own notes say.
+ * What a block reserves before anything was measured at this layout, in panes:
+ * too tall is safe (D-092), and the notes on screen are measured within moments.
  */
-export const ESTIMATED_NOTE_HEIGHT_PX = 400;
+export const UNMEASURED_PANES = 2;
 
 /**
  * Both margins are viewports, not pixels: how far ahead of the reader the
@@ -91,8 +91,8 @@ export class NoteWindowManager {
         private readonly layoutOf: () => string,
         /** jsdom lays nothing out, so measurement is the one seam tests replace. */
         private readonly measure: (el: HTMLElement) => number = (el) => el.getBoundingClientRect().height,
-        /** A note's height at a layout, from its text, where none is stored (D-079). */
-        private readonly estimate: (layout: string, path: string) => number | undefined = () => undefined
+        /** What a note not measured at a layout reserves there: by default, what the vault's notes measured (D-092). */
+        private readonly estimate: (layout: string) => number | undefined = (layout) => heights.estimate(layout)
     ) {
         this.reservedFrom = this.reserveKey();
     }
@@ -169,13 +169,22 @@ export class NoteWindowManager {
         }
     }
 
-    /** The heights were emptied: every unloaded note, measured or not, is estimated afresh once the scroll is still. */
+    /**
+     * The heights were emptied: every unloaded note, measured or not, reserves
+     * as in a session that never measured, once the scroll is still.
+     */
     forgetHeights(): void {
         const layout = this.layout();
         for (const window of this.windows.values()) {
-            if (!window.component) this.expect(window, layout);
+            if (window.component) continue;
+            window.height = this.unmeasured();
+            this.expect(window, layout);
         }
         this.reserveOnceStill();
+    }
+
+    private unmeasured(): number {
+        return UNMEASURED_PANES * Math.max(this.rootHeight, MIN_VIEWPORT_PX);
     }
 
     /** A scroll restarts the wait on any block that left the margin. */
@@ -205,7 +214,7 @@ export class NoteWindowManager {
             component: null,
             rendering: false,
             unloadWanted: false,
-            height: ESTIMATED_NOTE_HEIGHT_PX,
+            height: this.unmeasured(),
             measured: false,
             hold: null,
             watched: [],
@@ -243,10 +252,20 @@ export class NoteWindowManager {
         this.anchor.placed();
     }
 
-    /** Rebuilds a rendered block's content; an unloaded one renders on re-entry. */
+    /**
+     * Rebuilds a rendered block's content. An unloaded one renders on re-entry,
+     * and meanwhile is estimated afresh once the scroll is still: the edit took
+     * its stored height (ADR 0017).
+     */
     async refresh(block: HTMLElement): Promise<void> {
         const window = this.windows.get(block);
-        if (!window?.component) return;
+        if (!window) return;
+        if (!window.component) {
+            if (window.rendering) return;
+            this.expect(window, this.layout());
+            this.reserveOnceStill();
+            return;
+        }
 
         this.measureInto(block, window);
         this.stopSettling(window);
@@ -436,12 +455,14 @@ export class NoteWindowManager {
         return `${this.heights.revision}\n${this.expectedIn}`;
     }
 
-    /** What `window` last measured in `layout`, or an estimate: from its text, else the layout's median. */
+    /**
+     * What `window` last measured in `layout`, or the estimate there. With
+     * none, as just turned, it keeps what it reserves until the notes on
+     * screen are measured.
+     */
     private expect(window: NoteWindow, layout: string): void {
-        const { path } = window.file;
-        const remembered = this.heights.heightOf(layout, path);
-        window.height =
-            remembered ?? this.estimate(layout, path) ?? this.heights.estimate(layout) ?? ESTIMATED_NOTE_HEIGHT_PX;
+        const remembered = this.heights.heightOf(layout, window.file.path);
+        window.height = remembered ?? this.estimate(layout) ?? window.height;
         window.measured = remembered !== undefined;
     }
 
@@ -542,6 +563,8 @@ export class NoteWindowManager {
         this.releaseHold(window);
         const measured = this.measure(block);
         if (measured > 0) this.heights.keep(this.layout(), window.file.path, measured);
+        // What the rest reserve may have changed; they take it at the next rest (ADR 0014).
+        if (this.reservedFrom !== this.reserveKey()) this.reserveOnceStill();
     }
 
     /**

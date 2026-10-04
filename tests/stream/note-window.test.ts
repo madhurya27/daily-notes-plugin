@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, onTestFinished, vi, type MockInstance } from "vitest";
 import { Component, TFile } from "obsidian";
-import { NoteWindowManager, ESTIMATED_NOTE_HEIGHT_PX } from "../../src/stream/note-window";
+import { NoteWindowManager, UNMEASURED_PANES } from "../../src/stream/note-window";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "../../src/stream/scroll-anchor";
 import { NoteHeights } from "../../src/stream/note-heights";
 import { HOLD_LIMIT_MS, SETTLE_MS } from "../../src/stream/height-hold";
@@ -114,6 +114,9 @@ function makeScrollRoot(clientHeight: number): HTMLElement {
     return root;
 }
 
+/** What a note reserves before anything is measured, in the 800px panes managers here scroll in. */
+const UNMEASURED = `${UNMEASURED_PANES * 800}px`;
+
 /** The layout every manager here measures in, unless a test changes it. */
 const LAYOUT = "600:16px";
 
@@ -175,11 +178,12 @@ describe("NoteWindowManager measurement", () => {
 // ---------------------------------------------------------------------------
 
 describe("NoteWindowManager.add", () => {
-    it("returns an unloaded block at the estimated height", () => {
+    // Too tall is safe: a glide up past it ends at D-091's stop (D-092).
+    it("returns an unloaded block reserving two panes before anything is measured", () => {
         const { manager } = makeManager();
         const block = manager.add(FILE);
         expect(block.classList.contains("is-unloaded")).toBe(true);
-        expect(placeholderHeight(block)).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
+        expect(placeholderHeight(block)).toBe(UNMEASURED);
         expect(block.childElementCount).toBe(0);
     });
 
@@ -225,6 +229,7 @@ describe("NoteWindowManager remembered heights", () => {
         expect(placeholderHeight(manager.add(FILE))).toBe("812px");
     });
 
+    // Erring tall: the 0.9 quantile (D-092).
     it("reserves what the layout's notes measured for a note never measured", () => {
         const heights = new NoteHeights();
         for (const [path, px] of [
@@ -235,12 +240,12 @@ describe("NoteWindowManager remembered heights", () => {
             heights.keep(LAYOUT, path, px);
         const { manager } = makeManager(undefined, undefined, undefined, heights);
 
-        expect(placeholderHeight(manager.add(FILE))).toBe("710px");
+        expect(placeholderHeight(manager.add(FILE))).toBe("9000px");
     });
 
-    describe("with an estimate from the note's text", () => {
+    describe("with an estimate given", () => {
         function makeEstimating(heights: NoteHeights) {
-            const estimate = vi.fn((_layout: string, path: string) => (path === FILE.path ? 950 : undefined));
+            const estimate = vi.fn((_layout: string): number | undefined => 950);
             const manager = new NoteWindowManager(
                 makeRenderer() as never,
                 makeQueue(),
@@ -253,14 +258,14 @@ describe("NoteWindowManager remembered heights", () => {
             return { manager, estimate };
         }
 
-        it("reserves it for a note not measured here, over the layout's median", () => {
+        it("reserves it for a note not measured here, and the default when it has none", () => {
             const heights = new NoteHeights();
-            heights.keep(LAYOUT, "a.md", 700);
             const { manager, estimate } = makeEstimating(heights);
 
             expect(placeholderHeight(manager.add(FILE))).toBe("950px");
-            expect(estimate).toHaveBeenCalledWith(LAYOUT, FILE.path);
-            expect(placeholderHeight(manager.add(new TFile("b.md")))).toBe("700px");
+            expect(estimate).toHaveBeenCalledWith(LAYOUT);
+            estimate.mockReturnValueOnce(undefined);
+            expect(placeholderHeight(manager.add(new TFile("b.md")))).toBe(UNMEASURED);
 
             heights.keep(LAYOUT, FILE.path, 812);
             expect(placeholderHeight(manager.add(FILE))).toBe("812px");
@@ -280,9 +285,9 @@ describe("NoteWindowManager remembered heights", () => {
         });
     });
 
-    it("falls back to the constant before anything has been measured", () => {
+    it("reserves two panes for a note never measured, before anything is", () => {
         const { manager } = makeManager();
-        expect(placeholderHeight(manager.add(FILE))).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
+        expect(placeholderHeight(manager.add(FILE))).toBe(UNMEASURED);
     });
 
     // iOS ends an app without unloading the plugin: a note still on screen
@@ -560,7 +565,7 @@ describe("NoteWindowManager after the pane's width changes", () => {
      * `below` is how much of the stream lies under the pane.
      */
     function makeResizable({
-        estimate = (): number | undefined => undefined,
+        estimate = (_layout: string): number | undefined => undefined,
         below = 10_000,
         render = (_block: HTMLElement): void | Promise<void> => undefined,
     } = {}) {
@@ -616,6 +621,37 @@ describe("NoteWindowManager after the pane's width changes", () => {
 
         await still();
         expect(placeholderHeight(block)).toBe("1200px");
+    });
+
+    // Just turned, the notes on screen are measured at the new width within moments.
+    it("keeps what a note reserves where the new width has measured nothing yet", async () => {
+        const { manager, narrow } = makeResizable({ estimate: (layout) => (layout === LAYOUT ? 900 : undefined) });
+        const block = manager.add(new TFile("b.md"));
+        document.body.appendChild(block);
+
+        await narrow();
+        await still();
+
+        expect(placeholderHeight(block)).toBe("900px");
+    });
+
+    // ADR 0014: after a turn, nothing scrolls; what the notes on screen measured still reaches the rest.
+    it("re-reserves once a height is kept and the scroll is still, with no scroll", async () => {
+        let estimated = 900;
+        const { manager } = makeResizable({ estimate: () => estimated });
+        const placeholder = manager.add(new TFile("b.md"));
+        const rendered = manager.add(new TFile("c.md"));
+        for (const block of [placeholder, rendered]) document.body.appendChild(block);
+        await still();
+
+        fire(observers.render, rendered, true);
+        await settle();
+        estimated = 1100;
+        await vi.advanceTimersByTimeAsync(SETTLE_MS);
+        expect(placeholderHeight(placeholder)).toBe("900px");
+
+        await still();
+        expect(placeholderHeight(placeholder)).toBe("1100px");
     });
 
     // The stream learns from every note drawn; a placeholder made before reserves what it knew then.
@@ -677,6 +713,52 @@ describe("NoteWindowManager after the pane's width changes", () => {
         expect(placeholderHeight(rendered)).toBe("");
         expect(placeholderHeight(rendering)).toBe("900px");
         expect(placeholderHeight(measured)).toBe("812px");
+    });
+
+    // Its stored height was forgotten with the edit (ADR 0017).
+    it("re-estimates an unloaded note refreshed after an edit, once the scroll is still", async () => {
+        const { manager, heights } = makeResizable({ estimate: () => 900 });
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        heights.forget(FILE.path);
+        await manager.refresh(block);
+        expect(placeholderHeight(block)).toBe("812px");
+
+        await still();
+        expect(placeholderHeight(block)).toBe("900px");
+    });
+
+    // Its render reads the cache as it stands: held at what it measured until that settles.
+    it("leaves a note rendering as it is when refreshed", async () => {
+        let rendered = () => {};
+        const { manager, heights } = makeResizable({
+            estimate: () => 900,
+            render: () => new Promise<void>((resolve) => (rendered = resolve)),
+        });
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+
+        heights.forget(FILE.path);
+        await manager.refresh(block);
+        rendered();
+        await settle();
+
+        expect(heldHeight(block)).toBe("812px");
+    });
+
+    // As a session that never measured: the forget command is for testing from nothing stored.
+    it("reserves two panes for every unloaded note once all heights are forgotten", async () => {
+        const { manager, heights } = makeResizable();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        heights.retainOnly(new Set());
+        manager.forgetHeights();
+        await still();
+
+        expect(placeholderHeight(block)).toBe(UNMEASURED);
     });
 
     it("re-estimates every unloaded note once its heights are forgotten, and the scroll is still", async () => {
@@ -916,11 +998,12 @@ describe("NoteWindowManager margins", () => {
     it("reserves nothing when resized before it is attached", async () => {
         const manager = new NoteWindowManager(makeRenderer() as never, makeQueue(), new NoteHeights(), () => LAYOUT);
         const block = manager.add(FILE);
+        const reserved = placeholderHeight(block);
 
         manager.onResize();
         await still();
 
-        expect(placeholderHeight(block)).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
+        expect(placeholderHeight(block)).toBe(reserved);
     });
 
     it("leaves the observers alone when a resize did not change the height", () => {
@@ -1241,7 +1324,7 @@ describe("NoteWindowManager unload", () => {
         fire(observers.unload, block, false);
 
         expect(renderer.discard).not.toHaveBeenCalled();
-        expect(placeholderHeight(block)).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
+        expect(placeholderHeight(block)).toBe(UNMEASURED);
     });
 
     it("ignores a still-intersecting entry", async () => {
@@ -1434,7 +1517,7 @@ describe("NoteWindowManager under a fast scroll", () => {
 
         expect(block.classList.contains("is-unloaded")).toBe(true);
         expect(block.querySelector(".daily-note-content")).toBeNull();
-        expect(placeholderHeight(block)).toBe(`${ESTIMATED_NOTE_HEIGHT_PX}px`);
+        expect(placeholderHeight(block)).toBe(UNMEASURED);
     });
 
     // The queue is shared with every vault event (ADR 0004), so a flick must
@@ -1572,7 +1655,7 @@ describe("NoteWindowManager teardown", () => {
 
         expect(observers.unobserve).toHaveBeenCalledWith(block);
         expect(renderer.discard).toHaveBeenCalledTimes(1);
-        expect(heights.toJSON()).toEqual([]);
+        expect(heights.toJSON().heights).toEqual([]);
     });
 
     it("remove frees an unloaded block without discarding anything", () => {

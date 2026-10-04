@@ -1,6 +1,8 @@
 # 0010. Remember every measured height across sessions
 
-- **Status:** Accepted
+- **Status:** Accepted; superseded in part by
+  [0017](0017-forget-heights-of-edited-notes.md): an edit forgets the heights;
+  and by D-092: the 0.9 quantile, not the median
 - **Date:** 2026-09-25
 
 ## Context

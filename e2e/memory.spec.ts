@@ -51,7 +51,7 @@ test.describe("a multi-year vault scrolled to the end", () => {
         // Chromium's Nodes metric counts detached nodes until they are
         // collected, so the live tree is what says whether the DOM is bounded.
         const liveNodes = await container.evaluate((el) => el.querySelectorAll("*").length);
-        // Says whether ESTIMATED_NOTE_HEIGHT_PX is anywhere near a real note.
+        // Real notes' heights, against what an unmeasured one reserves (D-092).
         const placeholderPx = await container.evaluate((el) =>
             Array.from(el.querySelectorAll<HTMLElement>(".daily-note-block:not(.is-unloaded)"), (b) =>
                 Math.round(b.getBoundingClientRect().height)
@@ -231,11 +231,7 @@ test.describe("opening a multi-year vault", () => {
         const open = await page.evaluate(async () => {
             const start = performance.now();
             await window.app.commands.executeCommandById("daily-notes-stream:open-stream");
-            while (
-                !document.querySelector(
-                    ".daily-notes-stream-container:not(.daily-notes-stream-probe) .daily-note-content"
-                )
-            )
+            while (!document.querySelector(".daily-notes-stream-container .daily-note-content"))
                 await new Promise((resolve) => setTimeout(resolve, 5));
             const ms = Math.round(performance.now() - start);
             return { ms, reads: window.app.plugins.plugins["daily-notes-stream"].emptyNotes.reads as number };

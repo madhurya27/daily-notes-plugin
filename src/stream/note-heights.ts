@@ -1,24 +1,34 @@
 import { LayoutTable, type SavedLayoutTable } from "./layout-table";
 
-/** Heights by path, oldest layout first. */
-export type SavedNoteHeights = SavedLayoutTable<number>;
+export interface SavedNoteHeights {
+    /** Heights by path, oldest layout first. */
+    heights: SavedLayoutTable<number>;
+    /** Each note's mtime as it was measured. */
+    mtimes: [path: string, mtime: number][];
+}
 
 /**
  * Each note's last measured height, per layout: what its placeholder reserves
- * until it renders again. An edited note keeps its old height as the guess —
- * nearer than any estimate — and the scroll anchor absorbs the difference.
+ * until it renders again. A note changed since it was measured is forgotten,
+ * and estimated from its text again (ADR 0017).
  */
 export class NoteHeights {
     private readonly table: LayoutTable<number>;
-    /** Each layout's median, until one of its heights changes. */
-    private readonly medians = new Map<string, number>();
+    /** Each layout's estimate, until one of its heights changes. */
+    private readonly tails = new Map<string, number>();
     private changes = 0;
+    private mtimes = new Map<string, number>();
 
-    constructor(changed: () => void = () => {}, limit?: number) {
+    constructor(
+        changed: () => void = () => {},
+        /** A note's mtime now; undefined once it is gone. */
+        private readonly mtimeOf: (path: string) => number | undefined = () => undefined,
+        limit?: number
+    ) {
         this.table = new LayoutTable(
             (value): value is number => typeof value === "number",
             (layout) => {
-                this.medians.delete(layout);
+                this.tails.delete(layout);
                 this.changes++;
                 changed();
             },
@@ -52,40 +62,63 @@ export class NoteHeights {
 
     /** In whole pixels: sub-pixel digits cost a third of what is stored. */
     keep(layout: string, path: string, height: number): void {
+        const mtime = this.mtimeOf(path);
+        if (mtime !== undefined) this.mtimes.set(path, mtime);
         const px = Math.round(height);
         if (this.heightOf(layout, path) !== px) this.table.set(layout, path, px);
     }
 
-    /** The median of what `layout` measured: note length varies by vault. */
+    /**
+     * A note not measured at `layout`: the 0.9 quantile of what it measured,
+     * erring tall, as a glide up past notes taller than reserved runs out of
+     * scroll short of the top (D-092). Nothing where it measured nothing.
+     */
     estimate(layout: string): number | undefined {
-        const known = this.medians.get(layout);
+        const known = this.tails.get(layout);
         if (known !== undefined) return known;
         const sorted = this.table.values(layout).sort((a, b) => a - b);
-        if (sorted.length === 0) return undefined;
-        const median = sorted[sorted.length >> 1]!;
-        this.medians.set(layout, median);
-        return median;
+        const tail = sorted[Math.floor(sorted.length * 0.9)];
+        if (tail !== undefined) this.tails.set(layout, tail);
+        return tail;
     }
 
     rename(oldPath: string, newPath: string): void {
         this.table.rename(oldPath, newPath);
+        const mtime = this.mtimes.get(oldPath);
+        this.mtimes.delete(oldPath);
+        if (mtime !== undefined) this.mtimes.set(newPath, mtime);
     }
 
     forget(path: string): void {
         this.table.forget(path);
+        this.mtimes.delete(path);
     }
 
+    /** Forgets every note not in `paths`, or changed since it was measured. */
     retainOnly(paths: ReadonlySet<string>): void {
-        this.table.retainOnly(paths);
+        const current = new Set([...paths].filter((path) => this.mtimes.get(path) === this.mtimeOf(path)));
+        this.table.retainOnly(current);
+        for (const path of this.mtimes.keys()) if (!current.has(path)) this.mtimes.delete(path);
     }
 
     toJSON(): SavedNoteHeights {
-        return this.table.toJSON();
+        return { heights: this.table.toJSON(), mtimes: [...this.mtimes] };
     }
 
+    /** Replaces what it holds with `saved`, or with nothing when `saved` is not what `toJSON` wrote. */
     restore(saved: unknown): void {
-        this.table.restore(saved);
-        this.medians.clear();
+        const valid = isSaved(saved);
+        this.table.restore(valid ? saved.heights : undefined);
+        this.mtimes = new Map(valid ? saved.mtimes : []);
+        this.tails.clear();
         this.changes++;
     }
+}
+
+function isSaved(saved: unknown): saved is SavedNoteHeights {
+    const { mtimes } = (saved ?? {}) as { mtimes?: unknown };
+    return (
+        Array.isArray(mtimes) &&
+        mtimes.every((entry) => Array.isArray(entry) && typeof entry[0] === "string" && typeof entry[1] === "number")
+    );
 }

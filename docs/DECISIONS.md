@@ -1259,6 +1259,8 @@ list did not say so.
 
 ## D-079 — A placeholder never measured here is estimated from its text (2026-09-30)
 
+Superseded by D-092.
+
 **Decision:** a note with no height stored at the layout reserves, first that
 applies: its height at the nearest width of the same text size, plus its wrapped
 lines' difference × line height; else the template's measured height here, plus
@@ -1282,6 +1284,8 @@ its template plus writing (ADR 0011). Mean error for text notes falls from 85px
 
 ## D-080 — A turned note's Bases change by what the same Base changed elsewhere (2026-10-01)
 
+Superseded by D-092.
+
 **Decision:** a note estimated from its height at another width (D-079) adds,
 per Base it embeds, the median change per Base, beyond re-wrapped text, of other
 notes embedding that Base and measured at both widths. None measured at both: no
@@ -1299,6 +1303,8 @@ error after a turn: 378px → 35px.
   only once drawn at the new width; learning per Base gets there without it.
 
 ## D-081 — Turned wider, an unlearned Base's note is estimated from its template (2026-10-01)
+
+Superseded by D-092.
 
 **Decision:** a note measured only at a narrower width, embedding a Base whose
 change D-080 has not learned, is estimated from the template and its lines
@@ -1498,3 +1504,31 @@ step ahead still went 43 px past when a dropped frame doubled the step.
 - The write alone — undone the next frame, whatever it wrote: 0, mid-range, or
   with the shift added or dropped.
 - Handing over once still — the blank is on screen until then.
+
+## D-092 — A note never measured reserves the 0.9 quantile of those measured (2026-10-04)
+
+**Decision:** a note with no height stored at the layout reserves the 0.9
+quantile of the heights stored there. Where nothing is, it keeps what it
+reserves: just turned, its old width's height; never measured, two panes. A
+height kept schedules the re-reserve at the next rest (ADR 0014), so after a
+turn or on opening, the notes on screen set the rest within moments. It replaces
+D-079–D-081's estimates from each note's text, template and Bases.
+
+**Why:** an estimate shows only off the common path, after a jump, search, Back
+or turn, gliding up through notes not yet drawn; scrolling down from the top
+measures every note before it is passed. There, too tall is safe, as D-091 stops
+the glide on the newest note; too short costs one more flick (D-090). Its only
+input is the vault's own notes, so nothing is fitted to a journal we made up.
+
+**Rejected:**
+
+- D-079–D-081's per-note estimates, made to err tall — each rule, per Base and
+  per embed kind, held on our generated journals and nowhere tested beyond them.
+- The upper quartile — on those journals, a third to half of a week's runs of
+  notes came out short in portrait.
+- A buffer above the newest note — room above can change only at rest: a scroll
+  write mid-glide is undone or ends the glide (D-090, D-091).
+- The nearest width's quantile, scaled by the widths — the notes on screen are
+  measured at the new width within moments of a turn.
+- A fixed 400px before anything is measured — the notes ADR 0006 measured ran
+  ~709px.
