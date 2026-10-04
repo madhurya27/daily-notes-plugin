@@ -657,3 +657,34 @@ describe("DailyNotesStreamPlugin — scroll-to-top command", () => {
         expect(view.scrollToTop).toHaveBeenCalledTimes(1);
     });
 });
+
+// A testing aid: only a build put on a device offers it.
+describe("DailyNotesStreamPlugin — forget-note-heights command", () => {
+    afterEach(() => vi.unstubAllGlobals());
+    const offered = (p: DailyNotesStreamPlugin) => p.commands.some((c) => c.id === "forget-note-heights");
+
+    it.each([
+        ["a release build", ""],
+        ["an unbundled run", undefined],
+    ])("is not offered in %s", async (_label, label) => {
+        if (label !== undefined) vi.stubGlobal("BUILD_LABEL", label);
+        const { plugin } = await loadPlugin();
+        expect(offered(plugin)).toBe(false);
+    });
+
+    it("empties the layout memory and re-estimates every open stream", async () => {
+        vi.stubGlobal("BUILD_LABEL", "amber otter");
+        const { plugin, app } = await loadPlugin();
+        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, makeService());
+        const forgetHeights = vi.spyOn(view, "forgetHeights").mockImplementation(() => {});
+        const other = { forgetHeights: vi.fn() };
+        app.workspace.getLeavesOfType.mockReturnValue([{ view }, { view: other }]);
+        plugin.layoutMemory.notes.keep("600:16px", "Notes/2025-01-01.md", 300);
+
+        plugin.commands.find((c) => c.id === "forget-note-heights")!.callback!();
+
+        expect(plugin.layoutMemory.notes.heightOf("600:16px", "Notes/2025-01-01.md")).toBeUndefined();
+        expect(forgetHeights).toHaveBeenCalledTimes(1);
+        expect(other.forgetHeights).not.toHaveBeenCalled();
+    });
+});

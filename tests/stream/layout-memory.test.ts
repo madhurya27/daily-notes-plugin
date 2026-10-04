@@ -87,6 +87,26 @@ describe("LayoutMemory", () => {
         expect(memory.templates.toJSON()).toEqual([["600:16px", [["new.md", 360]]]]);
     });
 
+    it("forgets everything it measured, and saves that", () => {
+        const app = makeApp();
+        const memory = new LayoutMemory(asApp(app));
+        const base = { layout: "600:16px", path: "a.md", base: "b1" };
+        memory.notes.keep("600:16px", "a.md", 300);
+        memory.bases.markTooWide(base);
+        memory.templates.keep("600:16px", "t.md", 360);
+        vi.advanceTimersByTime(SAVE_DELAY_MS);
+
+        memory.forgetAll();
+        vi.advanceTimersByTime(SAVE_DELAY_MS);
+
+        expect(memory.notes.heightOf("600:16px", "a.md")).toBeUndefined();
+        expect(memory.bases.isTooWide(base)).toBe(false);
+        expect(memory.templates.heightOf("600:16px", "t.md")).toBeUndefined();
+        expect(app.saveLocalStorage).toHaveBeenCalledTimes(2);
+        const saved = new LayoutMemory(asApp(makeApp(app.saveLocalStorage.mock.lastCall![1])));
+        expect(saved.notes.heightOf("600:16px", "a.md")).toBeUndefined();
+    });
+
     // localStorage is a few megabytes, shared by every vault in the app.
     it("logs a save refused, once, and keeps measuring", () => {
         const app = makeApp();

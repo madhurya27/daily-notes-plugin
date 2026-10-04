@@ -27,7 +27,7 @@ type FakeScroll = Mocked<InfiniteScrollController>;
 type FakeGuard = Mocked<ScrollBoxGuard>;
 type FakeFrames = Mocked<FrameDeferral>;
 /** What the stream constructed each with, besides what it calls on it. */
-type FakeTemplateHeight = Pick<Mocked<TemplateHeight>, "measureAt"> & {
+type FakeTemplateHeight = Pick<Mocked<TemplateHeight>, "measureAt" | "forget"> & {
     args: { templates: NoteHeights; template: () => TFile | null };
 };
 type FakeEstimates = Pick<Mocked<HeightEstimates>, "estimate"> & {
@@ -47,6 +47,7 @@ const fakes = vi.hoisted(() => ({
 vi.mock("../../src/stream/template-height", () => ({
     TemplateHeight: class {
         measureAt = vi.fn();
+        forget = vi.fn();
         args: unknown;
         constructor(_renderer: unknown, _enqueue: unknown, templates: NoteHeights, template: () => TFile | null) {
             this.args = { templates, template };
@@ -76,6 +77,7 @@ vi.mock("../../src/stream/note-window", () => ({
         remove = vi.fn();
         render = vi.fn();
         onResize = vi.fn();
+        forgetHeights = vi.fn();
         onScroll = vi.fn();
         onTouch = vi.fn();
         refresh = vi.fn().mockResolvedValue(undefined);
@@ -1169,6 +1171,22 @@ describe("the heights the stream reserves", () => {
         Object.defineProperty(container, "clientWidth", { value: 400 });
         stream.onResize();
         expect(templateHeight.measureAt).toHaveBeenLastCalledWith(container, "400:");
+    });
+
+    // As a new session would: the template measured again, every placeholder estimated afresh.
+    it("start over once the heights are forgotten", () => {
+        Object.defineProperty(container, "clientWidth", { value: 612, configurable: true });
+        stream.open(pane, container);
+        templateHeight.measureAt.mockClear();
+
+        stream.forgetHeights();
+
+        expect(templateHeight.forget).toHaveBeenCalled();
+        expect(templateHeight.measureAt).toHaveBeenCalledWith(container, "612:");
+        expect(templateHeight.forget.mock.invocationCallOrder[0]!).toBeLessThan(
+            templateHeight.measureAt.mock.invocationCallOrder[0]!
+        );
+        expect(noteWindow.forgetHeights).toHaveBeenCalled();
     });
 });
 

@@ -215,6 +215,10 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.stream.scrollToTop();
     }
 
+    forgetHeights(): void {
+        this.stream.forgetHeights();
+    }
+
     refresh(): Promise<void> {
         return this.stream.refresh();
     }

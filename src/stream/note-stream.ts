@@ -122,6 +122,13 @@ export class NoteStream {
         this.measureTemplate();
     }
 
+    /** The layout memory was emptied: starts over as a new session would. */
+    forgetHeights(): void {
+        this.templateHeight.forget();
+        this.measureTemplate();
+        this.window.forgetHeights();
+    }
+
     /** At the column's layout now; a column not laid out, in a hidden tab, has none. */
     private measureTemplate(): void {
         if (this.blocks.el.clientWidth > 0) this.templateHeight.measureAt(this.blocks.el, layoutOf(this.blocks.el));

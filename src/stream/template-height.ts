@@ -36,6 +36,11 @@ export class TemplateHeight {
         });
     }
 
+    /** The kept heights were emptied: each layout is measured again on its next ask. */
+    forget(): void {
+        this.asked.clear();
+    }
+
     /** `file` rendered as a note beside `column`, then gone: its block's height. */
     private async heightOf(file: TFile, column: HTMLElement): Promise<number> {
         const probe = probeBeside(column);

@@ -51,6 +51,11 @@ export class LayoutMemory {
         this.templates.retainOnly(paths);
     }
 
+    /** Starts over from nothing measured, as on a new device. */
+    forgetAll(): void {
+        this.retainOnly(new Set());
+    }
+
     /** Saves a pending change now: the plugin is unloading. */
     flush(): void {
         this.saveSoon.run();
