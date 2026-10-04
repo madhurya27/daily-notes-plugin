@@ -30,9 +30,6 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
       box guard cannot see; a video player does not. Check that a flick over one
       still glides.
-- [ ] A command, "Forget measured note heights", that empties `LayoutMemory` and
-      re-reserves the stream: testing on the phone from no stored heights now
-      takes a build with `VERSION` bumped (`.claude/skills/phone-demo`).
 - [ ] iOS: make the stream's height errors fall on the tall side, so a glide up
       ends in D-091's stop at the newest note, never a bounce short of it
       (D-090). Three parts, estimates first:

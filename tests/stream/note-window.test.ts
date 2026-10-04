@@ -679,6 +679,29 @@ describe("NoteWindowManager after the pane's width changes", () => {
         expect(placeholderHeight(measured)).toBe("812px");
     });
 
+    it("re-estimates every unloaded note once its heights are forgotten, and the scroll is still", async () => {
+        const { manager, heights } = makeResizable({ estimate: () => 900 });
+        const stored = manager.add(FILE);
+        const unloaded = manager.add(new TFile("b.md"));
+        const rendered = manager.add(new TFile("c.md"));
+        for (const block of [stored, unloaded, rendered]) document.body.appendChild(block);
+        fire(observers.render, unloaded, true);
+        fire(observers.render, rendered, true);
+        await settle();
+        fire(observers.unload, unloaded, false);
+        await still();
+        expect(placeholderHeight(unloaded)).toBe("640px");
+
+        heights.retainOnly(new Set());
+        manager.forgetHeights();
+        expect(placeholderHeight(stored)).toBe("812px");
+
+        await still();
+        expect(placeholderHeight(stored)).toBe("900px");
+        expect(placeholderHeight(unloaded)).toBe("900px");
+        expect(placeholderHeight(rendered)).toBe("");
+    });
+
     it("tells nobody when what it learned moves no placeholder, and waits for the next lesson", async () => {
         const { manager, learn } = makeResizable({ estimate: () => 900 });
         document.body.appendChild(manager.add(new TFile("b.md")));

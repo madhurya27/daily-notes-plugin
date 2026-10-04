@@ -169,6 +169,15 @@ export class NoteWindowManager {
         }
     }
 
+    /** The heights were emptied: every unloaded note, measured or not, is estimated afresh once the scroll is still. */
+    forgetHeights(): void {
+        const layout = this.layout();
+        for (const window of this.windows.values()) {
+            if (!window.component) this.expect(window, layout);
+        }
+        this.reserveOnceStill();
+    }
+
     /** A scroll restarts the wait on any block that left the margin. */
     onScroll(): void {
         this.anchor.onScroll();

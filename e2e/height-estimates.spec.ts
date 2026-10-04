@@ -102,4 +102,27 @@ test.describe("with a daily-notes template", () => {
         // Measured out of sight, and gone.
         await expect(obsidian.page.locator(".daily-notes-stream-probe")).toHaveCount(0);
     });
+
+    test("forgets every height on the command, and measures the template again", async ({ obsidian }) => {
+        const container = await openStream(obsidian.page);
+        const memory = () =>
+            container.evaluate((column, path) => {
+                const { layoutMemory } = window.app.plugins.plugins["daily-notes-stream"];
+                const layout = `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-text-size").trim()}`;
+                return {
+                    notes: layoutMemory.notes.entries(layout).length as number,
+                    template: layoutMemory.templates.heightOf(layout, path) as number | undefined,
+                };
+            }, TEMPLATE_PATH);
+        await expect.poll(async () => (await memory()).notes).toBeGreaterThan(0);
+        await expect.poll(async () => (await memory()).template).toBeGreaterThan(0);
+
+        const forgotten = await obsidian.page.evaluate(() => {
+            window.app.commands.executeCommandById("daily-notes-stream:forget-note-heights");
+            const { layoutMemory } = window.app.plugins.plugins["daily-notes-stream"];
+            return layoutMemory.notes.layouts().flatMap((layout: string) => layoutMemory.notes.entries(layout));
+        });
+        expect(forgotten).toEqual([]);
+        await expect.poll(async () => (await memory()).template).toBeGreaterThan(0);
+    });
 });

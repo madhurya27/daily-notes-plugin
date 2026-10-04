@@ -117,6 +117,19 @@ describe("TemplateHeight", () => {
         expect(renderer.renderInto).toHaveBeenCalledTimes(2);
     });
 
+    it("measures a layout again once told its heights were forgotten", async () => {
+        const { renderer, queue, template } = setup();
+        const column = makeColumn();
+
+        template.measureAt(column, LAYOUT);
+        await queue.drained();
+        template.forget();
+        template.measureAt(column, LAYOUT);
+        await queue.drained();
+
+        expect(renderer.renderInto).toHaveBeenCalledTimes(2);
+    });
+
     it("measures nothing without a template", async () => {
         const { renderer, queue, templates, template } = setup({ template: null });
 

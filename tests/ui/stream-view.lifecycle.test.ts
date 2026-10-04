@@ -204,6 +204,14 @@ describe("DailyNotesStreamView — header title", () => {
         expect(view["stream"]["window"].scrollToTop).toHaveBeenCalledOnce();
     });
 
+    it("re-estimates the stream's notes once their heights are forgotten", async () => {
+        const { view } = await withTitle();
+
+        view.forgetHeights();
+
+        expect(view["stream"]["window"].forgetHeights).toHaveBeenCalledOnce();
+    });
+
     it("leaves the title alone on desktop", async () => {
         const { view, titleEl } = await withTitle();
 

@@ -123,6 +123,7 @@ export function makeStubbedView(app: object = makeApp()) {
         onScroll: vi.fn(),
         onTouch: vi.fn(),
         scrollToTop: vi.fn(),
+        forgetHeights: vi.fn(),
         layoutChanges: 0,
     });
     view["collapsible"] = fake<CollapsibleManager>({ delegate: vi.fn() });

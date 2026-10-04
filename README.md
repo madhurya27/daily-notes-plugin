@@ -145,6 +145,12 @@ they do in Obsidian.
 
 </details>
 
+### Remembered heights
+
+The stream remembers how tall each note is on this device, so scrolling stays in
+place as notes load. If notes jump or the scroll lands short, run
+`Daily notes stream: Forget measured note heights` to measure from scratch.
+
 ## Settings
 
 - **Hide empty notes** (on): leave out daily notes you never wrote in. See

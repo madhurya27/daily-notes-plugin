@@ -78,6 +78,12 @@ export default class DailyNotesStreamPlugin extends Plugin {
             },
         });
 
+        this.addCommand({
+            id: "forget-note-heights",
+            name: "Forget measured note heights",
+            callback: () => this.forgetNoteHeights(),
+        });
+
         this.addSettingTab(new DailyNotesStreamSettingTab(this.app, this));
     }
 
@@ -93,6 +99,14 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.registerEvent(vault.on("rename", (file, oldPath) => memory.rename(oldPath, file.path)));
         this.registerEvent(vault.on("delete", (file) => memory.forget(file.path)));
         workspace.onLayoutReady(() => memory.retainOnly(new Set(vault.getMarkdownFiles().map((file) => file.path))));
+    }
+
+    /** Every open stream estimates its notes afresh, as on a device that never measured them. */
+    private forgetNoteHeights(): void {
+        this.layoutMemory.forgetAll();
+        for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_NOTES_STREAM)) {
+            if (leaf.view instanceof DailyNotesStreamView) leaf.view.forgetHeights();
+        }
     }
 
     /**
