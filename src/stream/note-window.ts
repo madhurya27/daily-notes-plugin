@@ -243,10 +243,20 @@ export class NoteWindowManager {
         this.anchor.placed();
     }
 
-    /** Rebuilds a rendered block's content; an unloaded one renders on re-entry. */
+    /**
+     * Rebuilds a rendered block's content. An unloaded one renders on re-entry,
+     * and meanwhile is estimated afresh once the scroll is still: the edit took
+     * its stored height (ADR 0017).
+     */
     async refresh(block: HTMLElement): Promise<void> {
         const window = this.windows.get(block);
-        if (!window?.component) return;
+        if (!window) return;
+        if (!window.component) {
+            if (window.rendering) return;
+            this.expect(window, this.layout());
+            this.reserveOnceStill();
+            return;
+        }
 
         this.measureInto(block, window);
         this.stopSettling(window);

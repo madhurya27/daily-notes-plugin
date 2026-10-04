@@ -78,7 +78,7 @@ describe("NoteHeights", () => {
 
     // An estimate reads other layouts; that is no use of them, and they still go first.
     it("lists what it holds, by note and by layout, without counting as a use", () => {
-        const heights = new NoteHeights(undefined, 2);
+        const heights = new NoteHeights(undefined, undefined, 2);
         heights.keep("a", "x.md", 1);
         heights.keep("a", "y.md", 2);
         heights.keep("b", "x.md", 3);
@@ -111,17 +111,77 @@ describe("NoteHeights", () => {
     });
 
     it("comes back from what it saved, oldest layout still first to go", () => {
-        const saved = new NoteHeights(undefined, 2);
+        const saved = new NoteHeights(undefined, undefined, 2);
         saved.keep("a", "x.md", 1);
         saved.keep("b", "y.md", 2);
         saved.heightOf("a", "x.md");
 
-        const restored = new NoteHeights(undefined, 2);
+        const restored = new NoteHeights(undefined, undefined, 2);
         restored.restore(JSON.parse(JSON.stringify(saved.toJSON())));
         restored.keep("c", "z.md", 3);
 
         expect(restored.heightOf("a", "x.md")).toBe(1);
         expect(restored.heightOf("b", "y.md")).toBeUndefined();
         expect(restored.estimate("a")).toBe(1);
+    });
+
+    // Edited on another device, or while the plugin was off: re-estimated from its text, not held at its old height.
+    describe("with each note's mtime", () => {
+        function setup() {
+            const mtimes = new Map([
+                ["x.md", 1],
+                ["y.md", 1],
+                ["gone.md", 1],
+            ]);
+            const heights = new NoteHeights(undefined, (path) => mtimes.get(path));
+            heights.keep("a", "x.md", 100);
+            heights.keep("b", "x.md", 200);
+            heights.keep("a", "y.md", 300);
+            heights.keep("a", "gone.md", 400);
+            return { mtimes, heights };
+        }
+
+        it("forgets a note changed since it was measured, as it forgets one deleted", () => {
+            const { mtimes, heights } = setup();
+            mtimes.set("x.md", 2);
+            mtimes.delete("gone.md");
+
+            heights.retainOnly(new Set(["x.md", "y.md"]));
+
+            expect(heights.heightsOf("x.md")).toEqual([]);
+            expect(heights.heightOf("a", "y.md")).toBe(300);
+            expect(heights.heightOf("a", "gone.md")).toBeUndefined();
+        });
+
+        it("keeps when each note was measured through a save", () => {
+            const { mtimes, heights } = setup();
+            const restored = new NoteHeights(undefined, (path) => mtimes.get(path));
+            restored.restore(JSON.parse(JSON.stringify(heights.toJSON())));
+            mtimes.set("x.md", 2);
+
+            restored.retainOnly(new Set(["x.md", "y.md", "gone.md"]));
+
+            expect(restored.heightsOf("x.md")).toEqual([]);
+            expect(restored.heightOf("a", "y.md")).toBe(300);
+        });
+
+        it("carries a note's mtime across a rename, and forgets a deleted note's", () => {
+            const { mtimes, heights } = setup();
+            heights.rename("x.md", "moved.md");
+            mtimes.set("moved.md", 1);
+            heights.forget("y.md");
+            heights.keep("a", "y.md", 300);
+
+            heights.retainOnly(new Set(["moved.md", "y.md"]));
+
+            expect(heights.heightOf("a", "moved.md")).toBe(100);
+            expect(heights.heightOf("a", "y.md")).toBe(300);
+        });
+
+        it("comes back empty from a save of another shape", () => {
+            const { heights } = setup();
+            heights.restore({ heights: [["a", [["x.md", 100]]]] });
+            expect(heights.heightOf("a", "x.md")).toBeUndefined();
+        });
     });
 });

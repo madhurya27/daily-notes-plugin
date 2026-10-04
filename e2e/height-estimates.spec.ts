@@ -48,6 +48,44 @@ test("reads the note text's font and line height as a note's paragraph has them"
     expect(Math.abs(measured.charWidth / laidOut.charWidth - 1)).toBeLessThan(0.15);
 });
 
+// Edited on another device, or while the plugin was off, its stored height is outdated (ADR 0017).
+test("keeps each height with its note's mtime, and forgets it as the note is edited", async ({ obsidian }) => {
+    const { page } = obsidian;
+    const container = await openStream(page);
+    const path = (await container.locator(".daily-note-block").first().getAttribute("data-source-path"))!;
+    const stored = () =>
+        page.evaluate((path) => {
+            const { notes } = window.app.plugins.plugins["daily-notes-stream"].layoutMemory;
+            const saved: { mtimes: [string, number][] } = notes.toJSON();
+            return {
+                heights: (notes.heightsOf(path) as unknown[]).length,
+                mtime: saved.mtimes.find(([key]) => key === path)?.[1],
+                now: window.app.vault.getFileByPath(path)!.stat.mtime,
+            };
+        }, path);
+    await expect.poll(async () => (await stored()).heights).toBeGreaterThan(0);
+    expect((await stored()).mtime).toBe((await stored()).now);
+
+    const original = await page.evaluate(async (path) => {
+        const file = window.app.vault.getFileByPath(path)!;
+        const text = await window.app.vault.read(file);
+        await window.app.vault.modify(file, `${text}\n\nA line written later.\n`);
+        return text;
+    }, path);
+    try {
+        expect((await stored()).heights).toBe(0);
+        // Rendered, it is measured again, at the edit's mtime.
+        await expect.poll(async () => (await stored()).heights).toBeGreaterThan(0);
+        const after = await stored();
+        expect(after.mtime).toBe(after.now);
+    } finally {
+        await page.evaluate(
+            ({ path, original }) => window.app.vault.modify(window.app.vault.getFileByPath(path)!, original),
+            { path, original }
+        );
+    }
+});
+
 test.describe("with a daily-notes template", () => {
     test.beforeEach(async ({ obsidian }) => {
         const { page, vaultPath } = obsidian;

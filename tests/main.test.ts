@@ -16,6 +16,7 @@ function makeApp() {
             on: vi.fn().mockReturnValue({}),
             cachedRead: vi.fn().mockResolvedValue(""),
             getMarkdownFiles: __mockMarkdownFiles,
+            getFileByPath: (path: string) => __mockMarkdownFiles().find((file) => file.path === path) ?? null,
         },
         workspace: {
             on: vi.fn().mockReturnValue({}),
@@ -345,21 +346,39 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         __setMockNotes(["Notes/2025-01-01.md"]);
         const app = makeApp();
         app.loadLocalStorage.mockReturnValue({
-            version: 4,
-            notes: [
-                [
-                    "600:16px",
+            version: 5,
+            notes: {
+                heights: [
                     [
-                        ["Notes/2025-01-01.md", 300],
-                        ["Notes/2024-01-01.md", 200],
+                        "600:16px",
+                        [
+                            ["Notes/2025-01-01.md", 300],
+                            ["Notes/2024-01-01.md", 200],
+                        ],
                     ],
                 ],
-            ],
+                mtimes: [
+                    ["Notes/2025-01-01.md", 0],
+                    ["Notes/2024-01-01.md", 0],
+                ],
+            },
         });
         const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
         await plugin.onload();
 
-        expect(plugin.layoutMemory.notes.toJSON()).toEqual([["600:16px", [["Notes/2025-01-01.md", 300]]]]);
+        expect(plugin.layoutMemory.notes.toJSON().heights).toEqual([["600:16px", [["Notes/2025-01-01.md", 300]]]]);
+    });
+
+    // Measured before the edit: estimated from its text until it renders again (ADR 0017).
+    it("forgets a note's heights as it is edited, before any view hears of it", async () => {
+        const { plugin, app } = await loadPlugin();
+        plugin.layoutMemory.notes.keep("600:16px", "Notes/a.md", 300);
+        plugin.layoutMemory.templates.keep("600:16px", "Notes/a.md", 360);
+
+        vaultEvent(app, "modify")({ path: "Notes/a.md" });
+
+        expect(plugin.layoutMemory.notes.heightOf("600:16px", "Notes/a.md")).toBeUndefined();
+        expect(plugin.layoutMemory.templates.heightOf("600:16px", "Notes/a.md")).toBe(360);
     });
 
     it("saves what it measured when the plugin unloads", async () => {

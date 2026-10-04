@@ -679,6 +679,39 @@ describe("NoteWindowManager after the pane's width changes", () => {
         expect(placeholderHeight(measured)).toBe("812px");
     });
 
+    // Its stored height was forgotten with the edit (ADR 0017).
+    it("re-estimates an unloaded note refreshed after an edit, once the scroll is still", async () => {
+        const { manager, heights } = makeResizable({ estimate: () => 900 });
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        heights.forget(FILE.path);
+        await manager.refresh(block);
+        expect(placeholderHeight(block)).toBe("812px");
+
+        await still();
+        expect(placeholderHeight(block)).toBe("900px");
+    });
+
+    // Its render reads the cache as it stands: held at what it measured until that settles.
+    it("leaves a note rendering as it is when refreshed", async () => {
+        let rendered = () => {};
+        const { manager, heights } = makeResizable({
+            estimate: () => 900,
+            render: () => new Promise<void>((resolve) => (rendered = resolve)),
+        });
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+
+        heights.forget(FILE.path);
+        await manager.refresh(block);
+        rendered();
+        await settle();
+
+        expect(heldHeight(block)).toBe("812px");
+    });
+
     it("re-estimates every unloaded note once its heights are forgotten, and the scroll is still", async () => {
         const { manager, heights } = makeResizable({ estimate: () => 900 });
         const stored = manager.add(FILE);
@@ -1572,7 +1605,7 @@ describe("NoteWindowManager teardown", () => {
 
         expect(observers.unobserve).toHaveBeenCalledWith(block);
         expect(renderer.discard).toHaveBeenCalledTimes(1);
-        expect(heights.toJSON()).toEqual([]);
+        expect(heights.toJSON().heights).toEqual([]);
     });
 
     it("remove frees an unloaded block without discarding anything", () => {

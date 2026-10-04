@@ -29,14 +29,9 @@ Ordered by priority, from the 2026-09 comparison against
       still glides.
 - [ ] iOS: make the stream's height errors fall on the tall side, so a glide up
       ends in D-091's stop at the newest note, never a bounce short of it
-      (D-090). Three parts, estimates first:
+      (D-090). Two parts left, estimates first:
     - [ ] Estimate a never-measured note taller than the best guess. Weigh what
           extra shrinking below the reader costs (ADR 0014).
-    - [ ] Keep each saved height with its note's mtime, as `EmptyNotes` keeps
-          its verdicts: a note edited since, even between sessions or on another
-          device, is then re-estimated from its text, tall, not held at its old
-          height (ADR 0010). A new store format: bump `VERSION` in
-          `src/stream/layout-memory.ts`.
     - [ ] A small buffer above the newest note, for what no mtime shows: a note
           grown with what it embeds, a Base gaining rows or an embedded note
           edited. A spike without D-091's freeze failed: iOS carried the glide

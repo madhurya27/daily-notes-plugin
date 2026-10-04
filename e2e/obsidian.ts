@@ -591,7 +591,7 @@ export async function scrollThroughStream(container: Locator) {
                     block.evaluate((el) => {
                         el.scrollIntoView({ block: "start", behavior: "instant" });
                         const notes: [string, [string, number][]][] =
-                            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON();
+                            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON().heights;
                         return notes.some(([, heights]) => heights.some(([key]) => key === el.dataset.sourcePath));
                     }),
                 { message: `${path} is remembered` }

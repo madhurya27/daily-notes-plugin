@@ -110,7 +110,7 @@ async function estimateAll(page: Page, here: string, other: string, heights: Rec
             const { estimates } = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view.stream;
             const estimating = (saved: [string, [string, number][]][]) => {
                 const stored = new plugin.layoutMemory.notes.constructor();
-                stored.restore(saved);
+                stored.restore({ heights: saved, mtimes: [] });
                 return new estimates.constructor(stored, plugin.layoutMemory.templates, estimates.sources);
             };
             const without = (layout: string, path: string): [string, [string, number][]] => [
@@ -170,7 +170,7 @@ async function measureAll(page: Page, container: Locator): Promise<void> {
                     blocks.nth(i).evaluate((el) => {
                         el.scrollIntoView({ block: "start", behavior: "instant" });
                         const notes: [string, [string, number][]][] =
-                            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON();
+                            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON().heights;
                         return notes.some(([, heights]) => heights.some(([path]) => path === el.dataset.sourcePath));
                     }),
                 { timeout: 15_000 }
@@ -231,8 +231,8 @@ test("measures the demo journal at both orientations", async ({ obsidian, mobile
         await page.evaluate(() => window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.restore(null));
         const container = await openStream(page);
         await measureAll(page, container);
-        const saved: [string, [string, number][]][] = await page.evaluate(() =>
-            window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON()
+        const saved: [string, [string, number][]][] = await page.evaluate(
+            () => window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON().heights
         );
         const [layout, heights] = saved.reduce((most, entry) => (entry[1].length > most[1].length ? entry : most));
         results[name] = {

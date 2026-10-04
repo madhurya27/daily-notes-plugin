@@ -85,8 +85,9 @@ in, an image loads. Three mechanisms keep the reader's place.
 
 - `LayoutMemory` remembers each note's measured height per layout, across
   sessions, so placeholders start at the right size
-  ([ADR 0010](adr/0010-layout-memory.md)). A note not measured at the layout is
-  estimated from its text (`height-estimates.ts`, D-079).
+  ([ADR 0010](adr/0010-layout-memory.md)); an edit forgets a note's
+  ([ADR 0017](adr/0017-forget-heights-of-edited-notes.md)). A note not measured
+  at the layout is estimated from its text (`height-estimates.ts`, D-079).
 - `HeightHold` holds a note or Base at its earlier height while it refills.
 - `NoteWindowManager` pins each rendered note's height and changes it only in
   the task that tells `ScrollAnchor`

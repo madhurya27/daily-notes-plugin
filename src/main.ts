@@ -99,12 +99,17 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.emptyNotes.flush();
     }
 
-    /** What the stream measured; a note's measurements follow it across a rename, and out with a delete. */
+    /**
+     * What the stream measured; a note's measurements follow it across a
+     * rename, and out with a delete. An edit outdates its heights (ADR 0017):
+     * registered before any view opens, so a view hearing of it reads none.
+     */
     private rememberLayout(): void {
         const memory = (this.layoutMemory = new LayoutMemory(this.app));
         const { vault, workspace } = this.app;
         this.registerEvent(vault.on("rename", (file, oldPath) => memory.rename(oldPath, file.path)));
         this.registerEvent(vault.on("delete", (file) => memory.forget(file.path)));
+        this.registerEvent(vault.on("modify", (file) => memory.notes.forget(file.path)));
         workspace.onLayoutReady(() => memory.retainOnly(new Set(vault.getMarkdownFiles().map((file) => file.path))));
     }
 

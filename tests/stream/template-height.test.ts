@@ -137,7 +137,7 @@ describe("TemplateHeight", () => {
         await queue.drained();
 
         expect(renderer.renderInto).not.toHaveBeenCalled();
-        expect(templates.toJSON()).toEqual([]);
+        expect(templates.toJSON().heights).toEqual([]);
     });
 
     // In a hidden tab nothing lays out: the next ask, once shown, measures.
@@ -148,7 +148,7 @@ describe("TemplateHeight", () => {
 
         template.measureAt(column, LAYOUT);
         await queue.drained();
-        expect(templates.toJSON()).toEqual([]);
+        expect(templates.toJSON().heights).toEqual([]);
 
         template.measureAt(column, LAYOUT);
         await queue.drained();
@@ -165,7 +165,7 @@ describe("TemplateHeight", () => {
         await expect(queue.drained()).rejects.toThrow("gone");
 
         expect(column.parentElement!.children).toHaveLength(1);
-        expect(templates.toJSON()).toEqual([]);
+        expect(templates.toJSON().heights).toEqual([]);
         column.parentElement!.remove();
     });
 
