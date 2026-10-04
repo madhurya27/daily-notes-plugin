@@ -395,9 +395,8 @@
     color: var(--text-muted);
 }
 
-.is-hidden,
 /* Headings, tables and code blocks each carry their own display rule below, all
-   of which outrank a bare .is-hidden. The class is repeated to raise this rule's
+   of which outrank a single .is-hidden. The class is repeated to raise this rule's
    specificity above every one of them: hidden must win wherever it lands. */
 .daily-note-content .is-hidden.is-hidden {
     display: none;

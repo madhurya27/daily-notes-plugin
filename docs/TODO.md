@@ -5,9 +5,6 @@
 Ordered by priority, from the 2026-09 comparison against
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
-- [ ] `styles.css` hides every `.is-hidden` in Obsidian, not only in notes: the
-      bare selector before `.daily-note-content .is-hidden.is-hidden` reaches
-      the whole app. Drop it; folded sections need only the scoped rule.
 - [ ] iOS: a Base's table draws some rows blank for a frame as a note above it
       renders mid-glide. Bases draws only rows it measured in view, and
       re-measures after the paint. The probe that traced it is `src/probe.ts` on

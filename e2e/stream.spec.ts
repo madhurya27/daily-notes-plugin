@@ -71,6 +71,21 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(nested).toBeVisible();
     });
 
+    test("leaves an .is-hidden outside the stream to Obsidian", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await openStream(page);
+
+        const display = await page.evaluate(() => {
+            const el = document.body.appendChild(document.createElement("div"));
+            el.className = "is-hidden";
+            const value = getComputedStyle(el).display;
+            el.remove();
+            return value;
+        });
+
+        expect(display).toBe("block");
+    });
+
     test("hides a table and a code block under a collapsed heading", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);
