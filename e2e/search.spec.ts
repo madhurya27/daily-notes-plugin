@@ -90,6 +90,62 @@ test.describe("search the stream", () => {
         await expect(bar.locator(".document-search-count")).toHaveText(new RegExp(`/ ${SEEDED_DAYS}$`));
     });
 
+    test("recounts as a note is edited while open", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const paths = [`Notes/${seededDate(0)}.md`, `Notes/${seededDate(1)}.md`];
+        const originals = await page.evaluate(
+            (paths) => Promise.all(paths.map((path) => window.app.vault.read(window.app.vault.getFileByPath(path)!))),
+            paths
+        );
+        const append = (path: string) =>
+            page.evaluate(
+                (path) => window.app.vault.append(window.app.vault.getFileByPath(path)!, "\nA zebra crossing.\n"),
+                path
+            );
+        try {
+            await append(paths[0]!);
+            await openStream(page);
+            const bar = await openSearch(page);
+            await bar.locator("input").fill("zebra");
+            await expect(bar.locator(".document-search-count")).toHaveText("1 note");
+
+            await append(paths[1]!);
+
+            await expect(bar.locator(".document-search-count")).toHaveText("2 notes");
+        } finally {
+            await page.evaluate(
+                async ({ paths, originals }) => {
+                    for (const [i, path] of paths.entries())
+                        await window.app.vault.modify(window.app.vault.getFileByPath(path)!, originals[i]!);
+                },
+                { paths, originals }
+            );
+        }
+    });
+
+    // Obsidian pads its find bar to clear the floating header, and the view
+    // content clears it again: two clearances leave a gap.
+    test("on a phone, sits under the floating header with no gap above the notes", async ({
+        obsidian,
+        mobileLayout,
+    }) => {
+        test.skip(!mobileLayout, "only a phone floats the header");
+        const { page } = obsidian;
+        await openStream(page);
+        const bar = await openSearch(page);
+        const leaf = page.locator(".workspace-leaf.mod-active");
+
+        const [header, input, barBox, content] = await Promise.all([
+            leaf.locator(".view-header").boundingBox(),
+            bar.locator("input").boundingBox(),
+            bar.boundingBox(),
+            leaf.locator(".view-content").boundingBox(),
+        ]);
+
+        expect(input!.y).toBeGreaterThanOrEqual(header!.y + header!.height);
+        expect(Math.abs(content!.y - (barBox!.y + barBox!.height))).toBeLessThanOrEqual(1);
+    });
+
     test("reaches a note past the loaded batch and shows its match", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);

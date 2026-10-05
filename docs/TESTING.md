@@ -119,14 +119,6 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 - Set the daily-notes format to `DD-MM-YYYY`, then to `MMMM D, YYYY`: the list
   follows it.
 
-### Search
-
-- Rebind "Search current file" in Settings → Hotkeys: the new binding opens the
-  bar at once, the old does not.
-- Edit a note while a search is open: the count follows.
-- On a phone, the bar sits under the floating header with no gap above the
-  notes.
-
 ### Properties
 
 - Better Search Views leaves the linked mentions footer unchanged: it is the
