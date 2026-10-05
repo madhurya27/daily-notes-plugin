@@ -1,19 +1,11 @@
-import { writeFileSync } from "fs";
-import { join } from "path";
 import type { Page } from "@playwright/test";
-import { test, expect, openStream } from "./obsidian";
+import { test, expect, openStream, writeDailyNotesConfig, DAILY_NOTES_CONFIG } from "./obsidian";
 
-const CONFIG = { folder: "Notes", format: "YYYY-MM-DD" };
 const JOURNAL_NOTE = "Journal/2026-06-05.md";
-
-/** Rewrites the core daily-notes config, as its settings pane does. */
-function writeDailyNotesConfig(vaultPath: string, config: Record<string, string>) {
-    writeFileSync(join(vaultPath, ".obsidian", "daily-notes.json"), JSON.stringify(config));
-}
 
 test.describe("Obsidian's daily-notes settings change under a live stream", () => {
     test.afterEach(async ({ obsidian }) => {
-        writeDailyNotesConfig(obsidian.vaultPath, CONFIG);
+        writeDailyNotesConfig(obsidian.vaultPath, DAILY_NOTES_CONFIG);
         await obsidian.page.evaluate(async (path) => {
             const file = window.app.vault.getAbstractFileByPath(path);
             if (file) await window.app.vault.delete(file);
@@ -47,7 +39,7 @@ test.describe("Obsidian's daily-notes settings change under a live stream", () =
         await expect(container.locator(".daily-notes-empty-state")).toBeVisible();
         await expect(container.locator(".daily-note-block")).toHaveCount(0);
 
-        writeDailyNotesConfig(vaultPath, CONFIG);
+        writeDailyNotesConfig(vaultPath, DAILY_NOTES_CONFIG);
         await expect(container.locator(".daily-note-title").first()).toHaveText("2026-03-14");
         await expect(container.locator(".daily-notes-empty-state")).toHaveCount(0);
     });

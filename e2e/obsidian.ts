@@ -48,6 +48,14 @@ export function seededDate(daysBack: number): string {
     return new Date(NEWEST_DAY - daysBack * 86_400_000).toISOString().slice(0, 10);
 }
 
+/** Core daily-notes settings every fixture vault starts with. */
+export const DAILY_NOTES_CONFIG = { folder: "Notes", format: "YYYY-MM-DD" };
+
+/** Rewrites the core daily-notes settings the plugin reads through the interface package, as their settings pane does. */
+export function writeDailyNotesConfig(vaultPath: string, config: Record<string, string>) {
+    writeFileSync(join(vaultPath, ".obsidian", "daily-notes.json"), JSON.stringify(config));
+}
+
 function freePort(): Promise<number> {
     return new Promise((res, rej) => {
         const srv = createServer();
@@ -122,8 +130,7 @@ function seedVault(): string {
         ["# Reading list", "", ...books, "", "## Later", "", "- Middlemarch", ""].join("\n")
     );
 
-    // Core daily-notes settings the plugin reads through the interface package.
-    writeFileSync(join(config, "daily-notes.json"), JSON.stringify({ folder: "Notes", format: "YYYY-MM-DD" }));
+    writeDailyNotesConfig(vault, DAILY_NOTES_CONFIG);
     // Follow the system light/dark setting rather than Obsidian's own default.
     writeFileSync(join(config, "appearance.json"), JSON.stringify({ theme: "system" }));
     writeFileSync(join(config, "community-plugins.json"), JSON.stringify([PLUGIN_ID]));

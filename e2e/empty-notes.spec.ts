@@ -1,9 +1,14 @@
-import { writeFileSync } from "fs";
-import { join } from "path";
 import type { Page } from "@playwright/test";
-import { test, expect, openStream, scrollThroughStream, seededDate } from "./obsidian";
+import {
+    test,
+    expect,
+    openStream,
+    scrollThroughStream,
+    seededDate,
+    writeDailyNotesConfig,
+    DAILY_NOTES_CONFIG,
+} from "./obsidian";
 
-const CONFIG = { folder: "Notes", format: "YYYY-MM-DD" };
 const TEMPLATE_PATH = "Templates/Daily.md";
 const OTHER_TEMPLATE_PATH = "Templates/Other.md";
 const TEMPLATE = "---\ntags: daily\n---\n# {{date:dddd, MMMM D}}\n\n## Log\n- \n";
@@ -19,10 +24,6 @@ const EMBEDDED_NOTE = "Embedded.md";
 const EMPTY_TEXT = "---\ntags: daily\n---\n# Sunday, March 15\n\n## Log\n- \n";
 /** Empty notes older than every other, together taller than the pane: the stream's whole end. */
 const OLD_EMPTY_NOTES = ["01", "02", "03", "04", "05", "06"].map((day) => `Notes/2020-01-${day}.md`);
-
-function writeDailyNotesConfig(vaultPath: string, config: Record<string, string>) {
-    writeFileSync(join(vaultPath, ".obsidian", "daily-notes.json"), JSON.stringify(config));
-}
 
 /** Today as YYYY-MM-DD, by the app's clock. */
 const today = (page: Page) => page.evaluate(() => new Date().toLocaleDateString("en-CA"));
@@ -67,7 +68,7 @@ test.describe("empty daily notes", () => {
         await write(page, TEMPLATE_PATH, TEMPLATE);
         await write(page, EMPTY_NOTE, EMPTY_TEXT);
         await write(page, await todayNote(page), EMPTY_TEXT);
-        writeDailyNotesConfig(vaultPath, { ...CONFIG, template: "Templates/Daily" });
+        writeDailyNotesConfig(vaultPath, { ...DAILY_NOTES_CONFIG, template: "Templates/Daily" });
         await expect
             .poll(() =>
                 page.evaluate(
@@ -81,7 +82,7 @@ test.describe("empty daily notes", () => {
         const { page, vaultPath } = obsidian;
         await setHideEmptyNotes(page, true);
         await setShowLinkedMentions(page, true);
-        writeDailyNotesConfig(vaultPath, CONFIG);
+        writeDailyNotesConfig(vaultPath, DAILY_NOTES_CONFIG);
         const paths = [
             TEMPLATE_PATH,
             OTHER_TEMPLATE_PATH,
@@ -230,7 +231,11 @@ test.describe("empty daily notes", () => {
         await write(page, ONLY_EMPTY_NOTE, EMPTY_TEXT);
         const container = await openStream(page);
 
-        writeDailyNotesConfig(vaultPath, { folder: "Empty", format: CONFIG.format, template: "Templates/Daily" });
+        writeDailyNotesConfig(vaultPath, {
+            folder: "Empty",
+            format: DAILY_NOTES_CONFIG.format,
+            template: "Templates/Daily",
+        });
 
         await expect(container.locator(".daily-notes-empty-state")).toHaveText(/^Every daily note is hidden/);
         await expect(container.locator(".daily-note-block")).toHaveCount(0);
@@ -242,7 +247,7 @@ test.describe("empty daily notes", () => {
         const shown = await titles(page);
         await expect(shown.nth(1)).toHaveText(seededDate(0));
 
-        writeDailyNotesConfig(vaultPath, { ...CONFIG, template: OTHER_TEMPLATE_PATH.replace(/\.md$/, "") });
+        writeDailyNotesConfig(vaultPath, { ...DAILY_NOTES_CONFIG, template: OTHER_TEMPLATE_PATH.replace(/\.md$/, "") });
 
         await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
     });
