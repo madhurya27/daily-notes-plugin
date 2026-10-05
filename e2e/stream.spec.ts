@@ -7,6 +7,9 @@ import {
     restoreScrollAnchoring,
     SEEDED_DAYS,
     withoutScrollAnchoring,
+    writeDailyNotesConfig,
+    DAILY_NOTES_CONFIG,
+    LAYOUT_VIEWPORT,
 } from "./obsidian";
 
 test.describe("daily notes stream in real Obsidian", () => {
@@ -280,6 +283,66 @@ test.describe("daily notes stream in real Obsidian", () => {
 
         await container.locator(".daily-note-block").last().scrollIntoViewIfNeeded();
         await expect(blocks).toHaveCount(SEEDED_DAYS);
+    });
+
+    test("draws an embedded image", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const svg =
+            '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" fill="teal"/></svg>';
+        await page.evaluate(async (svg) => {
+            await window.app.vault.create("Embedded dot.svg", svg);
+            await window.app.vault.create("Notes/2026-03-20.md", "## Pictures\n\n![[Embedded dot.svg]]\n");
+        }, svg);
+        try {
+            const container = await openStream(page);
+            const image = container.locator('.daily-note-block[data-source-path="Notes/2026-03-20.md"] img');
+
+            await expect(image).toBeVisible();
+            await expect
+                .poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
+                .toBe(120);
+        } finally {
+            await page.evaluate(async () => {
+                for (const path of ["Notes/2026-03-20.md", "Embedded dot.svg"])
+                    await window.app.vault.delete(window.app.vault.getFileByPath(path)!);
+            });
+        }
+    });
+
+    test("keeps loading batches while short notes leave a tall window unfilled", async ({ obsidian, mobileLayout }) => {
+        const { page, vaultPath } = obsidian;
+        // Taller than a batch of ten short notes, which settle at about 140px each.
+        const viewport = LAYOUT_VIEWPORT[mobileLayout ? "mobile" : "desktop"];
+        const cdp = await page.context().newCDPSession(page);
+        const resize = (height: number) =>
+            cdp.send("Emulation.setDeviceMetricsOverride", {
+                ...viewport,
+                height,
+                deviceScaleFactor: 1,
+                mobile: false,
+            });
+        await resize(2400);
+        const notes = Array.from({ length: 25 }, (_, i) => `Short/2026-01-${String(i + 1).padStart(2, "0")}.md`);
+        await page.evaluate(async (notes) => {
+            await window.app.vault.createFolder("Short").catch(() => {});
+            for (const path of notes) await window.app.vault.create(path, "Rest day.\n");
+        }, notes);
+        writeDailyNotesConfig(vaultPath, { ...DAILY_NOTES_CONFIG, folder: "Short" });
+        try {
+            const container = await openStream(page);
+            const blocks = container.locator(".daily-note-block");
+            await expect(blocks.first()).toHaveAttribute("data-source-path", notes.at(-1)!);
+            // Unscrolled: a batch of ten short notes leaves the window unfilled.
+            await expect.poll(() => blocks.count()).toBeGreaterThan(10);
+            expect(await container.evaluate((el) => el.parentElement!.scrollTop)).toBe(0);
+        } finally {
+            await resize(viewport.height);
+            writeDailyNotesConfig(vaultPath, DAILY_NOTES_CONFIG);
+            await page.evaluate(async () => {
+                const folder = window.app.vault.getAbstractFileByPath("Short");
+                if (folder) await window.app.vault.delete(folder, true);
+            });
+        }
     });
 
     // jsdom loads no stylesheet and lays nothing out, so unloading can only be

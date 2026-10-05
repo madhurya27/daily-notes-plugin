@@ -34,7 +34,7 @@ test.describe("links in a note", () => {
         await obsidian.page.evaluate(() => window.app.workspace.detachLeavesOfType("markdown"));
     });
 
-    test("open the linked note in the stream's tab", async ({ obsidian }) => {
+    test("open the linked note in the stream's tab, which Back returns to", async ({ obsidian }) => {
         const { page } = obsidian;
         await (await firstLink(page, "Reading list")).click();
 
@@ -42,6 +42,9 @@ test.describe("links in a note", () => {
             .poll(async () => (await openNotes(page)).map((n: { path?: string }) => n.path))
             .toEqual(["Reading list.md"]);
         expect(await streamIsOpen(page)).toBe(false);
+
+        await page.evaluate(() => window.app.commands.executeCommandById("app:go-back"));
+        await expect.poll(() => streamIsOpen(page)).toBe(true);
     });
 
     test("create a missing note in the stream's tab", async ({ obsidian }) => {
@@ -105,6 +108,32 @@ test.describe("links in a note", () => {
         await page.evaluate(() => window.app.vault.setConfig("nativeMenus", null));
     });
 
+    test("offer only where to open a missing note on right-click, and create it there", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(() => window.app.vault.setConfig("nativeMenus", false));
+        try {
+            await (await firstLink(page, "Someday")).click({ button: "right" });
+
+            const menu = page.locator(".menu");
+            await expect(menu.getByText("Open in new tab")).toBeVisible();
+            // No file yet, so none of Obsidian's file-menu items.
+            await expect(menu.getByText("Bookmark...")).toHaveCount(0);
+            await expect(menu.getByText("Rename...")).toHaveCount(0);
+
+            await menu.getByText("Open in new tab").click();
+
+            await expect.poll(() => openNotes(page)).toEqual([{ path: "Someday.md", besideStream: true }]);
+            expect(await streamIsOpen(page)).toBe(true);
+        } finally {
+            await page.evaluate(async () => {
+                window.app.workspace.detachLeavesOfType("markdown");
+                const file = window.app.vault.getFileByPath("Someday.md");
+                if (file) await window.app.vault.delete(file);
+                window.app.vault.setConfig("nativeMenus", null);
+            });
+        }
+    });
+
     test("fade a link to a note that does not exist, as Obsidian does", async ({ obsidian }) => {
         const { page } = obsidian;
         const missing = await firstLink(page, "Someday");
@@ -142,5 +171,41 @@ test.describe("links in a note", () => {
         await page.keyboard.up("ControlOrMeta");
         await page.mouse.move(0, 0);
         await expect(page.locator(".hover-popover")).toHaveCount(0);
+    });
+
+    test("preview the linked note on a plain hover once Page preview drops the Mod key", async ({
+        obsidian,
+        mobileLayout,
+    }) => {
+        test.skip(mobileLayout, "a phone has no hover");
+        const { page } = obsidian;
+        // Settings → Page preview: the stream's row, its toggle on while hovering needs Mod.
+        const needsMod = async () => {
+            const settings = page.context().waitForEvent("page");
+            await page.evaluate(() => {
+                window.app.setting.open();
+                window.app.setting.openTabById("page-preview");
+            });
+            return (await settings)
+                .locator(".vertical-tab-content .setting-item")
+                .filter({ hasText: "Daily notes stream" })
+                .locator(".checkbox-container");
+        };
+        let toggle = await needsMod();
+        await expect(toggle).toHaveClass(/is-enabled/);
+        await toggle.click();
+        await expect(toggle).not.toHaveClass(/is-enabled/);
+        await page.evaluate(() => window.app.setting.close());
+        try {
+            await (await firstLink(page, "Reading list")).hover();
+
+            await expect(page.locator(".hover-popover").getByText("Book 1", { exact: true })).toBeVisible();
+        } finally {
+            await page.mouse.move(0, 0);
+            toggle = await needsMod();
+            await toggle.click();
+            await expect(toggle).toHaveClass(/is-enabled/);
+            await page.evaluate(() => window.app.setting.close());
+        }
     });
 });

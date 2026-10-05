@@ -89,25 +89,11 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 
 ### Core
 
-- Mod-alt-click on the ribbon icon splits.
-- Middle-click on a note's header opens a new tab.
-- `test-image.svg` renders in **2026-02-01**; `[[2026-01-15]]` navigates there
-  and back.
-- Settings → Page preview lists "Daily notes stream", and turning its Mod
-  requirement off previews on plain hover.
-- Right-click on an unresolved link offers only the open items; opening one
-  creates the note.
-- `Daily notes stream: Scroll to top` is not offered with another view open.
 - On iOS, scroll through the stream, quit Obsidian, reopen it and jump to an old
   date; scroll back up by hand: the glide stops on the newest note, and nothing
   jumps once it stops. **[e2e]** with anchoring off; **[ios]**.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled.
   **[e2e]** for the wait; **[ios]**.
-- Tall window, short notes: loading continues past the first batch.
-- Toggling any setting refreshes the view but keeps the scroll position.
-- The settings tab groups Properties and Linked mentions under headings; turning
-  a section's "Show" off removes its "Collapse by default" row, on brings it
-  back.
 
 ### Jump to date
 

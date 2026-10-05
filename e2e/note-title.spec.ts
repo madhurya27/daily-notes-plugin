@@ -84,6 +84,15 @@ test.describe("note title", () => {
         await expect.poll(() => openNotes(page)).toEqual([{ path: "Notes/2026-03-14.md", besideStream: true }]);
     });
 
+    test("opens the note in a new tab when middle-clicked, keeping the stream", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+
+        await container.locator(".daily-note-title").first().click({ button: "middle" });
+
+        await expect.poll(() => openNotes(page)).toEqual([{ path: "Notes/2026-03-14.md", besideStream: true }]);
+    });
+
     test("offers the file menu on right-click", async ({ obsidian, mobileLayout }) => {
         const { page } = obsidian;
         // A native menu (the macOS default) never reaches the DOM to be read.

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, openStream, writeDailyNotesConfig, DAILY_NOTES_CONFIG } from "./obsidian";
+import { test, expect, openStream, seededDate, writeDailyNotesConfig, DAILY_NOTES_CONFIG } from "./obsidian";
 
 const JOURNAL_NOTE = "Journal/2026-06-05.md";
 
@@ -110,4 +110,33 @@ test.describe("The plugin's settings tab", () => {
 
         await expect(names).toHaveText(grouped.filter((_, row) => row !== 3));
     });
+});
+
+test("redraws the stream on a setting's change, keeping the note being read at the top", async ({ obsidian }) => {
+    const { page } = obsidian;
+    const setShowProperties = (on: boolean) =>
+        page.evaluate(async (on) => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = on;
+            await plugin.saveSettings();
+        }, on);
+    const container = await openStream(page);
+    const reading = container.locator(`.daily-note-block[data-source-path="Notes/${seededDate(4)}.md"]`);
+    /** How far below the pane's top the note being read starts. */
+    const offset = () =>
+        reading.evaluate(
+            (el) => el.getBoundingClientRect().top - el.parentElement!.parentElement!.getBoundingClientRect().top
+        );
+    await reading.evaluate((el) => el.scrollIntoView({ block: "start", behavior: "instant" }));
+    await expect.poll(offset).toBeCloseTo(0, 0);
+    await expect(container.locator(".metadata-container").first()).toBeAttached();
+
+    await setShowProperties(false);
+    try {
+        // Every note above lost its properties panel, and so its height.
+        await expect(container.locator(".metadata-container")).toHaveCount(0);
+        await expect.poll(offset).toBeCloseTo(0, 0);
+    } finally {
+        await setShowProperties(true);
+    }
 });
