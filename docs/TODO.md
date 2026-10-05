@@ -27,9 +27,6 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
       box guard cannot see; a video player does not. Check that a flick over one
       still glides.
-- [ ] iOS: `e2e/ios/jump.spec.ts` "a glide that reaches the newest note with
-      scroll to spare stops there" fails about one run in three after other
-      specs: "the notes above shrank as they rendered".
 - [ ] iOS: D-091's stop writes the scroll mid-touch if a finger drags slowly
       past the newest note while the stream is drawn lower. Untested: the
       harness only flicks.

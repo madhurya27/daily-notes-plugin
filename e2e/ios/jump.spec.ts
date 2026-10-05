@@ -68,8 +68,14 @@ test("a glide that bounces at the top owing the notes above hands them over as t
 // blank.
 test("a glide that reaches the newest note with scroll to spare stops there", async ({ phone }) => {
     const above = ["Journal/2026-09-28.md", "Journal/2026-09-29.md", "Journal/2026-09-30.md"];
+    // Reopened: a test before may have shortened what notes reserve. Not
+    // closed first: a close as Obsidian reloads for a new build throws.
     await phone.openStream();
-    await phone.jumpTo("2026-09-27");
+    await phone.run(() => window.app.workspace.detachLeavesOfType("daily-notes-stream-view"));
+    await phone.openStream();
+    // Edited far from the reader: a rendered note re-renders short at once,
+    // or mid-glide, as its metadata catches up.
+    await phone.jumpTo("2026-09-12");
     const texts = await phone.runAsync(
         (paths: string[]) => Promise.all(paths.map((path) => window.app.vault.adapter.read(path))),
         above
@@ -78,7 +84,18 @@ test("a glide that reaches the newest note with scroll to spare stops there", as
         await phone.runAsync(async (paths: string[]) => {
             for (const path of paths) await window.app.vault.modify(window.app.vault.getFileByPath(path)!, "Short.\n");
         }, above);
-        await phone.rest();
+        await phone.jumpTo("2026-09-24");
+        const rendered = await phone.run(
+            (paths: string[]) =>
+                paths.filter(
+                    (path) =>
+                        !document
+                            .querySelector(`.daily-note-block[data-source-path="${path}"]`)!
+                            .classList.contains("is-unloaded")
+                ),
+            above
+        );
+        expect(rendered, "the edited notes are unrendered as the flick starts").toEqual([]);
         await recordFrames(phone);
 
         await phone.flick("down", 2);
