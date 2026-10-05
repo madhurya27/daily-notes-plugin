@@ -13,13 +13,6 @@ Ordered by priority.
       notes around it (ADR 0013). Candidate fix: remember each image's aspect
       ratio by path once it loads, so a rendered image reserves its height
       before loading.
-- [ ] iOS: a turn loses the place inside a tall note with Bases above the
-      screen's top, by thousands of pixels: in the iPhone harness's 2026-08-30,
-      the paragraph before Middle.base moved 5,700–11,300 px on a turn and
-      15,800–19,900 px on the turn back. Measured before ADRs 0014–0015 and
-      D-092: measure again first. Same cause as the item above, at scale.
-      `e2e/ios/layout.spec.ts` places again after each turn; once fixed, check
-      the place there instead.
 - [ ] iOS: a Base's toolbar overruns a phone's width; its New button is clipped
       off screen. `e2e/ios/layout.spec.ts` leaves the toolbar out of its census.
 - [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll

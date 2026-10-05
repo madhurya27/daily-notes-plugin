@@ -139,7 +139,8 @@ Checks:
   the top on a Base's last card and a heading below: what was at the top stays
   there, and no note is skipped. **[e2e]** with anchoring off, but Chromium
   redraws a Base in another order: only the device proves it. **[ios]** for text
-  and a Base at the top, turned to landscape and back.
+  and a Base at the top, turned to landscape and back, and for a heading in a
+  tall note with Bases above the screen's top.
 - Scroll through a Base table with summaries: its header and summary row move
   with it, never floating over the page. **[e2e]** **[ios]**, on its side:
   upright, a phone draws every Base as cards.

@@ -56,10 +56,20 @@ const widths = (phone: Phone) =>
         return { equation: width("mjx-container[display]"), text: width(".daily-note-content") };
     }, NOTE);
 
+/** Where the equation's section starts below the pane's top. */
+const mathTop = (phone: Phone) =>
+    phone.run((math: string) => {
+        const el = document.querySelector(math)!;
+        const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+        return Math.round(el.getBoundingClientRect().top - pane.getBoundingClientRect().top);
+    }, MATH);
+
+/** How far a turn may move the place: the text above it re-wraps at the new width. */
+const REWRAP_PX = 100;
+
 /**
  * The Base's form and the equation's width in the orientation the phone is
- * in, once nothing reaches past the note. A turn does not keep the place in
- * this note (docs/TODO.md), so each is placed again.
+ * in, once nothing reaches past the note. Ends placed at the equation.
  */
 async function drawn(phone: Phone) {
     await phone.placeAt(FLIPPING, -100);
@@ -84,12 +94,15 @@ test("a turn flips a wide Base between cards and a table, and fits the equation 
     expect(upright.base).toBe("cards");
     expect(upright.equation).toBeLessThanOrEqual(upright.text);
 
+    const place = await mathTop(phone);
     await phone.turn("LANDSCAPE");
+    expect(Math.abs((await mathTop(phone)) - place), "the place, on a turn").toBeLessThanOrEqual(REWRAP_PX);
     const onItsSide = await drawn(phone);
     expect(onItsSide.base).toBe("table");
     expect(onItsSide.equation).toBeGreaterThan(upright.equation);
     expect(onItsSide.equation).toBeLessThanOrEqual(onItsSide.text);
 
     await phone.turn("PORTRAIT");
+    expect(Math.abs((await mathTop(phone)) - place), "the place, on the turn back").toBeLessThanOrEqual(REWRAP_PX);
     expect((await drawn(phone)).base).toBe("cards");
 });
