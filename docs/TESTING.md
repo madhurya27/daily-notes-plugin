@@ -98,10 +98,10 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 ### Jump to date
 
 - On a phone the suggester opens with the keyboard down; a tap on the query
-  raises it. **[e2e]** for focus.
-- The calendar button's date wheel, driven by hand on iOS and Android: the e2e
-  mobile project is desktop Chromium, which opens a picker iOS never would, and
-  checks only that a tap on the icon lands on the date input. **[ios]** for iOS.
+  raises it. **[e2e]** for focus; **[ios]**.
+- The calendar button's date wheel: the e2e mobile project is desktop Chromium,
+  which opens a picker iOS never would, and checks only that a tap on the icon
+  lands on the date input. **[ios]**
 
 ### Mobile
 
@@ -120,7 +120,6 @@ Then a real device:
 | iOS           | Vault in iCloud Drive: copy the three built files on the Mac into `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/<vault>/.obsidian/plugins/daily-notes-stream/`. The Files app hides dot-folders. |
 | iOS, no cable | BRAT against a published pre-release — also exercises the real release artifacts.                                                                                                                           |
 | Either        | Obsidian Sync with "Installed plugins" enabled.                                                                                                                                                             |
-| Android       | Any file manager, into `<vault>/.obsidian/plugins/daily-notes-stream/`.                                                                                                                                     |
 
 Checks:
 
@@ -128,8 +127,9 @@ Checks:
   draw as cards, wide equations shrink to fit. **[e2e]** **[ios]** Each case is
   in **2026-08-30**.
 - A PDF shows its first page without a toolbar; a tap opens the PDF. **[e2e]**
+  **[ios]**
 - The video shows its thumbnail under a play button; a tap opens it on YouTube.
-  **[e2e]**
+  **[e2e]** **[ios]**
 - Rotation reflows without clipping. With a Base on screen, a wide one turns to
   cards or back to a table; a wide equation grows or shrinks with the note.
   **[ios]**
@@ -139,7 +139,8 @@ Checks:
   redraws a Base in another order: only the device proves it. **[ios]** for text
   and a Base at the top, turned to landscape and back.
 - Scroll through a Base table with summaries: its header and summary row move
-  with it, never floating over the page. **[e2e]**
+  with it, never floating over the page. **[e2e]** **[ios]**, on its side:
+  upright, a phone draws every Base as cards.
 - Scroll far, pause, flick both ways past Bases and tables: each flick glides
   out. **[ios]** for Bases.
 - A Base on screen gains a row from another pane: the text below never jumps and
@@ -164,11 +165,9 @@ Checks:
   repeated flicks keep loading. **[ios]**
 - Backgrounding and returning keeps position and keeps scrolling. **[ios]**
 - Editing a visible note elsewhere re-renders it in place. **[ios]**
-- No console errors (iOS: Safari → Develop; Android: `chrome://inspect`).
-  **[ios]**
+- No console errors (Safari → Develop). **[ios]**
 
-iOS is the one that matters: Android's WebView is Chromium, so desktop plus
-emulation covers that engine.
+No Android pass (D-096).
 
 ## Debugging
 
