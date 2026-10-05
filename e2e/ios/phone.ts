@@ -486,6 +486,15 @@ export class Phone {
         await this.driver.$("~Done").click();
     }
 
+    /** What Obsidian's console has shown as an error since last asked: logged, thrown or rejected. */
+    async consoleErrors(): Promise<string[]> {
+        await this.inWebView();
+        const entries = (await this.driver.getLogs("safariConsole")) as { level: string; message: string }[];
+        return entries
+            .filter(({ level }) => level === "SEVERE")
+            .map(({ message }) => (JSON.parse(message) as { text: string }).text);
+    }
+
     /** Whether anything matches `selector`. */
     has(selector: string): Promise<boolean> {
         return this.run((sel: string) => !!document.querySelector(sel), selector);
@@ -657,7 +666,15 @@ export class Phone {
     }
 }
 
-export const test = base.extend<object, { phone: Phone }>({
+export const test = base.extend<{ quietConsole: void }, { phone: Phone }>({
+    // Errors in a test fail it, wherever they surface: no check has to ask.
+    quietConsole: [
+        async ({ phone }, use) => {
+            await use();
+            expect(await phone.consoleErrors(), "errors in Obsidian's console").toEqual([]);
+        },
+        { auto: true },
+    ],
     phone: [
         async ({}, use) => {
             const driver = await connect();
@@ -668,6 +685,7 @@ export const test = base.extend<object, { phone: Phone }>({
             try {
                 await phone.assertUnlocked();
                 await useVault(phone);
+                expect(await phone.consoleErrors(), "errors in Obsidian's console, opening the vault").toEqual([]);
                 await use(phone);
             } finally {
                 await driver.setOrientation("PORTRAIT");
