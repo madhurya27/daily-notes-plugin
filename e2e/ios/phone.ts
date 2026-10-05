@@ -35,6 +35,13 @@ function blockOf(target: string): string | undefined {
     return undefined;
 }
 
+/**
+ * Obsidian's sanitizer gives each embedded frame `allow-presentation`, a flag
+ * iOS's WebKit does not know. Its own reading view logs this, the stream closed.
+ */
+const OBSIDIANS_SANDBOX_NOTICE =
+    "Error while parsing the 'sandbox' attribute: 'allow-presentation' is an invalid sandbox flag.";
+
 export class Phone {
     constructor(private readonly driver: WebdriverIO.Browser) {}
 
@@ -490,9 +497,15 @@ export class Phone {
     async consoleErrors(): Promise<string[]> {
         await this.inWebView();
         const entries = (await this.driver.getLogs("safariConsole")) as { level: string; message: string }[];
-        return entries
-            .filter(({ level }) => level === "SEVERE")
-            .map(({ message }) => (JSON.parse(message) as { text: string }).text);
+        // Appium hands one console entry over several times, the copies alike to the timestamp.
+        const errors = new Map<string, string>();
+        for (const { level, message } of entries) {
+            if (level !== "SEVERE") continue;
+            const { text, timestamp } = JSON.parse(message) as { text: string; timestamp: number };
+            if (text === OBSIDIANS_SANDBOX_NOTICE) continue;
+            errors.set(`${timestamp} ${text}`, text);
+        }
+        return [...errors.values()];
     }
 
     /** Whether anything matches `selector`. */
