@@ -1555,3 +1555,20 @@ breaks most on iOS.
 - Our own long-press: a timer that must tell a press from a flick's start, and
   the title's selection suppressed.
 - Registering titles with Obsidian's drag manager — private API.
+
+## D-094 — One width observer per view; the anchor keeps its own (2026-10-05)
+
+**Decision:** tables, equations and Bases hear a note's width change through one
+`ResizeObserver` per view (`note-widths.ts`), not one each per rendered note.
+`NoteWindowManager` and `ScrollAnchor` keep an observer each.
+
+**Why:** the three width observers were one piece of code written three times,
+waking on every height change to find the width the same. A screen of notes on a
+phone ran ~24 observers; it now runs ~6. The pin and the anchor watch different
+sets — every block for the anchor, rendered ones for the pin — so one observer
+would need counts of who watches what.
+
+**Rejected:**
+
+- One observer for the pin and the anchor — saves one observer per view, at a
+  rewrite of the anchor's tests and shared bookkeeping in ADR 0013's code.

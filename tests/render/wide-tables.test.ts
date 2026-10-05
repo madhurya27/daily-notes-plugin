@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { Component } from "obsidian";
 import { stackWideTables } from "../../src/render/wide-tables";
+import { FakeWidths } from "./fake-widths";
 
 /** jsdom lays nothing out, so each test sets the widths it needs. */
 function setWidth(el: HTMLElement, prop: "offsetWidth" | "clientWidth", width: () => number): void {
@@ -19,28 +20,13 @@ function table(headers: string[], rows: string[][]): HTMLTableElement {
     return el;
 }
 
-class FakeResizeObserver {
-    static instances: FakeResizeObserver[] = [];
-    observed: Element[] = [];
-    disconnected = false;
-    constructor(readonly callback: () => void) {
-        FakeResizeObserver.instances.push(this);
-    }
-    observe(el: Element) {
-        this.observed.push(el);
-    }
-    disconnect() {
-        this.disconnected = true;
-    }
-}
-
 let content: HTMLElement;
 let component: Component;
 let noteWidth: number;
+let widths: FakeWidths;
 
 beforeEach(() => {
-    FakeResizeObserver.instances = [];
-    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    widths = new FakeWidths();
     content = document.createElement("div");
     noteWidth = 400;
     setWidth(content, "clientWidth", () => noteWidth);
@@ -48,15 +34,11 @@ beforeEach(() => {
     component.load();
 });
 
-afterEach(() => {
-    vi.unstubAllGlobals();
-});
-
 describe("stackWideTables", () => {
     it("names each body cell after its column", () => {
         const el = content.appendChild(table(["Day", " Pace "], [["1", "5:12"]]));
 
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
 
         const cells = Array.from(el.querySelectorAll("td"));
         expect(cells.map((cell) => cell.dataset.column)).toEqual(["Day", "Pace"]);
@@ -66,7 +48,7 @@ describe("stackWideTables", () => {
         const el = content.appendChild(table(["File"], [["a"]]));
         el.querySelector("th")!.createSpan({ cls: "dataview small-text", text: "15" });
 
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
 
         expect(el.querySelector("td")!.dataset.column).toBe("File");
     });
@@ -74,7 +56,7 @@ describe("stackWideTables", () => {
     it("leaves a cell with no header unnamed", () => {
         const el = content.appendChild(table(["Day", ""], [["1", "2", "3"]]));
 
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
 
         const cells = Array.from(el.querySelectorAll("td"));
         expect(cells.map((cell) => cell.dataset.column)).toEqual(["Day", undefined, undefined]);
@@ -84,7 +66,7 @@ describe("stackWideTables", () => {
         const el = content.appendChild(table(["A"], [["1"]]));
         setWidth(el, "offsetWidth", () => 600);
 
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
 
         expect(el.classList.contains("is-stacked")).toBe(true);
     });
@@ -93,7 +75,7 @@ describe("stackWideTables", () => {
         const el = content.appendChild(table(["A"], [["1"]]));
         setWidth(el, "offsetWidth", () => 400);
 
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
 
         expect(el.classList.contains("is-stacked")).toBe(false);
     });
@@ -102,11 +84,10 @@ describe("stackWideTables", () => {
     it("measures a stacked table as a grid", () => {
         const el = content.appendChild(table(["A"], [["1"]]));
         setWidth(el, "offsetWidth", () => (el.hasClass("is-stacked") ? 400 : 600));
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
 
-        FakeResizeObserver.instances[0]!.callback();
         noteWidth = 399;
-        FakeResizeObserver.instances[0]!.callback();
+        widths.resize(content, 399);
 
         expect(el.classList.contains("is-stacked")).toBe(true);
     });
@@ -114,31 +95,17 @@ describe("stackWideTables", () => {
     it("re-checks when the note's width changes", () => {
         const el = content.appendChild(table(["A"], [["1"]]));
         setWidth(el, "offsetWidth", () => 600);
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
 
         noteWidth = 800;
-        FakeResizeObserver.instances[0]!.callback();
-
-        expect(FakeResizeObserver.instances[0]!.observed).toEqual([content]);
-        expect(el.classList.contains("is-stacked")).toBe(false);
-    });
-
-    // A height change reports too, and measuring then is wasted layout.
-    it("ignores a resize that keeps the width", () => {
-        const el = content.appendChild(table(["A"], [["1"]]));
-        let natural = 300;
-        setWidth(el, "offsetWidth", () => natural);
-        stackWideTables(content, component);
-
-        natural = 600;
-        FakeResizeObserver.instances[0]!.callback();
+        widths.resize(content, 800);
 
         expect(el.classList.contains("is-stacked")).toBe(false);
     });
 
     // Dataview draws its table after the note renders, and again on each change.
     it("stacks a table drawn into the note later, named by its columns", async () => {
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
         const el = table(["Day"], [["1"]]);
         setWidth(el, "offsetWidth", () => 600);
 
@@ -154,7 +121,7 @@ describe("stackWideTables", () => {
         const el = content.appendChild(table(["Day"], []));
         let width = 300;
         setWidth(el, "offsetWidth", () => width);
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
 
         width = 600;
         el.querySelector("tbody")!.createEl("tr").createEl("td", { text: "1" });
@@ -165,27 +132,27 @@ describe("stackWideTables", () => {
     });
 
     it("re-checks a later table when the note's width changes", async () => {
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
         const el = content.appendChild(table(["A"], [["1"]]));
         setWidth(el, "offsetWidth", () => 600);
         await Promise.resolve();
 
         noteWidth = 800;
-        FakeResizeObserver.instances[0]!.callback();
+        widths.resize(content, 800);
 
         expect(el.classList.contains("is-stacked")).toBe(false);
     });
 
     it("stops watching once the note unloads", async () => {
         content.appendChild(table(["A"], [["1"]]));
-        stackWideTables(content, component);
+        stackWideTables(content, component, widths);
 
         component.unload();
         const later = content.appendChild(table(["A"], [["1"]]));
         setWidth(later, "offsetWidth", () => 600);
         await Promise.resolve();
 
-        expect(FakeResizeObserver.instances[0]!.disconnected).toBe(true);
+        expect(widths.watching(content)).toBe(0);
         expect(later.classList.contains("is-stacked")).toBe(false);
     });
 });

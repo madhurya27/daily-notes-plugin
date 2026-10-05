@@ -5,6 +5,7 @@ import { layoutOf } from "../../stream/layout-memory";
 import { asCards, BASE_SLOT_CLASS, type BaseSource } from "./bases-as-cards";
 import { fitBaseToWidth, tableWidth } from "./bases-fit";
 import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
+import type { WidthWatch } from "../note-widths";
 
 /**
  * A note's Bases, each drawn into its own placeholder as a table or, when the
@@ -28,6 +29,7 @@ export class NoteBases {
     constructor(
         private readonly app: App,
         private readonly measured: BaseMeasurements,
+        private readonly widths: WidthWatch,
         /** jsdom lays nothing out, so measuring is the one seam tests replace. */
         private readonly measureHeaders: (host: HTMLElement) => HeaderMetrics | null = measureHeaderMetrics
     ) {}
@@ -39,7 +41,7 @@ export class NoteBases {
         if (this.headers === undefined) this.headers = this.measureHeaders(contentEl);
 
         const slots: BaseSlot[] = [];
-        let width = contentEl.clientWidth;
+        const width = contentEl.clientWidth;
         for (const [i, placeholder] of placeholders.entries()) {
             const source = sources[i]!;
             const base = source.kind === "embed" ? this.resolveBase(source.link, file) : null;
@@ -54,13 +56,9 @@ export class NoteBases {
             slots.push(slot);
             await this.draw(slot, this.wantsCards(slot, width) ? "cards" : "table");
         }
-        const observer = new ResizeObserver(() => {
-            if (contentEl.clientWidth === width) return;
-            width = contentEl.clientWidth;
+        this.widths.watch(contentEl, noteComponent, (width) => {
             for (const slot of slots) void this.recheck(slot, width);
         });
-        observer.observe(contentEl);
-        noteComponent.register(() => observer.disconnect());
     }
 
     /**

@@ -1,4 +1,5 @@
 import type { Component } from "obsidian";
+import type { WidthWatch } from "./note-widths";
 
 /**
  * Shrinks a display equation wider than the note until it fits, re-checked
@@ -6,7 +7,7 @@ import type { Component } from "obsidian";
  * (ADR 0008), and clipped, its end would be lost. MathJax draws HTML, which
  * CSS cannot scale to fit, so this measures it.
  */
-export function fitWideEquations(contentEl: HTMLElement, noteComponent: Component): void {
+export function fitWideEquations(contentEl: HTMLElement, noteComponent: Component, widths: WidthWatch): void {
     const equations = Array.from(contentEl.querySelectorAll<HTMLElement>('mjx-container[display="true"] > mjx-math'));
     if (equations.length === 0) return;
 
@@ -20,13 +21,5 @@ export function fitWideEquations(contentEl: HTMLElement, noteComponent: Componen
         }
     };
     fit();
-
-    let width = contentEl.clientWidth;
-    const observer = new ResizeObserver(() => {
-        if (contentEl.clientWidth === width) return;
-        width = contentEl.clientWidth;
-        fit();
-    });
-    observer.observe(contentEl);
-    noteComponent.register(() => observer.disconnect());
+    widths.watch(contentEl, noteComponent, fit);
 }
