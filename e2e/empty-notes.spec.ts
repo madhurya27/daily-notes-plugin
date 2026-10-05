@@ -5,10 +5,13 @@ import { test, expect, openStream, scrollThroughStream, seededDate } from "./obs
 
 const CONFIG = { folder: "Notes", format: "YYYY-MM-DD" };
 const TEMPLATE_PATH = "Templates/Daily.md";
+const OTHER_TEMPLATE_PATH = "Templates/Other.md";
 const TEMPLATE = "---\ntags: daily\n---\n# {{date:dddd, MMMM D}}\n\n## Log\n- \n";
 /** A day after the newest seeded note, holding only its template. */
 const EMPTY_DAY = "2026-03-15";
 const EMPTY_NOTE = `Notes/${EMPTY_DAY}.md`;
+/** The only note in a folder of its own: every daily note there is empty. */
+const ONLY_EMPTY_NOTE = `Empty/${EMPTY_DAY}.md`;
 /** Not a daily note: it links to the empty one. */
 const MENTIONING_NOTE = "Meeting.md";
 /** Not a daily note: embedded in one. */
@@ -37,6 +40,14 @@ async function write(page: Page, path: string, text: string) {
         },
         { path, text }
     );
+}
+
+async function setShowLinkedMentions(page: Page, on: boolean) {
+    await page.evaluate(async (on) => {
+        const plugin = window.app.plugins.plugins["daily-notes-stream"];
+        plugin.settings.showLinkedMentions = on;
+        await plugin.saveSettings();
+    }, on);
 }
 
 async function setHideEmptyNotes(page: Page, on: boolean) {
@@ -69,9 +80,13 @@ test.describe("empty daily notes", () => {
     test.afterEach(async ({ obsidian }) => {
         const { page, vaultPath } = obsidian;
         await setHideEmptyNotes(page, true);
+        await setShowLinkedMentions(page, true);
         writeDailyNotesConfig(vaultPath, CONFIG);
         const paths = [
             TEMPLATE_PATH,
+            OTHER_TEMPLATE_PATH,
+            ONLY_EMPTY_NOTE,
+            "Empty",
             EMPTY_NOTE,
             MENTIONING_NOTE,
             EMBEDDED_NOTE,
@@ -81,7 +96,7 @@ test.describe("empty daily notes", () => {
         await page.evaluate(async (paths) => {
             for (const path of paths) {
                 const file = window.app.vault.getAbstractFileByPath(path);
-                if (file) await window.app.vault.delete(file);
+                if (file) await window.app.vault.delete(file, true);
             }
         }, paths);
     });
@@ -181,6 +196,55 @@ test.describe("empty daily notes", () => {
         await page.evaluate((path) => window.app.vault.delete(window.app.vault.getFileByPath(path)), MENTIONING_NOTE);
 
         await expect(shown.nth(1)).toHaveText(seededDate(0));
+    });
+
+    test("leaves out a note with no text at all", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await write(page, EMPTY_NOTE, "");
+
+        const shown = await titles(page);
+
+        await expect(shown.nth(1)).toHaveText(seededDate(0));
+        await expect(page.locator(`[data-source-path="${EMPTY_NOTE}"]`)).toHaveCount(0);
+    });
+
+    test("leaves the note out despite a link to it while linked mentions are off", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await setShowLinkedMentions(page, false);
+        await write(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
+        await expect
+            .poll(() => page.evaluate((path) => path in window.app.metadataCache.resolvedLinks, MENTIONING_NOTE))
+            .toBe(true);
+
+        const shown = await titles(page);
+
+        await expect(shown.nth(1)).toHaveText(seededDate(0));
+        await expect(page.locator(`[data-source-path="${EMPTY_NOTE}"]`)).toHaveCount(0);
+    });
+
+    test("says every note is hidden when each holds only its template", async ({ obsidian }) => {
+        const { page, vaultPath } = obsidian;
+        await page.evaluate(async () => {
+            await window.app.vault.createFolder("Empty").catch(() => {});
+        });
+        await write(page, ONLY_EMPTY_NOTE, EMPTY_TEXT);
+        const container = await openStream(page);
+
+        writeDailyNotesConfig(vaultPath, { folder: "Empty", format: CONFIG.format, template: "Templates/Daily" });
+
+        await expect(container.locator(".daily-notes-empty-state")).toHaveText(/^Every daily note is hidden/);
+        await expect(container.locator(".daily-note-block")).toHaveCount(0);
+    });
+
+    test("judges the notes again by a template newly set", async ({ obsidian }) => {
+        const { page, vaultPath } = obsidian;
+        await write(page, OTHER_TEMPLATE_PATH, "## Plan\n- \n");
+        const shown = await titles(page);
+        await expect(shown.nth(1)).toHaveText(seededDate(0));
+
+        writeDailyNotesConfig(vaultPath, { ...CONFIG, template: OTHER_TEMPLATE_PATH.replace(/\.md$/, "") });
+
+        await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
     });
 
     // Each note's check is saved on this device (ADR 0011).

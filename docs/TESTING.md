@@ -137,18 +137,6 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
   next render, its old key is gone from localStorage (DevTools → Application).
 - A screen reader announces each chevron as a button, with its expanded state.
 
-### Empty notes
-
-The test vault sets the template to `Templates/Daily` and seeds from it:
-2026-08-27 unwritten, 2026-08-25 with only `mood` set, 2026-08-23 blank, and
-2026-08-21 unwritten but linked from `Notes/Agenda.md`.
-
-- 2026-08-27 and 2026-08-23 are absent; 2026-08-25 and 2026-08-21 show.
-- With linked mentions turned off, a link does not show an empty note.
-- With every daily note empty, the empty state says they are hidden.
-- Point the template setting at another file: the stream reloads by the new
-  template.
-
 ### Properties
 
 **2026-02-01** has `tags: [test, image, link]`, `aliases: Feb 1st Test`,
