@@ -99,9 +99,9 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 
 - On a phone the suggester opens with the keyboard down; a tap on the query
   raises it. **[e2e]** for focus.
-- The calendar button's date wheel, driven by hand on iOS and Android: the e2e
-  mobile project is desktop Chromium, which opens a picker iOS never would, and
-  checks only that a tap on the icon lands on the date input. **[ios]** for iOS.
+- The calendar button's date wheel: the e2e mobile project is desktop Chromium,
+  which opens a picker iOS never would, and checks only that a tap on the icon
+  lands on the date input. **[ios]**
 
 ### Mobile
 
@@ -120,7 +120,6 @@ Then a real device:
 | iOS           | Vault in iCloud Drive: copy the three built files on the Mac into `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/<vault>/.obsidian/plugins/daily-notes-stream/`. The Files app hides dot-folders. |
 | iOS, no cable | BRAT against a published pre-release — also exercises the real release artifacts.                                                                                                                           |
 | Either        | Obsidian Sync with "Installed plugins" enabled.                                                                                                                                                             |
-| Android       | Any file manager, into `<vault>/.obsidian/plugins/daily-notes-stream/`.                                                                                                                                     |
 
 Checks:
 
@@ -164,11 +163,9 @@ Checks:
   repeated flicks keep loading. **[ios]**
 - Backgrounding and returning keeps position and keeps scrolling. **[ios]**
 - Editing a visible note elsewhere re-renders it in place. **[ios]**
-- No console errors (iOS: Safari → Develop; Android: `chrome://inspect`).
-  **[ios]**
+- No console errors (Safari → Develop). **[ios]**
 
-iOS is the one that matters: Android's WebView is Chromium, so desktop plus
-emulation covers that engine.
+No Android pass (D-096).
 
 ## Debugging
 

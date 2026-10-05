@@ -37,9 +37,6 @@ Ordered by priority, from the 2026-09 comparison against
       in `docs/IMPROVEMENTS.md`:
     - [ ] A green `pnpm run test:ios` — **blocking**; every mobile check in
           `docs/TESTING.md` is now **[ios]** or **[e2e]**
-    - [ ] Android, by whoever has a device — the jump suggester's date wheel and
-          the scroll stall there. Not blocking: its WebView is Chromium, which
-          e2e runs
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
           review the history first, then publish the `0.1.0` draft release (its
           assets match the local build)

@@ -1595,3 +1595,18 @@ late report itself was harmless; the error was the cost.
 - Re-pinning a frame later: breaks ADR 0013.
 - `requestAnimationFrame` for the redraws: it never runs in the hidden e2e
   window.
+
+## D-096 — No Android pass before a release (2026-10-05)
+
+**Decision:** releases are checked on desktop e2e and a real iPhone only.
+Android stays supported, held to the iOS rules (ADR 0008).
+
+**Why:** Android's WebView is Chromium, the engine both e2e projects run. What
+e2e cannot see is a native widget, such as the date wheel, and that is
+Android's.
+
+**Rejected:**
+
+- An emulator driven by Appium — a second device harness for an engine e2e
+  already runs.
+- A manual pass — no device, and a check nobody runs is no check.

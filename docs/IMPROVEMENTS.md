@@ -9,8 +9,8 @@ of what is open.
 `tests/repo/compliance.test.ts` and the Obsidian ESLint rules guard every
 automatable submission rule, so a regression fails there rather than in review.
 
-**Blocking:** run the `docs/TESTING.md` checklist on iOS or Android.
-`isDesktopOnly: false` is a promise no static check can keep.
+**Blocking:** a green `pnpm run test:ios`, which runs `docs/TESTING.md`'s phone
+checks. `isDesktopOnly: false` is a promise no static check can keep.
 
 ### Submission steps
 
