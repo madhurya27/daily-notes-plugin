@@ -3,6 +3,7 @@ import type { BacklinkIndex } from "../notes/backlink-index";
 import { linkedMentions, mentionsSignature, type Mention } from "../notes/linked-mentions";
 import type { DailyNotesStreamSettings } from "../settings";
 import { LINKED_MENTIONS_SECTION_KEY, type CollapsibleManager } from "./collapsible";
+import type { WidthWatch } from "./note-widths";
 import { fitWideEquations } from "./wide-equations";
 import { stackWideTables } from "./wide-tables";
 
@@ -17,6 +18,7 @@ export class LinkedMentionsFooter {
         private readonly index: BacklinkIndex,
         private readonly collapsible: CollapsibleManager,
         private readonly getSettings: () => DailyNotesStreamSettings,
+        private readonly widths: WidthWatch,
         /** What the note's own content gets once drawn: unresolved links faded. */
         private readonly decorate: (el: HTMLElement) => void
     ) {}
@@ -101,8 +103,8 @@ export class LinkedMentionsFooter {
             if (stale()) return;
             await Promise.all(mentions.map((mention, i) => this.drawMention(content, mention, texts[i]!, note)));
             if (Platform.isMobile) {
-                stackWideTables(content, note);
-                fitWideEquations(content, note);
+                stackWideTables(content, note, this.widths);
+                fitWideEquations(content, note, this.widths);
             }
             this.decorate(el);
         } catch (error) {

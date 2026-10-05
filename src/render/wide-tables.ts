@@ -1,4 +1,5 @@
 import type { Component } from "obsidian";
+import type { WidthWatch } from "./note-widths";
 
 /**
  * Names each body cell after its column and stacks a table wider than the note
@@ -6,7 +7,7 @@ import type { Component } from "obsidian";
  * sideways inside the stream (ADR 0008). Tables drawn later, as Dataview's
  * are, get the same.
  */
-export function stackWideTables(contentEl: HTMLElement, noteComponent: Component): void {
+export function stackWideTables(contentEl: HTMLElement, noteComponent: Component, widths: WidthWatch): void {
     const fit = (tables: HTMLTableElement[]) => {
         for (const table of tables) {
             // Measured as a grid: stacked, it is exactly as wide as the note.
@@ -34,17 +35,8 @@ export function stackWideTables(contentEl: HTMLElement, noteComponent: Component
     });
     added.observe(contentEl, { childList: true, subtree: true });
 
-    let width = contentEl.clientWidth;
-    const resized = new ResizeObserver(() => {
-        if (contentEl.clientWidth === width) return;
-        width = contentEl.clientWidth;
-        fit(Array.from(contentEl.querySelectorAll("table")));
-    });
-    resized.observe(contentEl);
-    noteComponent.register(() => {
-        added.disconnect();
-        resized.disconnect();
-    });
+    widths.watch(contentEl, noteComponent, () => fit(Array.from(contentEl.querySelectorAll("table"))));
+    noteComponent.register(() => added.disconnect());
 }
 
 function tablesIn(el: HTMLElement): HTMLTableElement[] {

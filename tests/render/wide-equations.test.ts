@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { Component } from "obsidian";
 import { fitWideEquations } from "../../src/render/wide-equations";
+import { FakeWidths } from "./fake-widths";
 
 /** jsdom lays nothing out, so each test sets the widths it needs. */
 function setWidth(el: HTMLElement, prop: "offsetWidth" | "clientWidth", width: () => number): void {
@@ -23,28 +24,13 @@ function zoom(math: HTMLElement): string {
     return math.style.getPropertyValue("--daily-note-equation-zoom");
 }
 
-class FakeResizeObserver {
-    static instances: FakeResizeObserver[] = [];
-    observed: Element[] = [];
-    disconnected = false;
-    constructor(readonly callback: () => void) {
-        FakeResizeObserver.instances.push(this);
-    }
-    observe(el: Element) {
-        this.observed.push(el);
-    }
-    disconnect() {
-        this.disconnected = true;
-    }
-}
-
 let content: HTMLElement;
 let component: Component;
 let noteWidth: number;
+let widths: FakeWidths;
 
 beforeEach(() => {
-    FakeResizeObserver.instances = [];
-    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    widths = new FakeWidths();
     content = document.createElement("div");
     noteWidth = 400;
     setWidth(content, "clientWidth", () => noteWidth);
@@ -52,15 +38,11 @@ beforeEach(() => {
     component.load();
 });
 
-afterEach(() => {
-    vi.unstubAllGlobals();
-});
-
 describe("fitWideEquations", () => {
     it("shrinks an equation wider than the note to the note's width", () => {
         const math = equation(800);
 
-        fitWideEquations(content, component);
+        fitWideEquations(content, component, widths);
 
         expect(zoom(math)).toBe("0.5");
     });
@@ -68,7 +50,7 @@ describe("fitWideEquations", () => {
     it("leaves an equation that fits at its own size", () => {
         const math = equation(300);
 
-        fitWideEquations(content, component);
+        fitWideEquations(content, component, widths);
 
         expect(zoom(math)).toBe("");
     });
@@ -76,32 +58,20 @@ describe("fitWideEquations", () => {
     // A shrunk equation is exactly as wide as the note, which would say it fits.
     it("measures a shrunk equation at its own size", () => {
         const math = equation(800);
-        fitWideEquations(content, component);
+        fitWideEquations(content, component, widths);
 
         noteWidth = 200;
-        FakeResizeObserver.instances[0]!.callback();
+        widths.resize(content, 200);
 
         expect(zoom(math)).toBe("0.25");
     });
 
     it("re-fits when the note's width changes", () => {
         const math = equation(800);
-        fitWideEquations(content, component);
+        fitWideEquations(content, component, widths);
 
         noteWidth = 1000;
-        FakeResizeObserver.instances[0]!.callback();
-
-        expect(FakeResizeObserver.instances[0]!.observed).toEqual([content]);
-        expect(zoom(math)).toBe("");
-    });
-
-    // A height change reports too, and measuring then is wasted layout.
-    it("ignores a resize that keeps the width", () => {
-        const math = equation(300);
-        fitWideEquations(content, component);
-
-        setWidth(math, "offsetWidth", () => 800);
-        FakeResizeObserver.instances[0]!.callback();
+        widths.resize(content, 1000);
 
         expect(zoom(math)).toBe("");
     });
@@ -111,23 +81,23 @@ describe("fitWideEquations", () => {
         const math = container.createEl("mjx-math" as keyof HTMLElementTagNameMap);
         setWidth(math, "offsetWidth", () => 800);
 
-        fitWideEquations(content, component);
+        fitWideEquations(content, component, widths);
 
         expect(zoom(math)).toBe("");
     });
 
     it("stops watching once the note unloads", () => {
         equation(300);
-        fitWideEquations(content, component);
+        fitWideEquations(content, component, widths);
 
         component.unload();
 
-        expect(FakeResizeObserver.instances[0]!.disconnected).toBe(true);
+        expect(widths.watching(content)).toBe(0);
     });
 
     it("watches nothing in a note without an equation", () => {
-        fitWideEquations(content, component);
+        fitWideEquations(content, component, widths);
 
-        expect(FakeResizeObserver.instances).toEqual([]);
+        expect(widths.watching(content)).toBe(0);
     });
 });

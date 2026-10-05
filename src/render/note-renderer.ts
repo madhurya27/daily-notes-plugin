@@ -20,6 +20,7 @@ import { fitWideEquations } from "./wide-equations";
 import { fallBackToSmallThumbnail } from "./video-thumbnails";
 import { extractBases } from "./bases/bases-as-cards";
 import { NoteBases } from "./bases/note-bases";
+import { NoteWidths } from "./note-widths";
 import type { BaseMeasurements } from "./bases/base-measurements";
 import { getPropertyIcon, openTagSearch } from "../obsidian-internals";
 import { wrapTextBesideBlocks } from "./text-beside-blocks";
@@ -109,6 +110,7 @@ export class NoteRenderer {
     /** Each view's own; what its Bases measured is shared, by layout. */
     private readonly bases: NoteBases;
     private readonly mentions: LinkedMentionsFooter;
+    private readonly widths: NoteWidths;
 
     constructor(
         private readonly app: App,
@@ -119,8 +121,9 @@ export class NoteRenderer {
         baseMeasurements: BaseMeasurements,
         backlinks: BacklinkIndex
     ) {
-        this.bases = new NoteBases(app, baseMeasurements);
-        this.mentions = new LinkedMentionsFooter(app, backlinks, collapsible, getSettings, (el) =>
+        this.widths = new NoteWidths(component);
+        this.bases = new NoteBases(app, baseMeasurements, this.widths);
+        this.mentions = new LinkedMentionsFooter(app, backlinks, collapsible, getSettings, this.widths, (el) =>
             this.markUnresolvedLinks(el)
         );
     }
@@ -180,8 +183,8 @@ export class NoteRenderer {
             this.markUnresolvedLinks(contentEl);
             if (mobile) {
                 await this.bases.render(contentEl, file, noteComponent, bases);
-                stackWideTables(contentEl, noteComponent);
-                fitWideEquations(contentEl, noteComponent);
+                stackWideTables(contentEl, noteComponent, this.widths);
+                fitWideEquations(contentEl, noteComponent, this.widths);
             }
 
             wrapTextBesideBlocks(contentEl);

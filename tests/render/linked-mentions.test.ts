@@ -8,6 +8,7 @@ import { LinkedMentionsFooter } from "../../src/render/linked-mentions";
 import type { DailyNotesStreamSettings } from "../../src/settings";
 import { DEFAULT_SETTINGS } from "../../src/settings";
 import { asApp } from "../stream-view-fixture";
+import { FakeWidths } from "./fake-widths";
 
 const DAY = "Notes/2025-01-01.md";
 
@@ -88,6 +89,7 @@ function makeFooter(
         vault.index,
         collapsible,
         () => ({ ...DEFAULT_SETTINGS, ...settings }),
+        new FakeWidths(),
         decorate
     );
     const root = document.body.createDiv();
@@ -345,16 +347,8 @@ describe("LinkedMentionsFooter", () => {
     describe("on mobile", () => {
         beforeEach(() => {
             Platform.isMobile = true;
-            vi.stubGlobal(
-                "ResizeObserver",
-                class {
-                    observe() {}
-                    disconnect() {}
-                }
-            );
             return () => {
                 Platform.isMobile = false;
-                vi.unstubAllGlobals();
             };
         });
 

@@ -6,6 +6,7 @@ import { HOLD_LIMIT_MS, SETTLE_MS } from "../../../src/stream/height-hold";
 import { extractBases } from "../../../src/render/bases/bases-as-cards";
 import type { HeaderMetrics } from "../../../src/render/bases/bases-width";
 import { asApp } from "../../stream-view-fixture";
+import { FakeWidths } from "../fake-widths";
 
 const lines = (...l: string[]) => l.join("\n");
 
@@ -57,6 +58,7 @@ let render: MockInstance<typeof MarkdownRenderer.render>;
 let measure: ReturnType<typeof vi.fn<(host: HTMLElement) => HeaderMetrics | null>>;
 let bases: NoteBases;
 let noteWidth: number;
+let widths: FakeWidths;
 
 /** A note's content element holding `markdown`'s Bases, rendered. */
 async function renderNote(markdown: string, component = loaded()): Promise<HTMLElement> {
@@ -93,13 +95,14 @@ const cap = (view: HTMLElement) => view.style.getPropertyValue("--bases-table-co
 beforeEach(() => {
     FakeResizeObserver.instances = [];
     vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    widths = new FakeWidths();
     app = {
         vault: { cachedRead: vi.fn().mockResolvedValue(TABLE) },
         metadataCache: { getFirstLinkpathDest: vi.fn().mockReturnValue(new TFile("Bases/Views.base")) },
     };
     render = vi.spyOn(MarkdownRenderer, "render").mockResolvedValue();
     measure = vi.fn().mockReturnValue(metrics);
-    bases = new NoteBases(asApp(app), new BaseMeasurements(), measure);
+    bases = new NoteBases(asApp(app), new BaseMeasurements(), widths, measure);
     noteWidth = 400;
 });
 
@@ -184,6 +187,7 @@ describe("NoteBases drawing a note's Bases", () => {
 
         expect(measure).not.toHaveBeenCalled();
         expect(FakeResizeObserver.instances).toEqual([]);
+        expect(widths.watched.size).toBe(0);
     });
 
     it("draws the table when headers cannot be measured", async () => {
@@ -204,6 +208,7 @@ describe("NoteBases drawing a note's Bases", () => {
 
         expect((base as unknown as { loaded: boolean }).loaded).toBe(false);
         expect(FakeResizeObserver.instances[0]!.disconnected).toBe(true);
+        expect([...widths.watched.values()].every((refits) => refits.size === 0)).toBe(true);
     });
 });
 
@@ -232,9 +237,9 @@ describe("NoteBases measuring a drawn table", () => {
     // Back rebuilds the stream's view, and its NoteBases with it.
     it("draws it straight as cards in a view sharing what this one measured", async () => {
         const measured = new BaseMeasurements();
-        bases = new NoteBases(asApp(app), measured, measure);
+        bases = new NoteBases(asApp(app), measured, widths, measure);
         bases.onLayout(layOut(slotOf(await renderNote(BLOCK)), 900));
-        bases = new NoteBases(asApp(app), measured, measure);
+        bases = new NoteBases(asApp(app), measured, widths, measure);
 
         const again = await renderNote(BLOCK);
 
@@ -287,7 +292,7 @@ describe("NoteBases measuring a drawn table", () => {
 describe("NoteBases when the note's width changes", () => {
     const resize = (width: number) => {
         noteWidth = width;
-        FakeResizeObserver.instances.forEach((observer) => observer.resized());
+        for (const content of widths.watched.keys()) widths.resize(content, width);
     };
 
     it("redraws cards as a table when the table may fit", async () => {
@@ -339,16 +344,6 @@ describe("NoteBases when the note's width changes", () => {
         resize(400);
 
         expect(render).toHaveBeenCalledTimes(2);
-    });
-
-    // A height change reports too.
-    it("ignores a resize that keeps the width", async () => {
-        noteWidth = 200;
-        await renderNote(BLOCK);
-
-        resize(200);
-
-        expect(render).toHaveBeenCalledOnce();
     });
 });
 
