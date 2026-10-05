@@ -50,6 +50,25 @@ test.describe("opening the stream", () => {
         await expect.poll(() => openViews(page)).toEqual({ streams: 1, notes: 1 });
     });
 
+    test("a mod-alt-click on the ribbon icon opens it in a split", async ({ obsidian, mobileLayout }) => {
+        test.skip(mobileLayout, "a phone has no splits");
+        const { page } = obsidian;
+        await openNoteAlone(page);
+
+        await page
+            .locator('.side-dock-ribbon-action[aria-label="Open daily notes stream"]')
+            .dispatchEvent("click", { metaKey: true, altKey: true });
+
+        await expect.poll(() => openViews(page)).toEqual({ streams: 1, notes: 1 });
+        const besideNote = await page.evaluate(
+            (type) =>
+                window.app.workspace.getLeavesOfType(type)[0].parent ===
+                window.app.workspace.getLeavesOfType("markdown")[0].parent,
+            STREAM
+        );
+        expect(besideNote).toBe(false);
+    });
+
     test("the ribbon icon and tab draw a stack of cards, not core Daily notes' calendar", async ({ obsidian }) => {
         const { page } = obsidian;
         await openStream(page);

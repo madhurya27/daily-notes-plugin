@@ -182,3 +182,22 @@ test("the Scroll to top command glides back to the newest note", async ({ obsidi
     await expect.poll(() => pane(container).evaluate((el) => el.scrollTop)).toBe(0);
     expect(await newestOffset(container)).toBeGreaterThanOrEqual(0);
 });
+
+test("the Scroll to top command is not offered while a note has the focus", async ({ obsidian }) => {
+    const { page } = obsidian;
+    await openStream(page);
+    await page.evaluate(async () => {
+        await window.app.workspace.getLeaf("tab").openFile(window.app.vault.getFileByPath("Reading list.md")!);
+    });
+    try {
+        await page.evaluate(() => window.app.commands.executeCommandById("command-palette:open"));
+        const prompt = page.locator(".prompt");
+        await prompt.locator("input.prompt-input").fill("Daily notes stream:");
+
+        await expect(prompt.locator(".suggestion-item").first()).toBeVisible();
+        await expect(prompt.locator(".suggestion-item", { hasText: "Scroll to top" })).toHaveCount(0);
+    } finally {
+        await page.keyboard.press("Escape");
+        await page.evaluate(() => window.app.workspace.detachLeavesOfType("markdown"));
+    }
+});

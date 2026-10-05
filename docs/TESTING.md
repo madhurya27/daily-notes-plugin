@@ -89,25 +89,11 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 
 ### Core
 
-- Mod-alt-click on the ribbon icon splits.
-- Middle-click on a note's header opens a new tab.
-- `test-image.svg` renders in **2026-02-01**; `[[2026-01-15]]` navigates there
-  and back.
-- Settings → Page preview lists "Daily notes stream", and turning its Mod
-  requirement off previews on plain hover.
-- Right-click on an unresolved link offers only the open items; opening one
-  creates the note.
-- `Daily notes stream: Scroll to top` is not offered with another view open.
 - On iOS, scroll through the stream, quit Obsidian, reopen it and jump to an old
   date; scroll back up by hand: the glide stops on the newest note, and nothing
   jumps once it stops. **[e2e]** with anchoring off; **[ios]**.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled.
   **[e2e]** for the wait; **[ios]**.
-- Tall window, short notes: loading continues past the first batch.
-- Toggling any setting refreshes the view but keeps the scroll position.
-- The settings tab groups Properties and Linked mentions under headings; turning
-  a section's "Show" off removes its "Collapse by default" row, on brings it
-  back.
 
 ### Jump to date
 
@@ -116,61 +102,9 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 - The calendar button's date wheel, driven by hand on iOS and Android: the e2e
   mobile project is desktop Chromium, which opens a picker iOS never would, and
   checks only that a tap on the icon lands on the date input. **[ios]** for iOS.
-- Set the daily-notes format to `DD-MM-YYYY`, then to `MMMM D, YYYY`: the list
-  follows it.
-
-### Search
-
-- Rebind "Search current file" in Settings → Hotkeys: the new binding opens the
-  bar at once, the old does not.
-- Edit a note while a search is open: the count follows.
-- On a phone, the bar sits under the floating header with no gap above the
-  notes.
-
-### Collapsible content
-
-- Expanding a header leaves already-collapsed nested sections collapsed.
-- A link click or text selection inside a header does not collapse it.
-- A parent bullet's chevron collapses its sub-bullets.
-- Two headings with the same text collapse independently.
-- Rename a collapsed heading: it returns expanded. A day later, on the note's
-  next render, its old key is gone from localStorage (DevTools → Application).
-- A screen reader announces each chevron as a button, with its expanded state.
-
-### Live updates
-
-- Editing a visible note updates the stream.
-- Editing frontmatter updates properties, and none leaks into the body.
-- Renaming updates header and sort order, and keeps collapsed sections
-  collapsed.
-- Deleting removes it.
-- A dated note in a subfolder the format does not name: absent at startup and on
-  create.
-- Split the stream pane: a note created or deleted updates both.
-- Point the daily-note folder at a missing folder: the empty state; point it
-  back and the notes return.
-
-### Empty notes
-
-The test vault sets the template to `Templates/Daily` and seeds from it:
-2026-08-27 unwritten, 2026-08-25 with only `mood` set, 2026-08-23 blank, and
-2026-08-21 unwritten but linked from `Notes/Agenda.md`.
-
-- 2026-08-27 and 2026-08-23 are absent; 2026-08-25 and 2026-08-21 show.
-- With linked mentions turned off, a link does not show an empty note.
-- With every daily note empty, the empty state says they are hidden.
-- Point the template setting at another file: the stream reloads by the new
-  template.
 
 ### Properties
 
-**2026-02-01** has `tags: [test, image, link]`, `aliases: Feb 1st Test`,
-`mood: productive`; **2026-01-15** has `tags: [backlink, test]`, `type: daily`,
-`location: Home Office`.
-
-- With **Show note properties** on (the default), a "Properties" header appears
-  for notes with frontmatter, icons beside names.
-- Frontmatter is not duplicated in the body.
 - Better Search Views leaves the linked mentions footer unchanged: it is the
   stream's own, not Obsidian's backlinks pane (D-061).
 
