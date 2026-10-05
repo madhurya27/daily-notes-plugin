@@ -35,8 +35,6 @@ Ordered by priority, from the 2026-09 comparison against
       showed it; any change to the stop needs one.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
-    - [ ] A green `pnpm run test:ios` — **blocking**; every mobile check in
-          `docs/TESTING.md` is now **[ios]** or **[e2e]**
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
           review the history first, then publish the `0.1.0` draft release (its
           assets match the local build)

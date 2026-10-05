@@ -69,6 +69,24 @@ export class Phone {
         await this.driver.execute("mobile: deepLink", { url, bundleId: OBSIDIAN });
     }
 
+    /** The bundle id of the app in front: another one once a tap leaves Obsidian. */
+    async frontApp(): Promise<string> {
+        await this.native();
+        return ((await this.driver.execute("mobile: activeAppInfo")) as { bundleId: string }).bundleId;
+    }
+
+    /** Back into Obsidian from whatever app is in front, as from its icon. */
+    async returnToObsidian(): Promise<void> {
+        await this.native();
+        await this.driver.execute("mobile: activateApp", { bundleId: OBSIDIAN });
+    }
+
+    /** Whether iOS shows its on-screen keyboard. */
+    async keyboardShown(): Promise<boolean> {
+        await this.native();
+        return this.driver.isKeyboardShown();
+    }
+
     /** To the Home Screen for `seconds`, then back into Obsidian, as a reader switching apps. */
     async background(seconds: number): Promise<void> {
         await this.native();

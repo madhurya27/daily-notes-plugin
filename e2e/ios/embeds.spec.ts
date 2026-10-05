@@ -1,0 +1,87 @@
+import { test, expect, type Phone } from "./phone";
+import { OBSIDIAN } from "./session";
+import { EMBEDS_NOTE } from "./vault";
+
+const NOTE = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"]`;
+const PDF = `${NOTE} .pdf-embed`;
+const VIDEO = `${NOTE} a.daily-note-video`;
+/** Narrow.base, with a summary row: cards on a phone held upright, a table on its side. */
+const SUMMED = `${NOTE} .bases-view:has(.bases-table-footer)`;
+
+test.afterEach(async ({ phone }) => {
+    if ((await phone.frontApp()) !== OBSIDIAN) await phone.returnToObsidian();
+    await phone.run(() => window.app.workspace.detachLeavesOfType("pdf"));
+});
+
+// A preview, its toolbar clipped away, and a link to the file (D-083).
+test("a PDF shows its first page without a toolbar, and a tap opens it", async ({ phone }) => {
+    await phone.openStream();
+    await phone.placeAt(PDF, -40);
+    await expect.poll(() => phone.run((pdf: string) => !!document.querySelector(`${pdf} canvas`), PDF)).toBe(true);
+
+    const toolbars = await phone.run((pdf: string) => {
+        const embed = document.querySelector(pdf)!;
+        return [...embed.querySelectorAll(".pdf-toolbar")].filter((bar) => {
+            const { left, top, width, height } = bar.getBoundingClientRect();
+            const hit = document.elementFromPoint(left + width / 2, top + height / 2);
+            return width > 0 && height > 0 && !!hit && bar.contains(hit);
+        }).length;
+    }, PDF);
+    expect(toolbars, "toolbars a finger could reach").toBe(0);
+
+    await phone.tap(PDF);
+
+    await expect.poll(() => phone.run(() => window.app.workspace.getActiveFile()?.path)).toBe("Attachments/Manual.pdf");
+});
+
+test("a video shows its thumbnail under a play button, and a tap opens it on YouTube", async ({ phone }) => {
+    await phone.openStream();
+    await phone.placeAt(VIDEO, -40);
+    await expect
+        .poll(() =>
+            phone.run((video: string) => document.querySelector<HTMLImageElement>(`${video} img`)!.naturalWidth, VIDEO)
+        )
+        .toBeGreaterThan(120);
+    expect(await phone.has(`${VIDEO} .daily-note-video-play`)).toBe(true);
+
+    await phone.tap(VIDEO);
+
+    await expect.poll(() => phone.frontApp()).not.toBe(OBSIDIAN);
+});
+
+/** The view's `edge` scrolled 100px past the pane's; how far it went, and where each bar sat on the view before and after. */
+const scrollPast = (phone: Phone, edge: "top" | "bottom") =>
+    phone.run(
+        (view: string, edge: "top" | "bottom") => {
+            const el = document.querySelector(view)!;
+            const pane = el.closest(".daily-notes-stream-container")!.parentElement!;
+            const sign = edge === "top" ? -1 : 1;
+            const past = () => sign * (el.getBoundingClientRect()[edge] - pane.getBoundingClientRect()[edge]);
+            const offset = (bar: string) =>
+                el.querySelector(bar)!.getBoundingClientRect()[edge] - el.getBoundingClientRect()[edge];
+            const bars = () => ({ header: offset(".bases-thead"), footer: offset(".bases-table-footer") });
+            const before = bars();
+            pane.scrollTop -= sign * (100 - past());
+            return { past: past(), before, after: bars() };
+        },
+        SUMMED,
+        edge
+    );
+
+// Bases pins both to its own scroll box; clipped on a phone, they would pin to the stream's.
+test("a Base table's header and summary row stay on it as the stream scrolls past", async ({ phone }) => {
+    await phone.openStream();
+    await phone.turn("LANDSCAPE");
+    try {
+        await phone.placeAt(SUMMED, -40);
+
+        const top = await scrollPast(phone, "top");
+        expect(top.past).toBeGreaterThan(50);
+        expect(top.after.header).toBe(top.before.header);
+        const bottom = await scrollPast(phone, "bottom");
+        expect(bottom.past).toBeGreaterThan(50);
+        expect(bottom.after.footer).toBe(bottom.before.footer);
+    } finally {
+        await phone.turn("PORTRAIT");
+    }
+});

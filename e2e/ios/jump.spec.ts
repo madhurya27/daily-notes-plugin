@@ -142,3 +142,17 @@ test("the calendar's picker fills the query, and a tap on it jumps there", async
     await phone.rest();
     expect((await phone.place()).path).toBe("Journal/2026-09-12.md");
 });
+
+// The keyboard would cover half the list: the reader looks first, then taps.
+test("the jump list opens with the keyboard down, and a tap on the query raises it", async ({ phone }) => {
+    await phone.openStream();
+    await phone.tap('[aria-label="Jump to date"]');
+    await expect.poll(() => phone.has(".prompt .suggestion-item")).toBe(true);
+    expect(await phone.keyboardShown()).toBe(false);
+
+    await phone.tap(".prompt input.prompt-input");
+
+    await expect.poll(() => phone.keyboardShown()).toBe(true);
+    await phone.escape(".prompt input.prompt-input");
+    await expect.poll(() => phone.has(".prompt")).toBe(false);
+});
