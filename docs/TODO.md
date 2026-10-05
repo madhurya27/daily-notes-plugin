@@ -35,9 +35,11 @@ Ordered by priority, from the 2026-09 comparison against
       showed it; any change to the stop needs one.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
-    - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**;
-          includes the jump suggester's date wheel on Android, and the scroll
-          stall there. `pnpm run test:ios` runs the items marked **[ios]**
+    - [ ] A green `pnpm run test:ios` — **blocking**; every mobile check in
+          `docs/TESTING.md` is now **[ios]** or **[e2e]**
+    - [ ] Android, by whoever has a device — the jump suggester's date wheel and
+          the scroll stall there. Not blocking: its WebView is Chromium, which
+          e2e runs
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
           review the history first, then publish the `0.1.0` draft release (its
           assets match the local build)
