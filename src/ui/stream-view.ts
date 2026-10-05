@@ -47,6 +47,13 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
     private searchBar: SearchBar;
     /** Obsidian's "Search current file" binding, re-read on each config write. */
     private searchHotkeys: Hotkey[] = [];
+    /**
+     * Obsidian restores the pane before the vault is indexed, and may close it
+     * while `onOpen` still waits for the notes: the stream never opens then.
+     * Never back to "opening": Obsidian builds a new view for every open, Back
+     * and a layout rebuild included.
+     */
+    private lifecycle: "opening" | "open" | "closed" = "opening";
 
     /** `service` is this view's own (CLAUDE.md, Invariants). */
     constructor(
@@ -129,6 +136,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         // Not in onload(): the vault may not have indexed its files yet. Awaited:
         // the first batch must already leave out what is hidden (ADR 0011).
         await this.service.initialize();
+        if (this.lifecycle === "closed") return;
 
         this.collapsible.delegate(this, streamContainerEl);
         this.renderer.delegate(this, streamContainerEl);
@@ -161,6 +169,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.registerDomEvent(this.contentEl, "pointerdown", (evt) => this.stream.onTouch(evt.target));
         this.registerDomEvent(this.contentEl, "wheel", () => this.stream.onWheel(), { passive: true });
         this.stream.open(this.contentEl, streamContainerEl);
+        this.lifecycle = "open";
     }
 
     /**
@@ -168,7 +177,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
      * reopens the stream from its state, then hands this back.
      */
     getEphemeralState(): Record<string, unknown> {
-        const place = this.stream.place();
+        const place = this.lifecycle === "open" ? this.stream.place() : null;
         return place ? { ...super.getEphemeralState(), place } : super.getEphemeralState();
     }
 
@@ -184,6 +193,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
     }
 
     async onClose() {
+        this.lifecycle = "closed";
         this.refreshSearch.cancel();
         this.stream.close();
     }

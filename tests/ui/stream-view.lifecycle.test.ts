@@ -219,6 +219,31 @@ describe("DailyNotesStreamView — onOpen", () => {
         await opened;
         expect(view["stream"]["scroll"].attach).toHaveBeenCalled();
     });
+
+    // Obsidian restores the pane before the vault is indexed; closing it then asks for its place.
+    it("hands Obsidian's history nothing while the notes are still being listed", async () => {
+        const { view, service } = makeStubbedView();
+        vi.mocked(service.initialize).mockReturnValue(new Promise(() => {}));
+
+        void view.onOpen();
+        await flushPromises();
+
+        expect(view.getEphemeralState()).toEqual({});
+    });
+
+    it("never opens a stream closed while its notes were being listed", async () => {
+        const { view, service } = makeStubbedView();
+        let listed!: () => void;
+        vi.mocked(service.initialize).mockReturnValue(new Promise((resolve) => (listed = resolve)));
+
+        const opened = view.onOpen();
+        await flushPromises();
+        await view.onClose();
+        listed();
+        await opened;
+
+        expect(view["stream"]["scroll"].attach).not.toHaveBeenCalled();
+    });
 });
 
 describe("DailyNotesStreamView — refresh", () => {
