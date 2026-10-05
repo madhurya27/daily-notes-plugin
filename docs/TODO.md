@@ -2,8 +2,7 @@
 
 ## Open
 
-Ordered by priority, from the 2026-09 comparison against
-[Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
+Ordered by priority.
 
 - [ ] iOS: a Base's table draws some rows blank for a frame as a note above it
       renders mid-glide. Bases draws only rows it measured in view, and
@@ -11,35 +10,32 @@ Ordered by priority, from the 2026-09 comparison against
       `experiment/stream-layer`; keep that branch until this is fixed.
 - [ ] iOS: a change inside the note the pane's top crosses, such as an image
       loading above the reader, can still jump a frame: pinning holds only the
-      notes around it (ADR 0013).
+      notes around it (ADR 0013). Candidate fix: remember each image's aspect
+      ratio by path once it loads, so a rendered image reserves its height
+      before loading.
 - [ ] iOS: a turn loses the place inside a tall note with Bases above the
       screen's top, by thousands of pixels: in the iPhone harness's 2026-08-30,
       the paragraph before Middle.base moved 5,700–11,300 px on a turn and
-      15,800–19,900 px on the turn back. Same cause as the item above, at scale.
+      15,800–19,900 px on the turn back. Measured before ADRs 0014–0015 and
+      D-092: measure again first. Same cause as the item above, at scale.
       `e2e/ios/layout.spec.ts` places again after each turn; once fixed, check
       the place there instead.
 - [ ] iOS: a Base's toolbar overruns a phone's width; its New button is clipped
       off screen. `e2e/ios/layout.spec.ts` leaves the toolbar out of its census.
-- [ ] Remember each image's aspect ratio by path once it loads: its placeholder
-      height is then exact, not the vault's 0.9 quantile (D-092), and a rendered
-      image could reserve its height before loading, which may fix the item
-      above.
 - [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
       box guard cannot see; a video player does not. Check that a flick over one
       still glides.
 - [ ] iOS: D-091's stop writes the scroll mid-touch if a finger drags slowly
       past the newest note while the stream is drawn lower. Untested: the
       harness only flicks.
-- [ ] iOS: the iPhone harness hears a scroll after iOS draws it, so it cannot
-      see a frame drawn past the newest note (D-091). Only a screen recording
-      showed it; any change to the stop needs one.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
           review the history first, then publish the `0.1.0` draft release (its
           assets match the local build)
-- [ ] Position the README against Daily Notes Editor — a live-updating reading
-      feed, not an inline editor.
+- [ ] Position the README against
+      [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor)
+      — a live-updating reading feed, not an inline editor.
 - [ ] A phone recording for the README. Desktop Chromium can't fake a phone
       convincingly; `e2e/ios/` drives a real one, title-bar taps included, and
       Appium can record its screen.

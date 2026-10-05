@@ -91,7 +91,9 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 
 - On iOS, scroll through the stream, quit Obsidian, reopen it and jump to an old
   date; scroll back up by hand: the glide stops on the newest note, and nothing
-  jumps once it stops. **[e2e]** with anchoring off; **[ios]**.
+  jumps once it stops. **[e2e]** with anchoring off; **[ios]**. The harness
+  hears a scroll after iOS draws it, so a frame drawn past the newest note shows
+  only on a screen recording (D-091): any change to the stop needs one.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled.
   **[e2e]** for the wait; **[ios]**.
 
