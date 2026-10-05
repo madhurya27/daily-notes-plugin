@@ -1538,3 +1538,20 @@ input is the vault's own notes, so nothing is fitted to a journal we made up.
   measured at the new width within moments of a turn.
 - A fixed 400px before anything is measured — the notes ADR 0006 measured ran
   ~709px.
+
+## D-093 — No file menu from a long-press on a note's title on iOS (2026-10-05)
+
+**Decision:** the note menu opens on right-click only. On iOS a long-press on a
+title selects its text; a tap opens the note, whose own menu holds the same file
+actions.
+
+**Why:** iOS fires no `contextmenu` on a long-press; Obsidian synthesizes one
+only for elements its drag manager handles. The menu adds a shortcut, not an
+action, and a touch listener on the stream sits in the path of glides, what
+breaks most on iOS.
+
+**Rejected:**
+
+- Our own long-press: a timer that must tell a press from a flick's start, and
+  the title's selection suppressed.
+- Registering titles with Obsidian's drag manager — private API.

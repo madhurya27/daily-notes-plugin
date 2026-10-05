@@ -235,8 +235,6 @@ Checks:
   repeated flicks keep loading. **[ios]**
 - Backgrounding and returning keeps position and keeps scrolling. **[ios]**
 - Editing a visible note elsewhere re-renders it in place. **[ios]**
-- Long-press on a date header opens the file menu; "Open to the right" does
-  something sensible on a phone.
 - No console errors (iOS: Safari → Develop; Android: `chrome://inspect`).
 
 iOS is the one that matters: Android's WebView is Chromium, so desktop plus

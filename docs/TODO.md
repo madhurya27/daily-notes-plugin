@@ -45,8 +45,6 @@ Ordered by priority, from the 2026-09 comparison against
       feed, not an inline editor.
 - [ ] Move the rest of the Mobile checklist in `docs/TESTING.md` into `e2e/ios/`
       specs (ADR 0016); what is done is marked **[ios]** there. Left:
-    - [ ] A long-press on a date header opens the file menu: `note-menu.spec.ts`
-          fails, as iOS fires no `contextmenu`.
     - [ ] No console errors through a run: a fixture collecting them.
 - [ ] A phone recording for the README. Desktop Chromium can't fake a phone
       convincingly; `e2e/ios/` drives a real one, title-bar taps included, and
