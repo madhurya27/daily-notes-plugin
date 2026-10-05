@@ -838,12 +838,18 @@ text, so heights measured with and without it differ.
 
 **Decision:** the phone viewport is 402 × 874, an iPhone Pro's screen in points.
 
-**Why:** at the old 420 × 800, Bases fit two cards per row where a phone shows
-one, so the README's phone screenshots showed a layout no phone had.
+**Why:** the README's phone screenshots should show a phone's layout. At 402 px,
+Bases measures as it does on an iPhone 16 Pro: two cards per row, 187 px wide in
+Obsidian's reading view (2026-10-05).
 
 **Rejected:**
 
-- A Pro Max's 440 — fits two cards again, like the old viewport.
+- The old 420 × 800 — no phone's screen.
+- A Pro Max's 440 — rejected for fitting two cards, on the reading corrected
+  below.
+
+Corrected 2026-10-05: this said a phone shows one card per row. It shows two, in
+Obsidian's reading view and in the stream.
 
 ## D-052 — A wide equation shrinks to fit on mobile (2026-09-26)
 
