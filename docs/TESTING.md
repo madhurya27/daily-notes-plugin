@@ -127,16 +127,6 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 - On a phone, the bar sits under the floating header with no gap above the
   notes.
 
-### Collapsible content
-
-- Expanding a header leaves already-collapsed nested sections collapsed.
-- A link click or text selection inside a header does not collapse it.
-- A parent bullet's chevron collapses its sub-bullets.
-- Two headings with the same text collapse independently.
-- Rename a collapsed heading: it returns expanded. A day later, on the note's
-  next render, its old key is gone from localStorage (DevTools → Application).
-- A screen reader announces each chevron as a button, with its expanded state.
-
 ### Properties
 
 - Better Search Views leaves the linked mentions footer unchanged: it is the
