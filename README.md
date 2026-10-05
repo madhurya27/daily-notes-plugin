@@ -107,12 +107,12 @@ around each link.
 The date at the top of each note, links inside notes, and the notes and links in
 linked mentions open like any link in Obsidian:
 
-| Gesture                            | Opens                                           |
-| ---------------------------------- | ----------------------------------------------- |
-| Click                              | In the stream's tab; Back returns to the stream |
-| Ctrl/Cmd-click or middle-click     | In a new tab                                    |
-| Ctrl/Cmd+Alt-click                 | Side by side, in a split                        |
-| Right-click (long-press on mobile) | The file menu                                   |
+| Gesture                        | Opens                                           |
+| ------------------------------ | ----------------------------------------------- |
+| Click                          | In the stream's tab; Back returns to the stream |
+| Ctrl/Cmd-click or middle-click | In a new tab                                    |
+| Ctrl/Cmd+Alt-click             | Side by side, in a split                        |
+| Right-click                    | The file menu                                   |
 
 Click a tag to search for it; Ctrl/Cmd-click to search in a new tab. Hold
 Ctrl/Cmd while hovering over a link to preview it. To preview without holding

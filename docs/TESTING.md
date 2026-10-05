@@ -228,15 +228,13 @@ Checks:
   timing; iOS hands the place over a frame later, so only the phone shows its
   failures. **[ios]**
 - Search a word: every match on screen is highlighted, the current one in the
-  selection color. A long-press selects text in a note.
+  selection color. A long-press selects text in a note. **[ios]**
 - Chevrons on headers, list items and the properties row are tappable without
-  zooming, and a tap on heading _text_ still selects.
+  zooming, and a tap on heading _text_ still selects. **[ios]**
 - A hard flick to the bottom loads the next batch without duplicates or a stall;
   repeated flicks keep loading. **[ios]**
 - Backgrounding and returning keeps position and keeps scrolling. **[ios]**
-- Editing a visible note elsewhere re-renders it in place.
-- Long-press on a date header opens the file menu; "Open to the right" does
-  something sensible on a phone.
+- Editing a visible note elsewhere re-renders it in place. **[ios]**
 - No console errors (iOS: Safari → Develop; Android: `chrome://inspect`).
 
 iOS is the one that matters: Android's WebView is Chromium, so desktop plus

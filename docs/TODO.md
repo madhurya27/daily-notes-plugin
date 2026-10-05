@@ -36,9 +36,8 @@ Ordered by priority, from the 2026-09 comparison against
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Mobile pass of `docs/TESTING.md` (iOS/Android) — **blocking**;
-          includes the jump suggester's date wheel, which the e2e mobile project
-          cannot reach (desktop Chromium), and the scroll stall on Android.
-          `pnpm run test:ios` runs the items marked **[ios]**
+          includes the jump suggester's date wheel on Android, and the scroll
+          stall there. `pnpm run test:ios` runs the items marked **[ios]**
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
           review the history first, then publish the `0.1.0` draft release (its
           assets match the local build)
@@ -46,12 +45,6 @@ Ordered by priority, from the 2026-09 comparison against
       feed, not an inline editor.
 - [ ] Move the rest of the Mobile checklist in `docs/TESTING.md` into `e2e/ios/`
       specs (ADR 0016); what is done is marked **[ios]** there. Left:
-    - [ ] Search: every match on screen highlighted, the current one in the
-          selection color; a long-press selects text in a note.
-    - [ ] Chevrons tappable without zooming; a tap on heading text still
-          selects.
-    - [ ] A visible note edited elsewhere re-renders in place.
-    - [ ] A long-press on a date header opens the file menu.
     - [ ] No console errors through a run: a fixture collecting them.
 - [ ] A phone recording for the README. Desktop Chromium can't fake a phone
       convincingly; `e2e/ios/` drives a real one, title-bar taps included, and
