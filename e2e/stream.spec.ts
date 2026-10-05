@@ -1284,6 +1284,27 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(Math.abs(centers.icon - centers.value)).toBeLessThanOrEqual(1);
     });
 
+    test("draws no properties panel for a note without frontmatter", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.showProperties = true;
+            await plugin.saveSettings();
+            await window.app.vault.create("Notes/2026-03-15.md", "## Plain\n\nNo properties here.\n");
+        });
+        try {
+            const container = await openStream(page);
+            const plain = container.locator('.daily-note-block[data-source-path="Notes/2026-03-15.md"]');
+            await expect(plain.locator(".daily-note-content")).toContainText("No properties here.");
+            await expect(plain.locator(".metadata-container")).toHaveCount(0);
+            await expect(container.locator(".daily-note-block").nth(1).locator(".metadata-container")).toHaveCount(1);
+        } finally {
+            await page.evaluate(async () => {
+                await window.app.vault.delete(window.app.vault.getFileByPath("Notes/2026-03-15.md"));
+            });
+        }
+    });
+
     test("collapses the properties box away entirely", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {

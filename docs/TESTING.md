@@ -139,13 +139,6 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
 
 ### Properties
 
-**2026-02-01** has `tags: [test, image, link]`, `aliases: Feb 1st Test`,
-`mood: productive`; **2026-01-15** has `tags: [backlink, test]`, `type: daily`,
-`location: Home Office`.
-
-- With **Show note properties** on (the default), a "Properties" header appears
-  for notes with frontmatter, icons beside names.
-- Frontmatter is not duplicated in the body.
 - Better Search Views leaves the linked mentions footer unchanged: it is the
   stream's own, not Obsidian's backlinks pane (D-061).
 
