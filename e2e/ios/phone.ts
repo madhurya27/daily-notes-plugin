@@ -12,6 +12,8 @@ const STREAM = ".daily-notes-stream-container";
 
 type Orientation = "PORTRAIT" | "LANDSCAPE";
 type Seen = { path: string; index: number; text: string; top: number };
+/** A point in the web view, in CSS pixels, and the viewport's width they are measured against. */
+type Point = { x: number; y: number; viewport: number };
 /** Where the stream is, as it keeps its place: a note, and its top's offset from the pane's. */
 export type Place = { path: string; offset: number };
 
@@ -382,10 +384,28 @@ export class Phone {
     /**
      * A finger's tap, as iOS delivers one: touches, then a click. On the
      * middle of the first `selector` a finger could reach there, on screen
-     * and under nothing else.
+     * and under nothing else; `offset` CSS pixels from it, for a finger off
+     * the mark.
      */
-    async tap(selector: string): Promise<void> {
-        const at = await this.runAsync(async (sel: string) => {
+    async tap(selector: string, offset = { x: 0, y: 0 }): Promise<void> {
+        const { x, y, viewport } = await this.reach(selector);
+        await this.touch({ x: x + offset.x, y: y + offset.y, viewport }, 50);
+    }
+
+    /** A finger held on the middle of the first `selector` it could reach, as `tap` finds it, for a second. */
+    async longPress(selector: string): Promise<void> {
+        await this.touch(await this.reach(selector), 1000);
+    }
+
+    /** The web view as the screen shows it, a PNG: the status bar, whose clock ticks, left out. */
+    async screenshot(): Promise<string> {
+        await this.native();
+        return this.driver.$("-ios class chain:**/XCUIElementTypeWebView").takeScreenshot();
+    }
+
+    /** Where `tap` touches for `selector`, once it holds still. */
+    private reach(selector: string): Promise<Point> {
+        return this.runAsync(async (sel: string) => {
             const target = () => {
                 for (const el of document.querySelectorAll(sel)) {
                     const { left, top, width, height } = el.getBoundingClientRect();
@@ -407,6 +427,10 @@ export class Phone {
             if (!at) throw new Error(`Nothing to tap: no ${sel} on screen.`);
             return at;
         }, selector);
+    }
+
+    /** A finger down on `at` for `ms`, then lifted. */
+    private async touch(at: Point, ms: number): Promise<void> {
         await this.native();
         // The web view fills the screen, so a CSS pixel is a point, scaled only if the page is zoomed.
         const scale = (await this.driver.getWindowSize()).width / at.viewport;
@@ -418,7 +442,7 @@ export class Phone {
                 actions: [
                     { type: "pointerMove", duration: 0, x: Math.round(at.x * scale), y: Math.round(at.y * scale) },
                     { type: "pointerDown", button: 0 },
-                    { type: "pause", duration: 50 },
+                    { type: "pause", duration: ms },
                     { type: "pointerUp", button: 0 },
                 ],
             },

@@ -50,6 +50,8 @@ const NEWEST = Object.keys(DEMO)
  */
 const SHORT_NOTE_WITH_BASE = "Journal/2026-09-22.md";
 export const SHORT_NOTE = "Journal/2026-09-21.md";
+/** A note with every kind of chevron: its properties, headings, and a list item holding a list. */
+export const NESTED_LIST_NOTE = "Journal/2026-09-26.md";
 /**
  * The test vault's note of one of each embed (docs/TESTING.md), the oldest
  * here, and the files it embeds.
@@ -67,6 +69,11 @@ const NOTES = {
     ...EMBEDS,
     ...Object.fromEntries(
         NEWEST.map((path) => [path, DEMO[path]!.replace(/^(---\n[\s\S]*?\n---\n\n)/, `$1${STALLERS.join("\n")}`)])
+    ),
+    // First, so its chevron is on screen with the properties'.
+    [NESTED_LIST_NOTE]: DEMO[NESTED_LIST_NOTE]!.replace(
+        /^(---\n[\s\S]*?\n---\n\n)/,
+        "$1## Packing\n\n- Bag\n    - Charger\n    - Passport\n\n"
     ),
     [SHORT_NOTE]: "A short day, one paragraph long.\n",
     [SHORT_NOTE_WITH_BASE]: "A short day, then the reading list.\n\n![[Reading.base]]\n",
@@ -194,8 +201,11 @@ async function seed(phone: Phone): Promise<void> {
         (window as unknown as { staleVault: boolean }).staleVault = true;
         window.app.commands.executeCommandById("app:reload");
     });
+    // Its layout ready too: until then, the stream's command opens nothing.
     const reloaded = (id: string) =>
-        !(window as unknown as { staleVault?: boolean }).staleVault && !!window.app?.plugins?.plugins?.[id];
+        !(window as unknown as { staleVault?: boolean }).staleVault &&
+        !!window.app?.plugins?.plugins?.[id] &&
+        !!window.app.workspace.layoutReady;
     await expect.poll(() => phone.run(reloaded, PLUGIN_ID).catch(() => false), { timeout: 30_000 }).toBe(true);
 }
 
