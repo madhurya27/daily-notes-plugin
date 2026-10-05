@@ -1,0 +1,100 @@
+import { test, expect, type Phone } from "./phone";
+
+const MATCH = "daily-notes-search-match";
+const CURRENT = "daily-notes-search-current";
+const BAR = ".daily-notes-search:not(.is-closed) input";
+
+/** Searches the open stream for `query`, the bar's caret put away so the screen holds still. */
+async function search(phone: Phone, query: string): Promise<void> {
+    await phone.tap('.view-action[aria-label="Search"]');
+    await expect.poll(() => phone.has(BAR), "the search bar did not open").toBe(true);
+    await phone.run(
+        (bar: string, q: string) => {
+            const input = document.querySelector<HTMLInputElement>(bar)!;
+            input.value = q;
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.blur();
+        },
+        BAR,
+        query
+    );
+    await expect.poll(() => phone.run((name: string) => CSS.highlights.get(name)?.size ?? 0, CURRENT)).toBe(1);
+    await phone.rest();
+}
+
+/** The ranges under test, held fixed: one put back goes to the end of its highlight. */
+type Held = { shown: Range[]; current: Range };
+
+/** Holds the matches inside the pane, and the current one; returns how many are on screen. */
+function holdMatches(phone: Phone): Promise<number> {
+    return phone.run(
+        (match: string, current: string) => {
+            const pane = document
+                .querySelector(".daily-notes-stream-container")!
+                .parentElement!.getBoundingClientRect();
+            const shown = ([...CSS.highlights.get(match)!] as Range[]).filter((range) => {
+                const { top, bottom } = range.getBoundingClientRect();
+                return top >= pane.top && bottom <= pane.bottom;
+            });
+            const held: Held = { shown, current: [...CSS.highlights.get(current)!][0] as Range };
+            (window as unknown as { held: Held }).held = held;
+            return shown.length;
+        },
+        MATCH,
+        CURRENT
+    );
+}
+
+/** Whether taking a held range out of the `from` highlights changes the screen; it goes back after. */
+async function paints(phone: Phone, which: number | "current", from: string[]): Promise<boolean> {
+    const lift = (put: boolean) =>
+        phone.run(
+            (which: number | "current", from: string[], put: boolean) => {
+                const { held } = window as unknown as { held: Held };
+                const range = which === "current" ? held.current : held.shown[which]!;
+                for (const name of from) CSS.highlights.get(name)![put ? "add" : "delete"](range);
+            },
+            which,
+            from,
+            put
+        );
+    const before = await phone.screenshot();
+    await lift(false);
+    const after = await phone.screenshot();
+    await lift(true);
+    return after !== before;
+}
+
+test.afterEach(async ({ phone }) => {
+    if (await phone.has(BAR)) await phone.escape(BAR);
+});
+
+// WebKit paints no highlight on text the reader cannot select (e2e/webkit.spec.ts);
+// only the phone shows what iOS's own paints.
+test("a search paints every match on screen, the current one apart from the rest", async ({ phone }) => {
+    await phone.openStream();
+    // Twice in each of the newest notes' Stallers, so more than one on screen.
+    await search(phone, "Effort");
+    expect(await phone.screenshot(), "the screen holds still between shots").toBe(await phone.screenshot());
+
+    const shown = await holdMatches(phone);
+    expect(shown, "matches on screen").toBeGreaterThan(1);
+    for (let i = 0; i < shown; i++) expect(await paints(phone, i, [MATCH, CURRENT]), `match ${i}`).toBe(true);
+    expect(await paints(phone, "current", [CURRENT]), "the current match, painted as any other").toBe(true);
+});
+
+test("a long-press selects a note's text", async ({ phone }) => {
+    await phone.openStream();
+
+    await phone.longPress(".daily-note-content > p");
+
+    const selected = await phone.run(() => {
+        const selection = window.getSelection()!;
+        const inNote = !!selection.anchorNode?.parentElement?.closest(".daily-note-content");
+        const text = selection.toString();
+        selection.removeAllRanges();
+        return { text, inNote };
+    });
+    expect(selected.text, "nothing selected").not.toBe("");
+    expect(selected.inNote, "selected outside the note").toBe(true);
+});
