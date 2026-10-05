@@ -90,7 +90,8 @@ in, an image loads. Three mechanisms keep the reader's place.
   ([ADR 0010](adr/0010-layout-memory.md)); an edit forgets a note's
   ([ADR 0017](adr/0017-forget-heights-of-edited-notes.md)). A note not measured
   at the layout reserves the 0.9 quantile of the heights measured there (D-092).
-- `HeightHold` holds a note or Base at its earlier height while it refills.
+- `HeightHold` holds a note at its earlier height while it refills; a Base holds
+  itself at the tallest it laid out at until it settles (D-095).
 - `NoteWindowManager` pins each rendered note's height and changes it only in
   the task that tells `ScrollAnchor`
   ([ADR 0013](adr/0013-pin-rendered-note-heights.md)). Once the scroll is still,

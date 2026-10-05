@@ -1572,3 +1572,26 @@ would need counts of who watches what.
 
 - One observer for the pin and the anchor — saves one observer per view, at a
   rewrite of the anchor's tests and shared bookkeeping in ADR 0013's code.
+
+## D-095 — No ResizeObserver callback resizes what was reported (2026-10-05)
+
+**Decision:**
+
+- Nothing watches a pinned block's size: it changes only in `repin`, which tells
+  the anchor (ADR 0013). The anchor watches a block while it is unpinned.
+- A Base is held at the tallest it laid out at from its first layout, not on
+  hearing it shrank; its callback only raises the hold. It lets go once still,
+  or at `HOLD_LIMIT_MS`, in a timer.
+- A Base redrawn for a width change or Bases' layout is redrawn a task later.
+
+**Why:** WebKit logs "ResizeObserver loop completed with undelivered
+notifications" as an error when a callback resizes an element no deeper than the
+shallowest one reported that round. Each of these did, on a flick or a turn. The
+late report itself was harmless; the error was the cost.
+
+**Rejected:**
+
+- Ignoring the notice in the iPhone check: it is ours, and on every scroll.
+- Re-pinning a frame later: breaks ADR 0013.
+- `requestAnimationFrame` for the redraws: it never runs in the hidden e2e
+  window.
