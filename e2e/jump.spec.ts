@@ -8,6 +8,8 @@ import {
     SEEDED_DAYS,
     withoutScrollAnchoring,
     restoreScrollAnchoring,
+    writeDailyNotesConfig,
+    DAILY_NOTES_CONFIG,
 } from "./obsidian";
 
 /** The note at the pane's top, how far it starts above it, and how many unloaded notes lie above. */
@@ -106,6 +108,37 @@ test.describe("jump to date", () => {
         await expect(items).toHaveCount(SEEDED_DAYS);
         await expect(items.first()).toHaveText(seededDate(0));
         await expect(items.last()).toHaveText(seededDate(SEEDED_DAYS - 1));
+    });
+
+    test("offers the dates in whatever format the daily-notes settings name", async ({ obsidian }) => {
+        const { page, vaultPath } = obsidian;
+        const notes = ["14-03-2026", "13-03-2026", "March 14, 2026", "March 13, 2026"].map(
+            (name) => `Formats/${name}.md`
+        );
+        await page.evaluate(async (notes) => {
+            await window.app.vault.createFolder("Formats").catch(() => {});
+            for (const path of notes) await window.app.vault.create(path, "## Morning\n");
+        }, notes);
+        try {
+            await openStream(page);
+            const offered = async () => (await openSuggester(page)).locator(".suggestion-item");
+
+            writeDailyNotesConfig(vaultPath, { folder: "Formats", format: "DD-MM-YYYY" });
+            await expect(page.locator(".daily-note-title").first()).toHaveText("14-03-2026");
+            await expect(await offered()).toHaveText(["14-03-2026", "13-03-2026"]);
+            await page.keyboard.press("Escape");
+
+            writeDailyNotesConfig(vaultPath, { folder: "Formats", format: "MMMM D, YYYY" });
+            await expect(page.locator(".daily-note-title").first()).toHaveText("March 14, 2026");
+            await expect(await offered()).toHaveText(["March 14, 2026", "March 13, 2026"]);
+            await page.keyboard.press("Escape");
+        } finally {
+            writeDailyNotesConfig(vaultPath, DAILY_NOTES_CONFIG);
+            await page.evaluate(async () => {
+                const folder = window.app.vault.getAbstractFileByPath("Formats");
+                if (folder) await window.app.vault.delete(folder, true);
+            });
+        }
     });
 
     // A focused query raises the phone's keyboard over half the list; the
