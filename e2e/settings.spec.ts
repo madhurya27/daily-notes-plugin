@@ -36,6 +36,22 @@ test.describe("Obsidian's daily-notes settings change under a live stream", () =
         await expect(container.locator(".daily-note-title")).toHaveText(["2026-06-05"]);
     });
 
+    test("says so when the daily-notes folder is missing, and shows the notes once it points back", async ({
+        obsidian,
+    }) => {
+        const { page, vaultPath } = obsidian;
+        const container = await openStream(page);
+        await expect(container.locator(".daily-note-title").first()).toHaveText("2026-03-14");
+
+        writeDailyNotesConfig(vaultPath, { folder: "Missing", format: "YYYY-MM-DD" });
+        await expect(container.locator(".daily-notes-empty-state")).toBeVisible();
+        await expect(container.locator(".daily-note-block")).toHaveCount(0);
+
+        writeDailyNotesConfig(vaultPath, CONFIG);
+        await expect(container.locator(".daily-note-title").first()).toHaveText("2026-03-14");
+        await expect(container.locator(".daily-notes-empty-state")).toHaveCount(0);
+    });
+
     test("says so when the last daily note is deleted, and clears once one is back", async ({ obsidian }) => {
         const { page, vaultPath } = obsidian;
         const container = await openStream(page);

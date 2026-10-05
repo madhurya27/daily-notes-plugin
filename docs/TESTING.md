@@ -137,19 +137,6 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
   next render, its old key is gone from localStorage (DevTools → Application).
 - A screen reader announces each chevron as a button, with its expanded state.
 
-### Live updates
-
-- Editing a visible note updates the stream.
-- Editing frontmatter updates properties, and none leaks into the body.
-- Renaming updates header and sort order, and keeps collapsed sections
-  collapsed.
-- Deleting removes it.
-- A dated note in a subfolder the format does not name: absent at startup and on
-  create.
-- Split the stream pane: a note created or deleted updates both.
-- Point the daily-note folder at a missing folder: the empty state; point it
-  back and the notes return.
-
 ### Empty notes
 
 The test vault sets the template to `Templates/Daily` and seeds from it:
