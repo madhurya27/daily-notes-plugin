@@ -1095,6 +1095,46 @@ describe("ScrollAnchor", () => {
         expect(observer().disconnected).toBe(true);
     });
 
+    // A pinned block resizes only when re-pinned, which tells the anchor. Its
+    // own report, a round later, makes WebKit log an error.
+    it("stops watching a pinned block's size, and watches it again once unpinned", () => {
+        const { blocks } = watch([400, 400], 0);
+
+        anchor.pinned(blocks[0]!);
+        expect([...observer().targets]).toEqual([blocks[1]]);
+
+        anchor.unpinned(blocks[0]!);
+        expect(new Set(observer().targets)).toEqual(new Set(blocks));
+    });
+
+    it("holds the place for a pinned block it is told resized", () => {
+        const { content, blocks, resize } = watch([400, 400, 400], 900);
+        for (const block of blocks) anchor.pinned(block);
+
+        resize(blocks[0]!, 1300);
+        anchor.resized();
+
+        expect(shift(content)).toBe(-900);
+    });
+
+    it("watches no block unpinned after it was unobserved", () => {
+        const { blocks } = watch([400, 400], 0);
+        anchor.pinned(blocks[0]!);
+        anchor.unobserve(blocks[0]!);
+
+        anchor.unpinned(blocks[0]!);
+
+        expect([...observer().targets]).toEqual([blocks[1]]);
+    });
+
+    it("ignores a pin before it is attached", () => {
+        const block = document.createElement("div");
+        expect(() => {
+            anchor.pinned(block);
+            anchor.unpinned(block);
+        }).not.toThrow();
+    });
+
     it("forgets a bounce on detach", () => {
         const { pane, blocks, resize } = watch([400, 400, 400], 900);
         pane.scrollTop = -120;

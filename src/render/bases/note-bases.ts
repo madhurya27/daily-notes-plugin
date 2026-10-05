@@ -1,5 +1,5 @@
 import { App, Component, type Debouncer, MarkdownRenderer, TAbstractFile, TFile, debounce, setIcon } from "obsidian";
-import { HeightHold, SETTLE_MS } from "../../stream/height-hold";
+import { HOLD_LIMIT_MS, SETTLE_MS } from "../../stream/height-hold";
 import { baseDigest, type BaseKey, type BaseMeasurements } from "./base-measurements";
 import { layoutOf } from "../../stream/layout-memory";
 import { asCards, BASE_SLOT_CLASS, type BaseSource } from "./bases-as-cards";
@@ -56,9 +56,16 @@ export class NoteBases {
             slots.push(slot);
             await this.draw(slot, this.wantsCards(slot, width) ? "cards" : "table");
         }
+        // Redrawn inside the report, an emptied Base resizes the note a round
+        // late, which WebKit logs as an error.
+        let redraw = 0;
         this.widths.watch(contentEl, noteComponent, (width) => {
-            for (const slot of slots) void this.recheck(slot, width);
+            window.clearTimeout(redraw);
+            redraw = window.setTimeout(() => {
+                for (const slot of slots) void this.recheck(slot, width);
+            });
         });
+        noteComponent.register(() => window.clearTimeout(redraw));
     }
 
     /**
@@ -72,7 +79,12 @@ export class NoteBases {
             fitBaseToWidth(view);
             return;
         }
-        if (tableWidth(view) > view.clientWidth) void this.showCards(slot, slot.contentWidth);
+        // Bases lays out inside a resize report: emptied there, the Base
+        // resizes the note a round late, which WebKit logs as an error.
+        if (tableWidth(view) > view.clientWidth)
+            window.setTimeout(() => {
+                if (!slot.gone && slot.mode === "table") void this.showCards(slot, slot.contentWidth);
+            });
     }
 
     private async recheck(slot: BaseSlot, width: number): Promise<void> {
@@ -136,15 +148,23 @@ class BaseSlot {
     /** The Base drawn as cards, or null when it has no table to convert. */
     cards: string | null = null;
     readonly view: string | undefined;
+    /** Its note unloaded. */
+    gone = false;
     /** `baseDigest` of its markdown and definition. */
     private digest = "";
     private component: Component | null = null;
     /** The placeholder, and what is drawn in it: a held placeholder stops resizing, its contents do not. */
     private readonly resizes = new ResizeObserver(() => this.resized());
-    private hold: HeightHold | null = null;
-    /** Restarted by each resize while held. */
+    /** Restarted by each resize. */
     private readonly letGoOnceStill: Debouncer<[], void>;
-    /** The height it last laid out at unheld: a shrink from it is held there. */
+    /** Lets go of a Base that never holds still, counted from its first resize since it last let go. */
+    private limit = 0;
+    /**
+     * The height it is held at, the tallest it laid out at since it last let
+     * go: a shrink, Bases refilling, waits until it settles. Held before the
+     * shrink, not on hearing of it: inside the report, that resizes the note
+     * a round late, which WebKit logs as an error.
+     */
     private laidOut = 0;
 
     constructor(
@@ -161,9 +181,11 @@ class BaseSlot {
         this.letGoOnceStill = debounce(() => this.letGo(), SETTLE_MS, true);
         this.resizes.observe(placeholder);
         noteComponent.register(() => {
+            this.gone = true;
             this.resizes.disconnect();
             this.letGoOnceStill.cancel();
-            this.hold?.release();
+            window.clearTimeout(this.limit);
+            this.placeholder.style.removeProperty("--daily-note-held-height");
         });
     }
 
@@ -189,11 +211,12 @@ class BaseSlot {
      * registered, held at the height it shows now until it settles.
      */
     async draw(mode: "table" | "cards"): Promise<void> {
-        const shown = this.hold?.holding ? this.laidOut : this.height();
+        const shown = Math.max(this.laidOut, this.height());
         if (this.component) this.noteComponent.removeChild(this.component);
         this.placeholder.empty();
         this.mode = mode;
-        if (shown > 0) this.holdAt(shown);
+        this.holdAt(shown);
+        this.waitForStill();
         const component = (this.component = this.noteComponent.addChild(new Component()));
         const markdown = mode === "cards" ? this.cards! : this.source.markdown;
         await MarkdownRenderer.render(this.app, markdown, this.placeholder, this.file.path, component);
@@ -201,38 +224,31 @@ class BaseSlot {
         if (drawn) this.resizes.observe(drawn);
     }
 
-    /**
-     * Held, a resize restarts the wait; released by the limit, the hold is over.
-     * Unheld, a shrink is Bases refilling: it is held where it was.
-     */
+    /** Taller, it is held there: the hold only rises here, which resizes nothing. */
     private resized(): void {
-        if (this.hold?.holding) {
-            this.letGoOnceStill();
-            return;
-        }
-        if (this.hold) {
-            this.letGo();
-            return;
-        }
         const height = this.height();
-        if (height < this.laidOut) this.holdAt(this.laidOut);
-        else this.laidOut = height;
+        if (height > this.laidOut) this.holdAt(height);
+        this.waitForStill();
     }
 
-    /** Holds the placeholder at `height`, which becomes what it laid out at. */
-    private holdAt(height: number): void {
-        this.hold?.release();
-        this.laidOut = height;
-        this.hold = new HeightHold(this.placeholder, height);
+    private waitForStill(): void {
         this.letGoOnceStill();
+        this.limit ||= window.setTimeout(() => this.letGo(), HOLD_LIMIT_MS);
     }
 
-    /** Lets go, taking its unheld height as its own: shorter, it lost rows. */
+    /** Takes its unheld height as its own, and is held there: shorter, it lost rows. */
     private letGo(): void {
         this.letGoOnceStill.cancel();
-        this.hold?.release();
-        this.hold = null;
-        this.laidOut = this.height();
+        window.clearTimeout(this.limit);
+        this.limit = 0;
+        this.placeholder.style.removeProperty("--daily-note-held-height");
+        this.holdAt(this.height());
+    }
+
+    /** styles.css turns the property into a `min-height`. */
+    private holdAt(height: number): void {
+        this.laidOut = height;
+        if (height > 0) this.placeholder.style.setProperty("--daily-note-held-height", `${height}px`);
     }
 
     private height(): number {

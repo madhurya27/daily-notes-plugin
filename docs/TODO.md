@@ -43,9 +43,6 @@ Ordered by priority, from the 2026-09 comparison against
           assets match the local build)
 - [ ] Position the README against Daily Notes Editor — a live-updating reading
       feed, not an inline editor.
-- [ ] Move the rest of the Mobile checklist in `docs/TESTING.md` into `e2e/ios/`
-      specs (ADR 0016); what is done is marked **[ios]** there. Left:
-    - [ ] No console errors through a run: a fixture collecting them.
 - [ ] A phone recording for the README. Desktop Chromium can't fake a phone
       convincingly; `e2e/ios/` drives a real one, title-bar taps included, and
       Appium can record its screen.

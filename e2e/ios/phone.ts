@@ -35,6 +35,13 @@ function blockOf(target: string): string | undefined {
     return undefined;
 }
 
+/**
+ * Obsidian's sanitizer gives each embedded frame `allow-presentation`, a flag
+ * iOS's WebKit does not know. Its own reading view logs this, the stream closed.
+ */
+const OBSIDIANS_SANDBOX_NOTICE =
+    "Error while parsing the 'sandbox' attribute: 'allow-presentation' is an invalid sandbox flag.";
+
 export class Phone {
     constructor(private readonly driver: WebdriverIO.Browser) {}
 
@@ -486,6 +493,21 @@ export class Phone {
         await this.driver.$("~Done").click();
     }
 
+    /** What Obsidian's console has shown as an error since last asked: logged, thrown or rejected. */
+    async consoleErrors(): Promise<string[]> {
+        await this.inWebView();
+        const entries = (await this.driver.getLogs("safariConsole")) as { level: string; message: string }[];
+        // Appium hands one console entry over several times, the copies alike to the timestamp.
+        const errors = new Map<string, string>();
+        for (const { level, message } of entries) {
+            if (level !== "SEVERE") continue;
+            const { text, timestamp } = JSON.parse(message) as { text: string; timestamp: number };
+            if (text === OBSIDIANS_SANDBOX_NOTICE) continue;
+            errors.set(`${timestamp} ${text}`, text);
+        }
+        return [...errors.values()];
+    }
+
     /** Whether anything matches `selector`. */
     has(selector: string): Promise<boolean> {
         return this.run((sel: string) => !!document.querySelector(sel), selector);
@@ -657,7 +679,15 @@ export class Phone {
     }
 }
 
-export const test = base.extend<object, { phone: Phone }>({
+export const test = base.extend<{ quietConsole: void }, { phone: Phone }>({
+    // Errors in a test fail it, wherever they surface: no check has to ask.
+    quietConsole: [
+        async ({ phone }, use) => {
+            await use();
+            expect(await phone.consoleErrors(), "errors in Obsidian's console").toEqual([]);
+        },
+        { auto: true },
+    ],
     phone: [
         async ({}, use) => {
             const driver = await connect();
@@ -668,6 +698,7 @@ export const test = base.extend<object, { phone: Phone }>({
             try {
                 await phone.assertUnlocked();
                 await useVault(phone);
+                expect(await phone.consoleErrors(), "errors in Obsidian's console, opening the vault").toEqual([]);
                 await use(phone);
             } finally {
                 await driver.setOrientation("PORTRAIT");

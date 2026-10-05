@@ -23,6 +23,7 @@ export async function connect(app = OBSIDIAN): Promise<WebdriverIO.Browser> {
             "appium:xcodeOrgId": process.env.IOS_TEAM_ID,
             "appium:xcodeSigningId": "Apple Development",
             "appium:newCommandTimeout": 300,
+            "appium:showSafariConsoleLog": true,
         },
     });
     await driver.setTimeout({ script: 30_000 });

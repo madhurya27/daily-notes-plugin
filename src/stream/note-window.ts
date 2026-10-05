@@ -39,7 +39,7 @@ interface NoteWindow {
     measured: boolean;
     /** Holds the rendered note at `height` until it settles; null once let go. */
     hold: HeightHold | null;
-    /** The block and what was rendered in it. */
+    /** What was rendered in the block. */
     watched: Element[];
     /** Remembers the height once the rendered note stops resizing; null while unloaded. */
     keepOnceSettled: Debouncer<[], void> | null;
@@ -116,6 +116,7 @@ export class NoteWindowManager {
 
         for (const [block, window] of this.windows) {
             this.observe(block);
+            if (block.hasClass("is-pinned")) this.anchor.pinned(block);
             this.watch(window.watched);
         }
     }
@@ -481,7 +482,7 @@ export class NoteWindowManager {
             });
             window.hold = hold;
         }
-        window.watched = [block, ...Array.from(block.children)];
+        window.watched = Array.from(block.children);
         this.watch(window.watched);
         const { component } = window;
         void footer.then(() => {
@@ -492,8 +493,7 @@ export class NoteWindowManager {
         });
     }
 
-    private watch([block, ...rendered]: Element[]): void {
-        if (block) this.resizes?.observe(block);
+    private watch(rendered: Element[]): void {
         for (const el of rendered) {
             this.resizes?.observe(el);
             this.anchor.observeContent(el);
@@ -542,10 +542,13 @@ export class NoteWindowManager {
         const height = this.measure(block);
         if (height > 0) block.style.setProperty("--daily-note-pinned-height", `${height}px`);
         block.toggleClass("is-pinned", height > 0);
+        if (height > 0) this.anchor.pinned(block);
+        else this.anchor.unpinned(block);
         if (block.style.getPropertyValue("--daily-note-pinned-height") !== before) this.anchor.resized();
     }
 
     private unpin(block: HTMLElement): void {
+        this.anchor.unpinned(block);
         block.removeClass("is-pinned");
         block.style.removeProperty("--daily-note-pinned-height");
     }

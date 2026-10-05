@@ -89,10 +89,17 @@ function layOut(slot: Element, tableWidth: number, viewWidth = noteWidth): HTMLE
     return view;
 }
 
+/** Bases laid `view` out, and the task after it ran. */
+function reportLayout(view: HTMLElement): void {
+    bases.onLayout(view);
+    vi.advanceTimersByTime(0);
+}
+
 const slotOf = (content: HTMLElement, i = 0) => content.querySelectorAll(".daily-note-base")[i]!;
 const cap = (view: HTMLElement) => view.style.getPropertyValue("--bases-table-column-max-width");
 
 beforeEach(() => {
+    vi.useFakeTimers();
     FakeResizeObserver.instances = [];
     vi.stubGlobal("ResizeObserver", FakeResizeObserver);
     widths = new FakeWidths();
@@ -107,6 +114,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
 });
@@ -217,7 +225,7 @@ describe("NoteBases measuring a drawn table", () => {
         const content = await renderNote(lines(BLOCK, "", BLOCK));
         const first = render.mock.calls[0]![4] as unknown as { loaded: boolean };
 
-        bases.onLayout(layOut(slotOf(content), 900));
+        reportLayout(layOut(slotOf(content), 900));
 
         expect(drawn(slotOf(content, 0))).toContain("type: cards");
         expect(drawn(slotOf(content, 1))).toBe(BLOCK);
@@ -225,9 +233,43 @@ describe("NoteBases measuring a drawn table", () => {
         expect(slotOf(content).querySelector(".bases-view")).toBeNull();
     });
 
+    // Bases lays a table out inside a resize report: emptying the placeholder
+    // there resizes the note a round late, which WebKit logs as an error.
+    it("redraws it after the layout, not inside it", async () => {
+        const content = await renderNote(BLOCK);
+
+        bases.onLayout(layOut(slotOf(content), 900));
+        expect(render).toHaveBeenCalledOnce();
+
+        vi.advanceTimersByTime(0);
+        expect(drawn(slotOf(content))).toContain("type: cards");
+    });
+
+    it("redraws once for several layouts at once", async () => {
+        const content = await renderNote(BLOCK);
+        const view = layOut(slotOf(content), 900);
+
+        bases.onLayout(view);
+        bases.onLayout(view);
+        vi.advanceTimersByTime(0);
+
+        expect(render).toHaveBeenCalledTimes(2);
+    });
+
+    it("redraws nothing for a note unloaded before it redraws", async () => {
+        const component = loaded();
+        const content = await renderNote(BLOCK, component);
+
+        bases.onLayout(layOut(slotOf(content), 900));
+        component.unload();
+        vi.advanceTimersByTime(0);
+
+        expect(render).toHaveBeenCalledOnce();
+    });
+
     // A note comes back after unloading; the double draw happens once.
     it("draws it straight as cards next time, at that width", async () => {
-        bases.onLayout(layOut(slotOf(await renderNote(BLOCK)), 900));
+        reportLayout(layOut(slotOf(await renderNote(BLOCK)), 900));
 
         const again = await renderNote(BLOCK);
 
@@ -238,7 +280,7 @@ describe("NoteBases measuring a drawn table", () => {
     it("draws it straight as cards in a view sharing what this one measured", async () => {
         const measured = new BaseMeasurements();
         bases = new NoteBases(asApp(app), measured, widths, measure);
-        bases.onLayout(layOut(slotOf(await renderNote(BLOCK)), 900));
+        reportLayout(layOut(slotOf(await renderNote(BLOCK)), 900));
         bases = new NoteBases(asApp(app), measured, widths, measure);
 
         const again = await renderNote(BLOCK);
@@ -247,7 +289,7 @@ describe("NoteBases measuring a drawn table", () => {
     });
 
     it("measures again at another width", async () => {
-        bases.onLayout(layOut(slotOf(await renderNote(BLOCK)), 900));
+        reportLayout(layOut(slotOf(await renderNote(BLOCK)), 900));
         noteWidth = 800;
 
         const again = await renderNote(BLOCK);
@@ -255,11 +297,19 @@ describe("NoteBases measuring a drawn table", () => {
         expect(drawn(slotOf(again))).toBe(BLOCK);
     });
 
+    it("keeps a table whose header row has not laid out", async () => {
+        const content = await renderNote(BLOCK);
+
+        reportLayout(slotOf(content).createDiv({ cls: "bases-view" }));
+
+        expect(render).toHaveBeenCalledOnce();
+    });
+
     it("keeps a table that fits, unfitted", async () => {
         const content = await renderNote(BLOCK);
         const view = layOut(slotOf(content), 400);
 
-        bases.onLayout(view);
+        reportLayout(view);
 
         expect(render).toHaveBeenCalledOnce();
         expect(cap(view)).toBe("");
@@ -273,7 +323,7 @@ describe("NoteBases measuring a drawn table", () => {
         const content = await renderNote(markdown);
         const view = layOut(slotOf(content), 900);
 
-        bases.onLayout(view);
+        reportLayout(view);
 
         expect(render).toHaveBeenCalledOnce();
         expect(cap(view)).not.toBe("");
@@ -283,17 +333,61 @@ describe("NoteBases measuring a drawn table", () => {
     it("fits a Base it did not draw", () => {
         const view = layOut(document.createElement("div"), 900, 400);
 
-        bases.onLayout(view);
+        reportLayout(view);
 
         expect(cap(view)).not.toBe("");
     });
 });
 
 describe("NoteBases when the note's width changes", () => {
+    /** The width reported, and the task after it run. */
     const resize = (width: number) => {
+        report(width);
+        vi.advanceTimersByTime(0);
+    };
+    const report = (width: number) => {
         noteWidth = width;
         for (const content of widths.watched.keys()) widths.resize(content, width);
     };
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    // Inside the report, emptying the placeholder resizes the note a round
+    // late, which WebKit logs as an error.
+    it("redraws after the report, not inside it", async () => {
+        noteWidth = 200;
+        const content = await renderNote(BLOCK);
+
+        report(800);
+        expect(render).toHaveBeenCalledOnce();
+
+        vi.advanceTimersByTime(0);
+        expect(drawn(slotOf(content))).toBe(BLOCK);
+    });
+
+    it("redraws once for several reports at once, at the last width", async () => {
+        noteWidth = 200;
+        await renderNote(BLOCK);
+
+        report(800);
+        report(250);
+        vi.advanceTimersByTime(0);
+
+        expect(render).toHaveBeenCalledOnce();
+    });
+
+    it("redraws nothing for a note unloaded before it redraws", async () => {
+        noteWidth = 200;
+        const component = loaded();
+        await renderNote(BLOCK, component);
+
+        report(800);
+        component.unload();
+        vi.advanceTimersByTime(0);
+
+        expect(render).toHaveBeenCalledOnce();
+    });
 
     it("redraws cards as a table when the table may fit", async () => {
         noteWidth = 200;
@@ -306,9 +400,9 @@ describe("NoteBases when the note's width changes", () => {
 
     it("keeps cards where the table was measured too wide", async () => {
         const content = await renderNote(BLOCK);
-        bases.onLayout(layOut(slotOf(content), 900));
+        reportLayout(layOut(slotOf(content), 900));
         resize(800);
-        bases.onLayout(layOut(slotOf(content), 900, 800));
+        reportLayout(layOut(slotOf(content), 900, 800));
         const draws = render.mock.calls.length;
 
         resize(400);
@@ -451,7 +545,7 @@ describe("NoteBases holding a Base while it refills", () => {
         const content = await renderNote(BLOCK);
         tall(slotOf(content), 112);
 
-        bases.onLayout(layOut(slotOf(content), 900));
+        reportLayout(layOut(slotOf(content), 900));
 
         expect(held(slotOf(content))).toBe("112px");
     });
@@ -466,13 +560,23 @@ describe("NoteBases holding a Base while it refills", () => {
         expect(held(slotOf(content))).toBe("300px");
     });
 
-    it("lets a Base grow unheld", async () => {
+    // Held before it shrinks, not on hearing it did: holding it back inside
+    // the report resizes the note a round late, which WebKit logs as an error.
+    it("holds a Base where it lays out, before any shrink", async () => {
+        const content = await renderNote(BLOCK);
+
+        layOutAt(slotOf(content), 300);
+
+        expect(held(slotOf(content))).toBe("300px");
+    });
+
+    it("holds a Base where it grows to", async () => {
         const content = await renderNote(BLOCK);
         layOutAt(slotOf(content), 300);
 
         layOutAt(slotOf(content), 500);
 
-        expect(held(slotOf(content))).toBe("");
+        expect(held(slotOf(content))).toBe("500px");
     });
 
     it("lets go once what is drawn holds still", async () => {
@@ -486,11 +590,11 @@ describe("NoteBases holding a Base while it refills", () => {
         expect(held(slotOf(content))).toBe("300px");
 
         vi.advanceTimersByTime(1);
-        expect(held(slotOf(content))).toBe("");
+        expect(held(slotOf(content))).toBe("40px");
     });
 
     // It lost rows: once let go, the shorter height is the one it has.
-    it("holds no shrink it was let go into", async () => {
+    it("holds it at what it was let go into", async () => {
         const content = await renderNote(BLOCK);
         layOutAt(slotOf(content), 300);
         layOutAt(slotOf(content), 40);
@@ -498,23 +602,24 @@ describe("NoteBases holding a Base while it refills", () => {
 
         resized();
 
-        expect(held(slotOf(content))).toBe("");
+        expect(held(slotOf(content))).toBe("40px");
     });
 
     // A Base updating live never holds still.
-    it("lets go after a while regardless, and holds no shrink that follows", async () => {
+    it("lets go after a while regardless, from the first change it held", async () => {
         const content = await renderNote(BLOCK);
         layOutAt(slotOf(content), 300);
+        vi.advanceTimersByTime(HOLD_LIMIT_MS);
         layOutAt(slotOf(content), 40);
 
-        for (let t = 0; t < HOLD_LIMIT_MS; t += SETTLE_MS / 2) {
-            resized();
+        for (let t = SETTLE_MS / 2; t < HOLD_LIMIT_MS; t += SETTLE_MS / 2) {
             vi.advanceTimersByTime(SETTLE_MS / 2);
+            resized();
         }
-        expect(held(slotOf(content))).toBe("");
+        expect(held(slotOf(content))).toBe("300px");
 
-        resized();
-        expect(held(slotOf(content))).toBe("");
+        vi.advanceTimersByTime(SETTLE_MS / 2);
+        expect(held(slotOf(content))).toBe("40px");
     });
 
     it("keeps the height it holds at through a redraw while held", async () => {
@@ -522,7 +627,7 @@ describe("NoteBases holding a Base while it refills", () => {
         layOutAt(slotOf(content), 300);
         layOutAt(slotOf(content), 50);
 
-        bases.onLayout(layOut(slotOf(content), 900));
+        reportLayout(layOut(slotOf(content), 900));
 
         expect(held(slotOf(content))).toBe("300px");
     });
@@ -531,7 +636,7 @@ describe("NoteBases holding a Base while it refills", () => {
         const content = await renderNote(BLOCK);
         tall(slotOf(content), 112);
 
-        bases.onLayout(layOut(slotOf(content), 900));
+        reportLayout(layOut(slotOf(content), 900));
         await vi.advanceTimersByTimeAsync(0);
 
         const drawnView = slotOf(content).lastElementChild!;
@@ -542,7 +647,7 @@ describe("NoteBases holding a Base while it refills", () => {
         const component = loaded();
         const content = await renderNote(BLOCK, component);
         tall(slotOf(content), 112);
-        bases.onLayout(layOut(slotOf(content), 900));
+        reportLayout(layOut(slotOf(content), 900));
 
         component.unload();
 
@@ -553,7 +658,7 @@ describe("NoteBases holding a Base while it refills", () => {
     it("holds nothing it never saw laid out", async () => {
         const content = await renderNote(BLOCK);
 
-        bases.onLayout(layOut(slotOf(content), 900));
+        reportLayout(layOut(slotOf(content), 900));
 
         expect(held(slotOf(content))).toBe("");
     });

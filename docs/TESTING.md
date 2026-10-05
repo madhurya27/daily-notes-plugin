@@ -236,6 +236,7 @@ Checks:
 - Backgrounding and returning keeps position and keeps scrolling. **[ios]**
 - Editing a visible note elsewhere re-renders it in place. **[ios]**
 - No console errors (iOS: Safari → Develop; Android: `chrome://inspect`).
+  **[ios]**
 
 iOS is the one that matters: Android's WebView is Chromium, so desktop plus
 emulation covers that engine.

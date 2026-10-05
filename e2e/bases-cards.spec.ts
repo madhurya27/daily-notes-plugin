@@ -238,13 +238,15 @@ test.describe("Bases on mobile", () => {
         const base = top.locator(".daily-note-base").first();
         await expect(cards(base).first()).toBeVisible();
 
+        // A Base holds itself where it laid out, which is not the note's hold.
         const minHeights = await top.evaluate((el) => {
             el.style.setProperty("--daily-note-held-height", "5000px");
-            const base = el.querySelector(".daily-note-base")!;
-            return [getComputedStyle(el).minHeight, getComputedStyle(base).minHeight];
+            const base = el.querySelector<HTMLElement>(".daily-note-base")!;
+            const own = base.style.getPropertyValue("--daily-note-held-height") || "0px";
+            return [getComputedStyle(el).minHeight, getComputedStyle(base).minHeight === own];
         });
 
-        expect(minHeights).toEqual(["5000px", "0px"]);
+        expect(minHeights).toEqual(["5000px", true]);
     });
 
     test("measures a table whose values overrun the note, and redraws it as cards", async ({ obsidian }) => {
