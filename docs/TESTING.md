@@ -103,11 +103,6 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
   mobile project is desktop Chromium, which opens a picker iOS never would, and
   checks only that a tap on the icon lands on the date input. **[ios]** for iOS.
 
-### Properties
-
-- Better Search Views leaves the linked mentions footer unchanged: it is the
-  stream's own, not Obsidian's backlinks pane (D-061).
-
 ### Mobile
 
 Run before a release: `isDesktopOnly: false` is a promise no static check keeps.
