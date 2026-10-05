@@ -322,7 +322,7 @@ describe("NoteWindowManager remembered heights", () => {
         Object.defineProperty(scrollRoot, "clientHeight", { value: 1600, configurable: true });
         manager.onResize();
 
-        expect(lastResizeObserve).toHaveBeenCalledWith(block);
+        expect(lastResizeObserve).toHaveBeenCalledWith(block.firstElementChild);
         expect(lastResizeObserve).not.toHaveBeenCalledWith(unrendered);
     });
 
@@ -1808,6 +1808,73 @@ describe("NoteWindowManager scroll anchoring", () => {
         manager.attach(scrollRoot);
 
         expect(resizeObserver.observe).toHaveBeenCalledWith(block);
+    });
+});
+
+// A rendered block resizes only when re-pinned, which tells the anchor. A
+// report of it would come a round after its content's, which WebKit logs as
+// an error.
+describe("NoteWindowManager watches no pinned block's own size", () => {
+    let observed: Set<Element>[];
+    /** Whether any ResizeObserver watches `el`. */
+    const watched = (el: Element) => observed.some((targets) => targets.has(el));
+
+    beforeEach(() => {
+        observed = [];
+        vi.stubGlobal("CSS", { supports: () => false });
+        vi.stubGlobal(
+            "ResizeObserver",
+            vi.fn(function () {
+                const targets = new Set<Element>();
+                observed.push(targets);
+                return {
+                    observe: (el: Element) => targets.add(el),
+                    unobserve: (el: Element) => targets.delete(el),
+                    disconnect: () => targets.clear(),
+                };
+            })
+        );
+    });
+    afterEach(() => document.body.empty());
+
+    async function rendered(measure = () => 500) {
+        const setup = makeManager(makeRenderer(), measure);
+        const block = setup.manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        return { ...setup, block };
+    }
+
+    it("watches what a rendered note holds, not its block", async () => {
+        const { block } = await rendered();
+
+        expect(watched(block)).toBe(false);
+        expect(watched(block.firstElementChild!)).toBe(true);
+    });
+
+    it("watches a block again once unloaded", async () => {
+        const { block } = await rendered();
+
+        fire(observers.unload, block, false);
+        await still();
+
+        expect(watched(block)).toBe(true);
+    });
+
+    it("watches a block laid out at nothing, which is not pinned", async () => {
+        const { block } = await rendered(() => 0);
+
+        expect(watched(block)).toBe(true);
+    });
+
+    it("watches no pinned block when re-attached", async () => {
+        const { manager, scrollRoot, block } = await rendered();
+
+        manager.attach(scrollRoot);
+
+        expect(watched(block)).toBe(false);
+        expect(watched(block.firstElementChild!)).toBe(true);
     });
 });
 

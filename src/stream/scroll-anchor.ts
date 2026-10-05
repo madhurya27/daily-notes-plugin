@@ -22,6 +22,8 @@ export class ScrollAnchor {
     private scrollRoot: HTMLElement | null = null;
     /** The blocks watched; their parent is the stream. */
     private readonly watched = new Set<Element>();
+    /** Watched blocks whose size goes unobserved: they resize only when re-pinned, and are told of. */
+    private readonly pins = new Set<Element>();
     /**
      * From a block down to the element at the pane's top, each where it was
      * drawn. A re-render may replace the deeper ones: the deepest left stands in.
@@ -78,6 +80,23 @@ export class ScrollAnchor {
     unobserve(block: HTMLElement): void {
         this.observer?.unobserve(block);
         this.watched.delete(block);
+        this.pins.delete(block);
+    }
+
+    /**
+     * `block` resizes only when re-pinned, through `resized()` (ADR 0013).
+     * Its own report would come a round after the content's that caused it,
+     * and WebKit logs that as an error.
+     */
+    pinned(block: HTMLElement): void {
+        if (!this.watched.has(block)) return;
+        this.pins.add(block);
+        this.observer?.unobserve(block);
+    }
+
+    /** Unloaded, or laid out at nothing: `block` resizes untold again. */
+    unpinned(block: HTMLElement): void {
+        if (this.pins.delete(block)) this.observer?.observe(block);
     }
 
     /** What a note rendered: a held note hides a change inside it. */
@@ -187,6 +206,7 @@ export class ScrollAnchor {
         this.observer?.disconnect();
         this.observer = null;
         this.watched.clear();
+        this.pins.clear();
         this.drawnBase = null;
         this.bouncing = false;
         this.place = [];
