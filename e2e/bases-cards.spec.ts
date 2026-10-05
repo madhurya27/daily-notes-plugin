@@ -146,11 +146,14 @@ test.describe("Bases on mobile", () => {
 
         const offsets = await base.evaluate((el) => {
             const text = el.closest(".daily-note-content")!.getBoundingClientRect();
-            const card = el.querySelector(".bases-cards-item[draggable]")!.getBoundingClientRect();
+            // A phone may fit two cards to a row: the ring is the row's.
+            const row = [...el.querySelectorAll(".bases-cards-item[draggable]")]
+                .map((card) => card.getBoundingClientRect())
+                .filter((card, _, [first]) => card.top === first!.top);
             const icon = el.querySelector(".bases-toolbar svg")!.getBoundingClientRect();
             return {
-                ringLeft: Math.round(card.left - 1 - text.left),
-                ringRight: Math.round(text.right - card.right - 1),
+                ringLeft: Math.round(row[0]!.left - 1 - text.left),
+                ringRight: Math.round(text.right - row.at(-1)!.right - 1),
                 icon: Math.round(icon.left - text.left),
             };
         });
