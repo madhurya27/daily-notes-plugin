@@ -26,15 +26,23 @@ operates on a _file_ is already solved elsewhere; only what operates on _the
 stream_ is ours**, and only where it is worth its complexity. Ordered by
 priority.
 
-- [ ] On this day — one calendar date across years, a filter over `_sorted`.
+- [ ] On this day — one calendar date across years: a `NoteFilter`, like hiding
+      empty notes.
       [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review)
       shows ~200-char excerpts; ours is the full note. Better, not new.
-- [ ] Weekday in the title — `2026-03-14 · Saturday`, or "Yesterday". Decide
-      first: the file name, or a label the reader configures.
+- [ ] Labels on the title line: the weekday (`2026-03-14 · Saturday`, or
+      "Yesterday") and the gap since the note before ("12 days later"). Decide
+      first: from the file name, or a label the reader configures. Creating or
+      deleting a note changes its neighbour's gap, so that note re-renders.
+- [ ] Fold a whole note to its title, from a chevron on its header, kept like a
+      section's (`CollapsibleManager`).
 - [ ] Notes as `article` landmarks labelled with their date, so a screen reader
       steps note to note.
 - [ ] Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing
       external reaches inside a view.
+- [ ] Month and year dividers — a heading inside the header of a month's newest
+      note, not a block of its own: the window manager and `StreamBlocks` take
+      every block for a note.
 
 Out of scope:
 
@@ -43,10 +51,14 @@ Out of scope:
 - Folder or tag modes — dilute what the plugin is.
 - A tag or header filter — search does it.
 - A sticky date header — D-012.
-- Gap markers, month or year dividers — blocks that aren't notes, inside the
-  window manager and `StreamBlocks`.
-- Folding a whole note — a height change outside `repin` (ADR 0013).
-- A gutter timeline — the jump modal covers it.
-- Periodic Notes or Journals support — a second note source.
-- Period scope, range export, a stats header — niche.
-- Oldest-first — inverts the `state.notes` pagination invariant.
+- Collapse-all — leaves a list of dates, which the file explorer already is.
+- A gutter timeline — scrubbing writes the scroll, which iOS drops or undoes
+  mid-glide (ADR 0013); the jump modal reaches any date.
+- Periodic Notes or Journals support — a second note source behind
+  `DailyNoteService`. Revisit if users ask once it is published.
+- Period scope — newest-first already opens on this week; the jump modal reaches
+  past ones.
+- Range export, a stats header — niche; core Word count and heatmap plugins
+  cover stats.
+- Oldest-first — newest-first is assumed by pagination, inserts and D-091's stop
+  at the top.
