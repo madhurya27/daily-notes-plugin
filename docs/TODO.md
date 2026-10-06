@@ -13,8 +13,6 @@ Ordered by priority.
       notes around it (ADR 0013). Candidate fix: remember each image's aspect
       ratio by path once it loads, so a rendered image reserves its height
       before loading.
-- [ ] iOS: a Base's toolbar overruns a phone's width; its New button is clipped
-      off screen. `e2e/ios/layout.spec.ts` leaves the toolbar out of its census.
 - [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
       box guard cannot see; a video player does not. Check that a flick over one
       still glides.

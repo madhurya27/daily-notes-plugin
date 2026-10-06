@@ -596,6 +596,23 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
     margin-inline-start: calc(-1 * (var(--bases-header-padding-start) + var(--size-2-2)));
 }
 
+/* A Base's New button: its room is the view name's on a phone (D-097). */
+.is-mobile .daily-note-block .bases-toolbar .bases-toolbar-new-item-menu {
+    display: none;
+}
+
+/* Bases shrinks the view name and count to fit through overflow: hidden, down
+   to the label's ellipsis; a clip above leaves each at its content's width,
+   past the toolbar. */
+.is-mobile .daily-note-block .bases-toolbar :is(.bases-toolbar-views-menu, .bases-toolbar-result-count),
+.is-mobile
+    .daily-note-block
+    .bases-toolbar
+    :is(.bases-toolbar-views-menu, .bases-toolbar-result-count)
+    :is(.text-icon-button, .text-button-label) {
+    min-width: 0;
+}
+
 /* Clipped, a Base has no scroll box to pin its header and summaries to
    (D-059). */
 .is-mobile .daily-note-block .bases-thead {

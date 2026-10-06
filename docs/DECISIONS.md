@@ -1610,3 +1610,23 @@ Android's.
 - An emulator driven by Appium — a second device harness for an engine e2e
   already runs.
 - A manual pass — no device, and a check nobody runs is no check.
+
+## D-097 — On mobile a Base's toolbar has no New button (2026-10-05)
+
+**Decision:** under `.is-mobile`, a Base's New button is hidden. The view name
+and result count shrink to an ellipsis as in Obsidian, which the stream's
+`overflow: clip` had stopped (ADR 0008).
+
+**Why:** a Base in the stream is the text's width, 354px on a phone against
+Obsidian's 402px edge to edge (D-089), so the toolbar overran by up to 41px: New
+was cut off, and shrinking alone left "Resized" as "R…". Without New it reads
+"Resiz…", and a short name, such as "Books", is whole with its count. It creates
+`Untitled.md` on one tap, with no prompt: easy to hit mid-scroll. The note or
+`.base` file keeps it.
+
+**Rejected:**
+
+- Keeping New, names shortened — the view name tells views apart.
+- Hiding it on desktop too — desktop has the room; Sort, Filter and Properties
+  edit the `.base` file anyway.
+- Wrapping the toolbar to two lines — a row of height on every Base.

@@ -160,6 +160,51 @@ test.describe("Bases on mobile", () => {
         expect(offsets).toEqual({ ringLeft: 0, ringRight: 0, icon: 0 });
     });
 
+    // Obsidian shrinks the view name and the count to fit the toolbar; clipped
+    // instead of hidden (ADR 0008), neither would shrink.
+    test("fits every toolbar item in a Base's header, shortening a long view name", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await seed(page, block("views:", ...table("A view name far too long for any phone's toolbar", HEADERS_WIDE)));
+        const base = (await openStream(page)).locator(".daily-note-base").first();
+        await expect(base.locator(".bases-toolbar")).toBeVisible();
+
+        const toolbar = await base.evaluate((el) => {
+            const bar = el.querySelector(".bases-toolbar")!;
+            const right = bar.getBoundingClientRect().right;
+            const name = bar.querySelector(".bases-toolbar-views-menu")!;
+            return {
+                // An item's margin overhangs its button: the button, as the item clips it.
+                cut: [...bar.children]
+                    .filter((item) => {
+                        const button = item.firstElementChild!.getBoundingClientRect().right;
+                        return Math.min(button, item.getBoundingClientRect().right) > right + 1;
+                    })
+                    .map((item) => item.className),
+                // Its label shortens, not the chevron after it.
+                chevronShown:
+                    name.querySelector(".mod-aux")!.getBoundingClientRect().right <=
+                    name.getBoundingClientRect().right + 1,
+            };
+        });
+        expect(toolbar).toEqual({ cut: [], chevronShown: true });
+    });
+
+    // D-097: New takes the room a short view name and the count need on a phone.
+    test("hides a Base's New button, leaving a short view name and the count whole", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await seed(page, block("views:", ...table("Books", HEADERS_WIDE)));
+        const base = (await openStream(page)).locator(".daily-note-base").first();
+        await expect(base.locator(".bases-toolbar")).toBeVisible();
+
+        await expect(base.locator(".bases-toolbar-new-item-menu")).toBeHidden();
+        const shortened = await base.evaluate((el) =>
+            [...el.querySelectorAll(".bases-toolbar .text-button-label")]
+                .filter((label) => label.scrollWidth > label.clientWidth)
+                .map((label) => label.textContent)
+        );
+        expect(shortened).toEqual([]);
+    });
+
     // Bases draws a card's line at a fixed height, which a pill outgrows as
     // the font grows.
     test("fits a tag pill inside its card line at a large font", async ({ obsidian }) => {

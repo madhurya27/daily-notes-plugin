@@ -5,9 +5,7 @@ const NOTE = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"]`;
 
 /**
  * What in the note of every embed shows past its text's right edge, as far
- * as the boxes clipping it let it, and whether the pane scrolls sideways. A
- * Base's toolbar is left out: its New button, an edit in a read-only stream,
- * is clipped off a phone's width.
+ * as the boxes clipping it let it, and whether the pane scrolls sideways.
  */
 const overflow = (phone: Phone) =>
     phone.run((note: string) => {
@@ -16,7 +14,6 @@ const overflow = (phone: Phone) =>
         const right = content.getBoundingClientRect().right;
         const pane = block.closest(".daily-notes-stream-container")!.parentElement!;
         const over = [...content.querySelectorAll("*")]
-            .filter((el) => !el.closest(".bases-toolbar"))
             .filter((el) => {
                 const box = el.getBoundingClientRect();
                 let shown = box.right;
@@ -30,6 +27,20 @@ const overflow = (phone: Phone) =>
             .map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join(".")}`);
         if (pane.scrollWidth > pane.clientWidth) over.unshift(`the pane, ${pane.scrollWidth} wide`);
         return over.slice(0, 10);
+    }, NOTE);
+
+/** The items of each Base's toolbar in the note that its toolbar clips: Obsidian shrinks the view name and count to fit. */
+const toolbarCut = (phone: Phone) =>
+    phone.run((note: string) => {
+        const cut = [...document.querySelectorAll(`${note} .bases-toolbar`)].flatMap((bar) => {
+            const right = bar.getBoundingClientRect().right;
+            // An item's margin overhangs its button: the button, as the item clips it.
+            return [...bar.children].filter((item) => {
+                const button = item.firstElementChild!.getBoundingClientRect().right;
+                return Math.min(button, item.getBoundingClientRect().right) > right + 1;
+            });
+        });
+        return cut.map((item) => item.className);
     }, NOTE);
 
 /**
@@ -79,12 +90,13 @@ async function drawn(phone: Phone) {
     return { base, ...(await widths(phone)) };
 }
 
-test("nothing in the note of every embed scrolls sideways or reaches past its text", async ({ phone }) => {
+test("nothing in the note of every embed scrolls sideways, reaches past its text or is cut off", async ({ phone }) => {
     await phone.openStream();
     // Section by section: Bases draw only what is near the screen.
     for (let section = 1; section <= 6; section++) {
         await phone.placeAt(`${NOTE} .daily-note-content > h2:nth-of-type(${section})`, -20);
         expect(await overflow(phone), `section ${section}`).toEqual([]);
+        expect(await toolbarCut(phone), `section ${section}'s Base toolbars`).toEqual([]);
     }
 });
 

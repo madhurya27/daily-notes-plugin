@@ -128,6 +128,8 @@ Checks:
 - Nothing scrolls sideways: code and URLs wrap, wide tables stack, wide Bases
   draw as cards, wide equations shrink to fit. **[e2e]** **[ios]** Each case is
   in **2026-08-30**.
+- A Base's toolbar fits the note: no New button, a long view name ends in an
+  ellipsis. **[e2e]** **[ios]**
 - A PDF shows its first page without a toolbar; a tap opens the PDF. **[e2e]**
   **[ios]**
 - The video shows its thumbnail under a play button; a tap opens it on YouTube.
