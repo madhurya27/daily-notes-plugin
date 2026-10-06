@@ -4,6 +4,13 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] Obsidian 1.14 (MathJax 4) draws math async: `fitWideEquations` measures
+      before it, so wide equations clip on mobile (`scroll-boxes.spec.ts`
+      fails). Re-fit once drawn, through `repin` (ADR 0013); run `test:ios`.
+- [ ] Since 1.14, mobile layout tests in `stream.spec.ts` (list indent, checkbox
+      centering) fail intermittently, only in the full suite.
+- [ ] Check a 1.14 kanban Base for a sideways scroll box on mobile (ADR 0008);
+      add it to `scroll-boxes.spec.ts`.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
