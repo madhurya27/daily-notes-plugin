@@ -108,3 +108,46 @@ test("on mobile a YouTube embed is its thumbnail, a link to the video", async ({
         }, NOTE);
     }
 });
+
+// A page in a frame would scroll inside it, ending the flick that should
+// scroll the stream: on mobile it is a preview, a link to the page.
+test("on mobile a web page in a frame is a preview, a tap on it the link's", async ({ obsidian, mobileLayout }) => {
+    const { page } = obsidian;
+    const site = "https://example.com/map";
+    await page.evaluate(
+        async ({ note, src }) => {
+            await window.app.vault.create(note, `A map:\n\n<iframe src="${src}" width="560" height="400"></iframe>\n`);
+        },
+        { note: NOTE, src: site }
+    );
+    try {
+        const block = (await openStream(page)).locator(`.daily-note-block[data-source-path="${NOTE}"]`);
+        const frame = block.locator("iframe");
+        await expect(frame).toHaveAttribute("src", site);
+
+        const link = block.locator("a.daily-note-frame-link");
+        if (!mobileLayout) {
+            await expect(link).toHaveCount(0);
+            return;
+        }
+        await expect(link).toHaveAttribute("href", site);
+        // What a finger lands on at the frame's middle, and the link's box against the frame's.
+        const [tapped, linkBox, frameBox] = await Promise.all([
+            frame.evaluate((el) => {
+                const box = el.getBoundingClientRect();
+                const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+                if (hit === el) return "frame";
+                return hit?.closest("a.daily-note-frame-link") ? "link" : (hit?.tagName.toLowerCase() ?? null);
+            }),
+            link.boundingBox(),
+            frame.boundingBox(),
+        ]);
+        expect(tapped).toBe("link");
+        expect(linkBox).toEqual(frameBox);
+    } finally {
+        await page.evaluate(async (note) => {
+            const file = window.app.vault.getFileByPath(note);
+            if (file) await window.app.vault.delete(file);
+        }, NOTE);
+    }
+});

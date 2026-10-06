@@ -12,6 +12,8 @@ let container: HTMLElement;
 let frames: FrameDeferral;
 /** What a frame shows in its place, if anything; none unless a test sets one. */
 let standIn: (frame: HTMLIFrameElement, src: string) => HTMLElement | null;
+/** What a held frame is wrapped in, if anything; none unless a test sets one. */
+let wrapper: (frame: HTMLIFrameElement, src: string) => HTMLElement | null;
 
 function frame(src = PAGE): HTMLIFrameElement {
     const el = document.createElement("iframe");
@@ -24,7 +26,11 @@ beforeEach(() => {
     container = document.createElement("div");
     document.body.appendChild(container);
     standIn = () => null;
-    frames = new FrameDeferral((frame, src) => standIn(frame, src));
+    wrapper = () => null;
+    frames = new FrameDeferral(
+        (frame, src) => standIn(frame, src),
+        (frame, src) => wrapper(frame, src)
+    );
     frames.attach(container);
 });
 
@@ -108,6 +114,21 @@ describe("FrameDeferral", () => {
         expect(added.isConnected).toBe(false);
         expect(Array.from(note.children)).toEqual([link]);
         expect(link.classList.contains("is-frame-held")).toBe(false);
+    });
+
+    it("wraps a frame held back in its wrapper, then loads it there", async () => {
+        const link = document.createElement("a");
+        wrapper = (_frame, src) => (src === PAGE ? link : null);
+        const note = container.appendChild(document.createElement("div"));
+        const added = note.appendChild(frame());
+
+        await observed();
+        expect(Array.from(note.children)).toEqual([link]);
+        expect(Array.from(link.children)).toEqual([added]);
+        expect(added.hasAttribute("src")).toBe(false);
+
+        await still();
+        expect(added.getAttribute("src")).toBe(PAGE);
     });
 
     it("leaves a frame with no page alone", async () => {

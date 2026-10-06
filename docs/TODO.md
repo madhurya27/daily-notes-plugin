@@ -17,9 +17,6 @@ Ordered by priority.
       the notes around it (ADR 0013). Predicted, never seen: notes render a
       screen ahead, so their images have usually loaded. Fix only if a phone
       recording shows it.
-- [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
-      box guard cannot see; a video player does not. Check that a flick over one
-      still glides.
 - [ ] iOS: D-091's stop writes the scroll mid-touch if a finger drags slowly
       past the newest note while the stream is drawn lower. Untested: the
       harness only flicks.

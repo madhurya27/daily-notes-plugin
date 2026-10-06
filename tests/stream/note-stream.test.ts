@@ -10,6 +10,7 @@ import type { DailyNoteService } from "../../src/notes/daily-note-service";
 import type { CollapsibleStateStore } from "../../src/render/collapse-store";
 import { NoteHeights } from "../../src/stream/note-heights";
 import { youtubeThumbnail } from "../../src/render/video-thumbnails";
+import { webPageLink } from "../../src/render/web-page-links";
 import { BASE_SLOT_CLASS } from "../../src/render/bases/bases-as-cards";
 import { flushPromises, makePlugin, makeService } from "../stream-view-fixture";
 
@@ -91,7 +92,10 @@ vi.mock("../../src/stream/frame-deferral", () => ({
         attach = vi.fn();
         detach = vi.fn();
         onScroll = vi.fn();
-        constructor(readonly standIn: unknown) {
+        constructor(
+            readonly standIn: unknown,
+            readonly wrapper: unknown
+        ) {
             fakes.frames.push(this as unknown as FakeFrames);
         }
     },
@@ -698,6 +702,11 @@ describe("the pane", () => {
     // The player fails inside the app, and its page would end a glide (D-088).
     it("shows a YouTube embed as its thumbnail", () => {
         expect((frames as unknown as { standIn: unknown }).standIn).toBe(youtubeThumbnail);
+    });
+
+    // A page in a frame would take the flick that should scroll the stream.
+    it("links a web page's frame to the page", () => {
+        expect((frames as unknown as { wrapper: unknown }).wrapper).toBe(webPageLink);
     });
 
     it("lets desktop's frames load at once", () => {

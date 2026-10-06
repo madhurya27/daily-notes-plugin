@@ -428,6 +428,25 @@
     background-color: var(--background-secondary);
 }
 
+/* On mobile a web page in a frame is a preview, a link to the page (D-098):
+   a touch on the page would scroll it, not the stream. The link is the frame's
+   box, without the arrow Obsidian puts after a web link. */
+.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) iframe {
+    pointer-events: none;
+}
+
+.daily-note-frame-link.external-link {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    padding: 0;
+    background: none;
+}
+
+.daily-note-frame-link iframe {
+    display: block;
+}
+
 /* On mobile a YouTube embed is its thumbnail, a link to the video (D-088):
    the player's box, without the arrow Obsidian puts after a web link. */
 .daily-note-video.external-link {

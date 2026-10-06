@@ -1630,3 +1630,23 @@ was cut off, and shrinking alone left "Resized" as "R…". Without New it reads
 - Hiding it on desktop too — desktop has the room; Sort, Filter and Properties
   edit the `.base` file anyway.
 - Wrapping the toolbar to two lines — a row of height on every Base.
+
+## D-098 — On mobile a web page in a frame is a preview, a link to the page (2026-10-05)
+
+**Decision:** on mobile a frame in the stream takes no touch
+(`pointer-events: none`), and `FrameDeferral` wraps one showing an `http(s)`
+page in a link to it (`webPageLink`). The page loads once still, as before
+(D-087). Desktop keeps frames live.
+
+**Why:** on an iPhone a flick over a page taller than its frame scrolled the
+page inside it, ~5,400 px, and never the stream; flicking back worked only while
+the page was at its top. The scroll box guard cannot reach a frame's page (ADR
+0008). A PDF (D-083) and a video (D-088) are previews a tap opens already.
+
+**Rejected:**
+
+- A preview a tap does nothing on — it looks like a link.
+- A link in the frame's place — loses the preview, the point of a map or a
+  calendar.
+- Leaving the page live — any frame taller than the screen can trap a flick;
+  D-087's "a page that can work in place" gave way to that.

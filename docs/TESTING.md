@@ -132,6 +132,8 @@ Checks:
   ellipsis. **[e2e]** **[ios]**
 - A PDF shows its first page without a toolbar; a tap opens the PDF. **[e2e]**
   **[ios]**
+- A web page in a frame shows; a flick over it scrolls the stream, and a tap
+  opens the page. **[e2e]** **[ios]**
 - The video shows its thumbnail under a play button; a tap opens it on YouTube.
   **[e2e]** **[ios]**
 - Rotation reflows without clipping. With a Base on screen, a wide one turns to

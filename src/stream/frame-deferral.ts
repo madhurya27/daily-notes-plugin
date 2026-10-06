@@ -3,6 +3,8 @@ import { SCROLL_IDLE_MS } from "./scroll-anchor";
 
 /** What shows in a frame's place for good, such as a video's thumbnail; null keeps the frame. */
 export type FrameStandIn = (frame: HTMLIFrameElement, src: string) => HTMLElement | null;
+/** What a kept frame is put in, such as a link to its page; null leaves it where it is. */
+export type FrameWrapper = (frame: HTMLIFrameElement, src: string) => HTMLElement | null;
 
 /**
  * Loads a frame's page only once the scroll is still (D-087): on iOS, a frame
@@ -15,7 +17,10 @@ export class FrameDeferral {
     private readonly held = new Map<HTMLIFrameElement, string>();
     private readonly loadOnceStill = debounce(() => this.load(), SCROLL_IDLE_MS, true);
 
-    constructor(private readonly standIn: FrameStandIn) {}
+    constructor(
+        private readonly standIn: FrameStandIn,
+        private readonly wrapper: FrameWrapper
+    ) {}
 
     attach(container: HTMLElement): void {
         this.detach();
@@ -58,6 +63,12 @@ export class FrameDeferral {
         this.held.set(frame, src);
         frame.removeAttribute("src");
         frame.addClass("is-frame-held");
+        // Moved with no page: the move reports it again, and it is passed over.
+        const wrapper = this.wrapper(frame, src);
+        if (wrapper) {
+            frame.replaceWith(wrapper);
+            wrapper.appendChild(frame);
+        }
     }
 
     private load(): void {

@@ -57,3 +57,57 @@ for (const direction of ["up", "down"] as const)
             expect(await phone.glidesPast(direction, 500), `flick ${flick}`).toBe(true);
         }
     });
+
+/** A web page taller than its frame, so it could scroll inside it, in a note deep in the stream. */
+const PAGE = "Pages/Tall page.html";
+const FRAMED = "Journal/2026-09-05.md";
+
+for (const direction of ["up", "down"] as const)
+    test(`a flick ${direction} over a web page in a frame glides on`, async ({ phone }) => {
+        await phone.runAsync(
+            async (page: string, note: string) => {
+                const { vault } = window.app;
+                if (!vault.getFolderByPath("Pages")) await vault.createFolder("Pages");
+                const lines = Array.from(
+                    { length: 200 },
+                    (_, i) => `<p>Line ${i + 1} of a page taller than its frame.</p>`
+                );
+                await vault.create(page, `<!doctype html><body style="font-size: 20px">${lines.join("")}</body>`);
+                const src = vault.adapter.getResourcePath(page);
+                await vault.create(note, `A page:\n\n<iframe src="${src}" width="560" height="1500"></iframe>\n`);
+            },
+            PAGE,
+            FRAMED
+        );
+        try {
+            for (const flick of [1, 2, 3]) {
+                await phone.openStream();
+                await phone.placeAt(`.daily-note-block[data-source-path="${FRAMED}"] iframe`, 300);
+                // The frame loads its page once the stream is still (D-087).
+                await expect
+                    .poll(() =>
+                        phone.run((note: string) => {
+                            const frame = document.querySelector<HTMLIFrameElement>(
+                                `.daily-note-block[data-source-path="${note}"] iframe`
+                            );
+                            const page = frame?.contentDocument?.scrollingElement;
+                            return !!page && page.scrollHeight > page.clientHeight;
+                        }, FRAMED)
+                    )
+                    .toBe(true);
+                expect(await phone.glidesPast(direction, 500), `flick ${flick}`).toBe(true);
+            }
+        } finally {
+            await phone.runAsync(
+                async (...paths: string[]) => {
+                    for (const path of paths) {
+                        const file = window.app.vault.getAbstractFileByPath(path);
+                        if (file) await window.app.vault.delete(file, true);
+                    }
+                },
+                FRAMED,
+                PAGE,
+                "Pages"
+            );
+        }
+    });

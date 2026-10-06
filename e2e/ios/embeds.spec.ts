@@ -85,3 +85,30 @@ test("a Base table's header and summary row stay on it as the stream scrolls pas
         await phone.turn("PORTRAIT");
     }
 });
+
+// A preview, a link to the page (D-098): a touch on the page would scroll it, not the stream.
+test("a web page in a frame shows, and a tap opens it", async ({ phone }) => {
+    const note = "Journal/2026-09-06.md";
+    const link = `.daily-note-block[data-source-path="${note}"] a.daily-note-frame-link`;
+    await phone.runAsync(async (path: string) => {
+        await window.app.vault.create(
+            path,
+            'A page:\n\n<iframe src="https://example.com/" width="560" height="400"></iframe>\n'
+        );
+    }, note);
+    try {
+        await phone.openStream();
+        await phone.placeAt(link, -40);
+        await expect
+            .poll(() => phone.run((sel: string) => document.querySelector(`${sel} iframe`)!.getAttribute("src"), link))
+            .toBe("https://example.com/");
+
+        await phone.tap(link);
+
+        await expect.poll(() => phone.frontApp()).not.toBe(OBSIDIAN);
+    } finally {
+        await phone.runAsync(async (path: string) => {
+            await window.app.vault.delete(window.app.vault.getFileByPath(path)!);
+        }, note);
+    }
+});

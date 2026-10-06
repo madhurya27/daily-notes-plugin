@@ -11,6 +11,7 @@ import { layoutOf, type LayoutMemory } from "./layout-memory";
 import { ScrollBoxGuard } from "./scroll-box-guard";
 import { FrameDeferral } from "./frame-deferral";
 import { youtubeThumbnail } from "../render/video-thumbnails";
+import { webPageLink } from "../render/web-page-links";
 import {
     captureAnchor,
     keepInPlace,
@@ -47,7 +48,7 @@ export class NoteStream {
     private scrollRoot!: HTMLElement;
     private blocks = new StreamBlocks(() => this.scroll.getSentinel());
     private scrollBoxes: ScrollBoxGuard;
-    private readonly frames = new FrameDeferral(youtubeThumbnail);
+    private readonly frames = new FrameDeferral(youtubeThumbnail, webPageLink);
 
     // Serialized: an event interleaving with an in-flight batch would leave
     // state and the service cache disagreeing.
