@@ -23,8 +23,8 @@ D-001.
 
 Surveyed 2026-09 against core and the community directory. **The filter: what
 operates on a _file_ is already solved elsewhere; only what operates on _the
-stream_ is ours** — and only where the worth outweighs the complexity. Ordered
-by priority.
+stream_ is ours**, and only where it is worth its complexity. Ordered by
+priority.
 
 - [ ] On this day — one calendar date across years, a filter over `_sorted`.
       [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review)
@@ -36,12 +36,14 @@ by priority.
 - [ ] Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing
       external reaches inside a view.
 
-Out of scope: random note (core ships it), task rollup (Tasks owns it, and
-read-only cannot check a box), folder/tag modes (dilutes what the plugin is), a
-tag/header filter (search does it), sticky date header (D-012), and, for
-complexity over worth:
+Out of scope:
 
-- Gap markers and month or year dividers — blocks that aren't notes, inside the
+- Random note — core ships it.
+- Task rollup — Tasks owns it, and read-only cannot check a box.
+- Folder or tag modes — dilute what the plugin is.
+- A tag or header filter — search does it.
+- A sticky date header — D-012.
+- Gap markers, month or year dividers — blocks that aren't notes, inside the
   window manager and `StreamBlocks`.
 - Folding a whole note — a height change outside `repin` (ADR 0013).
 - A gutter timeline — the jump modal covers it.
