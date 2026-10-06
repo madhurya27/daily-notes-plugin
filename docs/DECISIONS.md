@@ -1650,3 +1650,26 @@ the page was at its top. The scroll box guard cannot reach a frame's page (ADR
   calendar.
 - Leaving the page live — any frame taller than the screen can trap a flick;
   D-087's "a page that can work in place" gave way to that.
+
+## D-099 — An iOS glitch of a frame is fixed only once a recording shows it (2026-10-05)
+
+**Decision:** no fix for frame-level iOS glitches seen only in a probe or
+predicted. Three stand open:
+
+- A Base's table draws rows blank for a frame as a note above it renders
+  mid-glide: Bases re-picks rows only after the paint. Traced by `src/probe.ts`
+  in commit `d9cdb4f`.
+- An image loading inside the note the pane's top crosses may jump a frame (ADR
+  0013's consequences). Never seen: notes render a screen ahead.
+- D-091's stop may write the scroll mid-touch on a slow drag past the newest
+  note. The harness only flicks.
+
+**Why:** each lasts a frame, mid-motion, and needs a phone recording to confirm
+any fix. The fixes lean on what Bases or iOS do undocumented.
+
+**Rejected:**
+
+- Dispatching `scroll` on each Base near the screen in `repin`'s task —
+  undocumented Bases behavior, and every other listener hears it.
+- Measuring never-measured notes in a hidden probe while still — CPU and
+  battery, and Bases and images size to where they are drawn (ADR 0010).
