@@ -7,12 +7,16 @@ Ordered by priority.
 - [ ] iOS: a Base's table draws some rows blank for a frame as a note above it
       renders mid-glide. Bases draws only rows it measured in view, and
       re-measures after the paint. The probe that traced it is `src/probe.ts` on
-      `experiment/stream-layer`; keep that branch until this is fixed.
+      `experiment/stream-layer`; keep that branch until this is fixed. Bases
+      re-picks rows on a scroll event that contains it or an
+      IntersectionObserver change, both after the paint. Candidate: dispatch
+      `scroll` on each Base near the screen in `repin`'s task. The harness
+      samples before the re-pin, so confirming it needs a recording.
 - [ ] iOS: a change inside the note the pane's top crosses, such as an image
-      loading above the reader, can still jump a frame: pinning holds only the
-      notes around it (ADR 0013). Candidate fix: remember each image's aspect
-      ratio by path once it loads, so a rendered image reserves its height
-      before loading.
+      loading above the reader mid-glide, may jump a frame: pinning holds only
+      the notes around it (ADR 0013). Predicted, never seen: notes render a
+      screen ahead, so their images have usually loaded. Fix only if a phone
+      recording shows it.
 - [ ] iOS: a web page in an iframe may scroll inside its frame, where the scroll
       box guard cannot see; a video player does not. Check that a flick over one
       still glides.
