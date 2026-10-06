@@ -12,9 +12,9 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] Position the README against
       [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor)
       — a live-updating reading feed, not an inline editor.
-- [ ] A phone recording for the README. Desktop Chromium can't fake a phone
-      convincingly; `e2e/ios/` drives a real one, title-bar taps included, and
-      Appium can record its screen.
+- [ ] A phone recording for the README, taken on a real iPhone: `e2e/ios/`
+      drives it, title-bar taps included, and Appium can record its screen. The
+      e2e mobile run is desktop Chromium, which doesn't look like a phone.
 
 ## Features
 
