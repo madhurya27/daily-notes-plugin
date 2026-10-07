@@ -436,10 +436,10 @@ export class Phone {
         await this.touch(await this.reach(selector), 1000);
     }
 
-    /** The web view as the screen shows it, a PNG: the status bar, whose clock ticks, left out. */
+    /** The screen as a PNG, the status bar, whose clock ticks, left out: the web view runs under it. */
     async screenshot(): Promise<string> {
         await this.native();
-        return this.driver.$("-ios class chain:**/XCUIElementTypeWebView").takeScreenshot();
+        return (await this.driver.execute("mobile: viewportScreenshot")) as string;
     }
 
     /** Where `tap` touches for `selector`, once it holds still. */
