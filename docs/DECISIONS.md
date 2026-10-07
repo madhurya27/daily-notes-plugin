@@ -1406,8 +1406,9 @@ in v4 as unneeded; Obsidian ships v3.
   stopped.
 - Override at MathJax's own specificity — its stylesheet comes later and wins.
 
-Updated 2026-10-07: Obsidian 1.14 ships MathJax 4, which sets no `will-change`.
-The rule stays while `minAppVersion` is below 1.14.
+Superseded 2026-10-07: Obsidian 1.14 ships MathJax 4, which sets no
+`will-change`, and the plugin needs 1.14 (D-100). The rule is gone; the WebKit
+check stays, against MathJax bringing the layers back.
 
 ## D-086 — The iPhone harness leaves Auto-Lock to the tester (2026-10-02)
 
@@ -1682,3 +1683,16 @@ before the re-pin.
 - Measuring never-measured notes in a hidden probe while still — ~16 ms a Base,
   1,095 notes in a three-year vault, no `requestIdleCallback` on iOS; Bases and
   images size again where they are drawn (ADR 0010).
+
+## D-100 — Before 1.0 the plugin needs the latest Obsidian (2026-10-07)
+
+**Decision:** until 1.0, `minAppVersion` is the latest public Obsidian, raised
+at the next version bump; the stream drops what only older versions need.
+
+**Why:** nothing is released publicly before 1.0, so no reader runs an older
+Obsidian, and a workaround for one is dead code.
+
+**Rejected:**
+
+- Keeping 1.8.7 — carries rules like D-085's for readers who do not exist.
+- Rewriting `versions.json` for 0.4.0 — it was tagged needing 1.8.7.

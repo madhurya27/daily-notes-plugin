@@ -4,6 +4,7 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] Raise `minAppVersion` to 1.14.4 at the next version bump (D-100).
 - [ ] Since 1.14, mobile layout tests in `stream.spec.ts` (list indent, checkbox
       centering) fail intermittently, only in the full suite.
 - [ ] Check a 1.14 kanban Base for a sideways scroll box on mobile (ADR 0008);

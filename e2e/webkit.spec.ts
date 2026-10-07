@@ -82,8 +82,8 @@ test.describe("in iOS's engine", () => {
         }
     });
 
-    // MathJax 3 puts each equation on a layer of its own, in WebKit only: on
-    // an iPhone, a flick begun on a note holding math then stops dead.
+    // MathJax 3 put each equation on a layer of its own, in WebKit only: on an
+    // iPhone, a flick begun on a note holding math then stopped dead (D-085).
     test("puts no equation on a layer of its own", async ({ obsidian, inWebKit }) => {
         const { page } = obsidian;
         await page.evaluate(async (path) => void (await window.app.vault.create(path, "Effort: $CO_2$.")), MATH_NOTE);
