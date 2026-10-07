@@ -5,11 +5,24 @@
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
 - [ ] Raise `minAppVersion` to 1.14.4 at the next version bump (D-100).
+- [ ] A turn to portrait near the stream's end loses the place by a screen:
+      `e2e/ios/layout.spec.ts:103` fails ~1 in 3 on "the place, on the turn
+      back". Notes still pinned at landscape heights leave the pane too short,
+      the scroll clamps, and the re-pin ~50 ms later finds the place gone
+      (`scroll-anchor.ts`; ADR 0013, 0015). Mid-stream turns hold.
+- [ ] At a 22px text size, "goes to the end of the stream when no older note is
+      left" (`empty-notes.spec.ts`) stops ~15,900px short on mobile. Set the
+      size through localStorage `base-font-size`, not the vault config, which
+      1.14 reads once.
 - [ ] Check a 1.14 kanban Base for a sideways scroll box on mobile (ADR 0008);
       add it to `scroll-boxes.spec.ts`.
 - [ ] At a 22px text size a task's checkbox sits 1.5px off its label's center on
       mobile (`stream.spec.ts`, "centers a task's checkbox"); test it at more
       than 16px.
+- [ ] Cut `test:ios`'s ~5 min where waits prove nothing: time each phase of the
+      slowest tests (flicks over a Base or a frame, 15–22 s each). Start with
+      the fixed 2 s pause before each flick over a Base (`stream.spec.ts`, 12 s
+      a run), which no commit explains; keep three flicks a test (D-085).
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
