@@ -5,10 +5,11 @@
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
 - [ ] Raise `minAppVersion` to 1.14.4 at the next version bump (D-100).
-- [ ] Since 1.14, mobile layout tests in `stream.spec.ts` (list indent, checkbox
-      centering) fail intermittently, only in the full suite.
 - [ ] Check a 1.14 kanban Base for a sideways scroll box on mobile (ADR 0008);
       add it to `scroll-boxes.spec.ts`.
+- [ ] At a 22px text size a task's checkbox sits 1.5px off its label's center on
+      mobile (`stream.spec.ts`, "centers a task's checkbox"); test it at more
+      than 16px.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
