@@ -242,6 +242,32 @@ describe("DailyNotesStreamView — onOpen", () => {
         expect(view.getEphemeralState()).toEqual({});
     });
 
+    // Obsidian resizes a pane at startup, while the vault is still indexing:
+    // the stream has no container yet to read the layout from.
+    it("ignores a resize while the notes are still being listed", async () => {
+        const { view, service } = makeStubbedView();
+        vi.mocked(service.initialize).mockReturnValue(new Promise(() => {}));
+
+        void view.onOpen();
+        await flushPromises();
+
+        view.onResize();
+
+        expect(view["stream"]["window"].onResize).not.toHaveBeenCalled();
+    });
+
+    it("forgets no heights while the notes are still being listed", async () => {
+        const { view, service } = makeStubbedView();
+        vi.mocked(service.initialize).mockReturnValue(new Promise(() => {}));
+
+        void view.onOpen();
+        await flushPromises();
+
+        view.forgetHeights();
+
+        expect(view["stream"]["window"].forgetHeights).not.toHaveBeenCalled();
+    });
+
     it("never opens a stream closed while its notes were being listed", async () => {
         const { view, service } = makeStubbedView();
         let listed!: () => void;
