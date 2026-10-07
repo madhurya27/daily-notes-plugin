@@ -59,9 +59,12 @@ export class ScrollAnchor {
     /** A finger is on the pane: a bounce under it reads the top for a frame, and goes on. */
     private touching = false;
     private readonly settleOnceStill = debounce(() => this.settle(), SCROLL_IDLE_MS, true);
+    /** Every note is loaded: nothing comes below the stream's end to fill what a shift draws past it. */
+    private loadedToEnd!: () => boolean;
 
-    attach(scrollRoot: HTMLElement): void {
+    attach(scrollRoot: HTMLElement, loadedToEnd: () => boolean): void {
         this.detach();
+        this.loadedToEnd = loadedToEnd;
         // iOS WebKit parses overflow-anchor, so CSS.supports says yes, and
         // anchors nothing: a phone's trace showed this never switched on.
         if (!Platform.isIosApp && CSS.supports("overflow-anchor", "auto")) return;
@@ -258,6 +261,8 @@ export class ScrollAnchor {
         const moved = point ? this.movedSince(point, scrolled + drift) - drift : 0;
         if (moved === 0) return false;
         this.owed += moved;
+        // Past the end, the place is lost once handed over all the same.
+        if (this.loadedToEnd()) this.owed = Math.min(this.owed, this.below());
         this.shift(this.stream()!);
         return true;
     }
@@ -306,14 +311,19 @@ export class ScrollAnchor {
         return place;
     }
 
+    /** How far the scroll can go on down. */
+    private below(): number {
+        const root = this.scrollRoot!;
+        return root.scrollHeight - root.clientHeight - root.scrollTop;
+    }
+
     /**
      * The browser pulled the scroll back to the stream's new end: the stream
      * shrank by more than lay below the pane, as below a note jumped to. The
      * reader never scrolls up onto the end.
      */
     private clamped(): boolean {
-        const root = this.scrollRoot!;
-        return root.scrollTop < this.placeScroll && root.scrollHeight - root.clientHeight - root.scrollTop <= 1;
+        return this.scrollRoot!.scrollTop < this.placeScroll && this.below() <= 1;
     }
 
     /**

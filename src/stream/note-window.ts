@@ -97,7 +97,8 @@ export class NoteWindowManager {
         this.reservedFrom = this.reserveKey();
     }
 
-    attach(scrollRoot: HTMLElement): void {
+    /** `loadedToEnd`: every note is loaded, and nothing comes below the stream's end. */
+    attach(scrollRoot: HTMLElement, loadedToEnd: () => boolean): void {
         this.detachObservers();
         this.scrollRoot = scrollRoot;
         this.observeMargins(scrollRoot);
@@ -112,7 +113,7 @@ export class NoteWindowManager {
                 window.keepOnceSettled?.();
             }
         });
-        this.anchor.attach(scrollRoot);
+        this.anchor.attach(scrollRoot, loadedToEnd);
 
         for (const [block, window] of this.windows) {
             this.observe(block);

@@ -78,7 +78,7 @@ export class NoteStream {
         this.scrollRoot = scrollRoot;
         this.blocks.attach(container);
         this.state.reset();
-        this.window.attach(scrollRoot);
+        this.window.attach(scrollRoot, this.loadedToEnd);
         // iOS ends a glide early on a scroll box, or on a frame starting its page;
         // Android is held to the same rules (ADR 0008, D-087).
         if (Platform.isMobile) {
@@ -510,9 +510,11 @@ export class NoteStream {
         this.scroll.attach(this.scrollRoot, this.blocks.el, () => this.loadMoreNotes());
     }
 
+    private readonly loadedToEnd = () => this.state.length >= this.service.length;
+
     /** Frees every note and starts the observers over. */
     private resetWindow(): void {
         this.window.detach();
-        this.window.attach(this.scrollRoot);
+        this.window.attach(this.scrollRoot, this.loadedToEnd);
     }
 }

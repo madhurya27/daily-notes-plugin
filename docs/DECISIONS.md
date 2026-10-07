@@ -1727,3 +1727,16 @@ At the stream's end, a clamp held as a shift drew every note above the pane:
 
 - Reading the place through the shift — at the end, the shift draws nothing in
   the pane to read.
+
+## D-103 — At the stream's end, the anchor owes only what the scroll can take (2026-10-07)
+
+**Decision:** once every note is loaded, `ScrollAnchor` caps what it owes at how
+far the scroll can still go down. A clamp at the end moves the place at once.
+
+**Why:** a shift past the scroll's end draws blank below the stream until the
+scroll is still, and the hand-over clamps it all the same. Short of the end, the
+next batch fills the blank, and the hold keeps the place (ADR 0015).
+
+**Rejected:**
+
+- Capping everywhere — a jump to a note with little below would lose its place.
