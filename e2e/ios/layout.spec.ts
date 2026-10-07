@@ -118,3 +118,41 @@ test("a turn flips a wide Base between cards and a table, and fits the equation 
     expect(Math.abs((await mathTop(phone)) - place), "the place, on the turn back").toBeLessThanOrEqual(REWRAP_PX);
     expect((await drawn(phone)).base).toBe("cards");
 });
+
+/** Sets Obsidian's text size on the phone, or back to the default with null. */
+const setTextSize = (phone: Phone, size: number | null) =>
+    phone.run((size: number | null) => {
+        window.app.saveLocalStorage("base-font-size", size);
+        window.app.updateFontSize();
+    }, size);
+
+/** How far the checkbox of the first task in the pane sits below its words' center. */
+const checkboxOffset = (phone: Phone) =>
+    phone.run(() => {
+        const pane = document.querySelector(".daily-notes-stream-container")!.parentElement!.getBoundingClientRect();
+        const li = [...document.querySelectorAll(".daily-note-content li.task-list-item")].find(
+            (el) => el.getBoundingClientRect().top >= pane.top
+        )!;
+        const box = li.querySelector(":scope > input.task-list-item-checkbox")!;
+        const words = [...li.childNodes].find((node) => node.nodeType === Node.TEXT_NODE && node.textContent!.trim())!;
+        const range = document.createRange();
+        range.selectNodeContents(words);
+        const text = range.getBoundingClientRect();
+        const check = box.getBoundingClientRect();
+        return check.top + check.height / 2 - (text.top + text.height / 2);
+    });
+
+// iOS draws its own system font: Obsidian's fixed nudge left the box 5px high
+// at 28px here, three times what Chromium's phone layout shows (D-104).
+test("centers a task's checkbox on its words at the default and a large text size", async ({ phone }) => {
+    await phone.openStream();
+    try {
+        for (const size of [16, 28]) {
+            await setTextSize(phone, size);
+            await phone.placeAt(".daily-note-content li.task-list-item", -100);
+            expect(Math.abs(await checkboxOffset(phone)), `${size}px`).toBeLessThan(1);
+        }
+    } finally {
+        await setTextSize(phone, null);
+    }
+});
