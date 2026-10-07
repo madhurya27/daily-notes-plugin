@@ -865,6 +865,9 @@ to the note's width (`src/render/wide-equations.ts`).
 - Inline math — it sits in a line of text; shrinking it there would change the
   line's text size mid-sentence.
 
+Updated 2026-10-07: MathJax 4 (Obsidian 1.14) pads the container 2px each side,
+so the equation fits inside the padding.
+
 ## D-053 — The scroll anchor is the element at the pane's top (2026-09-26)
 
 **Decision:** where `ScrollAnchor` runs, it offsets however far the element at
@@ -1402,6 +1405,9 @@ in v4 as unneeded; Obsidian ships v3.
 - Keeping MathJax's fonts in use — the fonts were never dropped; 28 of 54 still
   stopped.
 - Override at MathJax's own specificity — its stylesheet comes later and wins.
+
+Updated 2026-10-07: Obsidian 1.14 ships MathJax 4, which sets no `will-change`.
+The rule stays while `minAppVersion` is below 1.14.
 
 ## D-086 — The iPhone harness leaves Auto-Lock to the tester (2026-10-02)
 

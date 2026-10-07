@@ -565,8 +565,9 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
     zoom: var(--daily-note-equation-zoom, 1);
 }
 
-/* MathJax 3 gives each equation a layer of its own in WebKit, which stops an
-   iOS glide begun on its note (D-085). `.math` outranks MathJax's `:root`. */
+/* MathJax 3, before Obsidian 1.14, gives each equation a layer of its own in
+   WebKit, which stops an iOS glide begun on its note (D-085). `.math` outranks
+   MathJax's `:root`. */
 :is(.daily-note-content, .daily-note-mention-excerpt) .math mjx-container {
     will-change: auto;
 }

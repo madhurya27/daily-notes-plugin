@@ -47,6 +47,16 @@ describe("fitWideEquations", () => {
         expect(zoom(math)).toBe("0.5");
     });
 
+    // MathJax 4 pads a display equation's container 2px each side.
+    it("shrinks an equation to fit inside its container's padding", () => {
+        const math = equation(800);
+        math.parentElement!.style.padding = "4.8px 2px";
+
+        fitWideEquations(content, component, widths);
+
+        expect(zoom(math)).toBe("0.495");
+    });
+
     it("leaves an equation that fits at its own size", () => {
         const math = equation(300);
 

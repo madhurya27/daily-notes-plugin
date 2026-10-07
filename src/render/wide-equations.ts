@@ -15,11 +15,17 @@ export function fitWideEquations(contentEl: HTMLElement, noteComponent: Componen
         for (const math of equations) {
             // Measured at its own size: shrunk, it is exactly as wide as the note.
             math.style.removeProperty("--daily-note-equation-zoom");
-            const room = math.parentElement!.clientWidth;
+            const room = contentWidth(math.parentElement!);
             if (math.offsetWidth > room)
                 math.style.setProperty("--daily-note-equation-zoom", String(room / math.offsetWidth));
         }
     };
     fit();
     widths.watch(contentEl, noteComponent, fit);
+}
+
+/** Inside the padding MathJax 4 gives a display equation's container. */
+function contentWidth(el: HTMLElement): number {
+    const { paddingLeft, paddingRight } = getComputedStyle(el);
+    return el.clientWidth - (parseFloat(paddingLeft) || 0) - (parseFloat(paddingRight) || 0);
 }
