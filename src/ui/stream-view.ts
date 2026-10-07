@@ -190,9 +190,12 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         if (isStreamPlace(place)) void this.stream.restorePlace(place);
     }
 
-    /** Obsidian calls this on a pane resize. */
+    /**
+     * Obsidian calls this on a pane resize, at startup while `onOpen` still
+     * waits for the notes: the stream has no container then to lay out in.
+     */
     onResize(): void {
-        this.stream.onResize();
+        if (this.lifecycle === "open") this.stream.onResize();
     }
 
     async onClose() {
@@ -225,8 +228,9 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.stream.scrollToTop();
     }
 
+    /** Before the stream opens there is nothing to forget: its notes are estimated as they load. */
     forgetHeights(): void {
-        this.stream.forgetHeights();
+        if (this.lifecycle === "open") this.stream.forgetHeights();
     }
 
     refresh(): Promise<void> {
