@@ -17,6 +17,12 @@ type Point = { x: number; y: number; viewport: number };
 /** Where the stream is, as it keeps its place: a note, and its top's offset from the pane's. */
 export type Place = { path: string; offset: number };
 
+/**
+ * How long after the finger lifts a second stroke lands, sent as the first
+ * returns: WebDriverAgent's own cost, measured 540 ms.
+ */
+const LIFT_TO_NEXT_STROKE_MS = 500;
+
 /** How far `placeAt` looks: past the first two batches of the harness's notes, some 20 screens each. */
 const SCREENS = 60;
 
@@ -354,7 +360,8 @@ export class Phone {
             pane.addEventListener("scroll", now(glide.scrolls), { passive: true, signal });
         }, STREAM);
         await this.stroke(direction, 0.7, 60);
-        await new Promise((resolve) => setTimeout(resolve, ms + 100));
+        // Caught `ms` and a little after the lift; too soon, and it fails, never passes.
+        await new Promise((resolve) => setTimeout(resolve, Math.max(0, ms + 100 - LIFT_TO_NEXT_STROKE_MS)));
         // Slow and short: it stops the glide without a flick or a tap of its own.
         await this.stroke(direction, 0.02, 100);
         const [moved, failure] = await this.run((wait: number) => {
