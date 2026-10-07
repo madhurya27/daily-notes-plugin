@@ -609,6 +609,25 @@ export async function scrollThroughStream(container: Locator) {
 }
 
 /**
+ * Runs `body` with Obsidian's text size at `px`, then back to the default.
+ * Since 1.14 the size is per device, in localStorage; the vault's
+ * `baseFontSize` is read only while that is unset.
+ */
+export async function atTextSize(page: Page, px: number, body: () => Promise<void>) {
+    const setTextSize = (size: number | null) =>
+        page.evaluate((size) => {
+            window.app.saveLocalStorage("base-font-size", size);
+            window.app.updateFontSize();
+        }, size);
+    await setTextSize(px);
+    try {
+        await body();
+    } finally {
+        await setTextSize(null);
+    }
+}
+
+/**
  * Chromium stands in for iOS WebKit, which has no scroll anchoring: the stream
  * holds the reader's place itself from the next view opened. Undone by
  * `restoreScrollAnchoring`, since tests share the instance.

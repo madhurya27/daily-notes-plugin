@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, openStream, LAYOUT_VIEWPORT } from "./obsidian";
+import { test, expect, atTextSize, openStream, LAYOUT_VIEWPORT } from "./obsidian";
 
 /** Newer than every seeded note, so it opens the stream. */
 const NOTE = "Notes/2026-03-15.md";
@@ -209,13 +209,7 @@ test.describe("Bases on mobile", () => {
     // the font grows.
     test("fits a tag pill inside its card line at a large font", async ({ obsidian }) => {
         const { page } = obsidian;
-        // Since 1.14 the text size is per device, in localStorage; the vault's
-        // baseFontSize is read only while that is unset.
-        await page.evaluate(() => {
-            window.app.saveLocalStorage("base-font-size", 22);
-            window.app.updateFontSize();
-        });
-        try {
+        await atTextSize(page, 22, async () => {
             await seed(page, [
                 "---",
                 "tags:",
@@ -239,12 +233,7 @@ test.describe("Bases on mobile", () => {
                 return pill - bottom;
             });
             expect(overrun).toBeLessThanOrEqual(0);
-        } finally {
-            await page.evaluate(() => {
-                window.app.saveLocalStorage("base-font-size", null);
-                window.app.updateFontSize();
-            });
-        }
+        });
     });
 
     // Bases fills a view after it is drawn. A note coming back holds its
