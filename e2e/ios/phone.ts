@@ -43,6 +43,9 @@ const OBSIDIANS_SANDBOX_NOTICE =
     "Error while parsing the 'sandbox' attribute: 'allow-presentation' is an invalid sandbox flag.";
 
 export class Phone {
+    /** WebDriverAgent takes up to half a second to answer, more during a glide; it changes only on a turn. */
+    private screen: { width: number; height: number } | undefined;
+
     constructor(private readonly driver: WebdriverIO.Browser) {}
 
     /** Runs `fn` in Obsidian's web view; like Playwright's `evaluate`, it closes over nothing. */
@@ -375,7 +378,7 @@ export class Phone {
     /** A thumb stroke `share` of the screen tall over `duration` ms, centred; returns as the finger lifts. */
     private async stroke(direction: "up" | "down", share: number, duration: number): Promise<void> {
         await this.native();
-        const { width, height } = await this.driver.getWindowSize();
+        const { width, height } = await this.windowSize();
         const [from, to] = direction === "up" ? [0.5 + share / 2, 0.5 - share / 2] : [0.5 - share / 2, 0.5 + share / 2];
         const x = Math.round(width / 2);
         // One command per stroke: within one, WebDriverAgent drags the finger
@@ -393,6 +396,10 @@ export class Phone {
                 ],
             },
         ]);
+    }
+
+    private async windowSize(): Promise<{ width: number; height: number }> {
+        return (this.screen ??= await this.driver.getWindowSize());
     }
 
     /** Fails if iOS holds Obsidian behind Face ID or Touch ID: no touch reaches the app until someone unlocks it. */
@@ -458,7 +465,7 @@ export class Phone {
     private async touch(at: Point, ms: number): Promise<void> {
         await this.native();
         // The web view fills the screen, so a CSS pixel is a point, scaled only if the page is zoomed.
-        const scale = (await this.driver.getWindowSize()).width / at.viewport;
+        const scale = (await this.windowSize()).width / at.viewport;
         await this.driver.performActions([
             {
                 type: "pointer",
@@ -550,6 +557,7 @@ export class Phone {
         const before = await width();
         await this.native();
         await this.driver.setOrientation(orientation);
+        this.screen = undefined;
         await expect.poll(width).not.toBe(before);
         await this.rest();
     }
