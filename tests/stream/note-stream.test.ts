@@ -189,6 +189,16 @@ describe("loading a batch", () => {
         expect(await loadedCount()).toBe(2);
     });
 
+    it("tells the window once every note is loaded", async () => {
+        Object.defineProperty(service, "length", { get: () => 3, configurable: true });
+        const loadedToEnd = noteWindow.attach.mock.calls.at(-1)![1];
+
+        await load(note("2025-01-03"), note("2025-01-02"));
+        expect(loadedToEnd()).toBe(false);
+        await load(note("2025-01-01"));
+        expect(loadedToEnd()).toBe(true);
+    });
+
     it("shows the empty state when the first batch is empty", async () => {
         await load();
         expect(emptyState()).not.toBeNull();

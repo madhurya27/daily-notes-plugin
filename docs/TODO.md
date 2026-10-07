@@ -5,10 +5,6 @@
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
 - [ ] Raise `minAppVersion` to 1.14.4 at the next version bump (D-100).
-- [ ] At the stream's end, `ScrollAnchor` holds a clamp as a shift, drawing the
-      stream above the pane's bottom, blank below, until the scroll is still
-      (seen at a 22px text size in `empty-notes.spec.ts`, D-102). Nothing loads
-      below the end to take it.
 - [ ] Check a 1.14 kanban Base for a sideways scroll box on mobile (ADR 0008);
       add it to `scroll-boxes.spec.ts`.
 - [ ] At a 22px text size a task's checkbox sits 1.5px off its label's center on

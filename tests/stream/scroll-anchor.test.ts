@@ -135,6 +135,9 @@ function makePane(layout: (number | number[])[]) {
     return { pane, content, blocks, resize, add, addBase, turn, movePane };
 }
 
+/** More notes load below the stream's end. */
+const moreBelow = () => false;
+
 describe("ScrollAnchor", () => {
     let anchor: ScrollAnchor;
 
@@ -156,7 +159,7 @@ describe("ScrollAnchor", () => {
     /** Blocks observed and first reported, the way ResizeObserver opens. */
     function watch(heights: (number | number[])[], scrollTop: number) {
         const layout = makePane(heights);
-        anchor.attach(layout.pane);
+        anchor.attach(layout.pane, moreBelow);
         for (const block of layout.blocks) anchor.observe(block);
         observer().resized(...layout.blocks);
         layout.pane.scrollTop = scrollTop;
@@ -354,7 +357,7 @@ describe("ScrollAnchor", () => {
     it("takes a block's first report as its height, not a change", () => {
         const { pane, content, blocks } = makePane([400, 400, 400]);
         pane.scrollTop = 900;
-        anchor.attach(pane);
+        anchor.attach(pane, moreBelow);
         for (const block of blocks) anchor.observe(block);
 
         observer().resized(...blocks);
@@ -536,7 +539,7 @@ describe("ScrollAnchor", () => {
             const { pane, content, blocks, addBase } = makePane([[400], 400]);
             const { base, draw } = addBase(blocks[0]!);
             draw(...Array<number>(10).fill(100));
-            anchor.attach(pane);
+            anchor.attach(pane, moreBelow);
             for (const block of blocks) anchor.observe(block);
             observer().resized(...blocks);
             pane.scrollTop = 900;
@@ -555,7 +558,7 @@ describe("ScrollAnchor", () => {
             const { pane, content, blocks, addBase, turn, resize } = makePane([[400], 400]);
             const { base, draw } = addBase(blocks[0]!);
             const drawn = draw(...Array<number>(10).fill(100));
-            anchor.attach(pane);
+            anchor.attach(pane, moreBelow);
             for (const block of blocks) anchor.observe(block);
             observer().resized(...blocks);
             pane.scrollTop = 900;
@@ -575,7 +578,7 @@ describe("ScrollAnchor", () => {
             const { pane, blocks, addBase, turn, resize } = makePane([[400], 400]);
             const { base, draw } = addBase(blocks[0]!);
             draw(...Array<number>(10).fill(100));
-            anchor.attach(pane);
+            anchor.attach(pane, moreBelow);
             for (const block of blocks) anchor.observe(block);
             observer().resized(...blocks);
             pane.scrollTop = 900;
@@ -598,7 +601,7 @@ describe("ScrollAnchor", () => {
             const { base, draw } = addBase(blocks[0]!);
             const drawn = draw(...Array<number>(10).fill(100));
             add(blocks[0]!, 200);
-            anchor.attach(pane);
+            anchor.attach(pane, moreBelow);
             for (const block of blocks) anchor.observe(block);
             observer().resized(...blocks);
             pane.scrollTop = 1350;
@@ -618,7 +621,7 @@ describe("ScrollAnchor", () => {
             const { pane, blocks, add, addBase } = makePane([[400], 400]);
             const { base, draw, holdAt } = addBase(blocks[0]!);
             draw(...Array<number>(10).fill(100));
-            anchor.attach(pane);
+            anchor.attach(pane, moreBelow);
             for (const block of blocks) anchor.observe(block);
             observer().resized(...blocks);
             pane.scrollTop = 900;
@@ -641,7 +644,7 @@ describe("ScrollAnchor", () => {
             const { pane, blocks, addBase } = makePane([[400], 400]);
             const { base, draw, holdAt } = addBase(blocks[0]!);
             draw(...Array<number>(10).fill(100));
-            anchor.attach(pane);
+            anchor.attach(pane, moreBelow);
             for (const block of blocks) anchor.observe(block);
             observer().resized(...blocks);
             pane.scrollTop = 900;
@@ -657,7 +660,7 @@ describe("ScrollAnchor", () => {
         it("stops hearing a Base once the pane's top leaves it", () => {
             const { pane, blocks, addBase } = makePane([[400], 400]);
             const drawn = addBase(blocks[0]!).draw(...Array<number>(10).fill(100));
-            anchor.attach(pane);
+            anchor.attach(pane, moreBelow);
             for (const block of blocks) anchor.observe(block);
             observer().resized(...blocks);
             pane.scrollTop = 900;
@@ -676,7 +679,7 @@ describe("ScrollAnchor", () => {
             const { pane, blocks, addBase } = makePane([[400], 200]);
             const { base, draw } = addBase(blocks[0]!);
             draw(...Array<number>(10).fill(100));
-            anchor.attach(pane);
+            anchor.attach(pane, moreBelow);
             for (const block of blocks) anchor.observe(block);
             observer().resized(...blocks);
             pane.scrollTop = 900;
@@ -689,11 +692,30 @@ describe("ScrollAnchor", () => {
             expect(base.getBoundingClientRect().top).toBe(-200);
         });
 
+        // At the stream's end nothing loads below to fill what a shift draws
+        // past it: the clamp moves the place at once.
+        it("draws nothing past the stream's end, all of it loaded, when a clamp moves the place", () => {
+            const { pane, content, blocks, addBase } = makePane([[400], 200]);
+            const { draw } = addBase(blocks[0]!);
+            draw(...Array<number>(10).fill(100));
+            anchor.attach(pane, () => true);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            draw(400);
+            pane.scrollTop = pane.scrollHeight - pane.clientHeight;
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(0);
+        });
+
         it("counts a clamp as no scroll of the reader's once the stream grows back mid-reflow", () => {
             const { pane, blocks, addBase, turn } = makePane([[400], 200]);
             const { base, draw } = addBase(blocks[0]!);
             draw(...Array<number>(10).fill(100));
-            anchor.attach(pane);
+            anchor.attach(pane, moreBelow);
             for (const block of blocks) anchor.observe(block);
             observer().resized(...blocks);
             pane.scrollTop = 900;
@@ -812,7 +834,7 @@ describe("ScrollAnchor", () => {
 
         it("has nothing to hold in a pane holding no notes", () => {
             const { pane, content } = makePane([]);
-            anchor.attach(pane);
+            anchor.attach(pane, moreBelow);
 
             anchor.onScroll();
 
@@ -920,7 +942,7 @@ describe("ScrollAnchor", () => {
         const { pane, blocks, resize } = watch([400, 400, 400], 900);
         anchor.fingerDown();
         anchor.detach();
-        anchor.attach(pane);
+        anchor.attach(pane, moreBelow);
         const again = FakeResizeObserver.instances[1]!;
         for (const block of blocks) anchor.observe(block);
         again.resized(...blocks);
@@ -1233,7 +1255,7 @@ describe("ScrollAnchor", () => {
         anchor.detach();
 
         pane.scrollTop = 900;
-        anchor.attach(pane);
+        anchor.attach(pane, moreBelow);
         const again = FakeResizeObserver.instances[1]!;
         for (const block of blocks) anchor.observe(block);
         again.resized(...blocks);
@@ -1249,7 +1271,7 @@ describe("ScrollAnchor", () => {
     it("drops the old watch when attached again", () => {
         const { pane } = watch([400, 400], 0);
 
-        anchor.attach(pane);
+        anchor.attach(pane, moreBelow);
 
         expect(observer().disconnected).toBe(true);
         expect(FakeResizeObserver.instances).toHaveLength(2);
@@ -1269,7 +1291,7 @@ describe("ScrollAnchor", () => {
         vi.stubGlobal("CSS", { supports });
         const { pane, blocks } = makePane([400]);
 
-        anchor.attach(pane);
+        anchor.attach(pane, moreBelow);
         anchor.observe(blocks[0]!);
         anchor.onScroll();
 
@@ -1284,7 +1306,7 @@ describe("ScrollAnchor", () => {
         vi.stubGlobal("CSS", { supports: () => true });
         Platform.isIosApp = true;
         try {
-            anchor.attach(makePane([]).pane);
+            anchor.attach(makePane([]).pane, moreBelow);
         } finally {
             Platform.isIosApp = false;
         }
