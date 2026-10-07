@@ -45,17 +45,20 @@ function makePane(layout: (number | number[])[]) {
         set: (value: number) => (scrollTop = value),
     });
     /** The pane's height, which the anchor looks for text starting in. */
-    const PANE_HEIGHT = 600;
+    let paneHeight = 600;
     /** Where the pane sits in the window: a phone turned hides its status bar. */
     let paneTop = 0;
-    pane.getBoundingClientRect = () => ({ top: paneTop, bottom: paneTop + PANE_HEIGHT }) as DOMRect;
+    pane.getBoundingClientRect = () => ({ top: paneTop, bottom: paneTop + paneHeight }) as DOMRect;
     const movePane = (top: number) => (paneTop = top);
     let width = 400;
     Object.defineProperty(pane, "clientWidth", { configurable: true, get: () => width });
-    /** The pane turned wider, as a phone on its side. */
-    const turn = () => (width = 700);
+    /** The pane turned wider, as a phone on its side; `height` tall, as a phone turned upright. */
+    const turn = (height = paneHeight) => {
+        width = 700;
+        paneHeight = height;
+    };
     const content = pane.createDiv();
-    Object.defineProperty(pane, "clientHeight", { configurable: true, get: () => PANE_HEIGHT });
+    Object.defineProperty(pane, "clientHeight", { configurable: true, get: () => paneHeight });
     Object.defineProperty(pane, "scrollHeight", { configurable: true, get: () => heightOf(content) });
 
     /** A parent is as tall as its children, or the height it is held at. */
@@ -704,6 +707,22 @@ describe("ScrollAnchor", () => {
             observer().resized(blocks[0]!);
 
             expect(base.getBoundingClientRect().top).toBe(-400);
+        });
+
+        // A turn upright makes the pane taller, and the browser clamps the
+        // scroll; the stream may grow back before anything reads it (D-101).
+        it("counts a turn's clamp as no scroll of the reader's when the stream grew back unread", () => {
+            const { pane, content, blocks, resize, turn } = watch([400, 400, 400], 500);
+
+            turn(900);
+            pane.scrollTop = 300;
+            resize(blocks[2]!, 800);
+            observer().resized(blocks[2]!);
+            expect(readerTop(blocks)).toBe(300);
+
+            vi.advanceTimersByTime(SCROLL_IDLE_MS);
+            expect(pane.scrollTop).toBe(500);
+            expect(shift(content)).toBe(0);
         });
 
         // Back restores a place measured against a note's full layout; held,

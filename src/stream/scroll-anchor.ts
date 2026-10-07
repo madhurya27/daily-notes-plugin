@@ -244,6 +244,9 @@ export class ScrollAnchor {
         if (this.scrollRoot!.clientWidth !== this.placeWidth && !this.reflowing) {
             this.reflowing = true;
             this.settleOnceStill();
+            // A turn's scroll is none of the reader's: a pane turned taller clamps
+            // it, and the stream may grow back before the clamp is read (D-101).
+            this.placeScroll = this.scrollRoot!.scrollTop;
         }
         const place = this.reflowing ? this.reflowPlace : this.place;
         const point = [...place].reverse().find(({ el }) => this.scrollRoot!.contains(el));
