@@ -344,8 +344,8 @@ test.describe("empty daily notes", () => {
             await expect.poll(() => offsetOf(page, `Notes/${seededDate(0)}.md`)).toBeCloseTo(0, 0);
         });
 
-        test("goes to the end of the stream when no older note is left", async ({ obsidian }) => {
-            const { page } = obsidian;
+        /** Hides the empty notes at the stream's end with the pane scrolled to it: the pane ends at the stream's new end. */
+        async function hideAtTheEnd(page: Page) {
             for (const path of OLD_EMPTY_NOTES) await write(page, path, EMPTY_TEXT);
             await setHideEmptyNotes(page, false);
             const container = await openStream(page);
@@ -367,6 +367,27 @@ test.describe("empty daily notes", () => {
             await expect
                 .poll(() => pane.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop))
                 .toBeLessThan(1);
+        }
+
+        test("goes to the end of the stream when no older note is left", async ({ obsidian }) => {
+            await hideAtTheEnd(obsidian.page);
+        });
+
+        test("goes to the end of the stream when no older note is left, at a large text size", async ({ obsidian }) => {
+            const { page } = obsidian;
+            // Since 1.14 the text size is per device, in localStorage.
+            await page.evaluate(() => {
+                window.app.saveLocalStorage("base-font-size", 22);
+                window.app.updateFontSize();
+            });
+            try {
+                await hideAtTheEnd(page);
+            } finally {
+                await page.evaluate(() => {
+                    window.app.saveLocalStorage("base-font-size", null);
+                    window.app.updateFontSize();
+                });
+            }
         });
     });
 });
