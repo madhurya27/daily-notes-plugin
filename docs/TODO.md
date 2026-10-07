@@ -19,8 +19,7 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] At a 22px text size a task's checkbox sits 1.5px off its label's center on
       mobile (`stream.spec.ts`, "centers a task's checkbox"); test it at more
       than 16px.
-- [ ] Cut `test:ios`'s ~4.5 min further. Per flick over a Base or a frame:
-      `placeAt` 1.7 s, mostly its `rest()`s; each stroke's `performActions`
+- [ ] Cut `test:ios`'s ~4 min further: each stroke's `performActions` takes
       0.5–0.9 s in WebDriverAgent. Keep three flicks a test (D-085).
 - [ ] `jump.spec.ts`'s flick up from an old date fails some full runs, never
       alone: the text under the thumb jumps ~3,000 px mid-glide, in 5 runs since
