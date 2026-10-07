@@ -663,15 +663,19 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
     cursor: default;
 }
 
-/* `top`: Obsidian nudges the box onto its label's line from
-   `.markdown-preview-view`, a layer the stream never loads — without the same
-   0.2em it rides 3px high.
+/* Centered on its label's words at any text size. Obsidian nudges the box by
+   a fixed 0.2em of its own 13.33px font, and the box grows with the text: it
+   drifts 3px off at 28px on a phone (D-104). `middle` centers the box half an
+   x-height above the baseline; -0.12em of the text lifts it to the words'
+   center, a measure of the font's.
 
    `pointer-events`: the browser toggles this real `<input>` on click, and only
    reading view writes that back. Here the tick is DOM-only and the next
    re-render drops it, so the box shows state without offering to change it. */
 .daily-note-content input.task-list-item-checkbox {
-    top: 0.2em;
+    font-size: inherit;
+    vertical-align: middle;
+    top: -0.12em;
     pointer-events: none;
 }
 

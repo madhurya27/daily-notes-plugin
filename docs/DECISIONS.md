@@ -1740,3 +1740,21 @@ next batch fills the blank, and the hold keeps the place (ADR 0015).
 **Rejected:**
 
 - Capping everywhere — a jump to a note with little below would lose its place.
+
+## D-104 — A task's checkbox centers on its words (2026-10-07)
+
+**Decision:** the box takes the text's font size, `vertical-align: middle`, and
+`top: -0.12em`. Tests hold it within 0.5px of center at 12–28px in Chromium, and
+within 1px at 16px and 28px on an iPhone.
+
+**Why:** Obsidian nudges the box by a fixed 0.2em of its own 13.33px font, and
+the box grows with the text. On an iPhone that left it 1.8px high at 16px and
+5.3px high at 28px; centered, it is within 0.8px. Edit view drifts too, the
+other way.
+
+**Rejected:**
+
+- Matching reading view — copies a drift that grows with the text.
+- `font-size: inherit` alone — scales the nudge, not the centering: desktop then
+  drifts by 1.2–1.9px.
+
