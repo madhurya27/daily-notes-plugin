@@ -1758,3 +1758,23 @@ other way.
 - `font-size: inherit` alone — scales the nudge, not the centering: desktop then
   drifts by 1.2–1.9px.
 
+## D-105 — Note heights are kept to the 1/64 pixel (2026-10-07)
+
+**Decision:** `NoteHeights` keeps a height rounded to 1/64px, the unit browsers
+lay out in, not to whole pixels.
+
+**Why:** a placeholder reserved a whole-pixel height and its note rendered up to
+half a pixel off. The anchor owed the difference, and a scroll up by hand
+settled 1px short of the top. Exact, a note unchanged since it was measured owes
+nothing; an edited one is estimated (ADR 0017), and a changed embed is owed
+whatever it changed, either way. Keeping sizes as measured is the norm: browsers
+add up sub-pixel anchoring adjustments (web-platform-tests'
+`device-pixel-adjustment.html`), and TanStack Virtual keeps
+`getBoundingClientRect()` sizes unrounded.
+
+**Rejected:**
+
+- Whole pixels (`a5c9f52`) — saves ~26KB on a three-year journal's layout
+  memory, of ~160KB, against a 5MB store; no reader sees the difference either
+  way.
+- Loosening the tests to a pixel — keeps the rounding they caught.

@@ -60,11 +60,11 @@ export class NoteHeights {
         return this.changes;
     }
 
-    /** In whole pixels: sub-pixel digits cost a third of what is stored. */
+    /** To the 1/64 pixel the browser lays out in: rounded further, a placeholder is off what renders (D-105). */
     keep(layout: string, path: string, height: number): void {
         const mtime = this.mtimeOf(path);
         if (mtime !== undefined) this.mtimes.set(path, mtime);
-        const px = Math.round(height);
+        const px = Math.round(height * 64) / 64;
         if (this.heightOf(layout, path) !== px) this.table.set(layout, path, px);
     }
 
