@@ -5,11 +5,6 @@
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
 - [ ] Raise `minAppVersion` to 1.14.4 at the next version bump (D-100).
-- [ ] A turn to portrait near the stream's end loses the place by a screen:
-      `e2e/ios/layout.spec.ts:103` fails ~1 in 3 on "the place, on the turn
-      back". Notes still pinned at landscape heights leave the pane too short,
-      the scroll clamps, and the re-pin ~50 ms later finds the place gone
-      (`scroll-anchor.ts`; ADR 0013, 0015). Mid-stream turns hold.
 - [ ] At a 22px text size, "goes to the end of the stream when no older note is
       left" (`empty-notes.spec.ts`) stops ~15,900px short on mobile. Set the
       size through localStorage `base-font-size`, not the vault config, which

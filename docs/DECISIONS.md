@@ -1696,3 +1696,20 @@ Obsidian, and a workaround for one is dead code.
 
 - Keeping 1.8.7 — carries rules like D-085's for readers who do not exist.
 - Rewriting `versions.json` for 0.4.0 — it was tagged needing 1.8.7.
+
+## D-101 — A turn's scroll change is never the reader's (2026-10-07)
+
+**Decision:** once the pane's width changes, `ScrollAnchor` re-reads the scroll
+the place was read at: whatever moved the place since is owed.
+
+**Why:** a turn upright makes the pane taller, and near the stream's end the
+browser clamps the scroll. On a phone, the stream had grown 62px by the time the
+clamp's scroll was read, `clamped()` read false, and the 873px clamp passed for
+the reader's scroll: about one turn in three lost the place.
+
+**Rejected:**
+
+- Drawing the shift first, as ADR 0015 does — the browser clamps before any
+  plugin code runs.
+- A spacer at the stream's end — a second thing to remove at the right moment
+  (ADR 0014).
