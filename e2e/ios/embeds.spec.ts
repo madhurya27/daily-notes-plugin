@@ -107,6 +107,8 @@ test("a web page in a frame shows, and a tap opens it", async ({ phone }) => {
 
         await expect.poll(() => phone.frontApp()).not.toBe(OBSIDIAN);
     } finally {
+        // In the background iOS aborts IndexedDB writes, and Obsidian leaves the rejection unhandled.
+        if ((await phone.frontApp()) !== OBSIDIAN) await phone.returnToObsidian();
         await phone.runAsync(async (path: string) => {
             await window.app.vault.delete(window.app.vault.getFileByPath(path)!);
         }, note);
