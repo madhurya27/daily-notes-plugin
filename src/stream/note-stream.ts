@@ -125,6 +125,14 @@ export class NoteStream {
         this.window.onTouch(target);
     }
 
+    onFingerDown(): void {
+        this.window.onFingerDown();
+    }
+
+    onFingerUp(): void {
+        this.window.onFingerUp();
+    }
+
     /** The reader scrolls the pane themselves. */
     onWheel(): void {
         this.letGoOfCentered();

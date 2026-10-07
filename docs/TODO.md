@@ -21,9 +21,6 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       than 16px.
 - [ ] Cut `test:ios`'s ~4 min further: each stroke's `performActions` takes
       0.5–0.9 s in WebDriverAgent. Keep three flicks a test (D-085).
-- [ ] `jump.spec.ts`'s flick up from an old date fails some full runs, never
-      alone: the text under the thumb jumps ~3,000 px mid-glide, in 5 runs since
-      2026-10-04.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;

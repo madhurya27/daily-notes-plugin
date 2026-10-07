@@ -201,6 +201,14 @@ export class NoteWindowManager {
         if (window) this.releaseHold(window);
     }
 
+    onFingerDown(): void {
+        this.anchor.fingerDown();
+    }
+
+    onFingerUp(): void {
+        this.anchor.fingerUp();
+    }
+
     /** Glides the pane to its top, the newest note. */
     scrollToTop(): void {
         this.anchor.headForTop();

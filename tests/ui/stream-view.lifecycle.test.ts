@@ -140,6 +140,17 @@ describe("DailyNotesStreamView — scroll", () => {
         expect(view["stream"]["window"].onTouch).toHaveBeenCalledWith(touched);
     });
 
+    it("tells the window when a finger goes down and lifts", async () => {
+        const { view } = await makeViewSetup();
+        const window = view["stream"]["window"];
+        const touched = view.contentEl.createDiv();
+        touched.dispatchEvent(new Event("touchstart", { bubbles: true }));
+        expect(window.onFingerDown).toHaveBeenCalledTimes(1);
+        touched.dispatchEvent(new Event("touchend", { bubbles: true }));
+        touched.dispatchEvent(new Event("touchcancel", { bubbles: true }));
+        expect(window.onFingerUp).toHaveBeenCalledTimes(2);
+    });
+
     // A search holds its match until the reader moves the pane.
     it("tells the stream the reader wheeled", async () => {
         const { view } = await makeViewSetup();

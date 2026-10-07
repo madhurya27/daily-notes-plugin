@@ -122,6 +122,8 @@ export function makeStubbedView(app: object = makeApp()) {
         onResize: vi.fn(),
         onScroll: vi.fn(),
         onTouch: vi.fn(),
+        onFingerDown: vi.fn(),
+        onFingerUp: vi.fn(),
         scrollToTop: vi.fn(),
         forgetHeights: vi.fn(),
         layoutChanges: 0,

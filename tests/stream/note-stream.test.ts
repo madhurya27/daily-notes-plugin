@@ -44,6 +44,8 @@ vi.mock("../../src/stream/note-window", () => ({
         forgetHeights = vi.fn();
         onScroll = vi.fn();
         onTouch = vi.fn();
+        onFingerDown = vi.fn();
+        onFingerUp = vi.fn();
         refresh = vi.fn().mockResolvedValue(undefined);
         placed = vi.fn();
         layoutChanges = 0;
@@ -678,6 +680,13 @@ describe("the pane", () => {
         const target = document.createElement("div");
         stream.onTouch(target);
         expect(noteWindow.onTouch).toHaveBeenCalledWith(target);
+    });
+
+    it("passes a finger going down and lifting on to the window", () => {
+        stream.onFingerDown();
+        expect(noteWindow.onFingerDown).toHaveBeenCalled();
+        stream.onFingerUp();
+        expect(noteWindow.onFingerUp).toHaveBeenCalled();
     });
 
     it("stops observing on close", () => {
