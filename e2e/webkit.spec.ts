@@ -5,13 +5,16 @@ import { test, expect } from "./webkit";
 /** A day after the newest seeded note, so the stream opens on it. */
 const MATH_NOTE = "Notes/2026-03-15.md";
 
-/** Whether clearing the page's highlights changes the pixels under the first range of `name`. */
-async function paints(page: Page, name: string): Promise<boolean> {
-    const clip = await page.evaluate((n) => {
-        const [range] = [...CSS.highlights.get(n)!] as Range[];
-        const { x, y, width, height } = range!.getBoundingClientRect();
-        return { x, y, width, height };
-    }, name);
+/** Whether clearing the page's highlights changes the pixels under the `index`th range of `name`. */
+async function paints(page: Page, name: string, index = 0): Promise<boolean> {
+    const clip = await page.evaluate(
+        ([n, i]) => {
+            const range = ([...CSS.highlights.get(n)!] as Range[])[i];
+            const { x, y, width, height } = range!.getBoundingClientRect();
+            return { x, y, width, height };
+        },
+        [name, index] as const
+    );
     const highlighted = await page.screenshot({ clip });
     await page.evaluate(() => CSS.highlights.clear());
     return !highlighted.equals(await page.screenshot({ clip }));
@@ -39,6 +42,15 @@ test.describe("in iOS's engine", () => {
         await search(obsidian.page, "km");
 
         expect(await paints(await inWebKit(), "daily-notes-search-match")).toBe(true);
+    });
+
+    // Obsidian 1.14 renamed the variable the match color read: the first
+    // match is also the current one, painted in a color of its own.
+    test("paints a match that is not the current one", async ({ obsidian, inWebKit }) => {
+        // The second "then" in the newest note's reading list item.
+        await search(obsidian.page, "then");
+
+        expect(await paints(await inWebKit(), "daily-notes-search-match", 1)).toBe(true);
     });
 
     // Nor on text sharing its parent with a block: a list item's own words

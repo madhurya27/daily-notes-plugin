@@ -733,8 +733,9 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
     display: none;
 }
 
+/* The color of ==marked== text. */
 ::highlight(daily-notes-search-match) {
-    background-color: var(--text-highlight-bg);
+    background-color: var(--highlight-background);
 }
 
 ::highlight(daily-notes-search-current) {
