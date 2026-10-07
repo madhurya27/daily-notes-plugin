@@ -1713,3 +1713,17 @@ the reader's scroll: about one turn in three lost the place.
   plugin code runs.
 - A spacer at the stream's end — a second thing to remove at the right moment
   (ADR 0014).
+
+## D-102 — A refresh reads the place once the anchor has handed over (2026-10-07)
+
+**Decision:** `NoteStream.refresh()` has `ScrollAnchor` hand what it owes to the
+scroll before reading the reader's place.
+
+**Why:** while owed, the stream is drawn shifted, not where the scroll puts it.
+At the stream's end, a clamp held as a shift drew every note above the pane:
+`place()` found none, and hiding empty notes there reloaded at the top.
+
+**Rejected:**
+
+- Reading the place through the shift — at the end, the shift draws nothing in
+  the pane to read.

@@ -261,6 +261,11 @@ export class NoteWindowManager {
         this.anchor.placed();
     }
 
+    /** What the anchor owes goes to the scroll now, and the notes are drawn where it puts them. */
+    handOver(): void {
+        this.anchor.handOver();
+    }
+
     /**
      * Rebuilds a rendered block's content. An unloaded one renders on re-entry,
      * and meanwhile is estimated afresh once the scroll is still: the edit took

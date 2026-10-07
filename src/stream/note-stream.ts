@@ -412,6 +412,8 @@ export class NoteStream {
      */
     refresh(): Promise<void> {
         return this.enqueue(async () => {
+            // Drawn shifted, the notes are not where the scroll puts them.
+            this.window.handOver();
             const place = this.place();
             const date = place && this.service.dates()[this.service.indexOf(place.path)];
             if (!(await this.service.refreshIfSettingsChanged())) return this.rerenderAll();
