@@ -47,8 +47,9 @@ function holdMatches(phone: Phone): Promise<number> {
 
 /** Whether taking a held range out of the `from` highlights changes the screen; it goes back after. */
 async function paints(phone: Phone, which: number | "current", from: string[]): Promise<boolean> {
-    const lift = (put: boolean) =>
-        phone.run(
+    // A shot can show the frame before a change; a wait too short fails the test, never passes it.
+    const lift = async (put: boolean) => {
+        await phone.run(
             (which: number | "current", from: string[], put: boolean) => {
                 const { held } = window as unknown as { held: Held };
                 const range = which === "current" ? held.current : held.shown[which]!;
@@ -58,6 +59,8 @@ async function paints(phone: Phone, which: number | "current", from: string[]): 
             from,
             put
         );
+        await new Promise((settle) => setTimeout(settle, 250));
+    };
     const before = await phone.screenshot();
     await lift(false);
     const after = await phone.screenshot();

@@ -9,10 +9,9 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       add it to `scroll-boxes.spec.ts`.
 - [ ] On an iPhone at a 28px text size, a task's wrapped line starts ~11px right
       of its first; unchecked against reading view.
-- [ ] `e2e/ios/embeds.spec.ts`, "a web page in a frame shows", fails ~2 in 3 on
-      an `AbortError` in the console, with or without the change under test.
-- [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed once on a
-      Search tap that opened no bar; it passed 6 reruns.
+- [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
+      ~110 runs: once a Search tap opened no bar, once the bar opened but no
+      match was marked current. Neither came back in 50 cold starts.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
