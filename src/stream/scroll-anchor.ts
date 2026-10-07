@@ -56,6 +56,8 @@ export class ScrollAnchor {
     private headedForTop = false;
     /** The scroll went past the top: iOS bounces a glide that runs out of scroll there. */
     private bouncing = false;
+    /** A finger is on the pane: a bounce under it reads the top for a frame, and goes on. */
+    private touching = false;
     private readonly settleOnceStill = debounce(() => this.settle(), SCROLL_IDLE_MS, true);
 
     attach(scrollRoot: HTMLElement): void {
@@ -129,6 +131,16 @@ export class ScrollAnchor {
         this.settleOnceStill();
     }
 
+    fingerDown(): void {
+        this.touching = true;
+    }
+
+    /** A finger lifted past the top dragged the stream back: what follows is no bounce, and may be a glide. */
+    fingerUp(): void {
+        this.touching = false;
+        if (this.scrollRoot && this.scrollRoot.scrollTop >= 0) this.bouncing = false;
+    }
+
     /** The scroll is still now: what is owed goes to it at once, not once still again. */
     handOver(): void {
         if (!this.scrollRoot) return;
@@ -139,7 +151,8 @@ export class ScrollAnchor {
     /**
      * A scroll moves the place, and puts off the hand-over until it stops. A
      * bounce at the top ends a glide: handed over then, not once still, a flick
-     * meanwhile finds room above. Mid-bounce, iOS undoes a write. A glide
+     * meanwhile finds room above. Mid-bounce, iOS undoes a write, a finger's
+     * bounce included: it ends once the finger lifts. A glide
      * about to bring the stream's top, drawn lower than its scroll, into the
      * pane stops at it, short of the blank above.
      */
@@ -149,8 +162,8 @@ export class ScrollAnchor {
         // step. A clamp to the stream's end is none.
         const moved = this.clamped() ? 0 : this.placeScroll - this.scrollRoot.scrollTop;
         this.hold();
-        const bounced = this.bouncing && this.scrollRoot.scrollTop >= 0;
-        this.bouncing = this.scrollRoot.scrollTop < 0;
+        const bounced = this.bouncing && this.scrollRoot.scrollTop >= 0 && !this.touching;
+        this.bouncing = this.scrollRoot.scrollTop < 0 || (this.bouncing && this.touching);
         if (this.owed !== 0 && bounced) this.handOver();
         else if (this.owed !== 0 && this.topDueInView(moved)) this.stopGlide();
         else if (this.owed !== 0) this.settleOnceStill();
@@ -209,6 +222,7 @@ export class ScrollAnchor {
         this.pins.clear();
         this.drawnBase = null;
         this.bouncing = false;
+        this.touching = false;
         this.place = [];
         this.scrollRoot?.removeClass("is-scroll-anchored");
         this.scrollRoot = null;

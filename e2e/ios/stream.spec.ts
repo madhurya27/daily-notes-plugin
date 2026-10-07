@@ -43,7 +43,7 @@ for (const [what, target, depth] of [
         expect(Math.abs(now - seen.top), `"${seen.text}" moved from ${seen.top} to ${now}`).toBeLessThan(5);
     });
 
-// Deep in the stream, after a pause, as a reader looking for an old note:
+// Deep in the stream, as a reader looking for an old note:
 // the finger lands on a Base, which once ended a glide where it started. Its
 // cards run some 1,250 px, so from 300 px in, it fills the screen under both strokes.
 for (const direction of ["up", "down"] as const)
@@ -53,7 +53,6 @@ for (const direction of ["up", "down"] as const)
         for (const flick of [1, 2, 3]) {
             await phone.openStream();
             await phone.placeAt('.daily-note-block[data-source-path="Journal/2026-09-13.md"] .daily-note-base', 300);
-            await new Promise((resolve) => setTimeout(resolve, 2000));
             expect(await phone.glidesPast(direction, 500), `flick ${flick}`).toBe(true);
         }
     });

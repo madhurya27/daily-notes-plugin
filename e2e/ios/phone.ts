@@ -17,6 +17,12 @@ type Point = { x: number; y: number; viewport: number };
 /** Where the stream is, as it keeps its place: a note, and its top's offset from the pane's. */
 export type Place = { path: string; offset: number };
 
+/**
+ * How long after the finger lifts a second stroke lands, sent as the first
+ * returns: WebDriverAgent's own cost, measured 540 ms.
+ */
+const LIFT_TO_NEXT_STROKE_MS = 500;
+
 /** How far `placeAt` looks: past the first two batches of the harness's notes, some 20 screens each. */
 const SCREENS = 60;
 
@@ -43,6 +49,9 @@ const OBSIDIANS_SANDBOX_NOTICE =
     "Error while parsing the 'sandbox' attribute: 'allow-presentation' is an invalid sandbox flag.";
 
 export class Phone {
+    /** WebDriverAgent takes up to half a second to answer, more during a glide; it changes only on a turn. */
+    private screen: { width: number; height: number } | undefined;
+
     constructor(private readonly driver: WebdriverIO.Browser) {}
 
     /** Runs `fn` in Obsidian's web view; like Playwright's `evaluate`, it closes over nothing. */
@@ -351,7 +360,8 @@ export class Phone {
             pane.addEventListener("scroll", now(glide.scrolls), { passive: true, signal });
         }, STREAM);
         await this.stroke(direction, 0.7, 60);
-        await new Promise((resolve) => setTimeout(resolve, ms + 100));
+        // Caught `ms` and a little after the lift; too soon, and it fails, never passes.
+        await new Promise((resolve) => setTimeout(resolve, Math.max(0, ms + 100 - LIFT_TO_NEXT_STROKE_MS)));
         // Slow and short: it stops the glide without a flick or a tap of its own.
         await this.stroke(direction, 0.02, 100);
         const [moved, failure] = await this.run((wait: number) => {
@@ -375,7 +385,7 @@ export class Phone {
     /** A thumb stroke `share` of the screen tall over `duration` ms, centred; returns as the finger lifts. */
     private async stroke(direction: "up" | "down", share: number, duration: number): Promise<void> {
         await this.native();
-        const { width, height } = await this.driver.getWindowSize();
+        const { width, height } = await this.windowSize();
         const [from, to] = direction === "up" ? [0.5 + share / 2, 0.5 - share / 2] : [0.5 - share / 2, 0.5 + share / 2];
         const x = Math.round(width / 2);
         // One command per stroke: within one, WebDriverAgent drags the finger
@@ -393,6 +403,10 @@ export class Phone {
                 ],
             },
         ]);
+    }
+
+    private async windowSize(): Promise<{ width: number; height: number }> {
+        return (this.screen ??= await this.driver.getWindowSize());
     }
 
     /** Fails if iOS holds Obsidian behind Face ID or Touch ID: no touch reaches the app until someone unlocks it. */
@@ -458,7 +472,7 @@ export class Phone {
     private async touch(at: Point, ms: number): Promise<void> {
         await this.native();
         // The web view fills the screen, so a CSS pixel is a point, scaled only if the page is zoomed.
-        const scale = (await this.driver.getWindowSize()).width / at.viewport;
+        const scale = (await this.windowSize()).width / at.viewport;
         await this.driver.performActions([
             {
                 type: "pointer",
@@ -550,6 +564,7 @@ export class Phone {
         const before = await width();
         await this.native();
         await this.driver.setOrientation(orientation);
+        this.screen = undefined;
         await expect.poll(width).not.toBe(before);
         await this.rest();
     }
@@ -589,16 +604,18 @@ export class Phone {
                     const top = (el: Element) => el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
                     const el = [...stream.querySelectorAll(t)].find((e) => top(e) + pane.scrollTop > pane.clientHeight);
                     const off = el ? top(el) + d : null;
-                    pane.scrollTop += off ?? pane.clientHeight;
+                    if (off === null || Math.abs(off) > 1) pane.scrollTop += off ?? pane.clientHeight;
                     return off;
                 },
                 STREAM,
                 target,
                 depth
             );
+            // Already there, from a step at rest: nothing moved, so nothing to wait out.
+            if (off !== null && Math.abs(off) <= 1) return;
             await this.rest();
             // Or as near as the pane scrolls: a target near the stream's end cannot reach its top.
-            if (off !== null && (Math.abs(off) <= 1 || (await this.atEnd()))) return;
+            if (off !== null && (await this.atEnd())) return;
         }
         throw new Error(`Could not hold the pane's top at ${target} in ${SCREENS} screens.`);
     }

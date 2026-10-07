@@ -530,6 +530,20 @@ describe("NoteWindowManager holds a rendered note until it settles", () => {
         expect(heldHeight(block)).toBe("");
     });
 
+    // A finger on a bounce at the top holds the bounce on: the anchor hands
+    // over only once it lifts.
+    it("tells the anchor when a finger goes down and lifts", () => {
+        const { manager } = makeManager();
+        const anchor = manager["anchor"];
+        const down = vi.spyOn(anchor, "fingerDown");
+        const up = vi.spyOn(anchor, "fingerUp");
+
+        manager.onFingerDown();
+        expect(down).toHaveBeenCalled();
+        manager.onFingerUp();
+        expect(up).toHaveBeenCalled();
+    });
+
     it("keeps holding through a touch elsewhere", async () => {
         const { manager, block } = await renderRemembering(812);
 

@@ -851,6 +851,78 @@ describe("ScrollAnchor", () => {
         expect(vi.getTimerCount()).toBe(0);
     });
 
+    // A finger landing mid-bounce reads 0 for a frame, then iOS draws the
+    // bounce on under it: a write then is undone, and the debt went with it.
+    it("holds the debt through a finger on a bounce, handing it over as the bounce ends", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+        pane.scrollTop = -120;
+        anchor.onScroll();
+
+        anchor.fingerDown();
+        pane.scrollTop = 0;
+        anchor.onScroll();
+        pane.scrollTop = -90;
+        anchor.onScroll();
+        anchor.fingerUp();
+
+        expect(pane.scrollTop).toBe(-90);
+        expect(shift(content)).toBe(-900);
+        pane.scrollTop = 0;
+        anchor.onScroll();
+        expect(pane.scrollTop).toBe(900);
+        expect(shift(content)).toBe(0);
+    });
+
+    // The finger dragged the stream back into view: what follows may be a
+    // glide, which a write would end.
+    it("leaves the hand-over to the rest once a finger lifts from a bounce past the top", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+        pane.scrollTop = -120;
+        anchor.onScroll();
+
+        anchor.fingerDown();
+        pane.scrollTop = 40;
+        anchor.onScroll();
+        anchor.fingerUp();
+        pane.scrollTop = 60;
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(60);
+        expect(shift(content)).toBe(-900);
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+        expect(pane.scrollTop).toBe(960);
+    });
+
+    it("forgets a finger on detach", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400], 900);
+        anchor.fingerDown();
+        anchor.detach();
+        anchor.attach(pane);
+        const again = FakeResizeObserver.instances[1]!;
+        for (const block of blocks) anchor.observe(block);
+        again.resized(...blocks);
+        resize(blocks[0]!, 1300);
+        again.resized(blocks[0]!);
+
+        pane.scrollTop = -120;
+        anchor.onScroll();
+        pane.scrollTop = 0;
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(900);
+    });
+
+    it("ignores a finger before it is attached", () => {
+        expect(() => {
+            anchor.fingerDown();
+            anchor.fingerUp();
+        }).not.toThrow();
+    });
+
     /** A glide up, `step` px a frame, until `until` or the anchor freezes it: the scroll it froze at. */
     function glideUp(pane: HTMLElement, step: number, until: number): number | null {
         for (let top = pane.scrollTop - step; top >= until; top -= step) {
