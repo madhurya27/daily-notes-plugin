@@ -148,9 +148,9 @@ test.describe("tapping the header title", () => {
                 }
 
                 // Still there once the anchor's hand-over, due when the scroll is still, has landed.
-                // Heights are remembered in whole pixels: what is owed rounds to less than one.
+                // Heights are remembered as laid out, so nothing is owed for them (D-105).
                 await page.waitForTimeout(500);
-                expect(await pane(container).evaluate((el) => el.scrollTop)).toBeLessThan(1);
+                expect(await pane(container).evaluate((el) => el.scrollTop)).toBe(0);
                 expect(await newestOffset(container)).toBeGreaterThanOrEqual(0);
             });
         });

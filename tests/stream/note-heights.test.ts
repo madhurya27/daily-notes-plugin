@@ -12,14 +12,16 @@ describe("NoteHeights", () => {
         expect(heights.heightOf("600:16px", "b.md")).toBeUndefined();
     });
 
-    // Sub-pixel digits cost a third of an entry; half a pixel is nothing to reserve.
-    it("keeps a height in whole pixels", () => {
+    // Rounded to whole pixels, a placeholder is up to half a pixel off, and a
+    // scroll handed that owes a pixel short of the top (D-105). Layout is in
+    // 1/64ths: that keeps all of it, and a jitter finer than that changes nothing.
+    it("keeps a height to the 1/64 pixel the browser lays out in", () => {
         const changed = vi.fn();
         const heights = new NoteHeights(changed);
-        heights.keep("600:16px", "a.md", 933.8515625);
-        heights.keep("600:16px", "a.md", 934.2);
+        heights.keep("600:16px", "a.md", 933.84375);
+        heights.keep("600:16px", "a.md", 933.84376);
 
-        expect(heights.heightOf("600:16px", "a.md")).toBe(934);
+        expect(heights.heightOf("600:16px", "a.md")).toBe(933.84375);
         expect(changed).toHaveBeenCalledOnce();
     });
 
