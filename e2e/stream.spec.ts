@@ -527,6 +527,52 @@ test.describe("daily notes stream in real Obsidian", () => {
                 expect(after).toBeCloseTo(before, 0);
             });
 
+            // Nothing loads below the stream's end to fill what a shift there
+            // draws past it: a note shrinking there moves the place at once.
+            test("draws nothing past the stream's end when the last note shrinks", async ({ obsidian }) => {
+                const { page } = obsidian;
+                const container = await openUnanchored(page);
+                const blocks = container.locator(".daily-note-block");
+                await blocks.last().scrollIntoViewIfNeeded();
+                await expect(blocks).toHaveCount(SEEDED_DAYS);
+                const last = blocks.last();
+                await last.scrollIntoViewIfNeeded();
+                await expect(last).not.toHaveClass(/is-unloaded/);
+                // Taller than the pane, so the pane's top is inside the note as it shrinks.
+                await last.evaluate((el) => {
+                    const tail = el.querySelector(".daily-note-content")!.appendChild(document.createElement("div"));
+                    tail.dataset.e2eTail = "";
+                    tail.style.height = "2000px";
+                });
+                const pane = container.locator("xpath=..");
+                // At the end, and still: the note re-pins at its new height a report later.
+                await expect
+                    .poll(async () => {
+                        await pane.evaluate((el) => (el.scrollTop = el.scrollHeight));
+                        await page.waitForTimeout(400);
+                        return pane.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop);
+                    })
+                    .toBeLessThanOrEqual(1);
+                await expect(container).not.toHaveClass(/is-scroll-shifted/);
+
+                // How far the pane's bottom shows past the stream's end, beyond the pane's own padding.
+                const blank = await pane.evaluate(async (el) => {
+                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    const stream = el.querySelector(".daily-notes-stream-container")!;
+                    const past = () => el.getBoundingClientRect().bottom - stream.getBoundingClientRect().bottom;
+                    const padding = past();
+                    el.querySelector<HTMLElement>("[data-e2e-tail]")!.style.height = "1000px";
+                    let worst = 0;
+                    for (let i = 0; i < 20; i++) {
+                        await frame();
+                        worst = Math.max(worst, past() - padding);
+                    }
+                    return worst;
+                });
+
+                expect(blank).toBeLessThanOrEqual(1);
+            });
+
             /** A flick upward, frame by frame, until a note above has rendered, then on a little. */
             const GLIDE_STEP_PX = 30;
             const GLIDE_STEPS_AFTER_RENDER = 10;
