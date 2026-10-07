@@ -4,6 +4,11 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] Raise `minAppVersion` to 1.14.4 at the next version bump (D-100).
+- [ ] Since 1.14, mobile layout tests in `stream.spec.ts` (list indent, checkbox
+      centering) fail intermittently, only in the full suite.
+- [ ] Check a 1.14 kanban Base for a sideways scroll box on mobile (ADR 0008);
+      add it to `scroll-boxes.spec.ts`.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
@@ -15,6 +20,8 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] A phone recording for the README, taken on a real iPhone: `e2e/ios/`
       drives it, title-bar taps included, and Appium can record its screen. The
       e2e mobile run is desktop Chromium, which doesn't look like a phone.
+- [ ] Group the settings in `SettingGroup` cards, rejected in D-078 for needing
+      1.11; open once `minAppVersion` is raised (D-100).
 
 ## Features
 

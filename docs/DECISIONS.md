@@ -865,6 +865,9 @@ to the note's width (`src/render/wide-equations.ts`).
 - Inline math — it sits in a line of text; shrinking it there would change the
   line's text size mid-sentence.
 
+Updated 2026-10-07: MathJax 4 (Obsidian 1.14) pads the container 2px each side,
+so the equation fits inside the padding.
+
 ## D-053 — The scroll anchor is the element at the pane's top (2026-09-26)
 
 **Decision:** where `ScrollAnchor` runs, it offsets however far the element at
@@ -1403,6 +1406,10 @@ in v4 as unneeded; Obsidian ships v3.
   stopped.
 - Override at MathJax's own specificity — its stylesheet comes later and wins.
 
+Superseded 2026-10-07: Obsidian 1.14 ships MathJax 4, which sets no
+`will-change`, and the plugin needs 1.14 (D-100). The rule is gone; the WebKit
+check stays, against MathJax bringing the layers back.
+
 ## D-086 — The iPhone harness leaves Auto-Lock to the tester (2026-10-02)
 
 **Decision:** `test:ios` changes no setting on the phone. `docs/TESTING.md` says
@@ -1676,3 +1683,16 @@ before the re-pin.
 - Measuring never-measured notes in a hidden probe while still — ~16 ms a Base,
   1,095 notes in a three-year vault, no `requestIdleCallback` on iOS; Bases and
   images size again where they are drawn (ADR 0010).
+
+## D-100 — Before 1.0 the plugin needs the latest Obsidian (2026-10-07)
+
+**Decision:** until 1.0, `minAppVersion` is the latest public Obsidian, raised
+at the next version bump; the stream drops what only older versions need.
+
+**Why:** nothing is released publicly before 1.0, so no reader runs an older
+Obsidian, and a workaround for one is dead code.
+
+**Rejected:**
+
+- Keeping 1.8.7 — carries rules like D-085's for readers who do not exist.
+- Rewriting `versions.json` for 0.4.0 — it was tagged needing 1.8.7.
