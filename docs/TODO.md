@@ -19,10 +19,12 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] At a 22px text size a task's checkbox sits 1.5px off its label's center on
       mobile (`stream.spec.ts`, "centers a task's checkbox"); test it at more
       than 16px.
-- [ ] Cut `test:ios`'s ~5 min where waits prove nothing: time each phase of the
-      slowest tests (flicks over a Base or a frame, 15–22 s each). Start with
-      the fixed 2 s pause before each flick over a Base (`stream.spec.ts`, 12 s
-      a run), which no commit explains; keep three flicks a test (D-085).
+- [ ] Cut `test:ios`'s ~4.5 min further. Per flick over a Base or a frame:
+      `placeAt` 1.7 s, mostly its `rest()`s; each stroke's `performActions`
+      0.5–0.9 s in WebDriverAgent. Keep three flicks a test (D-085).
+- [ ] `jump.spec.ts`'s flick up from an old date fails some full runs, never
+      alone: the text under the thumb jumps ~3,000 px mid-glide, in 5 runs since
+      2026-10-04.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
