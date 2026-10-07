@@ -48,6 +48,7 @@ vi.mock("../../src/stream/note-window", () => ({
         onFingerUp = vi.fn();
         refresh = vi.fn().mockResolvedValue(undefined);
         placed = vi.fn();
+        handOver = vi.fn();
         layoutChanges = 0;
         memory: unknown;
         add = vi.fn((file: { path: string }) => placeholder(file.path));
@@ -1251,6 +1252,21 @@ describe("the stream's place", () => {
         it("returns to the note it was at", async () => {
             hide(notes[20]!);
             rebuildsAt(notes[5]!);
+
+            await stream.refresh();
+
+            expect(pane.scrollTop).toBe(3150);
+        });
+
+        // Drawn shifted, the notes may all sit above the pane until the scroll
+        // takes what the anchor owes.
+        it("reads the place once the scroll holds what the anchor owed", async () => {
+            hide(notes[20]!);
+            rebuildsAt(notes[5]!);
+            const block = stream.blockOf(notes[5]!)!;
+            const settled = block.getBoundingClientRect;
+            block.getBoundingClientRect = () => ({ top: -1500, bottom: -960 }) as DOMRect;
+            noteWindow.handOver.mockImplementation(() => (block.getBoundingClientRect = settled));
 
             await stream.refresh();
 

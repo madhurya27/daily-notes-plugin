@@ -1793,6 +1793,16 @@ describe("NoteWindowManager scroll anchoring", () => {
         placed.mockRestore();
     });
 
+    it("has the anchor hand what it owes to the scroll", () => {
+        const handOver = vi.spyOn(ScrollAnchor.prototype, "handOver");
+        const { manager } = makeManager();
+
+        manager.handOver();
+
+        expect(handOver).toHaveBeenCalledOnce();
+        handOver.mockRestore();
+    });
+
     // Held at its height, a note hides a change inside it from a watch on it.
     it("has the anchor watch what a note rendered while it is rendered", async () => {
         const observeContent = vi.spyOn(ScrollAnchor.prototype, "observeContent");
