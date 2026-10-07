@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import {
     test,
     expect,
+    atTextSize,
     openStream,
     scrollThroughStream,
     seededDate,
@@ -375,19 +376,7 @@ test.describe("empty daily notes", () => {
 
         test("goes to the end of the stream when no older note is left, at a large text size", async ({ obsidian }) => {
             const { page } = obsidian;
-            // Since 1.14 the text size is per device, in localStorage.
-            await page.evaluate(() => {
-                window.app.saveLocalStorage("base-font-size", 22);
-                window.app.updateFontSize();
-            });
-            try {
-                await hideAtTheEnd(page);
-            } finally {
-                await page.evaluate(() => {
-                    window.app.saveLocalStorage("base-font-size", null);
-                    window.app.updateFontSize();
-                });
-            }
+            await atTextSize(page, 22, () => hideAtTheEnd(page));
         });
     });
 });

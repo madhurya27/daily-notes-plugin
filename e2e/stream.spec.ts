@@ -2,6 +2,7 @@ import type { Locator } from "@playwright/test";
 import {
     test,
     expect,
+    atTextSize,
     openStream,
     closeSearchPanes,
     restoreScrollAnchoring,
@@ -149,26 +150,27 @@ test.describe("daily notes stream in real Obsidian", () => {
         }
     });
 
-    test("centers a task's checkbox on its label", async ({ obsidian }) => {
-        const { page } = obsidian;
-        const container = await openStream(page);
-        const task = container.locator(".daily-note-content li.task-list-item", { hasText: "Parent task" }).first();
-        await expect(task).toBeVisible();
-
-        // Obsidian nudges the checkbox down from `.markdown-preview-view`, a
-        // class the stream does not carry: without a rule of our own the box
-        // rides visibly above the words beside it.
-        const offset = await task.evaluate((li) => {
-            const box = li.querySelector(":scope > input.task-list-item-checkbox")!;
-            const range = document.createRange();
-            range.selectNodeContents(li.querySelector(":scope > .daily-note-text-run")!);
-            const text = range.getBoundingClientRect();
-            const check = box.getBoundingClientRect();
-            return check.top + check.height / 2 - (text.top + text.height / 2);
+    // Obsidian nudges the box by a fixed 0.2em of its own 13.33px font: the
+    // box grows with the text and the nudge does not, so it drifts off center
+    // at other sizes, by 3px at 28px on a phone (D-104).
+    for (const size of [12, 16, 22, 28]) {
+        test(`centers a task's checkbox on its label at a ${size}px text size`, async ({ obsidian }) => {
+            const { page } = obsidian;
+            await atTextSize(page, size, async () => {
+                const container = await openStream(page);
+                const task = container.locator(".daily-note-content li.task-list-item", { hasText: "Parent task" });
+                const offset = await task.first().evaluate((li) => {
+                    const box = li.querySelector(":scope > input.task-list-item-checkbox")!;
+                    const range = document.createRange();
+                    range.selectNodeContents(li.querySelector(":scope > .daily-note-text-run")!);
+                    const text = range.getBoundingClientRect();
+                    const check = box.getBoundingClientRect();
+                    return check.top + check.height / 2 - (text.top + text.height / 2);
+                });
+                expect(Math.abs(offset)).toBeLessThan(0.5);
+            });
         });
-
-        expect(Math.abs(offset)).toBeLessThan(1);
-    });
+    }
 
     test("ignores a click on a task checkbox", async ({ obsidian }) => {
         const { page } = obsidian;
