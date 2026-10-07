@@ -19,8 +19,6 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] At a 22px text size a task's checkbox sits 1.5px off its label's center on
       mobile (`stream.spec.ts`, "centers a task's checkbox"); test it at more
       than 16px.
-- [ ] Cut `test:ios`'s ~4 min further: each stroke's `performActions` takes
-      0.5–0.9 s in WebDriverAgent. Keep three flicks a test (D-085).
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
