@@ -597,16 +597,18 @@ export class Phone {
                     const top = (el: Element) => el.getBoundingClientRect().top - pane.getBoundingClientRect().top;
                     const el = [...stream.querySelectorAll(t)].find((e) => top(e) + pane.scrollTop > pane.clientHeight);
                     const off = el ? top(el) + d : null;
-                    pane.scrollTop += off ?? pane.clientHeight;
+                    if (off === null || Math.abs(off) > 1) pane.scrollTop += off ?? pane.clientHeight;
                     return off;
                 },
                 STREAM,
                 target,
                 depth
             );
+            // Already there, from a step at rest: nothing moved, so nothing to wait out.
+            if (off !== null && Math.abs(off) <= 1) return;
             await this.rest();
             // Or as near as the pane scrolls: a target near the stream's end cannot reach its top.
-            if (off !== null && (Math.abs(off) <= 1 || (await this.atEnd()))) return;
+            if (off !== null && (await this.atEnd())) return;
         }
         throw new Error(`Could not hold the pane's top at ${target} in ${SCREENS} screens.`);
     }
