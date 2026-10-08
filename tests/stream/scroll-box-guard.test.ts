@@ -197,6 +197,19 @@ describe("ScrollBoxGuard Bases", () => {
         expect(laidOut).toHaveBeenCalledExactlyOnceWith(view);
     });
 
+    // Bases sets a kanban board's width on its container.
+    it("reports a Base when its kanban board's width changes", async () => {
+        const { view } = await mounted();
+        const board = view.createDiv({ cls: "bases-kanban-container" });
+        await Promise.resolve();
+        laidOut.mockClear();
+
+        board.setAttribute("style", "width: 600px");
+        await Promise.resolve();
+
+        expect(laidOut).toHaveBeenCalledExactlyOnceWith(view);
+    });
+
     // A fitted cap is a style write on the view itself; reacting to it would loop.
     it("ignores other style changes in a Base", async () => {
         const { view } = await mounted();

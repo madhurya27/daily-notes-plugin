@@ -129,6 +129,7 @@ instead:
 | ---------------------------- | ----------------------------------------------------------------------------------- |
 | Table                        | A card per row, each value under its column's name                                  |
 | Base                         | Narrower columns; if that isn't enough, a card per note, using Bases' own card view |
+| Kanban Base                  | Cards, each column a group                                                          |
 | Equation                     | Smaller, to fit the width                                                           |
 | Code block                   | Long lines wrap                                                                     |
 | Diagram                      | Smaller, to fit the width (on desktop too)                                          |

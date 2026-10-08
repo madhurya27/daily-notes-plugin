@@ -13,12 +13,14 @@ const BASES: Record<string, string> = {
     "Narrow.base": baseView(["file.name"]),
     // A hand-resized column ignores the fitted cap, so it clips instead.
     "Resized.base": baseView(["file.name", "file.path"], ["columnSize:", "      file.path: 900"]),
+    // A column per extension: md, base and pdf, wider than a phone (1.14).
+    "Kanban.base": baseView(["file.name"], ["groupBy:", "      property: file.ext", "      direction: ASC"], "kanban"),
 };
 
-function baseView(order: string[], extra: string[] = []): string {
+function baseView(order: string[], extra: string[] = [], type = "table"): string {
     return [
         "views:",
-        "  - type: table",
+        `  - type: ${type}`,
         "    name: Table",
         "    order:",
         ...order.map((column) => `      - ${column}`),
@@ -26,6 +28,9 @@ function baseView(order: string[], extra: string[] = []): string {
         "",
     ].join("\n");
 }
+
+/** Where Kanban.base draws among the zoo's extracted Bases. */
+const KANBAN_SLOT = 3;
 
 /** Three pages of text: Obsidian's PDF viewer scrolls between them. */
 const PDF = { path: "Doc.pdf", body: pdf(3) };
@@ -39,6 +44,8 @@ const ZOO = [
     "![[Narrow.base]]",
     "",
     "![[Resized.base]]",
+    "",
+    "![[Kanban.base]]",
     "",
     // Inline, so it stays a table on a phone too.
     "Fitted: ![[Wide.base]]",
@@ -128,6 +135,19 @@ test("never scrolls the page sideways", async ({ obsidian }) => {
     }
 });
 
+test("on desktop, draws a kanban as a kanban", async ({ obsidian, mobileLayout }) => {
+    test.skip(mobileLayout, "a phone draws a wide kanban as cards");
+    const { page } = obsidian;
+    await seedZoo(page);
+    try {
+        const container = await openStream(page);
+
+        await expect(container.locator(".bases-kanban-card").first()).toBeVisible();
+    } finally {
+        await deleteZoo(page);
+    }
+});
+
 // Clipped, it would pass the test above with the end of the equation cut off.
 test("on mobile, shrinks a wide equation to fit the note", async ({ obsidian, mobileLayout }) => {
     test.skip(!mobileLayout, "desktop draws math as Obsidian does");
@@ -165,18 +185,32 @@ test.describe("on mobile, nothing inside the stream scrolls", () => {
         await expect.poll(() => scrollBoxes(container)).toEqual([]);
     });
 
-    test("has no scroll box around Bases, math, diagrams or embedded notes", async ({ obsidian }) => {
+    test("has no scroll box around Bases, kanban included, math, diagrams or embedded notes", async ({ obsidian }) => {
         const { page } = obsidian;
         await seedZoo(page);
         const container = await openStream(page);
         const note = container.locator(".daily-note-block").first();
-        await expect(note.locator(".bases-view")).toHaveCount(4);
+        await expect(note.locator(".bases-view")).toHaveCount(5);
         await expect(note.locator(".bases-tr").first()).toBeVisible();
         await expect(note.locator(".bases-cards-item").first()).toBeVisible();
         await expect(note.locator(".mermaid svg")).toBeVisible();
         await expect(note.locator(".pdf-embed canvas").first()).toBeVisible();
 
         await expect.poll(() => scrollBoxes(container)).toEqual([]);
+    });
+
+    // Clipped, it showed one column of several; cards show every column as a group.
+    test("draws a kanban wider than the note as cards, a group per column", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await seedZoo(page);
+        const columns = await page.evaluate((): string[] => [
+            ...new Set<string>(window.app.vault.getFiles().map((f: { extension: string }) => f.extension)),
+        ]);
+        const kanban = (await openStream(page)).locator(".daily-note-base").nth(KANBAN_SLOT);
+        await expect(kanban.locator(".bases-cards-item").first()).toBeVisible();
+
+        await expect(kanban.locator(".bases-kanban-card")).toHaveCount(0);
+        for (const ext of columns) await expect(kanban.getByText(ext, { exact: true })).toBeVisible();
     });
 
     // Clipped, its viewer shows page 1 and its toolbar reaches nothing (D-083).

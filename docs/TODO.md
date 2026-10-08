@@ -5,8 +5,6 @@
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
 - [ ] Raise `minAppVersion` to 1.14.4 at the next version bump (D-100).
-- [ ] Check a 1.14 kanban Base for a sideways scroll box on mobile (ADR 0008);
-      add it to `scroll-boxes.spec.ts`.
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.

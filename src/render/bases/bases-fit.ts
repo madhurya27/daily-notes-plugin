@@ -27,8 +27,17 @@ export function fitBaseToWidth(view: HTMLElement): void {
     view.dispatchEvent(new Event("scroll"));
 }
 
+/** Where Bases sets the width it laid a view out at: a table's header row, a kanban's board. */
+export const LAID_OUT = ".bases-thead, .bases-kanban-container";
+
+/** The width Bases laid the view out at; NaN before. */
+export function laidOutWidth(view: HTMLElement): number {
+    const laidOut = view.querySelector<HTMLElement>(LAID_OUT);
+    return laidOut ? parseFloat(laidOut.style.width) : NaN;
+}
+
 /** The width Bases laid the view's table out at, set on its header row; NaN before. */
-export function tableWidth(view: HTMLElement): number {
+function tableWidth(view: HTMLElement): number {
     const thead = view.querySelector<HTMLElement>(".bases-thead");
     return thead ? parseFloat(thead.style.width) : NaN;
 }

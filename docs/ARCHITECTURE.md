@@ -69,9 +69,9 @@ through one promise queue, so none interleaves at an `await`
   popovers on.
 - Wide content: tables become cards, Dataview's too as they fill in (D-084),
   equations shrink, and each Base draws in its own placeholder, as cards when
-  too wide (D-033). `ScrollBoxGuard` reports Base layouts to the renderer. Each
-  refits when its note's width changes, heard through one observer per view
-  (`note-widths.ts`).
+  too wide (D-033, a kanban D-107). `ScrollBoxGuard` reports Base layouts to the
+  renderer. Each refits when its note's width changes, heard through one
+  observer per view (`note-widths.ts`).
 - On mobile nothing inside a note scrolls: `ScrollBoxGuard` clips stray scroll
   boxes ([ADR 0008](adr/0008-nothing-scrolls-on-mobile.md)), and a PDF is its
   first page, opened by a tap (D-083). Desktop keeps Obsidian's scroll boxes.
