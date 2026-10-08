@@ -4,7 +4,6 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] Raise `minAppVersion` to 1.14.4 at the next version bump (D-100).
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.
@@ -20,7 +19,7 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       drives it, title-bar taps included, and Appium can record its screen. The
       e2e mobile run is desktop Chromium, which doesn't look like a phone.
 - [ ] Group the settings in `SettingGroup` cards, rejected in D-078 for needing
-      1.11; open once `minAppVersion` is raised (D-100).
+      1.11; `minAppVersion` is 1.14.4 since 0.5.0 (D-100).
 
 ## Features
 
