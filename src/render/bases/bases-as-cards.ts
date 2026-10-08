@@ -14,7 +14,7 @@ interface Fence {
 }
 
 /**
- * A Base's definition with its table views drawn as cards, and `first`, the
+ * A Base's definition with its table and kanban views drawn as cards, and `first`, the
  * view an embed names, moved to the front: a Base shows its first view. Null
  * when no view converts, so the Base keeps its fitted columns.
  */
@@ -23,8 +23,8 @@ export function asCards(definition: string, first?: string): string | null {
     if (!parsed || !Array.isArray(parsed.views)) return null;
 
     const views: unknown[] = parsed.views;
-    if (!views.some(isTable)) return null;
-    const converted = views.map((view) => (isTable(view) ? { ...view, type: "cards" } : view));
+    if (!views.some(drawsWide)) return null;
+    const converted = views.map((view) => (drawsWide(view) ? { ...view, type: "cards" } : view));
     const named = converted.findIndex((view) => isRecord(view) && view.name === first);
     if (named > 0) converted.unshift(...converted.splice(named, 1));
     return stringifyYaml({ ...parsed, views: converted }).trimEnd();
@@ -109,6 +109,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isTable(view: unknown): view is Record<string, unknown> {
-    return isRecord(view) && view.type === "table";
+/** A view that can draw wider than its note; cards keep a kanban's columns as groups. */
+function drawsWide(view: unknown): view is Record<string, unknown> {
+    return isRecord(view) && (view.type === "table" || view.type === "kanban");
 }

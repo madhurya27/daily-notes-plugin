@@ -20,6 +20,16 @@ describe("asCards", () => {
         expect(view).toEqual({ type: "cards", name: "Files", order: ["file.name"] });
     });
 
+    // A kanban's columns are its groups; cards keep them as headings.
+    it("draws a kanban view as cards, keeping its grouping", () => {
+        const groupBy = ["    groupBy:", "      property: status", "      direction: ASC"];
+        const definition = lines("views:", "  - type: kanban", "    name: Board", ...groupBy);
+
+        const [view] = views(asCards(definition));
+
+        expect(view).toEqual({ type: "cards", name: "Board", groupBy: { property: "status", direction: "ASC" } });
+    });
+
     it("keeps what the definition holds besides views", () => {
         const definition = lines("filters: file.hasTag('daily')", TABLE);
 
@@ -46,7 +56,7 @@ describe("asCards", () => {
     });
 
     it.each([
-        ["no table view", lines("views:", "  - type: cards", "    name: C")],
+        ["no table or kanban view", lines("views:", "  - type: cards", "    name: C")],
         ["no views", "filters: file.hasTag('daily')"],
         ["views that are not a list", "views: nope"],
         ["a view that is not a map", lines("views:", "  - table")],

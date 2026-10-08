@@ -21,6 +21,7 @@ const TABLE = lines(
     "      - ccc"
 );
 const BLOCK = lines("```base", TABLE, "```");
+const KANBAN = lines("```base", "views:", "  - type: kanban", "    name: K", "```");
 const CARDS_ONLY = lines("```base", "views:", "  - type: cards", "    name: C", "```");
 
 /** Each header draws 100px: 66 of text and 34 of padding, icon and gap. */
@@ -86,6 +87,14 @@ function layOut(slot: Element, tableWidth: number, viewWidth = noteWidth): HTMLE
     const view = slot.createDiv({ cls: "bases-view" });
     Object.defineProperty(view, "clientWidth", { get: () => viewWidth });
     view.createDiv({ cls: "bases-thead" }).setAttribute("style", `width: ${tableWidth}px`);
+    return view;
+}
+
+/** Lays a kanban out in `slot` as Bases does: its board's width on its container. */
+function layOutKanban(slot: Element, boardWidth: number): HTMLElement {
+    const view = slot.createDiv({ cls: "bases-view" });
+    Object.defineProperty(view, "clientWidth", { get: () => noteWidth });
+    view.createDiv({ cls: "bases-kanban-container" }).setAttribute("style", `width: ${boardWidth}px`);
     return view;
 }
 
@@ -297,6 +306,22 @@ describe("NoteBases measuring a drawn table", () => {
         expect(drawn(slotOf(again))).toBe(BLOCK);
     });
 
+    it("redraws a kanban wider than its note as cards", async () => {
+        const content = await renderNote(KANBAN);
+
+        reportLayout(layOutKanban(slotOf(content), 600));
+
+        expect(drawn(slotOf(content))).toContain("type: cards");
+    });
+
+    it("keeps a kanban that fits", async () => {
+        const content = await renderNote(KANBAN);
+
+        reportLayout(layOutKanban(slotOf(content), 300));
+
+        expect(render).toHaveBeenCalledOnce();
+    });
+
     it("keeps a table whose header row has not laid out", async () => {
         const content = await renderNote(BLOCK);
 
@@ -424,6 +449,16 @@ describe("NoteBases when the note's width changes", () => {
         noteWidth = 800;
         const content = await renderNote(BLOCK);
         layOut(slotOf(content), 600, 800);
+
+        resize(400);
+
+        expect(drawn(slotOf(content))).toContain("type: cards");
+    });
+
+    it("redraws a kanban that no longer fits as cards", async () => {
+        noteWidth = 800;
+        const content = await renderNote(KANBAN);
+        layOutKanban(slotOf(content), 600);
 
         resize(400);
 

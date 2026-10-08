@@ -1,6 +1,6 @@
 import { test, expect, type Phone } from "./phone";
 import { OBSIDIAN } from "./session";
-import { EMBEDS_NOTE } from "./vault";
+import { EMBEDS_NOTE, KANBAN } from "./vault";
 
 const NOTE = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"]`;
 const PDF = `${NOTE} .pdf-embed`;
@@ -113,4 +113,28 @@ test("a web page in a frame shows, and a tap opens it", async ({ phone }) => {
             await window.app.vault.delete(window.app.vault.getFileByPath(path)!);
         }, note);
     }
+});
+
+// Clipped, a phone showed the first column alone (D-107).
+test("a kanban wider than the phone shows every column as a group of cards", async ({ phone }) => {
+    await phone.openStream();
+    await phone.placeAt(KANBAN, -40);
+    const columns = await phone.run(() =>
+        [...new Set<string>(window.app.vault.getFiles().map((f: { extension: string }) => f.extension))].sort()
+    );
+
+    const shown = () =>
+        phone.run((kanban: string) => {
+            const slot = document.querySelector(kanban)!;
+            if (slot.querySelector(".bases-kanban-card")) return ["a kanban"];
+            const right = slot.closest(".daily-note-content")!.getBoundingClientRect().right;
+            return [...slot.querySelectorAll(".bases-group-heading .bases-group-value")]
+                .filter((value) => {
+                    const box = value.getBoundingClientRect();
+                    return box.width > 0 && box.right <= right + 1;
+                })
+                .map((value) => value.textContent!)
+                .sort();
+        }, KANBAN);
+    await expect.poll(shown).toEqual(columns);
 });

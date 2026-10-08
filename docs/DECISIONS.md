@@ -1791,3 +1791,18 @@ The box grows with the text, so the first line starts left of the rest: 3px at
 **Rejected:**
 
 - Matching reading view — copies a gap that grows with the text, as D-104.
+
+## D-107 — On mobile a kanban Base too wide for its note draws as cards (2026-10-07)
+
+**Decision:** a kanban view follows D-033: measured from the width Bases sets on
+its board, it redraws as cards, its `groupBy` kept, so each column is a group.
+
+**Why:** clipped (ADR 0008), a phone showed the first of a board's 280px columns
+and none of the rest.
+
+**Rejected:**
+
+- A tap opens the `.base` file, as a PDF (D-083) — hides a board cards can show.
+- Stacking the columns in CSS — Bases positions them absolutely, as D-033 found
+  for tables.
+- Cards for every kanban, unmeasured — a one-column board fits.

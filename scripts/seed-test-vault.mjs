@@ -154,6 +154,17 @@ const BASES = {
         ...tableView("First", ["file.name"]),
         ...tableView("This note", WIDE, "    filters: file.path == this.file.path"),
     ],
+    // A column per file extension: wider than a phone either way up (D-107).
+    "Kanban.base": [
+        "views:",
+        "  - type: kanban",
+        "    name: Kanban",
+        "    order:",
+        "      - file.name",
+        "    groupBy:",
+        "      property: file.ext",
+        "      direction: ASC",
+    ],
 };
 
 /** Short headers, long values: only a drawn table shows it is too wide. */
@@ -219,6 +230,10 @@ export function testVault({ days }) {
         "The embed's named view, filtered to this note:",
         "",
         "![[Two.base#This note]]",
+        "",
+        "A kanban, a column per file extension; on a phone, cards in a group per column:",
+        "",
+        "![[Kanban.base]]",
         "",
         "Inline, so always a table, its columns fitted: ![[Wide.base]]",
         "",

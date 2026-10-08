@@ -3,7 +3,7 @@ import { HOLD_LIMIT_MS, SETTLE_MS } from "../../stream/height-hold";
 import { baseDigest, type BaseKey, type BaseMeasurements } from "./base-measurements";
 import { layoutOf } from "../../stream/layout-memory";
 import { asCards, BASE_SLOT_CLASS, type BaseSource } from "./bases-as-cards";
-import { fitBaseToWidth, tableWidth } from "./bases-fit";
+import { fitBaseToWidth, laidOutWidth } from "./bases-fit";
 import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
 import type { WidthWatch } from "../note-widths";
 
@@ -69,7 +69,7 @@ export class NoteBases {
     }
 
     /**
-     * Bases laid a table out: one of the note's Bases too wide for it becomes
+     * Bases laid a view out: one of the note's Bases too wide for it becomes
      * cards; any other Base is fitted to its width instead.
      */
     onLayout(view: HTMLElement): void {
@@ -81,7 +81,7 @@ export class NoteBases {
         }
         // Bases lays out inside a resize report: emptied there, the Base
         // resizes the note a round late, which WebKit logs as an error.
-        if (tableWidth(view) > view.clientWidth)
+        if (laidOutWidth(view) > view.clientWidth)
             window.setTimeout(() => {
                 if (!slot.gone && slot.mode === "table") void this.showCards(slot, slot.contentWidth);
             });
@@ -93,7 +93,7 @@ export class NoteBases {
             return;
         }
         const view = slot.placeholder.querySelector<HTMLElement>(".bases-view");
-        if (slot.cards && view && tableWidth(view) > width) await this.showCards(slot, width);
+        if (slot.cards && view && laidOutWidth(view) > width) await this.showCards(slot, width);
     }
 
     private showCards(slot: BaseSlot, width: number): Promise<void> {

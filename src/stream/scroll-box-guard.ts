@@ -1,5 +1,6 @@
 import { debounce } from "obsidian";
 import { SCROLL_IDLE_MS } from "./scroll-anchor";
+import { LAID_OUT } from "../render/bases/bases-fit";
 
 /** Clipped by the stylesheet already, Bases and all. */
 const BASE = ".bases-embed, .block-language-base";
@@ -69,13 +70,13 @@ export class ScrollBoxGuard {
 
 /**
  * The Base whose layout a mutation may have changed: rows added or removed, or
- * a new table width on its header row. Its own style writes, the fitted cap
+ * a new width on its table's header row or kanban board. Its own style writes, the fitted cap
  * among them, are not layout.
  */
 function baseViewChangedBy(record: MutationRecord): HTMLElement | null {
     // Both record types observed here, childList and attributes, target an element.
     const target = record.target as Element;
-    if (record.type === "attributes" && !target.classList.contains("bases-thead")) return null;
+    if (record.type === "attributes" && !target.matches(LAID_OUT)) return null;
     return target.closest<HTMLElement>(".bases-view");
 }
 
