@@ -50,6 +50,12 @@ describe("testVault", () => {
             expect(paths).toContain(`Bases/${base}.base`);
     });
 
+    // Grouped by extension: wider than a phone either way up, so cards (D-107).
+    it("embeds a kanban grouped by file extension in the newest note", () => {
+        expect(note("Bases/Kanban.base")).toMatch(/type: kanban[\s\S]*groupBy:\n {6}property: file\.ext/);
+        expect(note("Notes/2026-08-30.md")).toContain("![[Kanban.base]]");
+    });
+
     // docs/TESTING.md, "Mobile": a phone draws page 1 and opens the PDF on a tap (D-083).
     it("embeds a PDF of several pages and a video wider than a phone in the newest note", () => {
         expect(note("Attachments/Manual.pdf")).toContain("/Count 3");

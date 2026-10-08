@@ -1,5 +1,5 @@
 import { test, expect, type Phone } from "./phone";
-import { EMBEDS_NOTE } from "./vault";
+import { EMBEDS_NOTE, KANBAN } from "./vault";
 
 const NOTE = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"]`;
 
@@ -59,6 +59,13 @@ const form = (phone: Phone) =>
         return el.querySelector(".bases-table") ? "table" : "nothing";
     }, FLIPPING);
 
+/** Whether the kanban draws as cards, once it is near the screen. */
+const kanbanAsCards = async (phone: Phone) => {
+    await phone.placeAt(KANBAN, -40);
+    await expect.poll(() => phone.has(`${KANBAN} .bases-cards-item`)).toBe(true);
+    return !(await phone.has(`${KANBAN} .bases-kanban-card`));
+};
+
 /** How wide the note's equation draws, and the note's text. */
 const widths = (phone: Phone) =>
     phone.run((note: string) => {
@@ -109,6 +116,7 @@ test("a turn flips a wide Base between cards and a table, and fits the equation 
     const place = await mathTop(phone);
     await phone.turn("LANDSCAPE");
     expect(Math.abs((await mathTop(phone)) - place), "the place, on a turn").toBeLessThanOrEqual(REWRAP_PX);
+    expect(await kanbanAsCards(phone), "a kanban wider than the phone on its side").toBe(true);
     const onItsSide = await drawn(phone);
     expect(onItsSide.base).toBe("table");
     expect(onItsSide.equation).toBeGreaterThan(upright.equation);

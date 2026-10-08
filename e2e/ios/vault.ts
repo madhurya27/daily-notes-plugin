@@ -50,6 +50,8 @@ const NEWEST = Object.keys(DEMO)
  */
 const SHORT_NOTE_WITH_BASE = "Journal/2026-09-22.md";
 export const SHORT_NOTE = "Journal/2026-09-21.md";
+/** The kanban in the short note with Bases, the note above `SHORT_NOTE`. */
+export const SHORT_KANBAN = `.daily-note-block[data-source-path="${SHORT_NOTE_WITH_BASE}"] .daily-note-base:has(+ .daily-note-base)`;
 /** A note with every kind of chevron: its properties, headings, and a list item holding a list. */
 export const NESTED_LIST_NOTE = "Journal/2026-09-26.md";
 /**
@@ -57,6 +59,9 @@ export const NESTED_LIST_NOTE = "Journal/2026-09-26.md";
  * here, and the files it embeds.
  */
 export const EMBEDS_NOTE = "Journal/2026-08-30.md";
+/** Kanban.base, `EMBEDS_NOTE`'s seventh Base: a column per file extension (D-107). */
+export const KANBAN = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"] .daily-note-content > .daily-note-base:nth-child(7 of .daily-note-base)`;
+export const KANBAN_FILE = "Bases/Kanban.base";
 const TEST: Record<string, string> = testVault({ days: 0 });
 const EMBEDS = {
     [EMBEDS_NOTE]: TEST["Notes/2026-08-30.md"]!,
@@ -76,7 +81,7 @@ const NOTES = {
         "$1## Packing\n\n- Bag\n    - Charger\n    - Passport\n\n"
     ),
     [SHORT_NOTE]: "A short day, one paragraph long.\n",
-    [SHORT_NOTE_WITH_BASE]: "A short day, then the reading list.\n\n![[Reading.base]]\n",
+    [SHORT_NOTE_WITH_BASE]: "A short day, a board, then the reading list.\n\n![[Kanban.base]]\n\n![[Reading.base]]\n",
 };
 
 /** Everything the vault holds, configuration and build included, by path. */

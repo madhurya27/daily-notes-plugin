@@ -32,8 +32,8 @@ one batch) and a path to seed elsewhere.
   properties panel is tested by its absence), and Bases (so they recur all the
   way down).
 - **2026-08-30**, the newest: one of each embed the e2e tests cover. Bases wide,
-  narrow, too wide only in their values, resized by hand, a named view and
-  inline (the Bases live in `Bases/`), plus embedded notes, a PDF, a video
+  narrow, too wide only in their values, resized by hand, a named view, a kanban
+  and inline (the Bases live in `Bases/`), plus embedded notes, a PDF, a video
   iframe, display math, Mermaid and a wide table.
 - **2026-08-29**, the newest filler note: linked mentions of every kind, from a
   nested list item, a paragraph, a wide table and a property. `[[Agenda]]` in
@@ -130,6 +130,8 @@ Checks:
   in **2026-08-30**.
 - A Base's toolbar fits the note: no New button, a long view name ends in an
   ellipsis. **[e2e]** **[ios]**
+- A kanban wider than the note draws as cards, every column a group, upright and
+  on its side. **[e2e]** **[ios]**
 - A PDF shows its first page without a toolbar; a tap opens the PDF. **[e2e]**
   **[ios]**
 - A web page in a frame shows; a flick over it scrolls the stream, and a tap
@@ -152,6 +154,8 @@ Checks:
   out. **[ios]** for Bases.
 - A Base on screen gains a row from another pane: the text below never jumps and
   returns. **[ios]**
+- A kanban just above the screen's top redraws from a board to cards: the next
+  note's text stays still. **[ios]**
 - Jump to an old date, then flick up: the text under your finger does not jump
   as the notes above render, and the glide is not cut short. **[ios]**
 - A Base filling just above the screen's top leaves the text below still.
