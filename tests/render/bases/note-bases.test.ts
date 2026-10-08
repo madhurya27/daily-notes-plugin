@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 import { Component, MarkdownRenderer, TFile } from "obsidian";
 import { BaseMeasurements } from "../../../src/render/bases/base-measurements";
-import { NoteBases, measureHeaderMetrics } from "../../../src/render/bases/note-bases";
+import { BASE_RESIZED, NoteBases, measureHeaderMetrics } from "../../../src/render/bases/note-bases";
 import { HOLD_LIMIT_MS, SETTLE_MS } from "../../../src/stream/height-hold";
 import { extractBases } from "../../../src/render/bases/bases-as-cards";
 import type { HeaderMetrics } from "../../../src/render/bases/bases-width";
@@ -710,6 +710,125 @@ describe("NoteBases holding a Base while it refills", () => {
         const again = await renderNote(BLOCK);
 
         expect(held(slotOf(again))).toBe("");
+    });
+});
+
+/**
+ * Its note is pinned (ADR 0013): a height the Base takes by the hold, its
+ * note hears of in the same task; any other waits on a report a frame late.
+ */
+describe("NoteBases changing a Base's height in a pinned note", () => {
+    const tall = (slot: Element, height: number) => {
+        slot.getBoundingClientRect = () => ({ height }) as DOMRect;
+    };
+    const resized = () => FakeResizeObserver.instances.forEach((observer) => observer.resized());
+    const layOutAt = (slot: Element, height: number) => {
+        tall(slot, height);
+        resized();
+    };
+    const held = (slot: Element) => (slot as HTMLElement).style.getPropertyValue("--daily-note-held-height");
+    const measuring = (slot: Element) => slot.classList.contains("is-measuring");
+    /** How many times `slot` told its note it set a height. */
+    const told = (slot: Element) => {
+        const heard = { count: 0 };
+        slot.addEventListener(BASE_RESIZED, () => heard.count++);
+        return heard;
+    };
+
+    /** A Base drawn as cards at 300px, redrawn as written for a note that has grown wide enough. */
+    async function redrawnAsWritten(): Promise<Element> {
+        noteWidth = 299;
+        const content = await renderNote(BLOCK);
+        layOutAt(slotOf(content), 300);
+        noteWidth = 800;
+        for (const watched of widths.watched.keys()) widths.resize(watched, 800);
+        await vi.advanceTimersByTimeAsync(0);
+        return slotOf(content);
+    }
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        render.mockImplementation(async (_app, _markdown, el) => {
+            el.createDiv();
+        });
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it("tells its note as it lets go", async () => {
+        const content = await renderNote(BLOCK);
+        layOutAt(slotOf(content), 300);
+        layOutAt(slotOf(content), 40);
+        const heard = told(slotOf(content));
+
+        vi.advanceTimersByTime(SETTLE_MS);
+
+        expect(held(slotOf(content))).toBe("40px");
+        expect(heard.count).toBe(1);
+    });
+
+    // Bases draws a board or table at its own height: shown, the text below
+    // in the note moves a frame before the note hears of it.
+    it("clips a Base redrawn as written at the height it showed while it is measured", async () => {
+        const slot = await redrawnAsWritten();
+
+        expect(drawn(slot)).toBe(BLOCK);
+        expect(measuring(slot)).toBe(true);
+        expect(held(slot)).toBe("300px");
+    });
+
+    it("keeps that height while what it measures grows", async () => {
+        const slot = await redrawnAsWritten();
+
+        layOutAt(slot, 800);
+
+        expect(held(slot)).toBe("300px");
+    });
+
+    it("draws it as cards at that height once measured too wide", async () => {
+        const slot = await redrawnAsWritten();
+        layOutAt(slot, 800);
+
+        reportLayout(layOut(slot, 900, 800));
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(drawn(slot)).toContain("type: cards");
+        expect(measuring(slot)).toBe(false);
+        expect(held(slot)).toBe("300px");
+    });
+
+    it("lets it out, telling its note, once it fits as written", async () => {
+        const slot = await redrawnAsWritten();
+        const heard = told(slot);
+
+        reportLayout(layOut(slot, 600, 800));
+
+        expect(measuring(slot)).toBe(false);
+        expect(heard.count).toBe(1);
+    });
+
+    it("keeps measuring a Base not laid out yet", async () => {
+        const slot = await redrawnAsWritten();
+
+        reportLayout(slot.createDiv({ cls: "bases-view" }));
+
+        expect(measuring(slot)).toBe(true);
+    });
+
+    it("lets out a Base never measured as it lets go", async () => {
+        const slot = await redrawnAsWritten();
+        const heard = told(slot);
+
+        vi.advanceTimersByTime(HOLD_LIMIT_MS);
+
+        expect(measuring(slot)).toBe(false);
+        expect(heard.count).toBe(1);
+    });
+
+    // Nothing above it in the note to clip: a Base drawn at 0px would vanish.
+    it("clips nothing on a first draw", async () => {
+        const content = await renderNote(BLOCK);
+
+        expect(measuring(slotOf(content))).toBe(false);
     });
 });
 

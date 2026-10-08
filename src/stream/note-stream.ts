@@ -125,6 +125,10 @@ export class NoteStream {
         this.window.onTouch(target);
     }
 
+    onBaseResized(target: EventTarget | null): void {
+        this.window.onBaseResized(target);
+    }
+
     onFingerDown(): void {
         this.window.onFingerDown();
     }

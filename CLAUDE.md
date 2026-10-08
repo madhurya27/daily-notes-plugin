@@ -80,7 +80,8 @@ Traps that span files, so no single file's comments can hold them.
 - **A rendered block's height changes only in `NoteWindowManager.repin`**
   ([ADR 0013](docs/adr/0013-pin-rendered-note-heights.md)), which tells the
   anchor in the same task. Anything that changes a block's height another way
-  jumps the screen a frame on iOS.
+  jumps the screen a frame on iOS. A Base sets its own height only where it
+  dispatches `BASE_RESIZED`, which re-pins its note there (D-108).
 - **Delegated listeners.** Chevrons, note titles and links are rebuilt on every
   re-render, so `CollapsibleManager.delegate()` and `NoteRenderer.delegate()`
   register one listener per gesture on the stream container, resolving the

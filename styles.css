@@ -66,6 +66,14 @@
     min-height: var(--daily-note-held-height, 0);
 }
 
+/* A Base drawn as written to be measured, likely to be redrawn as cards:
+   clipped at the height it held, so its note's text never moves for it
+   (src/render/bases/note-bases.ts). */
+.daily-note-base.is-measuring {
+    height: var(--daily-note-held-height);
+    overflow: clip;
+}
+
 /* Custom properties inherit: a note's hold must not reach the Bases in it. */
 .daily-note-block > * {
     --daily-note-held-height: initial;

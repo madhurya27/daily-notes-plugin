@@ -60,6 +60,8 @@ export const NESTED_LIST_NOTE = "Journal/2026-09-26.md";
  */
 export const EMBEDS_NOTE = "Journal/2026-08-30.md";
 /** Kanban.base, `EMBEDS_NOTE`'s seventh Base: a column per file extension (D-107). */
+/** Middle.base, `EMBEDS_NOTE`'s fourth Base. */
+export const MIDDLE = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"] .daily-note-content > .daily-note-base:nth-child(4 of .daily-note-base)`;
 export const KANBAN = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"] .daily-note-content > .daily-note-base:nth-child(7 of .daily-note-base)`;
 export const KANBAN_FILE = "Bases/Kanban.base";
 const TEST: Record<string, string> = testVault({ days: 0 });

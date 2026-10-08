@@ -1806,3 +1806,21 @@ and none of the rest.
 - Stacking the columns in CSS — Bases positions them absolutely, as D-033 found
   for tables.
 - Cards for every kanban, unmeasured — a one-column board fits.
+
+## D-108 — A Base's own height changes re-pin its note in the same task (2026-10-08)
+
+**Decision:** a Base slot tells its note, by a synchronous `BASE_RESIZED` event,
+when its hold lets go or a measured draw fits; the note re-pins and the anchor
+shifts in that task (ADR 0013). A Base redrawn as written over cards, to be
+measured, is clipped at the cards' height until measured.
+
+**Why:** both changes reached the note by a `ResizeObserver` report, which iOS
+paints a frame after, so text below a Base in the same note jumped and returned:
+1219px for a table redrawn as cards, 510px each way for a kanban (D-107).
+
+**Rejected:**
+
+- Pinning every slot as notes are pinned — also clips Bases' own live growth for
+  a frame; a larger change to the hold (D-035, D-054) than these two needed.
+- A callback from `NoteBases` into `NoteWindowManager` — wires the renderer to
+  the stream it is made before; the event needs no reference.

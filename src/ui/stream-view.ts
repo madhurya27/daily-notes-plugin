@@ -16,6 +16,7 @@ import { NoteStream } from "../stream/note-stream";
 import type { DailyNoteService } from "../notes/daily-note-service";
 import { StreamSearch } from "../stream/stream-search";
 import { SearchHighlighter } from "../render/search-highlights";
+import { BASE_RESIZED } from "../render/bases/note-bases";
 import { SearchBar } from "./search-bar";
 import { matchesHotkey } from "./hotkey";
 import {
@@ -167,6 +168,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
 
         this.registerDomEvent(this.contentEl, "scroll", () => this.stream.onScroll());
         this.registerDomEvent(this.contentEl, "pointerdown", (evt) => this.stream.onTouch(evt.target));
+        this.registerDomEvent(this.contentEl, BASE_RESIZED, (evt) => this.stream.onBaseResized(evt.target));
         this.registerDomEvent(this.contentEl, "wheel", () => this.stream.onWheel(), { passive: true });
         this.registerDomEvent(this.contentEl, "touchstart", () => this.stream.onFingerDown(), { passive: true });
         for (const lift of ["touchend", "touchcancel"] as const)

@@ -1177,6 +1177,20 @@ describe("NoteWindowManager pins a rendered note", () => {
         expect(pinned(block)).toBe("900px");
     });
 
+    // A height a Base set by its hold: told at once, not by a report a frame late.
+    it("takes a new height as a Base in it says it set one, telling the anchor at once", async () => {
+        let height = 640;
+        const { manager, block } = await rendered(natural(() => height));
+        const slot = block.createDiv();
+        told.mockClear();
+
+        height = 900;
+        manager.onBaseResized(slot);
+
+        expect(pinned(block)).toBe("900px");
+        expect(told).toHaveBeenCalledOnce();
+    });
+
     it("tells the anchor nothing when its height did not change", async () => {
         const { block } = await rendered(natural(() => 640));
         told.mockClear();

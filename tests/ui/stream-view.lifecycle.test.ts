@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../../src/ui/stream-view";
+import { BASE_RESIZED } from "../../src/render/bases/note-bases";
 import { Platform, TFile, WorkspaceLeaf } from "../mocks/obsidian";
 import {
     asApp,
@@ -138,6 +139,14 @@ describe("DailyNotesStreamView — scroll", () => {
         const touched = view.contentEl.createDiv();
         touched.dispatchEvent(new Event("pointerdown", { bubbles: true }));
         expect(view["stream"]["window"].onTouch).toHaveBeenCalledWith(touched);
+    });
+
+    // Its note re-pins in the task the Base set its height in (D-108).
+    it("tells the window which Base set its height", async () => {
+        const { view } = await makeViewSetup();
+        const slot = view.contentEl.createDiv();
+        slot.dispatchEvent(new Event(BASE_RESIZED, { bubbles: true }));
+        expect(view["stream"]["window"].onBaseResized).toHaveBeenCalledWith(slot);
     });
 
     it("tells the window when a finger goes down and lifts", async () => {

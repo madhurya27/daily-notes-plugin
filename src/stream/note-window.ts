@@ -104,15 +104,7 @@ export class NoteWindowManager {
         this.observeMargins(scrollRoot);
         // Made before the anchor's, so it hears a report first: reports run in
         // that order, and the anchor must read each note re-pinned.
-        this.resizes = new ResizeObserver((entries) => {
-            const blocks = new Set(entries.map(({ target }) => this.blockOf(target)));
-            for (const block of blocks) {
-                const window = block ? this.windows.get(block) : undefined;
-                if (!block || !window) continue;
-                if (window.component) this.repin(block);
-                window.keepOnceSettled?.();
-            }
-        });
+        this.resizes = new ResizeObserver((entries) => this.contentResized(entries.map(({ target }) => target)));
         this.anchor.attach(scrollRoot, loadedToEnd);
 
         for (const [block, window] of this.windows) {
@@ -194,6 +186,11 @@ export class NoteWindowManager {
         this.anchor.onScroll();
         if (this.leaving.size > 0) this.unloadOnceStill();
         if (this.reservedFrom !== this.reserveKey()) this.reserveOnceStill();
+    }
+
+    /** A Base in a note set its height: the note re-pins in this task (D-108). */
+    onBaseResized(target: EventTarget | null): void {
+        this.contentResized([target]);
     }
 
     /** A touch is the reader's own change, such as a collapse: no hold keeps it. */
@@ -537,6 +534,16 @@ export class NoteWindowManager {
     private windowOf(target: EventTarget | null): NoteWindow | undefined {
         const block = this.blockOf(target);
         return block ? this.windows.get(block) : undefined;
+    }
+
+    /** Re-pins each rendered note something in resized. */
+    private contentResized(targets: (EventTarget | null)[]): void {
+        for (const block of new Set(targets.map((target) => this.blockOf(target)))) {
+            const window = block ? this.windows.get(block) : undefined;
+            if (!block || !window) continue;
+            if (window.component) this.repin(block);
+            window.keepOnceSettled?.();
+        }
     }
 
     private blockOf(target: EventTarget | null): HTMLElement | null {

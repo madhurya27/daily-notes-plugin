@@ -19,6 +19,15 @@ import type { WidthWatch } from "../note-widths";
  * Base is held at the height it showed until it settles; otherwise the text
  * below jumps and returns. A Base coming back into view is held by its note.
  */
+/** A Base set its height: its note re-pins in the same task (ADR 0013). */
+export const BASE_RESIZED = "daily-notes-base-resized";
+
+declare global {
+    interface HTMLElementEventMap {
+        [BASE_RESIZED]: Event;
+    }
+}
+
 export class NoteBases {
     /** Undefined until the first Base; null when nothing could be measured. */
     private headers: HeaderMetrics | null | undefined;
@@ -81,10 +90,12 @@ export class NoteBases {
         }
         // Bases lays out inside a resize report: emptied there, the Base
         // resizes the note a round late, which WebKit logs as an error.
-        if (laidOutWidth(view) > view.clientWidth)
+        const width = laidOutWidth(view);
+        if (width > view.clientWidth)
             window.setTimeout(() => {
                 if (!slot.gone && slot.mode === "table") void this.showCards(slot, slot.contentWidth);
             });
+        else if (width <= view.clientWidth) slot.letOut();
     }
 
     private async recheck(slot: BaseSlot, width: number): Promise<void> {
@@ -150,6 +161,11 @@ class BaseSlot {
     readonly view: string | undefined;
     /** Its note unloaded. */
     gone = false;
+    /**
+     * Drawn as written over cards, until measured: clipped at the height the
+     * cards showed, as what Bases draws is likely replaced (styles.css).
+     */
+    private measuring = false;
     /** `baseDigest` of its markdown and definition. */
     private digest = "";
     private component: Component | null = null;
@@ -211,9 +227,11 @@ class BaseSlot {
      * registered, held at the height it shows now until it settles.
      */
     async draw(mode: "table" | "cards"): Promise<void> {
-        const shown = Math.max(this.laidOut, this.height());
+        // Clipped while measured, it shows the height it is held at.
+        const shown = this.measuring ? this.laidOut : Math.max(this.laidOut, this.height());
         if (this.component) this.noteComponent.removeChild(this.component);
         this.placeholder.empty();
+        this.measure(mode === "table" && this.mode === "cards" && shown > 0);
         this.mode = mode;
         this.holdAt(shown);
         this.waitForStill();
@@ -224,10 +242,27 @@ class BaseSlot {
         if (drawn) this.resizes.observe(drawn);
     }
 
-    /** Taller, it is held there: the hold only rises here, which resizes nothing. */
+    /** Measured to fit as written: it takes the height it draws at, and its note hears so at once. */
+    letOut(): void {
+        if (!this.measuring) return;
+        this.measure(false);
+        this.told();
+    }
+
+    private measure(measuring: boolean): void {
+        this.measuring = measuring;
+        this.placeholder.toggleClass("is-measuring", measuring);
+    }
+
+    /** Its note hears, in this task, of a height set here (ADR 0013). */
+    private told(): void {
+        this.placeholder.dispatchEvent(new Event(BASE_RESIZED, { bubbles: true }));
+    }
+
+    /** Taller, it is held there: the hold only rises here, which resizes nothing. Clipped, it shows no taller. */
     private resized(): void {
         const height = this.height();
-        if (height > this.laidOut) this.holdAt(height);
+        if (height > this.laidOut && !this.measuring) this.holdAt(height);
         this.waitForStill();
     }
 
@@ -241,8 +276,10 @@ class BaseSlot {
         this.letGoOnceStill.cancel();
         window.clearTimeout(this.limit);
         this.limit = 0;
+        this.measure(false);
         this.placeholder.style.removeProperty("--daily-note-held-height");
         this.holdAt(this.height());
+        this.told();
     }
 
     /** styles.css turns the property into a `min-height`. */
