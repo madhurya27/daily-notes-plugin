@@ -172,6 +172,45 @@ test.describe("daily notes stream in real Obsidian", () => {
         });
     }
 
+    // The box grows with the text and the list's indent does not: reading view
+    // starts a task's first line 11px left of the rest at 28px on a phone (D-106).
+    test.describe("a wrapped task", () => {
+        const NOTE = "Notes/2026-03-20.md";
+
+        test.beforeEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate(async (note) => {
+                await window.app.vault.create(
+                    note,
+                    "- [ ] A wrapping task, its words running on past the width of any pane so the line has to break and carry on underneath, where the reader looks for it under the first\n"
+                );
+            }, NOTE);
+        });
+        test.afterEach(async ({ obsidian }) => {
+            await obsidian.page.evaluate(async (note) => {
+                await window.app.vault.delete(window.app.vault.getFileByPath(note)!);
+            }, NOTE);
+        });
+
+        for (const size of [12, 16, 22, 28]) {
+            test(`lines its words up under its first line at a ${size}px text size`, async ({ obsidian }) => {
+                const { page } = obsidian;
+                await atTextSize(page, size, async () => {
+                    const container = await openStream(page);
+                    const task = container.locator(`.daily-note-block[data-source-path="${NOTE}"] li.task-list-item`);
+                    await expect(task).toBeVisible();
+                    const lines = await task.evaluate((li) => {
+                        const range = document.createRange();
+                        range.selectNodeContents(li);
+                        range.setStartAfter(li.querySelector(":scope > input.task-list-item-checkbox")!);
+                        return [...range.getClientRects()].map((line) => line.left);
+                    });
+                    expect(lines.length, "lines").toBeGreaterThan(1);
+                    for (const left of lines.slice(1)) expect(Math.abs(left - lines[0]!)).toBeLessThan(0.5);
+                });
+            });
+        }
+    });
+
     test("ignores a click on a task checkbox", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);

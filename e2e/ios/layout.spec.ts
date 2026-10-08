@@ -156,3 +156,37 @@ test("centers a task's checkbox on its words at the default and a large text siz
         await setTextSize(phone, null);
     }
 });
+
+// iOS's system font draws the box larger than Chromium's phone layout: Obsidian's
+// hang left the first line 10px left of the rest at 28px here (D-106).
+test("lines a wrapped task's words up under its first line at the default and a large text size", async ({ phone }) => {
+    const note = "Journal/2026-09-05.md";
+    const task = `.daily-note-block[data-source-path="${note}"] li.task-list-item`;
+    await phone.runAsync(async (path: string) => {
+        await window.app.vault.create(
+            path,
+            "- [ ] A wrapping task, its words running on past the width of a phone so the line breaks and carries on\n"
+        );
+    }, note);
+    try {
+        await phone.openStream();
+        for (const size of [16, 28]) {
+            await setTextSize(phone, size);
+            await phone.placeAt(task, -100);
+            const lines = await phone.run((sel: string) => {
+                const li = document.querySelector(sel)!;
+                const range = document.createRange();
+                range.selectNodeContents(li);
+                range.setStartAfter(li.querySelector(":scope > input.task-list-item-checkbox")!);
+                return [...range.getClientRects()].map((line) => line.left);
+            }, task);
+            expect(lines.length, `${size}px: lines`).toBeGreaterThan(1);
+            for (const left of lines.slice(1)) expect(Math.abs(left - lines[0]!), `${size}px`).toBeLessThan(1);
+        }
+    } finally {
+        await setTextSize(phone, null);
+        await phone.runAsync(async (path: string) => {
+            await window.app.vault.delete(window.app.vault.getFileByPath(path)!);
+        }, note);
+    }
+});

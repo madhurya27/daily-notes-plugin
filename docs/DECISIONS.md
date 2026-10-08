@@ -1778,3 +1778,16 @@ add up sub-pixel anchoring adjustments (web-platform-tests'
   memory, of ~160KB, against a 5MB store; no reader sees the difference either
   way.
 - Loosening the tests to a pixel — keeps the rounding they caught.
+
+## D-106 — A wrapped task's lines start under its first (2026-10-07)
+
+**Decision:** the checkbox hangs out of the line by its width and the gap after
+it, so a task's words start at the item's edge on every line.
+
+**Why:** Obsidian hangs it 1.5 widths out, which lines up only at a 12px box.
+The box grows with the text, so the first line starts left of the rest: 3px at
+16px, 10px at 28px on an iPhone, in reading view too.
+
+**Rejected:**
+
+- Matching reading view — copies a gap that grows with the text, as D-104.

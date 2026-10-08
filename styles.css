@@ -669,13 +669,19 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
    x-height above the baseline; -0.12em of the text lifts it to the words'
    center, a measure of the font's.
 
+   Margins: hung out by its width and the gap after it, so the first line of
+   words starts where the wrapped ones do. Obsidian hangs it 1.5 widths out,
+   which matches only at a 12px box: 10px adrift at 28px on a phone (D-106).
+
    `pointer-events`: the browser toggles this real `<input>` on click, and only
    reading view writes that back. Here the tick is DOM-only and the next
    re-render drops it, so the box shows state without offering to change it. */
-.daily-note-content input.task-list-item-checkbox {
+.daily-note-content li.task-list-item input.task-list-item-checkbox {
     font-size: inherit;
     vertical-align: middle;
     top: -0.12em;
+    margin-inline-start: calc(-1 * (var(--checkbox-size) + var(--size-2-3)));
+    margin-inline-end: var(--size-2-3);
     pointer-events: none;
 }
 
