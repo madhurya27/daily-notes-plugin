@@ -42,8 +42,9 @@ test("flicks over wide Bases and tables, deep in the stream", async ({ phone }) 
             await phone.openStream();
             await phone.jumpTo("2026-09-10");
             // Its note first, then again as notes render and move it.
+            let probe = "";
             for (let pass = 0; pass < 3; pass++) {
-                await phone.run(
+                probe = await phone.run(
                     (s: string, t: string, i: number) => {
                         const pane = document.querySelector(s)!.parentElement!;
                         const all = [...pane.querySelectorAll<HTMLElement>(t)].filter(
@@ -52,6 +53,9 @@ test("flicks over wide Bases and tables, deep in the stream", async ({ phone }) 
                         const el = all[i % all.length] ?? pane.querySelector(t.slice(0, t.indexOf(" ")));
                         if (!el) throw new Error(`no ${t}`);
                         pane.scrollTop += el.getBoundingClientRect().top - pane.getBoundingClientRect().top - 150;
+                        const box = el.querySelector<HTMLElement>(".bases-view") ?? (el as HTMLElement);
+                        const o = getComputedStyle(box).overflowX;
+                        return `${box.className || box.tagName} ${o} ${box.scrollWidth}/${box.clientWidth}`;
                     },
                     ".daily-notes-stream-container",
                     target,
@@ -61,7 +65,9 @@ test("flicks over wide Bases and tables, deep in the stream", async ({ phone }) 
             }
             const ms = await phone.glideLength(direction);
             lengths.push({ target: flick % 2 ? "table" : "Base", index, direction, ms });
-            console.log(`flick ${flick + 1}: ${flick % 2 ? "table" : "Base"} ${index} ${direction} ${ms} ms`);
+            console.log(
+                `flick ${flick + 1}: ${flick % 2 ? "table" : "Base"} ${index} ${direction} ${ms} ms (${probe})`
+            );
         }
     } finally {
         mkdirSync("test-results", { recursive: true });
