@@ -12,9 +12,6 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
           review the history first, then publish the `0.1.0` draft release (its
           assets match the local build)
-- [ ] Position the README against
-      [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor)
-      — a live-updating reading feed, not an inline editor.
 
 ## Features
 

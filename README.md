@@ -4,6 +4,9 @@ Read your daily notes like a journal: every day on one page, newest at the top,
 older days as you scroll. The stream is for reading; click a note's date to open
 it for editing.
 
+It works with the daily notes you already have: no new folder, format or
+template to set up, and it never changes a note.
+
 <p><img src="docs/images/demo-desktop.webp" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Mara, a jump goes to an older date, and the command palette scrolls it back to the top" width="800"></p>
 
 ## Features
@@ -24,16 +27,38 @@ it for editing.
 - **[Phone and tablet](#phone-and-tablet).** Tables and Bases too wide for the
   screen become cards.
 
+## Before you install
+
+| Question                  | Answer                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which notes does it show? | The notes named by the date format in **Settings → Daily notes**, in that folder and its subfolders. Periodic Notes' daily settings, if on. |
+| Can I edit in the stream? | No. Click a note's date to open it; the stream updates as you write.                                                                        |
+| Does it change my notes?  | Never. It only reads them.                                                                                                                  |
+| What does it store?       | Its settings, in the plugin folder. Folded sections and note heights, on each device.                                                       |
+| Does it go online?        | No. Only an embed you put in a note, such as a video, loads from the web.                                                                   |
+| Years of notes?           | Fine: only the notes near the screen are drawn.                                                                                             |
+| Which devices?            | Desktop and mobile, Obsidian 1.14.4 or later.                                                                                               |
+| Other plugins?            | Notes show as Obsidian shows them, Dataview tables and Bases included.                                                                      |
+
+Want to edit notes inside the feed? This plugin won't do that;
+[Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor)
+does.
+
 ## Install
 
-1. Download the
-   [latest release](https://github.com/madhurya27/daily-notes-plugin/releases/latest)
-   and extract it to `<Vault>/.obsidian/plugins/daily-notes-stream/`.
-2. Reload Obsidian.
-3. Enable **Daily notes stream** in **Settings → Community plugins**.
+1. From the
+   [latest release](https://github.com/madhurya27/daily-notes-plugin/releases/latest),
+   download `main.js`, `manifest.json` and `styles.css`.
+2. Put them in `<Vault>/.obsidian/plugins/daily-notes-stream/`. Create the
+   folder if it doesn't exist; `.obsidian` is hidden in most file browsers.
+3. Reload Obsidian.
+4. Enable **Daily notes stream** in **Settings → Community plugins**.
 
-To build from source instead: `pnpm run build`, then copy `main.js`,
-`manifest.json` and `styles.css` to the same folder.
+On a phone or tablet, install it on a computer and let your sync carry the
+plugin folder to the device, then enable it there.
+
+To build from source instead: `pnpm run build`, then copy the same three files
+to the same folder.
 
 ## Use
 
@@ -167,14 +192,20 @@ The stream follows Obsidian's theme, light or dark.
 
 <img src="docs/images/stream-dark-desktop.png" alt="The stream in Obsidian's dark theme" width="440">
 
+## Troubleshooting
+
+| You see                                      | Do                                                                                                   |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| "No daily notes found"                       | Check the folder and date format in **Settings → Daily notes** match your notes' names and location. |
+| "Every daily note is hidden"                 | Each note holds only its template. Write in one, or turn off **Hide empty notes**.                   |
+| A note you expected is missing               | It holds only the template ([Empty notes](#empty-notes)), or its name doesn't match the date format. |
+| The plugin isn't listed in Community plugins | Check the three files sit directly in `daily-notes-stream/`, not in a subfolder, then reload.        |
+
 ## Development
 
 ```bash
 pnpm install && pnpm test && pnpm run lint && pnpm run build
 ```
-
-Why the code is the way it is: [`docs/adr/`](docs/adr/) for architecture,
-[`docs/DECISIONS.md`](docs/DECISIONS.md) for smaller decisions.
 
 ## License
 
