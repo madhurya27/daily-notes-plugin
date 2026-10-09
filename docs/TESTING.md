@@ -55,9 +55,12 @@ retake shows the same content; `pnpm run seed` alone takes `--days N` and
 ### iPhone: `pnpm run test:ios`
 
 Real touches on Obsidian on an iPhone plugged into the Mac, in a vault the
-harness seeds, `Stream E2E`, stored on the phone. The harness changes no setting
-on the phone, and ends a run where it began: Obsidian back in the vault it had
-open, then closed, on the Home Screen. Once per Mac and phone:
+harness seeds, `Stream E2E`, stored on the phone. It ends a run where it began:
+Obsidian back in the vault it had open, then closed, on the Home Screen. The
+keyboard's autocorrection and predictive text, which WebDriverAgent turns off,
+end on; `IOS_KEYBOARD_AUTOCORRECT=off` or `IOS_KEYBOARD_PREDICTION=off` leaves
+one off (D-112), on the command line or in a gitignored `e2e/ios/.env`. Once per
+Mac and phone:
 
 1. Install Xcode, open it once, and add an Apple ID under Settings → Accounts.
    Then Manage Certificates → + → Apple Development. A free account is enough.

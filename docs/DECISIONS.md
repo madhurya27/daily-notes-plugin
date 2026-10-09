@@ -1824,3 +1824,20 @@ paints a frame after, so text below a Base in the same note jumped and returned:
   a frame; a larger change to the hold (D-035, D-054) than these two needed.
 - A callback from `NoteBases` into `NoteWindowManager` — wires the renderer to
   the stream it is made before; the event needs no reference.
+
+## D-112 — A phone run turns the keyboard's autocorrection and prediction back on (2026-10-09)
+
+**Decision:** the iOS harness ends a run by setting both through WebDriverAgent:
+on by default, `IOS_KEYBOARD_AUTOCORRECT=off` or `IOS_KEYBOARD_PREDICTION=off`
+to leave one off, set on the command line or in a gitignored `e2e/ios/.env`,
+which the command line overrides. Tests still type with both off.
+
+**Why:** WebDriverAgent turns both off each time it starts, real phones
+included, and never back on: the tester's keyboard stayed changed.
+
+**Rejected:**
+
+- Restoring what the phone had — WebDriverAgent overwrites it before any session
+  can read it.
+- Patching WebDriverAgent's start-up — a fork of a dependency the driver install
+  replaces.

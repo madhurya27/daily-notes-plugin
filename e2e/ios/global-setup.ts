@@ -3,6 +3,8 @@ import { X509Certificate } from "crypto";
 import { mkdirSync, openSync, readFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { keyboardAfterRun } from "./keyboard";
+import { loadLocalEnv } from "./local-env";
 import { APPIUM_PORT } from "./session";
 
 /**
@@ -89,6 +91,9 @@ async function waitForAppium(): Promise<void> {
 /** Appium serving the phone on the cable; returns what stops it. */
 export default async function startAppium(): Promise<() => void> {
     mkdirSync(DEV, { recursive: true });
+    loadLocalEnv(join(REPO, "e2e/ios/.env"));
+    // A typo fails here, not after the run.
+    keyboardAfterRun(process.env);
     const team = teamId();
     // Set here, the workers inherit them.
     Object.assign(process.env, {

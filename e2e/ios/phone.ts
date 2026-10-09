@@ -1,4 +1,5 @@
 import { test as base, expect } from "@playwright/test";
+import { keyboardAfterRun } from "./keyboard";
 import { connect, OBSIDIAN } from "./session";
 import { returnToTestersVault, useVault } from "./vault";
 
@@ -741,6 +742,7 @@ export const test = base.extend<{ quietConsole: void }, { phone: Phone }>({
                 await returnToTestersVault(phone);
                 await driver.execute("mobile: terminateApp", { bundleId: OBSIDIAN });
                 await driver.execute("mobile: pressButton", { name: "home" });
+                await driver.updateSettings(keyboardAfterRun(process.env));
                 await driver.deleteSession();
             }
         },

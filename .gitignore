@@ -33,3 +33,6 @@ coverage/
 # playwright
 test-results/
 /.dev/
+
+# this Mac's settings for test:ios
+/e2e/ios/.env
