@@ -211,3 +211,22 @@ test.describe("linked mentions", () => {
         expect(Math.min(...heights.seen)).toBeGreaterThanOrEqual(height - 1);
     });
 });
+
+// Core creates today's note as the vault opens, after the day's links to it are written.
+test("lists the notes linking to a note written before it was", async ({ obsidian }) => {
+    const { page } = obsidian;
+    const today = await page.evaluate(() => new Date().toLocaleDateString("en-CA"));
+    const path = `Notes/${today}.md`;
+    await remove(page, [path]);
+    try {
+        await create(page, { "Plan.md": `Talk about [[${today}]].` });
+        const container = await openStream(page);
+        await create(page, { [path]: "Morning." });
+
+        const heading = container.locator(`.daily-note-block[data-source-path="${path}"] .daily-note-mentions-heading`);
+        await expect(heading).toBeVisible();
+        await expect(heading.locator(".daily-note-mentions-count")).toHaveText("1");
+    } finally {
+        await remove(page, ["Plan.md", path]);
+    }
+});

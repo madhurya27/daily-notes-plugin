@@ -4,6 +4,13 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] `e2e/ios/stream.spec.ts`, "flicks reach the oldest note, each note once,
+      newest first": its first flick moved nothing (0 to 0, once 56 to 56) in
+      each of 3 full runs on 2026-10-09, and passed 3 runs alone. Something an
+      earlier spec leaves behind. Passed 2 full runs since `e99cfdc`, which
+      clears notes a stopped run left on the phone: perhaps those.
+- [ ] `frames.spec.ts`, mobile, "a frame in a note gets its page" failed once in
+      a full run (`frameSrcs` held an extra `null`), then passed 18 runs
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.
@@ -18,6 +25,19 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] A phone recording for the README, taken on a real iPhone: `e2e/ios/`
       drives it, title-bar taps included, and Appium can record its screen. The
       e2e mobile run is desktop Chromium, which doesn't look like a phone.
+      `phone.type()` types what it shows written, key by key.
+- [ ] Can reading drop cards and stacked tables for sideways scrolling? ADR 0007
+      found any scroll box, `hidden` included, ends iOS glides 0.1–0.4 s after
+      the lift once notes unload, intermittently. Yet in the editing spike's
+      open note (tag `archive/edit-today`), nothing clipped, flicks over its
+      wide Bases glided in full: 24 of 24, then 8 of 8. On the iPhone, two
+      builds: today's, and one where every wide Base (`.bases-view`) and table
+      scrolls sideways, without `asCards` or `stackWideTables`. Same vault,
+      notes unloading: jump deep, many flicks over Bases and tables, count
+      glides stopping early (`phone.glidesPast`; `e2e/ios/jump.spec.ts` sets up
+      the jump). Its 0.5 s check can miss a short stop: check below it too, or
+      record the screen (D-099). Equal: an ADR superseding 0008's cards. Not:
+      keep cards, and note the numbers in ADR 0008.
 - [ ] Group the settings in `SettingGroup` cards, rejected in D-078 for needing
       1.11; `minAppVersion` is 1.14.4 since 0.5.0 (D-100).
 

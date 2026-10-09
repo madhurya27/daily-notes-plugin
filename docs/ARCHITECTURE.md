@@ -76,6 +76,8 @@ through one promise queue, so none interleaves at an `await`
 - On mobile nothing inside a note scrolls: `ScrollBoxGuard` clips stray scroll
   boxes ([ADR 0008](adr/0008-nothing-scrolls-on-mobile.md)), and a PDF is its
   first page, opened by a tap (D-083). Desktop keeps Obsidian's scroll boxes.
+- Nothing in the stream carries Obsidian's `.clickable-icon`: on an iPhone, a
+  flick begun on one never scrolls (D-113).
 - On mobile `FrameDeferral` holds back a frame's page until the scroll is still
   (D-087), puts a YouTube embed's thumbnail in its place (D-088), and makes a
   web page's frame a preview linking to the page (D-098).
