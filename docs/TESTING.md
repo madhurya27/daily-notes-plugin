@@ -84,7 +84,16 @@ Each run:
   Brightness → Auto-Lock → Never, or the phone locks between them.
 - **After:** set Auto-Lock back. At Never the phone does not lock.
 
-Appium's log is `.dev/appium.log`.
+Appium's log is `.dev/appium.log`; WebDriverAgent's build log is
+`.dev/wda-build.log`.
+
+A free account's profile lasts 7 days; each run renews it, if Xcode still has
+the account. When a run fails:
+
+| Error                                                                   | Fix                                                                                    |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `xcodebuild build-for-testing` failed; the build log says "No Accounts" | Xcode → Settings → Accounts: sign the Apple ID back in                                 |
+| Every test fails at once, "Unable to launch WebDriverAgent", code 65    | On the phone: Settings → General → VPN & Device Management → Apple Development → Trust |
 
 ## Verification
 
