@@ -88,7 +88,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
         expect(view).toBeInstanceOf(DailyNotesStreamView);
     });
 
-    // Each view still owns its service (CLAUDE.md, Invariants); only the
+    // Each view still owns its service (.claude/rules/invariants.md); only the
     // parsed dates carry over, so a second open parses nothing it has seen.
     it("hands every view one date cache, so a later open parses no name again", async () => {
         __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]);

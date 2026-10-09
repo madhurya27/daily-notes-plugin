@@ -510,7 +510,7 @@ ms instead of 52 (10-year vault, 5,000 other notes).
 **Rejected:**
 
 - One plugin-wide list — each view's queue must own its list's changes, or
-  pagination breaks (CLAUDE.md, Invariants).
+  pagination breaks (.claude/rules/invariants.md).
 - A plugin-wide list kept current by vault listeners, copied per view — work
   while no stream is open, and state nothing displays.
 
@@ -683,7 +683,7 @@ stream opens like Obsidian's other views.
 **Rejected:**
 
 - Revealing an open stream instead — the graph opens a second one, and each view
-  owns its service (CLAUDE.md, Invariants), so a second is safe.
+  owns its service (.claude/rules/invariants.md), so a second is safe.
 - A new tab every time — tabs pile up; the previous behavior.
 
 ## D-041 — The stream's icon is a stack of cards (2026-09-25)

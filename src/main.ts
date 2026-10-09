@@ -41,7 +41,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.indexEmptyNotes();
         this.followLinkChanges();
 
-        // Each view owns its service (CLAUDE.md, Invariants); they share only the parsed dates and verdicts.
+        // Each view owns its service (.claude/rules/invariants.md); they share only the parsed dates and verdicts.
         const parsedDates = new ParsedDates();
         const markdownFiles = () => this.app.vault.getMarkdownFiles();
         const filter = hideEmptyNotes(this.emptyNotes, this.backlinks, () => this.settings);

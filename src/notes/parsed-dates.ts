@@ -5,7 +5,7 @@ import type { Moment } from "./daily-note-service";
  * Each path's parsed date, kept on the plugin between stream opens. A date
  * depends only on the path and the daily-notes format, so nothing in the vault
  * can make an entry stale: no listeners, and each view still builds its own
- * list (CLAUDE.md, Invariants).
+ * list (.claude/rules/invariants.md).
  */
 export class ParsedDates {
     private format: string | null = null;

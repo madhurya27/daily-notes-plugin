@@ -2,8 +2,9 @@
 
 An Obsidian plugin that shows every daily note, newest first, as one read-only
 infinite scroll. Invariants that span files are in
-[CLAUDE.md](../CLAUDE.md#invariants); rationale is in [adr/](adr/) and
-[DECISIONS.md](DECISIONS.md). Files are kebab-case, grouped by job (D-023).
+[.claude/rules/invariants.md](../.claude/rules/invariants.md); rationale is in
+[adr/](adr/) and [DECISIONS.md](DECISIONS.md). Files are kebab-case, grouped by
+job (D-023).
 
 ## Layers
 

@@ -56,7 +56,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
      */
     private lifecycle: "opening" | "open" | "closed" = "opening";
 
-    /** `service` is this view's own (CLAUDE.md, Invariants). */
+    /** `service` is this view's own (.claude/rules/invariants.md). */
     constructor(
         leaf: WorkspaceLeaf,
         plugin: DailyNotesStreamPlugin,
