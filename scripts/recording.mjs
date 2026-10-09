@@ -1,8 +1,9 @@
 /**
- * Frame timing for the README recording. A screencast sends a frame whenever
- * the page repaints, so motion arrives at up to 60 a second and stillness as
- * nothing at all; every frame kept costs a full image in the animated PNG.
+ * The README recordings: which frames to keep, and the animated WebP they
+ * make. Motion arrives at up to 60 frames a second and stillness as few or
+ * none; every frame kept costs space in the file.
  */
+import { execFileSync } from "child_process";
 
 /** Float timestamps: 5 × 0.02 must count as a whole 0.1. */
 const EPSILON = 1e-9;
@@ -36,4 +37,40 @@ export function pickFrames(frames, { minInterval, hold }) {
         const delay = following === undefined ? hold : frames[following].timestamp - frames[index].timestamp;
         return { index, delay };
     });
+}
+
+/**
+ * `img2webp`'s arguments for `frames`, each shown for its delay in seconds:
+ * looped forever, lossless unless given a `quality` for lossy. Delays round
+ * by their running total, so the whole lasts as long as the frames.
+ * @param {{ path: string, delay: number }[]} frames
+ * @param {string} output
+ * @param {{ quality?: number }} [options]
+ * @returns {string[]}
+ */
+export function webpArgs(frames, output, { quality } = {}) {
+    const mode = quality === undefined ? ["-lossless"] : ["-lossy", "-q", String(quality)];
+    let elapsed = 0;
+    const timed = frames.flatMap(({ path, delay }) => {
+        const from = Math.round(elapsed * 1000);
+        elapsed += delay;
+        return ["-d", String(Math.round(elapsed * 1000) - from), path];
+    });
+    return ["-loop", "0", ...mode, ...timed, "-o", output];
+}
+
+/**
+ * Writes `frames`, image files timed in seconds, to `output` as an animated
+ * WebP, thinned to one each `minInterval` seconds at most. Needs `img2webp`
+ * (`brew install webp`).
+ * @param {{ timestamp: number, path: string }[]} frames
+ * @param {string} output
+ * @param {{ quality?: number, minInterval?: number }} [options]
+ */
+export function writeWebp(frames, output, { minInterval = 0.1, ...options } = {}) {
+    const kept = pickFrames(frames, { minInterval, hold: 2 }).map(({ index, delay }) => ({
+        path: frames[index].path,
+        delay,
+    }));
+    execFileSync("img2webp", webpArgs(kept, output, options), { stdio: ["ignore", "ignore", "inherit"] });
 }

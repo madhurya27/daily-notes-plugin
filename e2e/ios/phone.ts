@@ -23,7 +23,9 @@ const XML_ENTITIES = [
 ] as const;
 type Seen = { path: string; index: number; text: string; top: number };
 /** A point in the web view, in CSS pixels, and the viewport's width they are measured against. */
-type Point = { x: number; y: number; viewport: number };
+export type Point = { x: number; y: number; viewport: number };
+/** A touch the harness sent: from where to where, in the screen's points, and when, in Unix ms, for how long. */
+export type SentTouch = { from: { x: number; y: number }; to: { x: number; y: number }; start: number; ms: number };
 /** Where the stream is, as it keeps its place: a note, and its top's offset from the pane's. */
 export type Place = { path: string; offset: number };
 
@@ -61,10 +63,40 @@ const OBSIDIANS_SANDBOX_NOTICE =
 export class Phone {
     /** WebDriverAgent takes up to half a second to answer, more during a glide; it changes only on a turn. */
     private screen: { width: number; height: number } | undefined;
+    /** Each touch sent since `logTouches`, or none kept. */
+    private sent: SentTouch[] | null = null;
     /** Where the keyboard's keys are, by layout; changes only on a turn. */
     private readonly keyboards = new Map<Layer, Map<string, { x: number; y: number }>>();
 
     constructor(private readonly driver: WebdriverIO.Browser) {}
+
+    /** Starts keeping each touch sent, for `sentTouches`: a recording draws them. */
+    logTouches(): void {
+        this.sent = [];
+    }
+
+    sentTouches(): SentTouch[] {
+        return this.sent ?? [];
+    }
+
+    /** The screen's size in points, what touches are measured in. */
+    screenSize(): Promise<{ width: number; height: number }> {
+        return this.windowSize();
+    }
+
+    /**
+     * Sends `actions`, logging `touches` if kept: each `after` ms into a
+     * gesture `length` ms long, which ended as the command returned.
+     */
+    private async perform(
+        actions: Parameters<WebdriverIO.Browser["performActions"]>[0],
+        length: number,
+        touches: (Omit<SentTouch, "start"> & { after: number })[]
+    ): Promise<void> {
+        await this.driver.performActions(actions);
+        const end = Date.now();
+        this.sent?.push(...touches.map(({ after, ...touch }) => ({ ...touch, start: end - length + after })));
+    }
 
     /** Runs `fn` in Obsidian's web view; like Playwright's `evaluate`, it closes over nothing. */
     async run<R, A extends unknown[]>(fn: (...args: A) => R, ...args: A): Promise<R> {
@@ -111,15 +143,17 @@ export class Phone {
     /**
      * `text` typed on iOS's on-screen keyboard, a finger on each key; a
      * newline is Return. Shift is never pressed: a letter takes the case iOS
-     * gives it, as it would a reader's.
+     * gives it, as it would a reader's. Keys go `burst` to a gesture: one
+     * gesture lands its keys some 30 ms apart, and each costs a round trip of
+     * about 560 ms, so 2 types in pairs, at about a reader's pace. Each key is
+     * held 30 ms: held past the next key's landing, iOS types extra letters.
      */
-    async type(text: string): Promise<void> {
+    async type(text: string, burst = Infinity): Promise<void> {
         await this.native();
         let layer = await this.keyboardLayer();
-        // Taps go in one gesture, a round trip each costing half a second.
         let taps: { x: number; y: number }[] = [];
         const flush = async () => {
-            if (taps.length) await this.pressAll(taps);
+            for (let from = 0; from < taps.length; from += burst) await this.pressAll(taps.slice(from, from + burst));
             taps = [];
         };
         const keysOf = async (l: Layer) => {
@@ -137,6 +171,8 @@ export class Phone {
                 const other = keys.get("more");
                 if (!other) throw new Error(`No key for ${JSON.stringify(char)} among ${[...keys.keys()].join(" ")}`);
                 taps.push(other);
+                // Alone: a key landing while it is still held goes to the old layout.
+                await flush();
                 layer = layer === "letters" ? "numbers" : "letters";
                 keys = await keysOf(layer);
             }
@@ -410,11 +446,12 @@ export class Phone {
 
     /**
      * Quick thumb strokes, `up` to move down the stream, each caught mid-glide
-     * by the next as a reader's are; returns once the last glide stops.
+     * by the next as a reader's are; returns once the last glide stops. Each
+     * `share` of the screen tall over `ms`: by default a hard flick.
      */
-    async flick(direction: "up" | "down", strokes = 1): Promise<void> {
+    async flick(direction: "up" | "down", strokes = 1, { share = 0.7, ms = 60 } = {}): Promise<void> {
         const before = await this.scrollTop();
-        for (let i = 0; i < strokes; i++) await this.stroke(direction, 0.7, 60);
+        for (let i = 0; i < strokes; i++) await this.stroke(direction, share, ms);
         await this.rest();
         const after = await this.scrollTop();
         const blocked = direction === "up" ? after <= before && !(await this.atEnd()) : after >= before && before > 0;
@@ -469,12 +506,13 @@ export class Phone {
     }
 
     /**
-     * A quick tap on each of `points`, in the screen's points, 80 ms apart as
-     * a typist's. A finger each: WebDriverAgent lands every tap twice in one
-     * finger's chain of them.
+     * A quick tap on each of `points`, in the screen's points, as one gesture:
+     * WebDriverAgent lands them some 30 ms apart, whatever pauses it is given.
+     * A finger each: it lands every tap twice in one finger's chain of them.
      */
     private async pressAll(points: { x: number; y: number }[]): Promise<void> {
-        await this.driver.performActions(
+        if (points.length === 0) return;
+        await this.perform(
             points.map(({ x, y }, i) => ({
                 type: "pointer",
                 id: `finger${i}`,
@@ -486,7 +524,10 @@ export class Phone {
                     { type: "pause", duration: 30 },
                     { type: "pointerUp", button: 0 },
                 ],
-            }))
+            })),
+            points.length * 30,
+            // Unlogged: a key shows its own bubble, as under a thumb.
+            []
         );
     }
 
@@ -496,21 +537,29 @@ export class Phone {
         const { width, height } = await this.windowSize();
         const [from, to] = direction === "up" ? [0.5 + share / 2, 0.5 - share / 2] : [0.5 - share / 2, 0.5 + share / 2];
         const x = Math.round(width / 2);
+        const [start, end] = [
+            { x, y: Math.round(height * from) },
+            { x, y: Math.round(height * to) },
+        ];
         // One command per stroke: within one, WebDriverAgent drags the finger
         // back to the start between strokes, scrolling the stream back.
-        await this.driver.performActions([
-            {
-                type: "pointer",
-                id: "thumb",
-                parameters: { pointerType: "touch" },
-                actions: [
-                    { type: "pointerMove", duration: 0, x, y: Math.round(height * from) },
-                    { type: "pointerDown", button: 0 },
-                    { type: "pointerMove", duration, x, y: Math.round(height * to) },
-                    { type: "pointerUp", button: 0 },
-                ],
-            },
-        ]);
+        await this.perform(
+            [
+                {
+                    type: "pointer",
+                    id: "thumb",
+                    parameters: { pointerType: "touch" },
+                    actions: [
+                        { type: "pointerMove", duration: 0, ...start },
+                        { type: "pointerDown", button: 0 },
+                        { type: "pointerMove", duration, ...end },
+                        { type: "pointerUp", button: 0 },
+                    ],
+                },
+            ],
+            duration,
+            [{ from: start, to: end, after: 0, ms: duration }]
+        );
     }
 
     private async windowSize(): Promise<{ width: number; height: number }> {
@@ -536,7 +585,17 @@ export class Phone {
      */
     async tap(selector: string, offset = { x: 0, y: 0 }): Promise<void> {
         const { x, y, viewport } = await this.reach(selector);
-        await this.touch({ x: x + offset.x, y: y + offset.y, viewport }, 50);
+        await this.tapAt({ x: x + offset.x, y: y + offset.y, viewport });
+    }
+
+    /** Where `tap` would land on `selector`, looked up ahead: a reader's tap has no pause before it. */
+    pointOf(selector: string): Promise<Point> {
+        return this.reach(selector);
+    }
+
+    /** A tap on a point `pointOf` found. */
+    tapAt(point: Point): Promise<void> {
+        return this.touch(point, 50);
     }
 
     /** A finger held on the middle of the first `selector` it could reach, as `tap` finds it, for a second. */
@@ -581,19 +640,24 @@ export class Phone {
         await this.native();
         // The web view fills the screen, so a CSS pixel is a point, scaled only if the page is zoomed.
         const scale = (await this.windowSize()).width / at.viewport;
-        await this.driver.performActions([
-            {
-                type: "pointer",
-                id: "finger",
-                parameters: { pointerType: "touch" },
-                actions: [
-                    { type: "pointerMove", duration: 0, x: Math.round(at.x * scale), y: Math.round(at.y * scale) },
-                    { type: "pointerDown", button: 0 },
-                    { type: "pause", duration: ms },
-                    { type: "pointerUp", button: 0 },
-                ],
-            },
-        ]);
+        const point = { x: Math.round(at.x * scale), y: Math.round(at.y * scale) };
+        await this.perform(
+            [
+                {
+                    type: "pointer",
+                    id: "finger",
+                    parameters: { pointerType: "touch" },
+                    actions: [
+                        { type: "pointerMove", duration: 0, ...point },
+                        { type: "pointerDown", button: 0 },
+                        { type: "pause", duration: ms },
+                        { type: "pointerUp", button: 0 },
+                    ],
+                },
+            ],
+            ms,
+            [{ from: point, to: point, after: 0, ms }]
+        );
     }
 
     /** Escape, as a hardware keyboard sends it, at `selector`: what closes a modal or the search bar. */

@@ -4,6 +4,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { DAILY_TEMPLATE, demoVault } from "../../scripts/demo-vault.mjs";
+import { DEMO as README_DEMO } from "../demo";
 import { testVault } from "../../scripts/seed-test-vault.mjs";
 import type { Phone } from "./phone";
 
@@ -14,7 +15,9 @@ import type { Phone } from "./phone";
  */
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-export const VAULT = process.env.IOS_VAULT ?? "Stream E2E";
+/** The README recording's run: the desktop recording's journal, nothing shaped for a test. */
+const RECORDING = process.env.CAPTURE_RECORDING === "1";
+export const VAULT = process.env.IOS_VAULT ?? (RECORDING ? "Stream Demo" : "Stream E2E");
 const PLUGIN_ID = "daily-notes-stream";
 const DEMO: Record<string, string> = demoVault({ until: new Date(Date.UTC(2026, 8, 30)), days: 21 });
 /**
@@ -71,7 +74,7 @@ const EMBEDS = {
     "Attachments/Manual.pdf": TEST["Attachments/Manual.pdf"]!,
     "Reading list.md": TEST["Reading list.md"]!,
 };
-const NOTES = {
+const TEST_NOTES = {
     ...DEMO,
     ...EMBEDS,
     ...Object.fromEntries(
@@ -86,6 +89,8 @@ const NOTES = {
     [SHORT_NOTE_WITH_BASE]: "A short day, a board, then the reading list.\n\n![[Kanban.base]]\n\n![[Reading.base]]\n",
 };
 
+const NOTES = RECORDING ? README_DEMO : TEST_NOTES;
+
 /** Everything the vault holds, configuration and build included, by path. */
 function contents(configDir: string): Record<string, string> {
     const config = {
@@ -93,6 +98,8 @@ function contents(configDir: string): Record<string, string> {
         "core-plugins.json": { "daily-notes": true, bases: true },
         "community-plugins.json": [PLUGIN_ID],
         "app.json": { attachmentFolderPath: "Attachments" },
+        // Light, whatever the phone's own theme: the desktop recording's.
+        ...(RECORDING ? { "appearance.json": { theme: "moonstone" } } : {}),
     };
     const build = ["main.js", "manifest.json", "styles.css"].map((name) => [
         `${configDir}/plugins/${PLUGIN_ID}/${name}`,

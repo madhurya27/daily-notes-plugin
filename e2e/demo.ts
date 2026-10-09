@@ -8,7 +8,7 @@ import { demoVault } from "../scripts/demo-vault.mjs";
 export const OUT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "docs", "images");
 
 /** Fixed, so a retake shows the same days. */
-const DEMO = demoVault({ until: new Date(Date.UTC(2026, 8, 25)), days: 21 });
+export const DEMO = demoVault({ until: new Date(Date.UTC(2026, 8, 25)), days: 21 });
 
 /**
  * Swaps the fixture's test notes for the demo journal, in the folder the

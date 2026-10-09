@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pickFrames } from "../../scripts/recording.mjs";
+import { pickFrames, webpArgs } from "../../scripts/recording.mjs";
 
 const at = (...timestamps: number[]) => timestamps.map((timestamp) => ({ timestamp }));
 const options = { minInterval: 0.1, hold: 2 };
@@ -35,5 +35,31 @@ describe("pickFrames", () => {
 
     it("returns nothing for no frames", () => {
         expect(pickFrames([], options)).toEqual([]);
+    });
+});
+
+describe("webpArgs", () => {
+    const frames = [
+        { path: "a.png", delay: 0.5 },
+        { path: "b.png", delay: 2 },
+    ];
+
+    it("loops forever, lossless, each frame shown for its delay in ms", () => {
+        expect(webpArgs(frames, "out.webp")).toEqual([
+            ...["-loop", "0", "-lossless"],
+            ...["-d", "500", "a.png", "-d", "2000", "b.png"],
+            ...["-o", "out.webp"],
+        ]);
+    });
+
+    it("encodes lossy at `quality` when given one", () => {
+        expect(webpArgs(frames, "out.webp", { quality: 80 }).slice(0, 5)).toEqual(["-loop", "0", "-lossy", "-q", "80"]);
+    });
+
+    it("rounds each delay so the whole runs as long as the frames do", () => {
+        // Three 0.1234 s frames rounded alone run 369 ms, not 370.
+        const thirds = [0.1234, 0.1234, 0.1234].map((delay, i) => ({ path: `${i}.png`, delay }));
+        const ms = webpArgs(thirds, "out.webp").flatMap((arg, i, all) => (all[i - 1] === "-d" ? [Number(arg)] : []));
+        expect(ms.reduce((sum, each) => sum + each, 0)).toBe(370);
     });
 });
