@@ -469,6 +469,35 @@ export class Phone {
     }
 
     /**
+     * One stroke, left to glide out: ms from the lift to the last scroll. A
+     * full glide runs 1–3.5 s; one a scroll box ends, 0.1–0.4 s (ADR 0007).
+     */
+    async glideLength(direction: "up" | "down"): Promise<number> {
+        await this.run((s: string) => {
+            const pane = document.querySelector(s)!.parentElement!;
+            const glide = { lifts: [] as number[], scrolls: [] as number[], done: new AbortController() };
+            (window as unknown as { streamGlide: typeof glide }).streamGlide = glide;
+            const { signal } = glide.done;
+            document.addEventListener("touchend", () => glide.lifts.push(performance.now()), {
+                capture: true,
+                signal,
+            });
+            pane.addEventListener("scroll", () => glide.scrolls.push(performance.now()), { passive: true, signal });
+        }, STREAM);
+        await this.stroke(direction, 0.7, 60);
+        await new Promise((resolve) => setTimeout(resolve, 4500));
+        return this.run(() => {
+            const { lifts, scrolls, done } = (
+                window as unknown as { streamGlide: { lifts: number[]; scrolls: number[]; done: AbortController } }
+            ).streamGlide;
+            done.abort();
+            const [lift] = lifts;
+            if (lift === undefined) throw new Error("the stroke never lifted");
+            return Math.round((scrolls.at(-1) ?? lift) - lift);
+        });
+    }
+
+    /**
      * A quick tap on each of `points`, in the screen's points, 80 ms apart as
      * a typist's. A finger each: WebDriverAgent lands every tap twice in one
      * finger's chain of them.
