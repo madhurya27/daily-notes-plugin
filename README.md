@@ -29,16 +29,16 @@ template to set up, and it never changes a note.
 
 ## Before you install
 
-| Question                  | Answer                                                                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Which notes does it show? | The notes named by the date format in **Settings → Daily notes**, in that folder and its subfolders. Periodic Notes' daily settings, if on. |
-| Can I edit in the stream? | No. Click a note's date to open it; the stream updates as you write.                                                                        |
-| Does it change my notes?  | Never. It only reads them.                                                                                                                  |
-| What does it store?       | Its settings, in the plugin folder. Folded sections and note heights, on each device.                                                       |
-| Does it go online?        | No. Only an embed you put in a note, such as a video, loads from the web.                                                                   |
-| Years of notes?           | Fine: only the notes near the screen are drawn.                                                                                             |
-| Which devices?            | Desktop and mobile, Obsidian 1.14.4 or later.                                                                                               |
-| Other plugins?            | Notes show as Obsidian shows them, Dataview tables and Bases included.                                                                      |
+| Question                  | Answer                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Which notes does it show? | The notes named by the date format in **Settings → Daily notes**, in that folder and its subfolders. |
+| Can I edit in the stream? | No. Click a note's date to open it; the stream updates as you write.                                 |
+| Does it change my notes?  | Never. It only reads them.                                                                           |
+| What does it store?       | Its settings, in the plugin folder. Folded sections and note heights, on each device.                |
+| Does it go online?        | No. Only an embed you put in a note, such as a video, loads from the web.                            |
+| Years of notes?           | Fine: only the notes near the screen are drawn.                                                      |
+| Which devices?            | Desktop and mobile, Obsidian 1.14.4 or later.                                                        |
+| Other plugins?            | Notes show as Obsidian shows them, Dataview tables and Bases included.                               |
 
 Want to edit notes inside the feed? This plugin won't do that;
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor)
