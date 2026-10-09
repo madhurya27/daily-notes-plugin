@@ -31,8 +31,6 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       the jump). Its 0.5 s check can miss a short stop: check below it too, or
       record the screen (D-099). Equal: an ADR superseding 0008's cards. Not:
       keep cards, and note the numbers in ADR 0008.
-- [ ] Group the settings in `SettingGroup` cards, rejected in D-078 for needing
-      1.11; `minAppVersion` is 1.14.4 since 0.5.0 (D-100).
 
 ## Features
 

@@ -4,7 +4,7 @@ import { resolve } from "path";
 import DailyNotesStreamPlugin from "../../src/main";
 import { DailyNotesStreamSettingTab, DEFAULT_SETTINGS } from "../../src/settings";
 import { __setMockNotes, __setMockSettings } from "../mocks/daily-notes-interface";
-import { Setting, type PluginManifest } from "../mocks/obsidian";
+import type { PluginManifest } from "../mocks/obsidian";
 import { asApp, fake } from "../stream-view-fixture";
 
 const repoRoot = resolve(__dirname, "../..");
@@ -65,17 +65,19 @@ describe("README", () => {
     // Settings buried under Use went unnoticed; a section of their own is found by skimming the headings.
     it("lists every setting, and its default, in a section of its own", () => {
         const section = readme.split(/^## /m).find((part) => part.startsWith("Settings\n")) ?? "";
-        Setting.reset();
-        new DailyNotesStreamSettingTab(
-            asApp({}),
-            fake<DailyNotesStreamPlugin>({ settings: DEFAULT_SETTINGS })
-        ).display();
+        type Row = { name?: string; heading?: string; items?: Row[]; control?: { key: keyof typeof DEFAULT_SETTINGS } };
+        const rows = (
+            new DailyNotesStreamSettingTab(
+                asApp({}),
+                fake<DailyNotesStreamPlugin>({ settings: DEFAULT_SETTINGS })
+            ).getSettingDefinitions() as Row[]
+        ).flatMap((row) => [row, ...(row.items ?? [])]);
 
-        expect(Setting.created.length).toBeGreaterThan(0);
-        for (const { name, heading, toggles } of Setting.created) {
-            const line = section.split("\n").find((text) => text.includes(`**${name}**`));
-            expect(line, `${name} is not under ## Settings`).toBeDefined();
-            if (!heading) expect(line).toContain(toggles[0]!.value ? "(on)" : "(off)");
+        expect(rows.length).toBeGreaterThan(0);
+        for (const { name, heading, control } of rows) {
+            const line = section.split("\n").find((text) => text.includes(`**${name ?? heading}**`));
+            expect(line, `${name ?? heading} is not under ## Settings`).toBeDefined();
+            if (control) expect(line).toContain(DEFAULT_SETTINGS[control.key] ? "(on)" : "(off)");
         }
     });
 });

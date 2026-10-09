@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, SettingDefinitionItem } from "obsidian";
 import DailyNotesStreamPlugin from "./main";
 
 export interface DailyNotesStreamSettings {
@@ -17,11 +17,7 @@ export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
     hideEmptyNotes: true,
 };
 
-interface ToggleRow {
-    key: keyof DailyNotesStreamSettings;
-    name: string;
-    desc: string;
-}
+type SettingKey = keyof DailyNotesStreamSettings;
 
 export class DailyNotesStreamSettingTab extends PluginSettingTab {
     plugin: DailyNotesStreamPlugin;
@@ -31,63 +27,54 @@ export class DailyNotesStreamSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
-    display(): void {
-        this.draw();
+    /** Drawn by Obsidian, which reads `plugin.settings` and lists each toggle in its settings search. */
+    getSettingDefinitions(): SettingDefinitionItem<SettingKey>[] {
+        return [
+            toggle(
+                "hideEmptyNotes",
+                "Hide empty notes",
+                "Leave out daily notes that hold only their template. Today's note always shows."
+            ),
+            this.section(
+                "Properties",
+                toggle(
+                    "showProperties",
+                    "Show note properties",
+                    "Display the frontmatter properties (metadata) for each daily note."
+                ),
+                toggle(
+                    "propertiesCollapsed",
+                    "Collapse properties by default",
+                    "Whether the properties section should be collapsed by default."
+                )
+            ),
+            this.section(
+                "Linked mentions",
+                toggle("showLinkedMentions", "Show linked mentions", "List the notes that link to each daily note."),
+                toggle(
+                    "linkedMentionsCollapsed",
+                    "Collapse linked mentions by default",
+                    "Whether the linked mentions should be collapsed by default."
+                )
+            ),
+        ];
     }
 
-    private draw(): void {
-        this.containerEl.empty();
-
-        this.addToggle({
-            key: "hideEmptyNotes",
-            name: "Hide empty notes",
-            desc: "Leave out daily notes that hold only their template. Today's note always shows.",
-        });
-        this.addSection(
-            "Properties",
-            {
-                key: "showProperties",
-                name: "Show note properties",
-                desc: "Display the frontmatter properties (metadata) for each daily note.",
-            },
-            {
-                key: "propertiesCollapsed",
-                name: "Collapse by default",
-                desc: "Whether the properties section should be collapsed by default.",
-            }
-        );
-        this.addSection(
-            "Linked mentions",
-            {
-                key: "showLinkedMentions",
-                name: "Show linked mentions",
-                desc: "List the notes that link to each daily note.",
-            },
-            {
-                key: "linkedMentionsCollapsed",
-                name: "Collapse by default",
-                desc: "Whether the linked mentions should be collapsed by default.",
-            }
-        );
+    /** Saved through the plugin, which redraws every open stream. */
+    async setControlValue(key: string, value: unknown): Promise<void> {
+        this.plugin.settings[key as SettingKey] = value as boolean;
+        await this.plugin.saveSettings();
     }
 
-    /** A heading over a section's toggles; `collapsed` is drawn only while the section shows (D-078). */
-    private addSection(heading: string, show: ToggleRow, collapsed: ToggleRow): void {
-        new Setting(this.containerEl).setName(heading).setHeading();
-        this.addToggle(show, () => this.draw());
-        if (this.plugin.settings[show.key]) this.addToggle(collapsed);
+    /** A group under `heading`; `collapsed` is drawn only while the section shows (D-114). */
+    private section(heading: string, show: Toggle, collapsed: Toggle): SettingDefinitionItem<SettingKey> {
+        const key = show.control.key;
+        return { type: "group", heading, items: [show, { ...collapsed, visible: () => this.plugin.settings[key] }] };
     }
+}
 
-    private addToggle({ key, name, desc }: ToggleRow, afterSave: () => void = () => {}): void {
-        new Setting(this.containerEl)
-            .setName(name)
-            .setDesc(desc)
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings[key]).onChange(async (value) => {
-                    this.plugin.settings[key] = value;
-                    await this.plugin.saveSettings();
-                    afterSave();
-                })
-            );
-    }
+type Toggle = { name: string; desc: string; control: { type: "toggle"; key: SettingKey } };
+
+function toggle(key: SettingKey, name: string, desc: string): Toggle {
+    return { name, desc, control: { type: "toggle", key } };
 }

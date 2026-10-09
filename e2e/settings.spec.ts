@@ -83,32 +83,46 @@ test.describe("The plugin's settings tab", () => {
         await obsidian.page.evaluate(() => window.app.setting.close());
     });
 
-    test("groups each section under a heading and drops a hidden section's collapse toggle", async ({
+    test("puts each section in a card under its heading, its collapse toggle there only while it shows", async ({
         obsidian,
         mobileLayout,
     }) => {
         const settings = await openPluginSettings(obsidian.page, mobileLayout);
-        const rows = settings.locator(".vertical-tab-content .setting-item");
-        const names = rows.locator(".setting-item-name");
-        const grouped = [
-            "Hide empty notes",
-            "Properties",
-            "Show note properties",
-            "Collapse by default",
+        const groups = settings.locator(".vertical-tab-content .setting-group");
+        const names = (group: number) => groups.nth(group).locator(".setting-item:visible .setting-item-name");
+        const properties = ["Properties", "Show note properties", "Collapse properties by default"];
+        await expect(groups).toHaveCount(3);
+        await expect(names(0)).toHaveText(["Hide empty notes"]);
+        await expect(names(1)).toHaveText(properties);
+        await expect(names(2)).toHaveText([
             "Linked mentions",
             "Show linked mentions",
-            "Collapse by default",
-        ];
-        await expect(names).toHaveText(grouped);
-        await expect(rows.locator("visible=true")).toHaveCount(grouped.length);
-        await expect(rows.and(settings.locator(".setting-item-heading")).locator(".setting-item-name")).toHaveText([
-            "Properties",
-            "Linked mentions",
+            "Collapse linked mentions by default",
         ]);
+        await expect(groups.locator(".setting-item-heading")).toHaveText(["Properties", "Linked mentions"]);
+        await expect(groups.locator(".setting-item:visible")).toHaveCount(7);
 
-        await rows.filter({ hasText: "Show note properties" }).locator(".checkbox-container").click();
+        const show = () => groups.nth(1).locator(".setting-item", { hasText: "Show note properties" });
+        await show().locator(".checkbox-container").click();
+        await expect(names(1)).toHaveText(properties.slice(0, 2));
+        await show().locator(".checkbox-container").click();
+        await expect(names(1)).toHaveText(properties);
+    });
 
-        await expect(names).toHaveText(grouped.filter((_, row) => row !== 3));
+    test("lists its toggles in Obsidian's settings search", async ({ obsidian, mobileLayout }) => {
+        const settings = await openPluginSettings(obsidian.page, mobileLayout);
+        // A phone shows one page at a time, and the search sits on the list of tabs.
+        if (mobileLayout) await settings.locator(".modal-setting-back-button").click();
+
+        await settings.locator('input[type="search"][placeholder="Search settings..."]').fill("linked mentions");
+
+        const ours = settings
+            .locator(".setting-search-result-group")
+            .filter({ has: settings.locator(".setting-search-result-tab-label", { hasText: "Daily notes stream" }) });
+        await expect(ours.locator(".setting-search-result-item")).toHaveText([
+            "Show linked mentions",
+            "Collapse linked mentions by default",
+        ]);
     });
 });
 

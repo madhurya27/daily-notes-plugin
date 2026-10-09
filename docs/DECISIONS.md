@@ -1253,6 +1253,8 @@ end is nearest when nothing older is left.
 
 ## D-078 — Settings are grouped under headings; a hidden section drops its collapse toggle (2026-09-30)
 
+Superseded in part by D-114: groups, not heading rows; no redraw.
+
 **Decision:** the settings tab puts Properties and Linked mentions under
 `Setting.setHeading()` rows, Hide empty notes above them. A section's "Collapse
 by default" is drawn only while its "Show" toggle is on; that toggle redraws the
@@ -1855,3 +1857,18 @@ title, failed four `e2e/ios/` glides (tag `archive/edit-today`, its D-109).
 **Rejected:**
 
 - Undoing the class's handling — Obsidian's script, out of reach.
+
+## D-114 — The settings tab is declared, each section a group (2026-10-09)
+
+**Decision:** `getSettingDefinitions()` returns Hide empty notes, then a group
+per section. Obsidian draws each group as a card, hides a collapse toggle while
+its section is off (`visible`), and lists every toggle in its settings search.
+`setControlValue` saves through `saveSettings()`, which redraws the streams.
+
+**Why:** the settings search finds them, and Obsidian redraws the tab itself:
+the tab holds no rendering, saving or redraw code.
+
+**Rejected:**
+
+- `SettingGroup` cards, drawn by the tab — the same cards, out of the search,
+  with D-078's redraw kept.

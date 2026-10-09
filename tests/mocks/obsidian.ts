@@ -18,6 +18,7 @@ import type {
     KeymapContext,
     PluginManifest,
     Scope as AppScope,
+    SettingDefinitionItem,
     TFolder,
     UserEvent,
     Vault,
@@ -38,6 +39,7 @@ export type {
     PaneType,
     PluginManifest,
     Pos,
+    SettingDefinitionItem,
     View,
 } from "obsidian/obsidian";
 
@@ -397,121 +399,10 @@ export class PluginSettingTab {
     constructor(app: App, _plugin: Plugin) {
         this.app = app;
     }
-}
-
-/** Stands in for Obsidian's ToggleComponent; `change()` fires the bound handler. */
-export class ToggleComponent {
-    value = false;
-    private handler: (_value: boolean) => unknown = () => {};
-    setValue(value: boolean) {
-        this.value = value;
-        return this;
+    getSettingDefinitions(): SettingDefinitionItem[] {
+        return [];
     }
-    onChange(cb: (_value: boolean) => unknown) {
-        this.handler = cb;
-        return this;
-    }
-    async change(value: boolean) {
-        this.value = value;
-        await this.handler(value);
-    }
-}
-
-/** Stands in for Obsidian's TextComponent. */
-export class TextComponent {
-    inputEl: HTMLInputElement = document.createElement("input");
-    constructor(containerEl?: HTMLElement) {
-        containerEl?.appendChild(this.inputEl);
-    }
-    get value() {
-        return this.inputEl.value;
-    }
-    setValue(value: string) {
-        this.inputEl.value = value;
-        return this;
-    }
-}
-
-/** Stands in for Obsidian's ButtonComponent; `click()` fires the handler. */
-export class ButtonComponent {
-    buttonEl: HTMLButtonElement = document.createElement("button");
-    cta = false;
-    constructor(containerEl?: HTMLElement) {
-        containerEl?.appendChild(this.buttonEl);
-    }
-    setIcon(iconName: string) {
-        setIcon(this.buttonEl, iconName);
-        return this;
-    }
-    setTooltip(tooltip: string) {
-        this.buttonEl.setAttribute("aria-label", tooltip);
-        return this;
-    }
-    setButtonText(text: string) {
-        this.buttonEl.textContent = text;
-        return this;
-    }
-    setCta() {
-        this.cta = true;
-        return this;
-    }
-    onClick(cb: (evt: MouseEvent) => unknown) {
-        this.buttonEl.addEventListener("click", cb);
-        return this;
-    }
-}
-
-export class Setting {
-    /** Every Setting built since the last reset, in construction order. */
-    static created: Setting[] = [];
-    static reset() {
-        Setting.created = [];
-    }
-
-    name = "";
-    desc = "";
-    heading = false;
-    toggles: ToggleComponent[] = [];
-    texts: TextComponent[] = [];
-    buttons: ButtonComponent[] = [];
-    readonly itemEl: HTMLElement;
-
-    constructor(containerEl: HTMLElement) {
-        this.itemEl = containerEl.createDiv({ cls: "setting-item" });
-        Setting.created.push(this);
-    }
-    setName(name: string) {
-        this.name = name;
-        return this;
-    }
-    setDesc(desc: string) {
-        this.desc = desc;
-        return this;
-    }
-    setHeading() {
-        this.heading = true;
-        this.itemEl.addClass("setting-item-heading");
-        return this;
-    }
-    addText(cb: (_text: TextComponent) => unknown) {
-        const text = new TextComponent(this.itemEl);
-        cb(text);
-        this.texts.push(text);
-        return this;
-    }
-    addButton(cb: (_button: ButtonComponent) => unknown) {
-        const button = new ButtonComponent();
-        this.itemEl.appendChild(button.buttonEl);
-        cb(button);
-        this.buttons.push(button);
-        return this;
-    }
-    addToggle(cb: (_toggle: ToggleComponent) => unknown) {
-        const toggle = new ToggleComponent();
-        cb(toggle);
-        this.toggles.push(toggle);
-        return this;
-    }
+    setControlValue(_key: string, _value: unknown): void | Promise<void> {}
 }
 
 export class Plugin {
