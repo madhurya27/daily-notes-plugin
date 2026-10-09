@@ -157,14 +157,19 @@ async function seed(phone: Phone): Promise<void> {
     const files = contents(configDir);
     const fingerprint = createHash("sha1").update(JSON.stringify(files)).digest("hex");
     const stamp = `${configDir}/stream-e2e-seed`;
+    const [notes, config] = partition(files, (path) => !path.startsWith(`${configDir}/`));
     const loaded = (id: string) => !!window.app?.plugins?.plugins?.[id];
+    // A stopped run leaves the notes its tests made, which the stamp cannot see.
+    const strays = (paths: string[]) =>
+        (window.app.vault.getFiles() as { path: string }[]).some(({ path }) => !paths.includes(path));
     if (
         (await phone.runAsync(
             async (path: string) =>
                 (await window.app.vault.adapter.exists(path)) && window.app.vault.adapter.read(path),
             stamp
         )) === fingerprint &&
-        (await phone.run(loaded, PLUGIN_ID))
+        (await phone.run(loaded, PLUGIN_ID)) &&
+        !(await phone.run(strays, Object.keys(notes)))
     )
         return;
     const ready = () => phone.run(() => !!window.app?.vault?.adapter).catch(() => false);
@@ -176,7 +181,6 @@ async function seed(phone: Phone): Promise<void> {
         })
         .catch(() => undefined);
     await expect.poll(ready).toBe(true);
-    const [notes, config] = partition(files, (path) => !path.startsWith(`${configDir}/`));
     await phone.runAsync(async (files: Record<string, string>) => {
         const { adapter } = window.app.vault;
         // The vault's own index, which leaves out the config folder: the mobile adapter has no listRecursive.
