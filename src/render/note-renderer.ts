@@ -178,14 +178,9 @@ export class NoteRenderer {
             // On mobile nothing in the stream may scroll (ADR 0008); desktop
             // draws wide content as Obsidian does, scrolling in its own box.
             const mobile = Platform.isMobile;
-            const { markdown: body, bases } = mobile ? extractBases(markdown) : { markdown, bases: [] };
-            await MarkdownRenderer.render(this.app, body, contentEl, file.path, noteComponent);
+            await MarkdownRenderer.render(this.app, markdown, contentEl, file.path, noteComponent);
             this.markUnresolvedLinks(contentEl);
-            if (mobile) {
-                await this.bases.render(contentEl, file, noteComponent, bases);
-                stackWideTables(contentEl, noteComponent, this.widths);
-                fitWideEquations(contentEl, noteComponent, this.widths);
-            }
+            if (mobile) fitWideEquations(contentEl, noteComponent, this.widths);
 
             wrapTextBesideBlocks(contentEl);
             const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);

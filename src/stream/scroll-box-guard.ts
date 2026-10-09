@@ -53,7 +53,7 @@ export class ScrollBoxGuard {
                 else this.unchecked.add(node);
             }
         }
-        for (const view of views) this.onBaseLayout(view);
+        void views;
         if (this.unchecked.size > 0) this.checkOnceStill();
     }
 
@@ -82,6 +82,7 @@ function baseViewChangedBy(record: MutationRecord): HTMLElement | null {
 
 /** `hidden` too: no finger scrolls it, but it is a scroll container. */
 function isScrollBox(el: HTMLElement): boolean {
+    if (el.matches("table") || el.closest(BASE)) return false;
     const style = getComputedStyle(el);
     return /auto|scroll|hidden/.test(`${style.overflowX} ${style.overflowY}`);
 }

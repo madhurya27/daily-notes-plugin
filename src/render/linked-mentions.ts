@@ -102,10 +102,7 @@ export class LinkedMentionsFooter {
             );
             if (stale()) return;
             await Promise.all(mentions.map((mention, i) => this.drawMention(content, mention, texts[i]!, note)));
-            if (Platform.isMobile) {
-                stackWideTables(content, note, this.widths);
-                fitWideEquations(content, note, this.widths);
-            }
+            if (Platform.isMobile) fitWideEquations(content, note, this.widths);
             this.decorate(el);
         } catch (error) {
             console.error("DailyNotesStream: Failed to draw linked mentions", error);

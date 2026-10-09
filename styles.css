@@ -487,7 +487,8 @@
 
 /* Desktop: wide content scrolls inside its own box, as in Obsidian's reading
    view, rather than widen the stream. */
-body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(table, pre) {
+body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(table, pre),
+.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) table {
     display: block;
     max-width: 100%;
     overflow-x: auto;
@@ -497,7 +498,7 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
    stream's width, and what still does not fit is clipped. `clip`, never
    `hidden` or `auto`: those make a scroll container, and one inside the stream
    ends an iOS glide early. */
-.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) table {
+.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) table.spike-off {
     width: 100%;
     /* Obsidian's floor on a column, which seven columns overrun on a phone. */
     --table-column-min-width: 0px;
@@ -581,8 +582,6 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
 /* A Base and everything in it, a Dataview query, and whatever the scroll box
    guard found (src/stream/scroll-box-guard.ts). !important outranks Bases' and
    Dataview's own rules. */
-.is-mobile .daily-note-block :is(.bases-embed, .block-language-base),
-.is-mobile .daily-note-block :is(.bases-embed, .block-language-base) *,
 .is-mobile .daily-note-block :is(.block-language-dataview, .block-language-dataviewjs),
 .is-mobile .daily-note-block .markdown-embed-content,
 .is-mobile .daily-note-block :is(.pdf-embed, .pdf-embed *),
