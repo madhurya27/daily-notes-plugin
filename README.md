@@ -4,7 +4,7 @@ Read your daily notes like a journal: every day on one page, newest at the top,
 older days as you scroll. The stream is for reading; click a note's date to open
 it for editing.
 
-<p><img src="docs/images/demo-desktop.png" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Mara, and it glides back to the top" width="800"></p>
+<p><img src="docs/images/demo-desktop.png" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Mara, a jump goes to an older date, and it glides back to the top" width="800"></p>
 
 ## Features
 

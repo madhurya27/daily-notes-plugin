@@ -5,7 +5,7 @@ import { clickAt, clickLikeAPerson, driftOff, flick, record, restAt, typeLikeAPe
 
 /**
  * Records the README's animated PNG of the stream in use: a note edited live,
- * scrolling by hand, search. Opt-in,
+ * scrolling by hand, search, a jump to a date. Opt-in,
  * through `pnpm run capture:recording`, and apart from the stills so either can
  * be retaken alone.
  */
@@ -79,6 +79,16 @@ test.describe("README recording", () => {
             // Easing off the button, so it keeps no hover highlight.
             await driftOff(page);
             await pause(500);
+
+            // Jump: a few keys narrow the vault's dates, a click lands on the day.
+            await clickLikeAPerson(page, page.locator('.view-action[aria-label="Jump to date"]'));
+            await pause(800);
+            await typeLikeAPerson(page, "09-0");
+            await pause(900);
+            await clickLikeAPerson(page, page.locator(".prompt .suggestion-item", { hasText: "2026-09-08" }));
+            await expect(container.locator(".daily-note-title", { hasText: "2026-09-08" })).toBeInViewport();
+            await driftOff(page);
+            await pause(2000);
 
             // Back to the newest, so the loop restarts where it began.
             await page.evaluate(() => window.app.commands.executeCommandById("daily-notes-stream:scroll-to-top"));
