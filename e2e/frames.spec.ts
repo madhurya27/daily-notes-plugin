@@ -3,6 +3,8 @@ import { test, expect, openStream } from "./obsidian";
 /** Newer than every seeded note, so it renders as the stream opens. */
 const NOTE = "Notes/2026-03-16.md";
 const PAGE = "about:blank#video";
+/** What happened to one frame: each page it was given, and its shade each time it was held. */
+type FrameLog = { srcs: (string | null)[]; shades: string[] };
 
 // A frame starting its page mid-glide ends an iOS glide (D-087): on mobile
 // the page waits for the scroll to be still, then loads; desktop loads it at once.
@@ -11,17 +13,21 @@ test("a frame in a note gets its page, on mobile once the stream is still, shade
     mobileLayout,
 }) => {
     const { page } = obsidian;
+    // As an earlier spec leaves it: a stream open, which renders the note too.
+    await openStream(page);
     await page.evaluate(
         async ({ note, src }) => {
-            const log: (string | null)[] = [];
-            const shades: string[] = [];
-            Object.assign(window, { frameSrcs: log, frameShades: shades });
+            // By frame: a stream left open holds its own copy of the note's frame.
+            const logs = new WeakMap<HTMLIFrameElement, FrameLog>();
+            Object.assign(window, { frameLogs: logs });
             new MutationObserver((records) => {
                 for (const { target, attributeName } of records) {
                     if (!(target instanceof HTMLIFrameElement)) continue;
-                    if (attributeName === "src") log.push(target.getAttribute("src"));
+                    const log = logs.get(target) ?? { srcs: [], shades: [] };
+                    logs.set(target, log);
+                    if (attributeName === "src") log.srcs.push(target.getAttribute("src"));
                     else if (target.classList.contains("is-frame-held"))
-                        shades.push(getComputedStyle(target).backgroundColor);
+                        log.shades.push(getComputedStyle(target).backgroundColor);
                 }
             }).observe(document.body, { attributes: true, attributeFilter: ["src", "class"], subtree: true });
             await window.app.vault.create(
@@ -36,17 +42,22 @@ test("a frame in a note gets its page, on mobile once the stream is still, shade
         const frame = container.locator(`.daily-note-block[data-source-path="${NOTE}"] iframe`);
 
         await expect(frame).toHaveAttribute("src", PAGE);
-        const srcs = await page.evaluate(() => (window as unknown as { frameSrcs: (string | null)[] }).frameSrcs);
-        expect(srcs).toEqual(mobileLayout ? [null, PAGE] : []);
+        const log = await frame.evaluate(
+            (el) =>
+                (window as unknown as { frameLogs: WeakMap<HTMLIFrameElement, FrameLog> }).frameLogs.get(
+                    el as HTMLIFrameElement
+                ) ?? { srcs: [], shades: [] }
+        );
+        expect(log.srcs).toEqual(mobileLayout ? [null, PAGE] : []);
         // Meanwhile a placeholder: Obsidian's secondary background.
-        const [shades, secondary] = await page.evaluate(() => {
+        const secondary = await page.evaluate(() => {
             const probe = document.body.appendChild(document.createElement("div"));
             probe.style.backgroundColor = "var(--background-secondary)";
             const color = getComputedStyle(probe).backgroundColor;
             probe.remove();
-            return [(window as unknown as { frameShades: string[] }).frameShades, color];
+            return color;
         });
-        expect(shades).toEqual(mobileLayout ? [secondary] : []);
+        expect(log.shades).toEqual(mobileLayout ? [secondary] : []);
     } finally {
         await page.evaluate(async (note) => {
             const file = window.app.vault.getFileByPath(note);
