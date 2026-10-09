@@ -25,6 +25,7 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] A phone recording for the README, taken on a real iPhone: `e2e/ios/`
       drives it, title-bar taps included, and Appium can record its screen. The
       e2e mobile run is desktop Chromium, which doesn't look like a phone.
+      `phone.type()` types what it shows written, key by key.
 - [ ] Can reading drop cards and stacked tables for sideways scrolling? ADR 0007
       found any scroll box, `hidden` included, ends iOS glides 0.1–0.4 s after
       the lift once notes unload, intermittently. Yet in the editing spike's

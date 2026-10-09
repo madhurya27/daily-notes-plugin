@@ -4,20 +4,14 @@ const MATCH = "daily-notes-search-match";
 const CURRENT = "daily-notes-search-current";
 const BAR = ".daily-notes-search:not(.is-closed) input";
 
-/** Searches the open stream for `query`, the bar's caret put away so the screen holds still. */
+/** Types `query` into the open stream's search bar, then puts its caret away so the screen holds still. */
 async function search(phone: Phone, query: string): Promise<void> {
     await phone.tap('.view-action[aria-label="Search"]');
     await expect.poll(() => phone.has(BAR), "the search bar did not open").toBe(true);
-    await phone.run(
-        (bar: string, q: string) => {
-            const input = document.querySelector<HTMLInputElement>(bar)!;
-            input.value = q;
-            input.dispatchEvent(new Event("input", { bubbles: true }));
-            input.blur();
-        },
-        BAR,
-        query
-    );
+    await expect.poll(() => phone.keyboardShown(), "the keyboard did not rise").toBe(true);
+    await phone.type(query);
+    expect(await phone.run((bar: string) => document.querySelector<HTMLInputElement>(bar)!.value, BAR)).toBe(query);
+    await phone.run((bar: string) => document.querySelector<HTMLInputElement>(bar)!.blur(), BAR);
     await expect.poll(() => phone.run((name: string) => CSS.highlights.get(name)?.size ?? 0, CURRENT)).toBe(1);
     await phone.rest();
 }

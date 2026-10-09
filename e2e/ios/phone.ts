@@ -12,6 +12,15 @@ import { returnToTestersVault, useVault } from "./vault";
 const STREAM = ".daily-notes-stream-container";
 
 type Orientation = "PORTRAIT" | "LANDSCAPE";
+type Layer = "letters" | "numbers";
+/** What a key's name escapes in the screen's XML, `&amp;` last. */
+const XML_ENTITIES = [
+    ["&quot;", '"'],
+    ["&apos;", "'"],
+    ["&lt;", "<"],
+    ["&gt;", ">"],
+    ["&amp;", "&"],
+] as const;
 type Seen = { path: string; index: number; text: string; top: number };
 /** A point in the web view, in CSS pixels, and the viewport's width they are measured against. */
 type Point = { x: number; y: number; viewport: number };
@@ -52,6 +61,8 @@ const OBSIDIANS_SANDBOX_NOTICE =
 export class Phone {
     /** WebDriverAgent takes up to half a second to answer, more during a glide; it changes only on a turn. */
     private screen: { width: number; height: number } | undefined;
+    /** Where the keyboard's keys are, by layout; changes only on a turn. */
+    private readonly keyboards = new Map<Layer, Map<string, { x: number; y: number }>>();
 
     constructor(private readonly driver: WebdriverIO.Browser) {}
 
@@ -95,6 +106,80 @@ export class Phone {
     async keyboardShown(): Promise<boolean> {
         await this.native();
         return this.driver.isKeyboardShown();
+    }
+
+    /**
+     * `text` typed on iOS's on-screen keyboard, a finger on each key; a
+     * newline is Return. Shift is never pressed: a letter takes the case iOS
+     * gives it, as it would a reader's.
+     */
+    async type(text: string): Promise<void> {
+        await this.native();
+        let layer = await this.keyboardLayer();
+        // Taps go in one gesture, a round trip each costing half a second.
+        let taps: { x: number; y: number }[] = [];
+        const flush = async () => {
+            if (taps.length) await this.pressAll(taps);
+            taps = [];
+        };
+        const keysOf = async (l: Layer) => {
+            // An unread layout is read off the screen, so it must be showing.
+            if (!this.keyboards.has(l)) {
+                await flush();
+                await expect.poll(() => this.keyboardLayer()).toBe(l);
+            }
+            return this.keysOf(l);
+        };
+        for (const char of text) {
+            const name = char === "\n" ? "return" : char === " " ? "space" : char.toLowerCase();
+            let keys = await keysOf(layer);
+            if (!keys.has(name)) {
+                const other = keys.get("more");
+                if (!other) throw new Error(`No key for ${JSON.stringify(char)} among ${[...keys.keys()].join(" ")}`);
+                taps.push(other);
+                layer = layer === "letters" ? "numbers" : "letters";
+                keys = await keysOf(layer);
+            }
+            const key = keys.get(name);
+            if (!key) throw new Error(`No ${JSON.stringify(char)} key on iOS's keyboard.`);
+            taps.push(key);
+            // Either can take iOS from its digits back to its letters.
+            if (layer === "numbers" && (char === " " || char === "\n")) {
+                await flush();
+                layer = await this.keyboardLayer();
+            }
+        }
+        await flush();
+    }
+
+    /** Which of its layouts the keyboard shows: letters, or digits and punctuation. */
+    private async keyboardLayer(): Promise<Layer> {
+        const q = await this.driver.$('-ios predicate string:type == "XCUIElementTypeKey" AND name ==[c] "q"');
+        return (await q.isExisting()) ? "letters" : "numbers";
+    }
+
+    /** Where each key of a layout is, by name, letters in lower case: read once, from one dump of the screen. */
+    private async keysOf(layer: Layer): Promise<Map<string, { x: number; y: number }>> {
+        const known = this.keyboards.get(layer);
+        if (known) return known;
+        const source = await this.driver.getPageSource();
+        const keyboard = source.slice(
+            source.indexOf("<XCUIElementTypeKeyboard"),
+            source.indexOf("</XCUIElementTypeKeyboard>")
+        );
+        const keys = new Map<string, { x: number; y: number }>();
+        for (const [, attributes] of keyboard.matchAll(/<XCUIElementType(?:Key|Button) ([^>]*)>/g)) {
+            const attribute = (name: string) => new RegExp(`\\b${name}="([^"]*)"`).exec(attributes!)?.[1];
+            const name = attribute("name");
+            if (!name || name.startsWith("Padding")) continue;
+            const [x, y, width, height] = ["x", "y", "width", "height"].map((a) => Number(attribute(a)));
+            keys.set(XML_ENTITIES.reduce((n, [entity, char]) => n.replaceAll(entity, char), name).toLowerCase(), {
+                x: x! + width! / 2,
+                y: y! + height! / 2,
+            });
+        }
+        this.keyboards.set(layer, keys);
+        return keys;
     }
 
     /** To the Home Screen for `seconds`, then back into Obsidian, as a reader switching apps. */
@@ -383,6 +468,28 @@ export class Phone {
         return moved;
     }
 
+    /**
+     * A quick tap on each of `points`, in the screen's points, 80 ms apart as
+     * a typist's. A finger each: WebDriverAgent lands every tap twice in one
+     * finger's chain of them.
+     */
+    private async pressAll(points: { x: number; y: number }[]): Promise<void> {
+        await this.driver.performActions(
+            points.map(({ x, y }, i) => ({
+                type: "pointer",
+                id: `finger${i}`,
+                parameters: { pointerType: "touch" },
+                actions: [
+                    { type: "pause", duration: i * 80 },
+                    { type: "pointerMove", duration: 0, x: Math.round(x), y: Math.round(y) },
+                    { type: "pointerDown", button: 0 },
+                    { type: "pause", duration: 30 },
+                    { type: "pointerUp", button: 0 },
+                ],
+            }))
+        );
+    }
+
     /** A thumb stroke `share` of the screen tall over `duration` ms, centred; returns as the finger lifts. */
     private async stroke(direction: "up" | "down", share: number, duration: number): Promise<void> {
         await this.native();
@@ -566,6 +673,7 @@ export class Phone {
         await this.native();
         await this.driver.setOrientation(orientation);
         this.screen = undefined;
+        this.keyboards.clear();
         await expect.poll(width).not.toBe(before);
         await this.rest();
     }
