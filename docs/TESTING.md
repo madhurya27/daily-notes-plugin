@@ -64,6 +64,8 @@ Mac and phone:
 
 1. Install Xcode, open it once, and add an Apple ID under Settings → Accounts.
    Then Manage Certificates → + → Apple Development. A free account is enough.
+   Point the shell at it, so `xcrun devicectl list devices` finds the phone:
+   `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`.
 2. Plug the phone in, unlock it and tap Trust.
 3. On the phone: Settings → Privacy & Security → Developer Mode on (it
    restarts), and Settings → Apps → Safari → Advanced → Web Inspector on.

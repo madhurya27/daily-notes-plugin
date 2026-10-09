@@ -18,6 +18,7 @@ pnpm run test:coverage  # the same, 100% coverage required
 pnpm run test:e2e       # build + typecheck e2e + playwright against real Obsidian; fetches Dataview into .dev/ once
 pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
 pnpm run test:ios       # build + e2e/ios/ on a plugged-in, unlocked iPhone (ADR 0016); setup in docs/TESTING.md
+xcrun devicectl list devices   # is the iPhone connected? Not system_profiler, which misses it
 pnpm run test:memory    # memory.spec.ts, render-cost.spec.ts on a seeded three-year vault (E2E_SEED_DAYS)
 
 pnpm run demo                     # open .dev/demo-vault/ (gitignored), reload the plugin on every save; Ctrl-C closes it
