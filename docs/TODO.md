@@ -4,6 +4,12 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] `e2e/ios/stream.spec.ts`, "flicks reach the oldest note, each note once,
+      newest first": its first flick moved nothing (0 to 0, once 56 to 56) in
+      each of 3 full runs on 2026-10-09, and passed 3 runs alone. Something an
+      earlier spec leaves behind.
+- [ ] `frames.spec.ts`, mobile, "a frame in a note gets its page" failed once in
+      a full run (`frameSrcs` held an extra `null`), then passed 18 runs
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.
