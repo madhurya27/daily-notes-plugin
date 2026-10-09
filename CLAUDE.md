@@ -27,6 +27,12 @@ pnpm run build && pnpm run seed   # reseed .dev/demo-vault/, a realistic journal
 # --test on demo and seed: .dev/vault/ instead, the edge cases docs/TESTING.md is written against
 ```
 
+## Releases
+
+Bump with `pnpm version`, merge, push the tag: the workflow drafts the release
+with its assets. Write its notes from `git log --first-parent <last tag>..` —
+what a reader notices, in plain words — then publish (D-115).
+
 ## Quality gates
 
 `pnpm run test:e2e` runs in full only when what ships or what every spec shares

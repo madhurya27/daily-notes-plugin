@@ -1872,3 +1872,20 @@ the tab holds no rendering, saving or redraw code.
 
 - `SettingGroup` cards, drawn by the tab — the same cards, out of the search,
   with D-078's redraw kept.
+
+## D-115 — Release notes are written by hand at release (2026-10-09)
+
+**Decision:** each release's notes are a summary written into the draft's body
+before publishing, from `git log --first-parent` since the last release tag:
+what a reader notices, in plain words; internal work left out. From the first
+public release: 1.0.0.
+
+**Why:** the first-parent log holds every change, merged or fast-forwarded; a
+reader wants what changed for them, which takes judgment no script has.
+
+**Rejected:**
+
+- A `CHANGELOG.md` — repeats the release bodies; one contributor needs no
+  per-branch entries.
+- Notes generated from commits (a script, GitHub's) — they list commits, tests
+  and docs included.
