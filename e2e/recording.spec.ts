@@ -1,7 +1,7 @@
 import { test, expect, openStream } from "./obsidian";
 import { join } from "path";
 import { OUT, prepareDemo } from "./demo";
-import { clickAt, clickLikeAPerson, driftOff, flick, record, restAt, typeLikeAPerson } from "./screencast";
+import { clickAt, clickLikeAPerson, driftOff, flick, glideTo, record, restAt, typeLikeAPerson } from "./screencast";
 
 /**
  * Records the README's animated PNG of the stream in use: a note edited live,
@@ -22,13 +22,14 @@ test.describe("README recording", () => {
         const { page } = obsidian;
         const container = await openStream(page);
         const pause = (ms: number) => page.waitForTimeout(ms);
-        const addition = " Two coffees on the balcony helped.";
+        const addition = " Strong coffee helped.";
 
         // The hand already on the mouse, resting over the stream, from the first frame.
         // The stream is as tall as its notes; the pane scrolling it is what shows.
         const pane = container.locator("xpath=..");
         const area = (await pane.boundingBox())!;
-        await restAt(page, area.x + area.width * 0.7, area.y + area.height * 0.72);
+        const rest = [area.x + area.width * 0.7, area.y + area.height * 0.72] as const;
+        await restAt(page, ...rest);
 
         await record(page, join(OUT, "demo-desktop.png"), async () => {
             await pause(1200);
@@ -87,12 +88,21 @@ test.describe("README recording", () => {
             await pause(900);
             await clickLikeAPerson(page, page.locator(".prompt .suggestion-item", { hasText: "2026-09-08" }));
             await expect(container.locator(".daily-note-title", { hasText: "2026-09-08" })).toBeInViewport();
-            await driftOff(page);
+            // Back where it rested at the start, so the loop shows no jump.
+            await glideTo(page, ...rest);
             await pause(2000);
 
-            // Back to the newest, so the loop restarts where it began.
-            await page.evaluate(() => window.app.commands.executeCommandById("daily-notes-stream:scroll-to-top"));
-            await pause(1500);
+            // Back to the newest, so the loop restarts where it began: on
+            // desktop, only through the command palette or a hotkey.
+            await page.keyboard.press("Meta+P");
+            const command = page.locator(".prompt .suggestion-item").first();
+            await pause(600);
+            await typeLikeAPerson(page, "to top");
+            await expect(command).toContainText("Scroll to top");
+            await pause(700);
+            await page.keyboard.press("Enter");
+            await expect(container.locator(".daily-note-title").first()).toBeInViewport();
+            await pause(1800);
         });
     });
 });
