@@ -283,10 +283,18 @@ export class NoteWindowManager {
         this.stopSettling(window);
         this.discard(window);
         block.empty();
-        const { component, footer } = await this.renderer.renderInto(block, window.file);
-        window.component = component;
-        this.watchSettling(block, window, footer);
-        this.repin(block);
+        // Without a component meanwhile, a note coming into view would be drawn twice.
+        window.rendering = true;
+        try {
+            const { component, footer } = await this.renderer.renderInto(block, window.file);
+            window.component = component;
+            this.watchSettling(block, window, footer);
+            this.repin(block);
+            if (window.unloadWanted) this.leave(block);
+        } finally {
+            window.rendering = false;
+            window.unloadWanted = false;
+        }
     }
 
     remove(block: HTMLElement): void {

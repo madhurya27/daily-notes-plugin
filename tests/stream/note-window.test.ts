@@ -139,6 +139,9 @@ const settle = () => vi.advanceTimersByTimeAsync(0);
 /** Lets the scroll be still long enough for waiting unloads to run. */
 const still = () => vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS);
 
+/** An unloaded block keeps only the height it reserves. */
+const isRendered = (block: HTMLElement) => !block.classList.contains("is-unloaded");
+
 const FILE = new TFile("Notes/2025-01-01.md");
 
 /** The reserved height, which styles.css turns into a real one. */
@@ -1406,8 +1409,6 @@ describe("NoteWindowManager while scrolling", () => {
         return { manager, renderer, block };
     }
 
-    const isRendered = (block: HTMLElement) => !block.classList.contains("is-unloaded");
-
     it("keeps a block that left the margin rendered until the scroll is still", async () => {
         const { block } = await rendered();
 
@@ -1648,6 +1649,54 @@ describe("NoteWindowManager.refresh", () => {
         expect(renderer.renderInto).toHaveBeenCalledTimes(2);
         expect(renderer.discard).toHaveBeenCalledTimes(1);
         expect(block.querySelectorAll(".daily-note-content")).toHaveLength(1);
+    });
+
+    // A note saved elsewhere, as by sync, while it scrolls into view.
+    it("draws the note once when it comes into view mid-refresh", async () => {
+        const renderer = makeRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+
+        renderer.renderInto.mockImplementationOnce(async (el: HTMLElement) => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            el.createDiv({ cls: "daily-note-content" });
+            return { component: new Component(), footer: Promise.resolve() };
+        });
+        const refreshed = manager.refresh(block);
+        fire(observers.render, block, true);
+        await vi.advanceTimersByTimeAsync(100);
+        await refreshed;
+
+        expect(block.querySelectorAll(".daily-note-content")).toHaveLength(1);
+    });
+
+    it("unloads a note that left view mid-refresh, and draws it again on its return", async () => {
+        const renderer = makeRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+
+        renderer.renderInto.mockImplementationOnce(async (el: HTMLElement) => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            el.createDiv({ cls: "daily-note-content" });
+            return { component: new Component(), footer: Promise.resolve() };
+        });
+        const refreshed = manager.refresh(block);
+        fire(observers.unload, block, false);
+        await vi.advanceTimersByTimeAsync(100);
+        await refreshed;
+        manager.onScroll();
+        await still();
+        expect(isRendered(block)).toBe(false);
+
+        fire(observers.render, block, true);
+        await settle();
+        expect(isRendered(block)).toBe(true);
     });
 
     // An unloaded note renders from the current file on re-entry anyway.
