@@ -36,3 +36,8 @@ Everywhere, nothing widens the page itself: diagrams scale, URLs wrap.
 - **One rule everywhere (0007)** — desktop loses scroll bars to fix a bug it
   lacks.
 - **iOS only (`Platform.isIosApp`)** — iPhone and Android phone would differ.
+- **Sideways scrolling for wide Bases and tables on mobile** — rechecked
+  2026-10-09 on an iPhone 16 Pro, deep in the stream with notes unloaded, 24
+  flicks over Bases and tables per build: today's build glided in full each time
+  (3.4–3.8 s); with Bases and tables that scroll, 13 stopped short, 8 within 0.8
+  s. Spike: tag `archive/sideways-scroll`.

@@ -19,18 +19,6 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       drives it, title-bar taps included, and Appium can record its screen. The
       e2e mobile run is desktop Chromium, which doesn't look like a phone.
       `phone.type()` types what it shows written, key by key.
-- [ ] Can reading drop cards and stacked tables for sideways scrolling? ADR 0007
-      found any scroll box, `hidden` included, ends iOS glides 0.1–0.4 s after
-      the lift once notes unload, intermittently. Yet in the editing spike's
-      open note (tag `archive/edit-today`), nothing clipped, flicks over its
-      wide Bases glided in full: 24 of 24, then 8 of 8. On the iPhone, two
-      builds: today's, and one where every wide Base (`.bases-view`) and table
-      scrolls sideways, without `asCards` or `stackWideTables`. Same vault,
-      notes unloading: jump deep, many flicks over Bases and tables, count
-      glides stopping early (`phone.glidesPast`; `e2e/ios/jump.spec.ts` sets up
-      the jump). Its 0.5 s check can miss a short stop: check below it too, or
-      record the screen (D-099). Equal: an ADR superseding 0008's cards. Not:
-      keep cards, and note the numbers in ADR 0008.
 
 ## Features
 
