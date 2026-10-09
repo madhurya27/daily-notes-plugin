@@ -51,8 +51,9 @@ Out of scope:
 - Collapse-all — leaves a list of dates, which the file explorer already is.
 - A gutter timeline — scrubbing writes the scroll, which iOS drops or undoes
   mid-glide (ADR 0013); the jump modal reaches any date.
-- Periodic Notes or Journals support — a second note source behind
-  `DailyNoteService`. Revisit if users ask once it is published.
+- Journals support, or Periodic Notes' weekly and monthly notes — a second note
+  source behind `DailyNoteService`. Revisit if users ask once it is published.
+  Periodic Notes' daily settings already work (`e2e/periodic-notes.spec.ts`).
 - Period scope — newest-first already opens on this week; the jump modal reaches
   past ones.
 - Range export, a stats header — niche; core Word count and heatmap plugins
