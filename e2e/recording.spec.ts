@@ -4,7 +4,7 @@ import { OUT, prepareDemo } from "./demo";
 import { clickAt, clickLikeAPerson, driftOff, flick, glideTo, record, restAt, typeLikeAPerson } from "./screencast";
 
 /**
- * Records the README's animated PNG of the stream in use: a note edited live,
+ * Records the README's animated WebP of the stream in use: a note edited live,
  * scrolling by hand, search, a jump to a date. Opt-in,
  * through `pnpm run capture:recording`, and apart from the stills so either can
  * be retaken alone.
@@ -31,7 +31,7 @@ test.describe("README recording", () => {
         const rest = [area.x + area.width * 0.7, area.y + area.height * 0.72] as const;
         await restAt(page, ...rest);
 
-        await record(page, join(OUT, "demo-desktop.png"), async () => {
+        await record(page, join(OUT, "demo-desktop.webp"), async () => {
             await pause(1200);
 
             // Live: the newest note, opened in a split beside the stream and

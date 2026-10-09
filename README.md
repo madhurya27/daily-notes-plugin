@@ -4,7 +4,7 @@ Read your daily notes like a journal: every day on one page, newest at the top,
 older days as you scroll. The stream is for reading; click a note's date to open
 it for editing.
 
-<p><img src="docs/images/demo-desktop.png" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Mara, a jump goes to an older date, and the command palette scrolls it back to the top" width="800"></p>
+<p><img src="docs/images/demo-desktop.webp" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Mara, a jump goes to an older date, and the command palette scrolls it back to the top" width="800"></p>
 
 ## Features
 
@@ -138,6 +138,8 @@ instead:
 
 On desktop, wide tables and code blocks scroll sideways in their own box, as
 they do in Obsidian.
+
+<p><img src="docs/images/demo-phone.webp" alt="Recording on an iPhone: flicks glide down through older days, past a reading-list Base drawn as cards; a search for Mara is typed and stepped through; a jump goes to an older date; and a tap on the title glides back to the newest note" width="300"></p>
 
 <details>
 <summary>Phone layout</summary>

@@ -1,10 +1,12 @@
 import { execFileSync, spawn, spawnSync, type ChildProcess } from "child_process";
 import { X509Certificate } from "crypto";
-import { mkdirSync, openSync, readFileSync } from "fs";
+import { mkdirSync, openSync, readdirSync, readFileSync, rmSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { keyboardAfterRun } from "./keyboard";
 import { loadLocalEnv } from "./local-env";
+import { writeWebp } from "../../scripts/recording.mjs";
+import { FRAMES, startScreenCapture, type Scene } from "./screen-capture";
 import { APPIUM_PORT } from "./session";
 
 /**
@@ -88,8 +90,28 @@ async function waitForAppium(): Promise<void> {
     throw new Error(`Appium did not start: see ${join(DEV, "appium.log")}`);
 }
 
+/**
+ * Encodes the frames inside the scene the recording marked, if it did: the
+ * Focus banner iOS shows as a capture starts and stops falls outside it.
+ */
+function encodeScene(): void {
+    let scene: Scene;
+    try {
+        scene = JSON.parse(readFileSync(join(FRAMES, "scene.json"), "utf8")) as Scene;
+    } catch {
+        return;
+    }
+    const frames = readdirSync(FRAMES)
+        .filter((name) => name.endsWith(".png"))
+        .map((name) => ({ timestamp: Number(name.slice(0, -4)) / 1000, path: join(FRAMES, name) }))
+        .filter(({ timestamp }) => timestamp >= scene.start && timestamp <= scene.end)
+        .sort((a, b) => a.timestamp - b.timestamp);
+    // Lossy: a glide changes the whole screen each frame, which lossless keeps at twice the size.
+    writeWebp(frames, scene.output, { quality: 80 });
+}
+
 /** Appium serving the phone on the cable; returns what stops it. */
-export default async function startAppium(): Promise<() => void> {
+export default async function startAppium(): Promise<() => Promise<void>> {
     mkdirSync(DEV, { recursive: true });
     loadLocalEnv(join(REPO, "e2e/ios/.env"));
     // A typo fails here, not after the run.
@@ -104,6 +126,12 @@ export default async function startAppium(): Promise<() => void> {
         IOS_WDA_DATA: join(DEV, "wda"),
     });
     process.env.IOS_UDID = connectedPhone(process.env);
+    // First, before WebDriverAgent connects: starting a capture drops its connection.
+    let stopCapture = async () => {};
+    if (process.env.CAPTURE_RECORDING === "1") {
+        rmSync(FRAMES, { recursive: true, force: true });
+        stopCapture = await startScreenCapture(FRAMES, 600);
+    }
     installDriver(process.env);
     buildWebDriverAgent(process.env);
 
@@ -116,9 +144,14 @@ export default async function startAppium(): Promise<() => void> {
         await waitForAppium();
     } catch (e) {
         stopAppium(appium);
+        await stopCapture();
         throw e;
     }
-    return () => stopAppium(appium);
+    return async () => {
+        stopAppium(appium);
+        await stopCapture();
+        encodeScene();
+    };
 }
 
 /**

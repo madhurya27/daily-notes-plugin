@@ -113,13 +113,13 @@ export class Phone {
      * newline is Return. Shift is never pressed: a letter takes the case iOS
      * gives it, as it would a reader's.
      */
-    async type(text: string): Promise<void> {
+    async type(text: string, gap: (key: number) => number = () => 80): Promise<void> {
         await this.native();
         let layer = await this.keyboardLayer();
         // Taps go in one gesture, a round trip each costing half a second.
         let taps: { x: number; y: number }[] = [];
         const flush = async () => {
-            if (taps.length) await this.pressAll(taps);
+            if (taps.length) await this.pressAll(taps, gap);
             taps = [];
         };
         const keysOf = async (l: Layer) => {
@@ -410,11 +410,12 @@ export class Phone {
 
     /**
      * Quick thumb strokes, `up` to move down the stream, each caught mid-glide
-     * by the next as a reader's are; returns once the last glide stops.
+     * by the next as a reader's are; returns once the last glide stops. Each
+     * `share` of the screen tall over `ms`: by default a hard flick.
      */
-    async flick(direction: "up" | "down", strokes = 1): Promise<void> {
+    async flick(direction: "up" | "down", strokes = 1, { share = 0.7, ms = 60 } = {}): Promise<void> {
         const before = await this.scrollTop();
-        for (let i = 0; i < strokes; i++) await this.stroke(direction, 0.7, 60);
+        for (let i = 0; i < strokes; i++) await this.stroke(direction, share, ms);
         await this.rest();
         const after = await this.scrollTop();
         const blocked = direction === "up" ? after <= before && !(await this.atEnd()) : after >= before && before > 0;
@@ -469,18 +470,19 @@ export class Phone {
     }
 
     /**
-     * A quick tap on each of `points`, in the screen's points, 80 ms apart as
-     * a typist's. A finger each: WebDriverAgent lands every tap twice in one
+     * A quick tap on each of `points`, in the screen's points, `gap(i)` ms
+     * after tap `i`. A finger each: WebDriverAgent lands every tap twice in one
      * finger's chain of them.
      */
-    private async pressAll(points: { x: number; y: number }[]): Promise<void> {
+    private async pressAll(points: { x: number; y: number }[], gap: (key: number) => number): Promise<void> {
+        const starts = points.map((_, i) => points.slice(0, i).reduce((at, __, j) => at + gap(j), 0));
         await this.driver.performActions(
             points.map(({ x, y }, i) => ({
                 type: "pointer",
                 id: `finger${i}`,
                 parameters: { pointerType: "touch" },
                 actions: [
-                    { type: "pause", duration: i * 80 },
+                    { type: "pause", duration: starts[i]! },
                     { type: "pointerMove", duration: 0, x: Math.round(x), y: Math.round(y) },
                     { type: "pointerDown", button: 0 },
                     { type: "pause", duration: 30 },

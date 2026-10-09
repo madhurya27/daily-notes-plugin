@@ -1,16 +1,12 @@
 import type { Locator, Page } from "@playwright/test";
-import { execFileSync } from "child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
-import { pickFrames } from "../scripts/recording.mjs";
-
-const ENCODER = resolve(dirname(fileURLToPath(import.meta.url)), "..", "scripts", "frames-to-apng.swift");
+import { join } from "path";
+import { writeWebp } from "../scripts/recording.mjs";
 
 /**
- * Records the page while `scene` plays and writes it to `output` as an animated
- * PNG. Frames come from Chromium's screencast, so the window must be on screen
+ * Records the page while `scene` plays and writes it to `output` as a lossless
+ * animated WebP. Frames come from Chromium's screencast, so the window must be on screen
  * (E2E_SHOW_WINDOW=1), as for screenshots.
  */
 export async function record(page: Page, output: string, scene: () => Promise<void>): Promise<void> {
@@ -31,13 +27,12 @@ export async function record(page: Page, output: string, scene: () => Promise<vo
 
     const dir = mkdtempSync(join(tmpdir(), "dns-frames-"));
     try {
-        const manifest = pickFrames(frames, { minInterval: 0.1, hold: 2 }).map(({ index, delay }) => {
-            const path = join(dir, `${String(index).padStart(5, "0")}.png`);
-            writeFileSync(path, Buffer.from(frames[index]!.data, "base64"));
-            return `${path}\t${delay.toFixed(3)}`;
+        const files = frames.map(({ timestamp, data }, i) => {
+            const path = join(dir, `${String(i).padStart(5, "0")}.png`);
+            writeFileSync(path, Buffer.from(data, "base64"));
+            return { timestamp, path };
         });
-        writeFileSync(join(dir, "manifest.txt"), manifest.join("\n"));
-        execFileSync("swift", ["-O", ENCODER, join(dir, "manifest.txt"), output], { stdio: "inherit" });
+        writeWebp(files, output);
     } finally {
         rmSync(dir, { recursive: true, force: true });
     }
