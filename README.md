@@ -139,7 +139,7 @@ instead:
 On desktop, wide tables and code blocks scroll sideways in their own box, as
 they do in Obsidian.
 
-<p><img src="docs/images/demo-phone.webp" alt="Recording on an iPhone: flicks glide down through older days, past a reading-list Base drawn as cards; a search for Mara is typed and stepped through; a jump goes to an older date; and a tap on the title glides back to the newest note" width="300"></p>
+<p><img src="docs/images/demo-phone.webp" alt="Recording on an iPhone: flicks glide down through older days; a search for Mara is typed and stepped through; a jump goes to an older date; and a tap on the title glides back to the newest note" width="300"></p>
 
 <details>
 <summary>Phone layout</summary>

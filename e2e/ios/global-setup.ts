@@ -1,6 +1,6 @@
 import { execFileSync, spawn, spawnSync, type ChildProcess } from "child_process";
 import { X509Certificate } from "crypto";
-import { mkdirSync, openSync, readdirSync, readFileSync, rmSync } from "fs";
+import { mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { keyboardAfterRun } from "./keyboard";
@@ -94,6 +94,13 @@ async function waitForAppium(): Promise<void> {
  * Encodes the frames inside the scene the recording marked, if it did: the
  * Focus banner iOS shows as a capture starts and stops falls outside it.
  */
+/**
+ * How much later a touch shows in the frames than the harness logs it: a
+ * gesture is logged as Appium answers, after it ends. Measured: a key's bubble
+ * shows 120–150 ms before, a stroke's scroll 160.
+ */
+const TOUCH_SHIFT_MS = -150;
+
 function encodeScene(): void {
     let scene: Scene;
     try {
@@ -101,13 +108,28 @@ function encodeScene(): void {
     } catch {
         return;
     }
+    const touches = join(FRAMES, "touches.json");
+    writeFileSync(touches, JSON.stringify(scene.touches));
+    execFileSync(
+        "swift",
+        [
+            "-O",
+            join(REPO, "scripts/draw-touches.swift"),
+            FRAMES,
+            touches,
+            String(scene.screenWidth),
+            String(TOUCH_SHIFT_MS),
+        ],
+        { stdio: "inherit" }
+    );
     const frames = readdirSync(FRAMES)
         .filter((name) => name.endsWith(".png"))
         .map((name) => ({ timestamp: Number(name.slice(0, -4)) / 1000, path: join(FRAMES, name) }))
         .filter(({ timestamp }) => timestamp >= scene.start && timestamp <= scene.end)
         .sort((a, b) => a.timestamp - b.timestamp);
     // Lossy: a glide changes the whole screen each frame, which lossless keeps at twice the size.
-    writeWebp(frames, scene.output, { quality: 80 });
+    // Thirty a second: a key's bubble shows for some 60 ms, and a glide is choppy at ten.
+    writeWebp(frames, scene.output, { quality: 80, minInterval: 1 / 30 });
 }
 
 /** Appium serving the phone on the cable; returns what stops it. */

@@ -1,10 +1,12 @@
 import { spawn } from "child_process";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
+import type { SentTouch } from "./phone";
 
 /** Where the README recording's frames land, and the scene it marks among them (`recording.spec.ts`). */
 export const FRAMES = resolve(dirname(fileURLToPath(import.meta.url)), "../../.dev/phone-frames");
-export type Scene = { start: number; end: number; output: string };
+/** The scene, in Unix seconds; the touches sent in it, to draw (`draw-touches.swift`); the screen's width in points. */
+export type Scene = { start: number; end: number; output: string; touches: SentTouch[]; screenWidth: number };
 
 const TOOL = resolve(dirname(fileURLToPath(import.meta.url)), "../../scripts/capture-iphone.swift");
 /** Compiling the tool takes some seconds, finding the phone up to ten more. */

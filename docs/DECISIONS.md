@@ -1895,18 +1895,19 @@ reader wants what changed for them, which takes judgment no script has.
 ## D-116 — The README recordings are animated WebPs; the phone's is captured over USB (2026-10-09)
 
 **Decision:** both recordings are animated WebPs encoded by `img2webp`: desktop
-lossless, the phone lossy at quality 80. The phone's screen is captured over USB
-as QuickTime does (`scripts/capture-iphone.swift`), 600 px wide, trimmed to the
-scene.
+lossless, the phone lossy at quality 80 and 30 frames a second. The phone's
+screen is captured over USB as QuickTime does (`scripts/capture-iphone.swift`),
+600 px wide, trimmed to the scene.
 
 **Why:** WebP stores the desktop recording's exact pixels in 1.3 MB, an APNG's
 3.0. On the phone a glide changes the whole screen every frame: lossless took 8
-MB for the glides alone, an APNG 20 MB in all, lossy 3.4 MB. USB capture draws a
-clean status bar, the same in every take.
+MB for the glides alone, an APNG 20 MB in all, lossy 5.3 MB; at ten frames a
+second, glides stutter and key bubbles drop out. USB capture draws a clean
+status bar, the same in every take.
 
 **Rejected:**
 
-- APNG (D-045) — over twice the size on desktop, six times on the phone.
+- APNG (D-045) — over twice the size on desktop, four times on the phone.
 - WebDriverAgent's screen stream — JPEG frames, and the real clock and battery
   in each take; the same size once encoded.
 - `sharp` — a Node dependency for what one command does.

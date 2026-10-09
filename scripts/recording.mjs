@@ -61,13 +61,14 @@ export function webpArgs(frames, output, { quality } = {}) {
 
 /**
  * Writes `frames`, image files timed in seconds, to `output` as an animated
- * WebP, thinned to ten a second at most. Needs `img2webp` (`brew install webp`).
+ * WebP, thinned to one each `minInterval` seconds at most. Needs `img2webp`
+ * (`brew install webp`).
  * @param {{ timestamp: number, path: string }[]} frames
  * @param {string} output
- * @param {{ quality?: number }} [options]
+ * @param {{ quality?: number, minInterval?: number }} [options]
  */
-export function writeWebp(frames, output, options) {
-    const kept = pickFrames(frames, { minInterval: 0.1, hold: 2 }).map(({ index, delay }) => ({
+export function writeWebp(frames, output, { minInterval = 0.1, ...options } = {}) {
+    const kept = pickFrames(frames, { minInterval, hold: 2 }).map(({ index, delay }) => ({
         path: frames[index].path,
         delay,
     }));
