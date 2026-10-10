@@ -38,7 +38,7 @@ template to set up, and it never changes a note.
 | Does it go online?        | No. Only an embed you put in a note, such as a video, loads from the web.                                                                                       |
 | Years of notes?           | Fine: only the notes near the screen are drawn.                                                                                                                 |
 | Which devices?            | Desktop and mobile, Obsidian 1.14.4 or later.                                                                                                                   |
-| Other plugins?            | Notes show as Obsidian shows them, Dataview tables and Bases included.                                                                                          |
+| Other plugins?            | Notes show as Obsidian shows them, Dataview tables and Bases included. Templates and Templater templates work with [Empty notes](#empty-notes).                 |
 
 Want to edit notes inside the feed? This plugin won't do that;
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor)
@@ -80,6 +80,11 @@ of the stream. Once you write in it, or change one of its properties, it
 appears. Today's note always shows, and so does one another note links to, for
 its linked mentions. A note made from an older version of the template counts as
 written.
+
+Templates made with the core Templates plugin or with Templater both work. A
+Templater command that writes several lines, such as `tp.file.include`, or picks
+between sections, can't be predicted, so a note made from that template shows
+even before you write in it.
 
 ### Move around
 
