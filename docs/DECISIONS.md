@@ -1911,3 +1911,22 @@ status bar, the same in every take.
 - WebDriverAgent's screen stream — JPEG frames, and the real clock and battery
   in each take; the same size once encoded.
 - `sharp` — a Node dependency for what one command does.
+
+## D-117 — A Templater block fills in one line, as its docs predict (2026-10-09)
+
+**Decision:** in the template pattern (ADR 0011) a Templater block stands for
+any text on its line, like `{{…}}`. `tp.file.cursor()` stands for the marker
+Templater writes back or nothing; `-`/`_` trim beside a block as Templater's
+whitespace control does. A block whose output spans lines (`tp.file.include`,
+`tp.web.daily_quote`, `if`/`else`) makes an untouched note show.
+
+**Why:** a block read as any text across lines swallowed what was written there:
+a bullet typed at `tp.file.cursor()` hid the note. A note wrongly shown is
+clutter; one wrongly hidden is lost writing.
+
+**Rejected:**
+
+- Fingerprints of what Templater wrote, from its `templater:overwrite-file`
+  event, kept in plugin data — catches multi-line output, but not notes made
+  before install, where hiding matters most; an undocumented event and a synced
+  record per note. Revisit if users ask (`docs/TODO.md`).
