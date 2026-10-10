@@ -29,19 +29,32 @@ priority.
       empty notes.
       [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review)
       shows ~200-char excerpts; ours is the full note. Better, not new.
+- [ ] Keep the place across a restart. `StreamPlace` lives only in ephemeral
+      state, so Back finds it but a restored tab opens at the newest note.
+      Persist it in `getState`; a stream opened fresh still starts at the top.
+- [ ] Show in stream: a command and a file-menu item on a daily note that open
+      the stream at it, through the jump's path (D-082). From a note, only Back
+      reaches the stream now.
 - [ ] Labels on the title line: the weekday (`2026-03-14 · Saturday`, or
       "Yesterday") and the gap since the note before ("12 days later"). Decide
       first: from the file name, or a label the reader configures. Creating or
       deleting a note changes its neighbour's gap, so that note re-renders.
+- [ ] Fold headings by name: a setting listing headings (`Tasks`, `Log`) that
+      start folded in every note, for template sections read rarely. A default
+      for `CollapsibleManager`; the reader's own fold or unfold wins.
 - [ ] Fold a whole note to its title, from a chevron on its header, kept like a
       section's (`CollapsibleManager`).
 - [ ] Notes as `article` landmarks labelled with their date, so a screen reader
       steps note to note.
 - [ ] Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing
       external reaches inside a view.
+- [ ] Jump by month or relative date: the prompt takes `2025-03`, `last week`,
+      `a year ago`, landing on the nearest older note (D-015).
 - [ ] Month and year dividers — a heading inside the header of a month's newest
       note, not a block of its own: the window manager and `StreamBlocks` take
       every block for a note.
+- [ ] Leave out a note by property (`stream: false`): a `NoteFilter`, like
+      hiding empty notes, for days not to show when the screen is shared.
 
 Out of scope:
 
