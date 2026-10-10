@@ -1692,14 +1692,20 @@ before the re-pin.
 
 **Decision:** until 1.0, `minAppVersion` is the latest public Obsidian, raised
 at the next version bump; the stream drops what only older versions need.
+`1.0.0` is the first public release: the `0.x` drafts stay unpublished, their
+tags stay, and `versions.json` keeps no `0.x` entry past it (2026-10-09).
 
 **Why:** nothing is released publicly before 1.0, so no reader runs an older
-Obsidian, and a workaround for one is dead code.
+Obsidian, and a workaround for one is dead code. Obsidian offers an older
+version from `versions.json` to an app below `minAppVersion`; a `0.x` entry
+would point at a draft nobody can download.
 
 **Rejected:**
 
 - Keeping 1.8.7 — carries rules like D-085's for readers who do not exist.
-- Rewriting `versions.json` for 0.4.0 — it was tagged needing 1.8.7.
+- Publishing the `0.x` drafts — releases nobody outside ran.
+- Deleting the `0.x` drafts and tags — the tags mark history worth diffing
+  against; drafts are private.
 
 ## D-101 — A turn's scroll change is never the reader's (2026-10-07)
 
