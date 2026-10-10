@@ -23,23 +23,24 @@ template to set up, and it never changes your notes.
   collapse them in [settings](#settings).
 - **[Linked mentions](#linked-mentions).** Each note ends with the notes that
   link to it. You can hide or collapse them in [settings](#settings).
-- **[Full notes](#open-the-stream).** Images, embeds, links, tasks and Bases
-  look just as they do in Obsidian.
+- **[Full notes](#open-the-stream).** Each note is shown in full, the way
+  Obsidian shows it, with its images, tables, embeds, links, tasks and Bases.
+  The stream is read-only, so you can't tick a task in it.
 - **[Phone and tablet](#phone-and-tablet).** Tables and Bases too wide for the
   screen are shown as cards.
 
 ## Before you install
 
-| Question                               | Answer                                                                                                                                                                                                                                                 |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Which notes does it show?              | The notes in the folder set in **Settings → Daily notes**, including its subfolders, whose names match the date format set there. If you use Periodic Notes with its daily notes turned on, the stream uses Periodic Notes' folder and format instead. |
-| Can I edit in the stream?              | No. Click a note's date to open it for editing. The stream updates as you type.                                                                                                                                                                        |
-| Does it change my notes?               | No. It only reads them.                                                                                                                                                                                                                                |
-| What does it store?                    | Your settings, saved in the plugin's folder. Which sections you folded, and layout measurements that keep scrolling steady, are kept separately on each device.                                                                                        |
-| Does it go online?                     | No. The only things that load from the web are embeds you put in your notes yourself, such as videos.                                                                                                                                                  |
-| Does it slow down with years of notes? | No. Only the notes near what you're reading are loaded at a time, and it's tested on three years of daily notes.                                                                                                                                       |
-| Which devices does it run on?          | Desktop and mobile. It needs Obsidian 1.14.4 or later.                                                                                                                                                                                                 |
-| Does it work with other plugins?       | Notes look just as they do in Obsidian, including Dataview tables and Bases. Templates made with the core Templates plugin or with Templater are recognised when empty notes are hidden; see [Empty notes](#empty-notes).                              |
+| Question                               | Answer                                                                                                                                                                                                                                                                                                                                         |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which notes does it show?              | The notes in the folder set in **Settings → Daily notes**, including its subfolders, whose names match the date format set there. If you use Periodic Notes with its daily notes turned on, the stream uses Periodic Notes' folder and format instead.                                                                                         |
+| Can I edit in the stream?              | No. Click a note's date to open it for editing. The stream updates as you type.                                                                                                                                                                                                                                                                |
+| Does it change my notes?               | No. It only reads them.                                                                                                                                                                                                                                                                                                                        |
+| What does it store?                    | Your settings, saved in the plugin's folder. Which sections you folded, and layout measurements that keep scrolling steady, are kept separately on each device.                                                                                                                                                                                |
+| Does it go online?                     | No. The only things that load from the web are embeds you put in your notes yourself, such as videos.                                                                                                                                                                                                                                          |
+| Does it slow down with years of notes? | No. Only the notes near what you're reading are loaded at a time, and it's tested on three years of daily notes.                                                                                                                                                                                                                               |
+| Which devices does it run on?          | Desktop and mobile. It needs Obsidian 1.14.4 or later.                                                                                                                                                                                                                                                                                         |
+| Does it work with other plugins?       | Yes. Dataview tables and Bases are shown the way Obsidian shows them, except that on a phone or tablet one too wide for the screen is reshaped to fit; see [Phone and tablet](#phone-and-tablet). Templates made with the core Templates plugin or with Templater are recognised when empty notes are hidden; see [Empty notes](#empty-notes). |
 
 If you want to edit notes directly inside the feed, this plugin doesn't do that,
 but
@@ -70,8 +71,11 @@ Click the ribbon icon (a stack of cards), or run
 `Daily notes stream: Open stream` from the command palette (Ctrl/Cmd+P). It
 opens in the current tab; Ctrl/Cmd-click the icon to open it in a new tab.
 
-Each note looks just as it does in Obsidian, with its properties, images,
-embeds, links, tasks and Bases.
+Each note is shown in full, as it looks in Obsidian's reading view, with its
+properties, images, tables, embeds, links, tasks and Bases. The stream is
+read-only, so clicking a task's checkbox doesn't tick it; open the note to edit
+it. Some content is reshaped so the stream scrolls smoothly, mostly on a phone
+or tablet; see [Phone and tablet](#phone-and-tablet).
 
 <img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="440">
 
