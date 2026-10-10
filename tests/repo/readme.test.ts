@@ -77,7 +77,7 @@ describe("README", () => {
         for (const { name, heading, control } of rows) {
             const line = section.split("\n").find((text) => text.includes(`**${name ?? heading}**`));
             expect(line, `${name ?? heading} is not under ## Settings`).toBeDefined();
-            if (control) expect(line).toContain(DEFAULT_SETTINGS[control.key] ? "(on)" : "(off)");
+            if (control) expect(line).toContain(DEFAULT_SETTINGS[control.key] ? "(on by default)" : "(off by default)");
         }
     });
 });
