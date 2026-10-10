@@ -1853,8 +1853,8 @@ stream's own class rather than taking Obsidian's.
 
 **Why:** on an iPhone, a flick begun on a `.clickable-icon` never scrolled:
 Obsidian's mobile tap handling for the class swallows the pan, with no
-`preventDefault` or `touch-action` to see. The editing spike's pencil, on every
-title, failed four `e2e/ios/` glides (tag `archive/edit-today`, its D-109).
+`preventDefault` or `touch-action` to see. The pencil on every title in the
+editing spike (ADR 0018) failed four `e2e/ios/` glides.
 
 **Rejected:**
 
