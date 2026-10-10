@@ -1,6 +1,6 @@
 # 0011. Hide daily notes that hold only their template
 
-- **Status:** Accepted
+- **Status:** Accepted; how a Templater block reads superseded by D-117
 - **Date:** 2026-09-28
 
 ## Context

@@ -41,8 +41,20 @@ export const PERIODIC_NOTES: PinnedPlugin = {
     },
 };
 
+export const TEMPLATER: PinnedPlugin = {
+    id: "templater-obsidian",
+    name: "Templater",
+    repo: "SilentVoid13/Templater",
+    version: "2.25.1",
+    sha256: {
+        "main.js": "eb86d9282694ce1f099154c320286fdd89473e60dc2441ee310f3ac331333e94",
+        "manifest.json": "b99280d2c4ab2cd22ad010c12faeedf255bcf385d127d973b89f85deb27d23fd",
+        "styles.css": "67a6dd2d1d6dedca1287c334ca884ec4196433f71ca47388a0bd3eac14cf8b5f",
+    },
+};
+
 /** Every plugin a spec installs, fetched before the run. */
-export const PINNED_PLUGINS = [DATAVIEW, PERIODIC_NOTES];
+export const PINNED_PLUGINS = [DATAVIEW, PERIODIC_NOTES, TEMPLATER];
 
 const dirOf = (plugin: PinnedPlugin) =>
     resolve(dirname(fileURLToPath(import.meta.url)), "..", ".dev", "e2e-plugins", `${plugin.id}-${plugin.version}`);
