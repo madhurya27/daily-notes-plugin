@@ -2,7 +2,7 @@ import { execFileSync } from "child_process";
 import { readdirSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { fetchDataview } from "./dataview";
+import { fetchPinned, PINNED_PLUGINS } from "./pinned-plugin";
 
 /** True when some running process still references this directory. */
 function inUse(dir: string): boolean {
@@ -21,7 +21,7 @@ function inUse(dir: string): boolean {
  */
 export default async function globalSetup(): Promise<void> {
     killStrandedInstances();
-    await fetchDataview();
+    for (const plugin of PINNED_PLUGINS) await fetchPinned(plugin);
     const tmp = tmpdir();
     for (const entry of readdirSync(tmp)) {
         if (!entry.startsWith("dns-vault-") && !entry.startsWith("dns-userdata-")) continue;
