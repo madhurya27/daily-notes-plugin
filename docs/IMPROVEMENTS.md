@@ -52,22 +52,16 @@ each change passes the other gates.
 
 ### Architecture
 
-1. **Search refreshes on any vault event.** The view wraps each handler in
-   `applyChange` (`stream-view.ts:219`), so a new one must remember to, and the
-   refresh runs on its own debounce beside the stream's queue. Have the stream
-   announce when its notes change, a list change through `insertSorted` or
-   `removeSorted` or a save of a listed note, and search refresh on that: only
-   daily notes, after the change applied.
-2. **Two "block at the pane's top" lookups.** `captureAnchor` is linear
+1. **Two "block at the pane's top" lookups.** `captureAnchor` is linear
    (`scroll-position.ts:32`), `ScrollAnchor.blockAt` binary
    (`scroll-anchor.ts:392`). `AnchorSnapshot` and `StreamPlace` are one concept.
-3. **`ScrollAnchor.stream()` infers the container** from the first watched
+2. **`ScrollAnchor.stream()` infers the container** from the first watched
    block's parent (`scroll-anchor.ts:405`); pass it in.
-4. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
+3. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
    placeholder reservation, settling. Extract reservation (`reserve`, `expect`,
    `reserveKey`, the estimate).
-5. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
+4. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
    `LinkChanges` already diffs per source; one incremental index could serve
    both.
-6. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
+5. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
    `scrollToTop`, `onBaseResized`, `onFingerDown`/`Up`.

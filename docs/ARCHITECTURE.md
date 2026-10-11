@@ -56,7 +56,7 @@ opens, so a view's own handler always reads an index already updated.
    child `Component`, discarded on unload.
 4. **Change.** Vault and metadata events become `NoteStream` mutations: insert,
    remove, re-render, reconsider whether a note is hidden. Saves are debounced
-   per path. An open search re-reads after each.
+   per path. An open search re-reads once the stream says its notes changed.
 
 Every mutation of the stream — batches, events, renders, jumps, rebuilds — runs
 through one promise queue, so none interleaves at an `await`

@@ -64,7 +64,9 @@ export class NoteStream {
         private readonly service: DailyNoteService,
         renderer: NoteRenderer,
         /** Every height measured, kept across sessions (ADR 0010). */
-        memory: Pick<LayoutMemory, "notes">
+        memory: Pick<LayoutMemory, "notes">,
+        /** Its daily notes changed — listed, unlisted or saved — and the change is applied. */
+        private readonly notesChanged: () => void = () => {}
     ) {
         this.window = new NoteWindowManager(renderer, this.enqueue.bind(this), memory.notes, () =>
             layoutOf(this.blocks.el)
@@ -162,8 +164,10 @@ export class NoteStream {
     /** A save may hide a note, or show one again (ADR 0011); otherwise it re-renders. */
     private async applyModify(file: TFile): Promise<void> {
         if (await this.reconsider(file)) return;
+        if (this.service.indexOf(file.path) === -1) return;
         const el = this.blocks.get(file.path);
         if (el) await this.window.refresh(el);
+        this.notesChanged();
     }
 
     /**
@@ -195,6 +199,7 @@ export class NoteStream {
         // -1 when not a daily note.
         const globalIndex = this.service.insertSorted(file);
         if (globalIndex === -1) return;
+        this.notesChanged();
         if (globalIndex >= this.service.streamLength) {
             // Beyond the loaded range — a visible sentinel loads it now.
             this.scroll.recheck();
@@ -214,7 +219,8 @@ export class NoteStream {
         const el = this.blocks.remove(renderedPath);
         if (el) this.window.remove(el);
 
-        this.service.removeSorted(file.path);
+        if (this.service.removeSorted(file.path) === -1) return;
+        this.notesChanged();
         if (this.service.length === 0) this.showEmptyState();
     }
 
@@ -453,6 +459,7 @@ export class NoteStream {
         this.scroll.detach();
         this.resetWindow();
         this.attachScroll();
+        this.notesChanged();
         await this.loadBatch();
     }
 

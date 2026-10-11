@@ -30,7 +30,7 @@ import { isStreamPlace } from "../stream/scroll-position";
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
 
-/** A vault change re-reads every note for an open search; a burst of saves needs one. */
+/** A change to the notes re-reads every one for an open search; a burst of them needs one. */
 const SEARCH_REFRESH_DEBOUNCE_MS = 500;
 
 export class DailyNotesStreamView extends ItemView implements HoverParent {
@@ -76,7 +76,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
             plugin.layoutMemory.bases,
             plugin.backlinks
         );
-        this.stream = new NoteStream(this.service, this.renderer, plugin.layoutMemory);
+        this.stream = new NoteStream(this.service, this.renderer, plugin.layoutMemory, () => this.refreshSearch());
 
         this.search = new StreamSearch(
             {
@@ -139,10 +139,10 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         // metadataCache "changed", not vault "modify": the cache lags the write,
         // and the renderer reads it for frontmatter offsets and properties.
         const { metadataCache, vault } = this.app;
-        this.registerEvent(metadataCache.on("changed", (f) => this.applyChange(() => this.stream.onFileModify(f))));
-        this.registerEvent(vault.on("create", (f) => this.applyChange(() => this.stream.onFileCreate(f))));
-        this.registerEvent(vault.on("delete", (f) => this.applyChange(() => this.stream.onFileDelete(f))));
-        this.registerEvent(vault.on("rename", (f, old) => this.applyChange(() => this.stream.onFileRename(f, old))));
+        this.registerEvent(metadataCache.on("changed", (f) => this.stream.onFileModify(f)));
+        this.registerEvent(vault.on("create", (f) => this.stream.onFileCreate(f)));
+        this.registerEvent(vault.on("delete", (f) => this.stream.onFileDelete(f)));
+        this.registerEvent(vault.on("rename", (f, old) => this.stream.onFileRename(f, old)));
         // A Base has no metadata to wait for.
         this.registerEvent(vault.on("modify", (f) => void this.renderer.onBaseModified(f)));
         this.registerEvent(onPostProcessorChange(this.app, () => void this.refresh()));
@@ -150,7 +150,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.register(
             this.plugin.linkChanges.subscribe((paths) => {
                 const files = paths.map((path) => vault.getFileByPath(path)).filter((file) => file !== null);
-                this.applyChange(() => void this.stream.onLinksChanged(files));
+                void this.stream.onLinksChanged(files);
             })
         );
 
@@ -215,12 +215,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         return false;
     }
 
-    /** Applies a vault change to the stream; an open search re-reads the notes after it. */
-    private applyChange(toStream: () => void): void {
-        toStream();
-        this.refreshSearch();
-    }
-
+    /** An open search re-reads the notes once the stream's changed. */
     private readonly refreshSearch = debounce(() => void this.search.refresh(), SEARCH_REFRESH_DEBOUNCE_MS, true);
 
     /** Asks for a date, then jumps to it. */

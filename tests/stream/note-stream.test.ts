@@ -152,6 +152,7 @@ let guard: FakeGuard;
 let frames: FakeFrames;
 let renderer: { onBaseLayout: ReturnType<typeof vi.fn> };
 let heights: NoteHeights;
+let notesChanged: ReturnType<typeof vi.fn<() => void>>;
 
 beforeEach(() => {
     Notice.reset();
@@ -167,7 +168,8 @@ beforeEach(() => {
     service = new DailyNoteService(() => vault, new ParsedDates(), filter);
     renderer = { onBaseLayout: vi.fn() };
     heights = new NoteHeights();
-    stream = new NoteStream(service, renderer as unknown as NoteRenderer, { notes: heights });
+    notesChanged = vi.fn<() => void>();
+    stream = new NoteStream(service, renderer as unknown as NoteRenderer, { notes: heights }, notesChanged);
     noteWindow = fakes.windows.at(-1)!;
     infiniteScroll = fakes.scrolls.at(-1)!;
     guard = fakes.guards.at(-1)!;
@@ -609,6 +611,125 @@ describe("links to daily notes changed", () => {
 
         expect(noteWindow.refresh).not.toHaveBeenCalled();
         expect(shown()).toEqual([file.path]);
+    });
+});
+
+describe("what the stream announces", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("announces a daily note created, once the service lists it", async () => {
+        await load(note("2025-01-01"));
+        const file = note("2025-01-02");
+        const indexes: number[] = [];
+        notesChanged.mockImplementation(() => indexes.push(service.indexOf(file.path)));
+
+        stream.onFileCreate(file);
+        await vi.runAllTimersAsync();
+
+        expect(indexes).toEqual([0]);
+    });
+
+    it("announces a daily note created beyond the loaded range", async () => {
+        await load(...makeNotes());
+
+        stream.onFileCreate(note("2024-12-01"));
+        await vi.runAllTimersAsync();
+
+        expect(notesChanged).toHaveBeenCalledOnce();
+    });
+
+    it("announces nothing for a file that is not a daily note", async () => {
+        await load(note("2025-01-01"));
+
+        stream.onFileCreate(new TFile("Notes/Template.md"));
+        stream.onFileModify(new TFile("Notes/Template.md"));
+        stream.onFileDelete(new TFile("Notes/Template.md"));
+        await vi.runAllTimersAsync();
+
+        expect(notesChanged).not.toHaveBeenCalled();
+    });
+
+    it("announces a listed note deleted, once the service drops it", async () => {
+        const file = note("2025-01-01");
+        await load(file, note("2024-12-31"));
+        const indexes: number[] = [];
+        notesChanged.mockImplementation(() => indexes.push(service.indexOf(file.path)));
+
+        stream.onFileDelete(file);
+        await vi.runAllTimersAsync();
+
+        expect(indexes).toEqual([-1]);
+    });
+
+    it("announces a listed note renamed", async () => {
+        const file = note("2025-01-01");
+        await load(file);
+
+        stream.onFileRename(renameInPlace(file, "Notes/2025-01-05.md"), "Notes/2025-01-01.md");
+        await vi.runAllTimersAsync();
+
+        expect(notesChanged).toHaveBeenCalled();
+    });
+
+    it("announces a listed note saved, after its re-render", async () => {
+        const file = note("2025-01-01");
+        await load(file);
+        const rendered: boolean[] = [];
+        notesChanged.mockImplementation(() => rendered.push(noteWindow.refresh.mock.calls.length > 0));
+
+        stream.onFileModify(file);
+        await vi.runAllTimersAsync();
+
+        expect(rendered).toEqual([true]);
+    });
+
+    it("announces a listed note saved beyond the loaded range", async () => {
+        const notes = makeNotes();
+        await load(...notes);
+
+        stream.onFileModify(notes[20]!);
+        await vi.runAllTimersAsync();
+
+        expect(notesChanged).toHaveBeenCalledOnce();
+    });
+
+    it("announces a save that hides a note once", async () => {
+        const file = note("2025-01-01");
+        await load(file, note("2024-12-31"));
+        hide(file);
+
+        stream.onFileModify(file);
+        await vi.runAllTimersAsync();
+
+        expect(notesChanged).toHaveBeenCalledOnce();
+    });
+
+    it("announces a note links show again, and nothing for one that stays", async () => {
+        const shownAgain = note("2025-01-02");
+        const stays = note("2025-01-01");
+        hide(shownAgain);
+        await load(shownAgain, stays);
+        hidden.clear();
+
+        await stream.onLinksChanged([stays]);
+        expect(notesChanged).not.toHaveBeenCalled();
+        await stream.onLinksChanged([shownAgain]);
+        expect(notesChanged).toHaveBeenCalledOnce();
+    });
+
+    it("announces a reload under new daily-notes settings, and nothing when they are unchanged", async () => {
+        await load(note("2025-01-01"));
+
+        stream.onDailyNoteSettingsChange();
+        await vi.runAllTimersAsync();
+        expect(notesChanged).not.toHaveBeenCalled();
+
+        __setMockSettings({ format: "YYYY-MM-DD", folder: "Journal" });
+        vault = [new TFile("Journal/2025-01-01.md")];
+        stream.onDailyNoteSettingsChange();
+        await vi.runAllTimersAsync();
+        expect(notesChanged).toHaveBeenCalledOnce();
     });
 });
 
