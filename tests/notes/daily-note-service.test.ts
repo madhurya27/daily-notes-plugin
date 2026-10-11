@@ -171,8 +171,7 @@ describe("DailyNoteService", () => {
             const svc = await serviceOf("2025-01-01", "2025-01-05");
             svc.extendStream(1);
 
-            svc.insertSorted(new TFile("Notes/2025-01-06.md"));
-
+            expect(svc.insertSorted(new TFile("Notes/2025-01-06.md"))).toEqual({ index: 0, inStream: true });
             expect(basenames(svc.streamedNotes())).toEqual(["2025-01-06", "2025-01-05"]);
         });
 
@@ -180,8 +179,7 @@ describe("DailyNoteService", () => {
             const svc = await serviceOf("2025-01-01", "2025-01-05");
             svc.extendStream(1);
 
-            svc.insertSorted(new TFile("Notes/2025-01-03.md"));
-
+            expect(svc.insertSorted(new TFile("Notes/2025-01-03.md"))).toEqual({ index: 1, inStream: false });
             expect(basenames(svc.streamedNotes())).toEqual(["2025-01-05"]);
             expect(basenames(svc.extendStream(1))).toEqual(["2025-01-03"]);
         });
@@ -235,20 +233,20 @@ describe("DailyNoteService", () => {
             await svc.initialize();
 
             const newFile = new TFile("Notes/2025-01-05.md");
-            const idx = svc.insertSorted(newFile);
+            const inserted = svc.insertSorted(newFile);
 
-            expect(idx).toBe(0);
+            expect(inserted?.index).toBe(0);
             expect(svc.getBatch(0, 10)[0]?.basename).toBe("2025-01-05");
         });
 
-        it("returns -1 for a path already in the cache", async () => {
+        it("returns null for a path already in the cache", async () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
             __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]);
 
             const svc = new DailyNoteService(__mockMarkdownFiles);
             await svc.initialize();
 
-            expect(svc.insertSorted(new TFile("Notes/2025-01-01.md"))).toBe(-1);
+            expect(svc.insertSorted(new TFile("Notes/2025-01-01.md"))).toBeNull();
             expect(svc.length).toBe(2);
         });
 
@@ -278,9 +276,9 @@ describe("DailyNoteService", () => {
             await svc.initialize();
 
             const mid = new TFile("Notes/2025-01-03.md");
-            const idx = svc.insertSorted(mid);
+            const inserted = svc.insertSorted(mid);
 
-            expect(idx).toBe(1);
+            expect(inserted?.index).toBe(1);
             expect(svc.getBatch(0, 3)[1]?.basename).toBe("2025-01-03");
         });
     });
@@ -310,13 +308,13 @@ describe("DailyNoteService", () => {
     });
 
     describe("instance: insertSorted — invalid date", () => {
-        it("returns -1 for a file with no parseable date", async () => {
+        it("returns null for a file with no parseable date", async () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
             __setMockNotes(["Notes/2025-01-01.md"]);
             const svc = new DailyNoteService(__mockMarkdownFiles);
             await svc.initialize();
             const noDate = new TFile("Notes/Template.md");
-            expect(svc.insertSorted(noDate)).toBe(-1);
+            expect(svc.insertSorted(noDate)).toBeNull();
         });
     });
 
@@ -332,7 +330,7 @@ describe("DailyNoteService", () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
             const svc = await serviceWith(["Notes/2025-01-01.md"]);
 
-            expect(svc.insertSorted(new TFile("Notes/2025-01-05.png"))).toBe(-1);
+            expect(svc.insertSorted(new TFile("Notes/2025-01-05.png"))).toBeNull();
             expect(svc.length).toBe(1);
         });
 
@@ -340,7 +338,7 @@ describe("DailyNoteService", () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
             const svc = await serviceWith(["Notes/2025-01-01.md"]);
 
-            expect(svc.insertSorted(new TFile("Archive/2025-01-05.md"))).toBe(-1);
+            expect(svc.insertSorted(new TFile("Archive/2025-01-05.md"))).toBeNull();
             expect(svc.length).toBe(1);
         });
 
@@ -348,35 +346,35 @@ describe("DailyNoteService", () => {
             __setMockSettings({ format: "YYYY/MM/YYYY-MM-DD", folder: "Notes" });
             const svc = await serviceWith(["Notes/2025/01/2025-01-01.md"]);
 
-            expect(svc.insertSorted(new TFile("Notes/2025/01/2025-01-05.md"))).toBe(0);
+            expect(svc.insertSorted(new TFile("Notes/2025/01/2025-01-05.md"))?.index).toBe(0);
         });
 
         it("rejects a note that sits outside its nested-format subfolder", async () => {
             __setMockSettings({ format: "YYYY/MM/YYYY-MM-DD", folder: "Notes" });
             const svc = await serviceWith(["Notes/2025/01/2025-01-01.md"]);
 
-            expect(svc.insertSorted(new TFile("Notes/2025-01-05.md"))).toBe(-1);
+            expect(svc.insertSorted(new TFile("Notes/2025-01-05.md"))).toBeNull();
         });
 
         it("accepts a root-folder note when the folder setting is empty", async () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "" });
             const svc = await serviceWith(["2025-01-01.md"]);
 
-            expect(svc.insertSorted(new TFile("2025-01-05.md"))).toBe(0);
+            expect(svc.insertSorted(new TFile("2025-01-05.md"))?.index).toBe(0);
         });
 
         it("accepts a note when the folder setting has a trailing slash", async () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes/" });
             const svc = await serviceWith(["Notes/2025-01-01.md"]);
 
-            expect(svc.insertSorted(new TFile("Notes/2025-01-05.md"))).toBe(0);
+            expect(svc.insertSorted(new TFile("Notes/2025-01-05.md"))?.index).toBe(0);
         });
 
         it("accepts a note when the folder setting is absent entirely", async () => {
             __setMockSettings({ format: "YYYY-MM-DD" });
             const svc = await serviceWith(["2025-01-01.md"]);
 
-            expect(svc.insertSorted(new TFile("2025-01-05.md"))).toBe(0);
+            expect(svc.insertSorted(new TFile("2025-01-05.md"))?.index).toBe(0);
         });
     });
 
@@ -404,8 +402,8 @@ describe("DailyNoteService", () => {
             const svc = new DailyNoteService(__mockMarkdownFiles);
             await svc.initialize();
             const newFile = new TFile("Notes/2025-01-05.md");
-            const idx = svc.insertSorted(newFile);
-            expect(idx).toBe(0);
+            const inserted = svc.insertSorted(newFile);
+            expect(inserted?.index).toBe(0);
         });
 
         it("rejects a new note when the format ends in a folder, as no path can match it", async () => {
@@ -414,7 +412,7 @@ describe("DailyNoteService", () => {
             const svc = new DailyNoteService(__mockMarkdownFiles);
             await svc.initialize();
             const newFile = new TFile("Notes/2025-01-05.md");
-            expect(svc.insertSorted(newFile)).toBe(-1);
+            expect(svc.insertSorted(newFile)).toBeNull();
         });
     });
     describe("refreshIfSettingsChanged: reacting to the daily-notes config", () => {
@@ -468,7 +466,7 @@ describe("DailyNoteService", () => {
 
             __setMockSettings({ format: "DD-MM-YYYY", folder: "Notes" });
 
-            expect(svc.insertSorted(new TFile("Notes/2025-01-03.md"))).toBe(0);
+            expect(svc.insertSorted(new TFile("Notes/2025-01-03.md"))?.index).toBe(0);
             expect(svc.formatDate(moment("2025-01-03", "YYYY-MM-DD", true))).toBe("2025-01-03");
             await svc.refreshIfSettingsChanged();
             expect(svc.formatDate(moment("2025-01-03", "YYYY-MM-DD", true))).toBe("03-01-2025");
@@ -726,7 +724,7 @@ describe("DailyNoteService: hidden notes", () => {
         const svc = new DailyNoteService(__mockMarkdownFiles, new ParsedDates(), filter);
         await svc.initialize();
 
-        expect(svc.insertSorted(new TFile("Notes/2025-01-04.md"))).toBe(-1);
+        expect(svc.insertSorted(new TFile("Notes/2025-01-04.md"))).toBeNull();
         expect(svc.length).toBe(3);
     });
 

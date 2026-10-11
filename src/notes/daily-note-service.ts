@@ -24,6 +24,12 @@ const SHOW_ALL: NoteFilter = {
     signature: () => "",
 };
 
+/** Where `insertSorted` put a note: its index, and whether the stream took it in. */
+export interface Insertion {
+    index: number;
+    inStream: boolean;
+}
+
 /** A daily note and the date its name was parsed to, once. */
 interface DatedNote {
     file: TFile;
@@ -122,21 +128,19 @@ export class DailyNoteService {
         return notes;
     }
 
-    /**
-     * Returns the insertion index, or -1 when not a daily note, hidden, or
-     * already present. Inside the stream, the stream takes the note in.
-     */
-    insertSorted(file: TFile): number {
+    /** Null when not a daily note, hidden, or already present. Inside the stream, the stream takes the note in. */
+    insertSorted(file: TFile): Insertion | null {
         const date = this.parseDate(file, this.format());
-        if (!date || this.filter.isHidden(file, date)) return -1;
+        if (!date || this.filter.isHidden(file, date)) return null;
 
-        const lo = this.firstIndexOnOrBefore(date.valueOf());
+        const index = this.firstIndexOnOrBefore(date.valueOf());
         // A date maps to exactly one path, so the search lands on the duplicate.
-        if (this.sorted[lo]?.file.path === file.path) return -1;
+        if (this.sorted[index]?.file.path === file.path) return null;
 
-        this.sorted.splice(lo, 0, { file, date });
-        if (lo < this._streamLength) this._streamLength++;
-        return lo;
+        this.sorted.splice(index, 0, { file, date });
+        const inStream = index < this._streamLength;
+        if (inStream) this._streamLength++;
+        return { index, inStream };
     }
 
     /** Whether `file` belongs in the list: a daily note the filter, prepared for it afresh, keeps. */

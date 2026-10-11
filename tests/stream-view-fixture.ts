@@ -32,7 +32,7 @@ export function makeService(): DailyNoteService {
         initialize: vi.fn().mockResolvedValue(undefined),
         refreshIfSettingsChanged: vi.fn().mockResolvedValue(false),
         catchUpDay: vi.fn().mockReturnValue([]),
-        insertSorted: vi.fn().mockReturnValue(-1),
+        insertSorted: vi.fn().mockReturnValue(null),
         removeSorted: vi.fn().mockReturnValue(-1),
         indexOf: vi.fn().mockReturnValue(-1),
         belongs: vi.fn().mockResolvedValue(false),

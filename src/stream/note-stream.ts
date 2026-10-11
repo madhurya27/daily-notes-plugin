@@ -230,17 +230,16 @@ export class NoteStream {
     }
 
     private insertNote(file: TFile): void {
-        // -1 when not a daily note.
-        const globalIndex = this.service.insertSorted(file);
-        if (globalIndex === -1) return;
+        const inserted = this.service.insertSorted(file);
+        if (!inserted) return;
         this.notesChanged();
-        if (globalIndex >= this.service.streamLength) {
+        if (!inserted.inStream) {
             // Beyond the loaded range — a visible sentinel loads it now.
             this.scroll.recheck();
             return;
         }
 
-        const next = this.service.getBatch(globalIndex + 1, 1)[0];
+        const next = this.service.getBatch(inserted.index + 1, 1)[0];
         this.blocks.insertBefore(file.path, this.window.add(file), next?.path);
     }
 
