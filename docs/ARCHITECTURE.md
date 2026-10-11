@@ -102,8 +102,9 @@ in, an image loads. Three mechanisms keep the reader's place.
   the task that tells `ScrollAnchor`
   ([ADR 0013](adr/0013-pin-rendered-note-heights.md)). Once the scroll is still,
   it re-reserves unloaded notes at what they are now expected at
-  ([ADR 0014](adr/0014-re-reserve-placeholders-at-rest.md)), drawing the notes
-  above moving first ([ADR 0015](adr/0015-shift-before-shrinking-above.md)).
+  (`reservations.ts`) ([ADR 0014](adr/0014-re-reserve-placeholders-at-rest.md)),
+  drawing the notes above moving first
+  ([ADR 0015](adr/0015-shift-before-shrinking-above.md)).
 - `ScrollAnchor` undoes shifts above the reader where the platform does not:
   Chromium anchors natively, iOS WebKit does not.
 

@@ -52,11 +52,8 @@ each change passes the other gates.
 
 ### Architecture
 
-1. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
-   placeholder reservation, settling. Extract reservation (`reserve`, `expect`,
-   `reserveKey`, the estimate).
-2. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
+1. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
    `LinkChanges` already diffs per source; one incremental index could serve
    both.
-3. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
+2. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
    `scrollToTop`, `onBaseResized`, `onFingerDown`/`Up`.

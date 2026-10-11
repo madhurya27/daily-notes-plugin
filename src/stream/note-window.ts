@@ -3,6 +3,7 @@ import type { NoteRenderer } from "../render/note-renderer";
 import type { NoteHeights } from "./note-heights";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "./scroll-anchor";
 import { HeightHold, SETTLE_MS } from "./height-hold";
+import { Reservations, type Reserving } from "./reservations";
 
 /**
  * What a block reserves before anything was measured at this layout, in panes:
@@ -20,8 +21,7 @@ const UNLOAD_VIEWPORTS = 4;
 /** A pane dragged to nothing, or a root not laid out yet, still gets a window. */
 const MIN_VIEWPORT_PX = 400;
 
-interface NoteWindow {
-    file: TFile;
+interface NoteWindow extends Reserving {
     /** Non-null exactly while the block holds rendered content. */
     component: Component | null;
     /** Guards against a second render arriving during the first one's await. */
@@ -33,10 +33,6 @@ interface NoteWindow {
      * leaving rendered notes behind.
      */
     unloadWanted: boolean;
-    /** Measured on the last unload; the estimate until then. */
-    height: number;
-    /** `height` was measured, this session or an earlier one, not guessed. */
-    measured: boolean;
     /** Holds the rendered note at `height` until it settles; null once let go. */
     hold: HeightHold | null;
     /** What was rendered in the block. */
@@ -65,16 +61,13 @@ export class NoteWindowManager {
     private scrollRoot: HTMLElement | null = null;
     /** The layout heights are read and kept in, until the task reading it ends. */
     private currentLayout: string | null = null;
-    /** The layout the unloaded blocks expect heights in. */
-    private expectedIn: string | null = null;
     /** The height the current margins were computed from. */
     private rootHeight = 0;
     /** Rendered blocks past the unload margin, waiting for the scroll to be still. */
     private readonly leaving = new Set<HTMLElement>();
     private readonly unloadOnceStill = debounce(() => this.unloadLeaving(), SCROLL_IDLE_MS, true);
     private readonly reserveOnceStill = debounce(() => this.reserve(), SCROLL_IDLE_MS, true);
-    /** What the placeholders were last reserved from: the heights' revision, and the layout. */
-    private reservedFrom: string;
+    private readonly reservations: Reservations;
     /** Watches rendered notes: a Base filling or an image loading measures short until done. */
     private resizes: ResizeObserver | null = null;
 
@@ -92,9 +85,9 @@ export class NoteWindowManager {
         /** jsdom lays nothing out, so measurement is the one seam tests replace. */
         private readonly measure: (el: HTMLElement) => number = (el) => el.getBoundingClientRect().height,
         /** What a note not measured at a layout reserves there: by default, what the vault's notes measured (D-092). */
-        private readonly estimate: (layout: string) => number | undefined = (layout) => heights.estimate(layout)
+        estimate: (layout: string) => number | undefined = (layout) => heights.estimate(layout)
     ) {
-        this.reservedFrom = this.reserveKey();
+        this.reservations = new Reservations(heights, estimate);
     }
 
     /** `stream` holds the blocks; `loadedToEnd`: every note is loaded, and nothing comes below its end. */
@@ -172,7 +165,7 @@ export class NoteWindowManager {
         for (const window of this.windows.values()) {
             if (window.component) continue;
             window.height = this.unmeasured();
-            this.expect(window, layout);
+            this.reservations.expect(window, layout);
         }
         this.reserveOnceStill();
     }
@@ -185,7 +178,7 @@ export class NoteWindowManager {
     onScroll(): void {
         this.anchor.onScroll();
         if (this.leaving.size > 0) this.unloadOnceStill();
-        if (this.reservedFrom !== this.reserveKey()) this.reserveOnceStill();
+        if (this.reservations.owed) this.reserveOnceStill();
     }
 
     /** A Base in a note set its height: the note re-pins in this task (D-108). */
@@ -228,11 +221,7 @@ export class NoteWindowManager {
             keepOnceSettled: null,
         };
         this.windows.set(block, window);
-        // Reserved from what is known now; the others too, unless one is owed.
-        const owed = this.reservedFrom !== this.reserveKey();
-        this.expectedIn = this.layout();
-        this.expect(window, this.expectedIn);
-        if (!owed) this.reservedFrom = this.reserveKey();
+        this.reservations.add(window, this.layout());
         this.markUnloaded(block, window.height);
         this.observe(block);
         return block;
@@ -274,7 +263,7 @@ export class NoteWindowManager {
         if (!window) return;
         if (!window.component) {
             if (window.rendering) return;
-            this.expect(window, this.layout());
+            this.reservations.expect(window, this.layout());
             this.reserveOnceStill();
             return;
         }
@@ -420,11 +409,10 @@ export class NoteWindowManager {
      */
     private expectLayout(): void {
         const layout = this.layout();
-        if (layout === this.expectedIn) return;
-        this.expectedIn = layout;
+        if (!this.reservations.expectLayout(layout)) return;
         for (const window of this.windows.values()) {
             this.releaseHold(window);
-            if (!window.component) this.expect(window, layout);
+            if (!window.component) this.reservations.expect(window, layout);
         }
     }
 
@@ -432,58 +420,25 @@ export class NoteWindowManager {
      * Each unloaded note reserves what it is now expected at: its height at a
      * new width, or an estimate grown wiser since. The anchor draws the notes
      * above the pane moving first, which keeps the scroll range (ADR 0015).
-     * Put off while the rest would shrink the stream by more than lies below
-     * the pane: the browser would clamp the scroll.
      */
     private reserve(): void {
         const root = this.scrollRoot;
         if (!root) return;
-        const layout = this.layout();
-        const key = this.reserveKey();
-        const paneTop = root.getBoundingClientRect().top;
-        const changed: [HTMLElement, NoteWindow][] = [];
-        let movedAbove = 0;
-        let shrinkBelow = 0;
-        for (const [block, window] of this.windows) {
-            if (window.component || window.rendering) continue;
-            if (!window.measured) this.expect(window, layout);
-            const reserved = parseFloat(block.style.getPropertyValue("--daily-note-placeholder-height"));
-            if (reserved === window.height) continue;
-            changed.push([block, window]);
-            if (this.isAbove(block, paneTop)) movedAbove += window.height - reserved;
-            else shrinkBelow += reserved - window.height;
-        }
-        if (shrinkBelow > root.scrollHeight - root.scrollTop - root.clientHeight) return;
-        this.reservedFrom = key;
-        if (changed.length === 0) return;
-        this.anchor.anticipate(movedAbove);
-        for (const [block, window] of changed) this.markUnloaded(block, window.height);
+        const unloaded = [...this.windows].filter(([, window]) => !window.component && !window.rendering);
+        const plan = this.reservations.plan(
+            unloaded,
+            this.layout(),
+            root.getBoundingClientRect().top,
+            root.scrollHeight - root.scrollTop - root.clientHeight
+        );
+        if (!plan || plan.changed.length === 0) return;
+        this.anchor.anticipate(plan.movedAbove);
+        for (const [block, window] of plan.changed) this.markUnloaded(block, window.height);
         this.changes++;
         this.anchor.resized();
         // Run only once the scroll is still; put off, a scroll begun meanwhile
         // carries the shift to the top (ADR 0015).
         this.anchor.handOver();
-    }
-
-    /** Wholly above the pane's top; a block not laid out, in a hidden tab, is nowhere. */
-    private isAbove(block: HTMLElement, paneTop: number): boolean {
-        const { bottom, height } = block.getBoundingClientRect();
-        return height > 0 && bottom <= paneTop;
-    }
-
-    private reserveKey(): string {
-        return `${this.heights.revision}\n${this.expectedIn}`;
-    }
-
-    /**
-     * What `window` last measured in `layout`, or the estimate there. With
-     * none, as just turned, it keeps what it reserves until the notes on
-     * screen are measured.
-     */
-    private expect(window: NoteWindow, layout: string): void {
-        const remembered = this.heights.heightOf(layout, window.file.path);
-        window.height = remembered ?? this.estimate(layout) ?? window.height;
-        window.measured = remembered !== undefined;
     }
 
     /**
@@ -596,7 +551,7 @@ export class NoteWindowManager {
         const measured = this.measure(block);
         if (measured > 0) this.heights.keep(this.layout(), window.file.path, measured);
         // What the rest reserve may have changed; they take it at the next rest (ADR 0014).
-        if (this.reservedFrom !== this.reserveKey()) this.reserveOnceStill();
+        if (this.reservations.owed) this.reserveOnceStill();
     }
 
     /**
