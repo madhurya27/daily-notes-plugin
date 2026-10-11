@@ -170,12 +170,13 @@ export class CollapsibleManager {
 
     /**
      * Same-text headings would share one stored state. The first occurrence keeps
-     * the bare key, so state saved before this disambiguation still applies.
+     * the bare key, so state saved before this disambiguation still applies; the
+     * rest take a "#", which no slug contains, so "Foo 2" keeps its own.
      */
     private uniqueKey(key: string, seenKeys: Map<string, number>): string {
         const occurrence = (seenKeys.get(key) ?? 0) + 1;
         seenKeys.set(key, occurrence);
-        return occurrence === 1 ? key : `${key}-${occurrence}`;
+        return occurrence === 1 ? key : `${key}#${occurrence}`;
     }
 
     private processHeaders(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): string[] {

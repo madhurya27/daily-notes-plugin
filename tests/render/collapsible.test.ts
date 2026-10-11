@@ -145,8 +145,8 @@ describe("CollapsibleManager — duplicate section keys", () => {
         clickChevron(headers[2] as HTMLElement);
 
         expect(store.setCollapsed).toHaveBeenNthCalledWith(1, "file.md", "notes", true);
-        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "notes-2", true);
-        expect(store.setCollapsed).toHaveBeenNthCalledWith(3, "file.md", "notes-3", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "notes#2", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(3, "file.md", "notes#3", true);
     });
 
     it("suffixes repeated list items at the same depth", () => {
@@ -159,7 +159,16 @@ describe("CollapsibleManager — duplicate section keys", () => {
         clickChevron(items[1] as HTMLElement);
 
         expect(store.setCollapsed).toHaveBeenNthCalledWith(1, "file.md", "li-1-task", true);
-        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "li-1-task-2", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "li-1-task#2", true);
+    });
+
+    it("keeps a repeated heading's key apart from a heading that reads like its suffix", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Foo</h2><h2>Foo</h2><h2>Foo 2</h2>";
+
+        const keys = manager.makeCollapsible(content, "file.md");
+
+        expect(new Set(keys).size).toBe(3);
     });
 
     it("counts headers and list items separately", () => {
@@ -622,7 +631,7 @@ describe("CollapsibleManager — stale sections", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h2>Notes</h2><h2>Notes</h2><ul><li>Task<ul><li>a</li></ul></li></ul>";
 
-        expect(manager.makeCollapsible(content, "file.md")).toEqual(["notes", "notes-2", "li-1-task"]);
+        expect(manager.makeCollapsible(content, "file.md")).toEqual(["notes", "notes#2", "li-1-task"]);
     });
 
     it("forgets the sections a settled note no longer has, keeping the properties panel's and the footer's", () => {
