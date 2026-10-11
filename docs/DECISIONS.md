@@ -1982,3 +1982,19 @@ cost 1,095 reads per modal open.
 
 - Reading the format once per modal open — still a read per insert, and still
   out of step with the list until the refresh.
+
+## D-121 — Collapse state is one blob, its old keys dropped unread (2026-10-11)
+
+**Decision:** `CollapsibleStateStore` saves every note's sections under
+`daily-notes-stream:collapse`, read once at load and pruned to the vault's notes
+at layout ready, as the layout memory is. The old `collapse:*` and
+`collapse-idx:*` keys are neither read nor removed.
+
+**Why:** a key per section could not be listed, so a note deleted unheard left
+its keys forever, unprefixed beside other plugins'. Each heading of each render
+read and parsed one.
+
+**Rejected:**
+
+- Migrating the old keys — they cannot be listed, only read per path, so the
+  reader stays for good. Unpublished: only test devices hold any.

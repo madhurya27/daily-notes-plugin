@@ -97,9 +97,10 @@ export default class DailyNotesStreamPlugin extends Plugin {
     /** Collapsed sections follow a note across a rename, and out with a delete, whether or not a stream is open. */
     private rememberCollapse(): void {
         const store = (this.collapseStore = new CollapsibleStateStore(this.app));
-        const { vault } = this.app;
+        const { vault, workspace } = this.app;
         this.registerEvent(vault.on("rename", (file, oldPath) => store.migrate(oldPath, file.path)));
         this.registerEvent(vault.on("delete", (file) => store.clearForFile(file.path)));
+        workspace.onLayoutReady(() => store.retainOnly(new Set(vault.getMarkdownFiles().map((file) => file.path))));
     }
 
     /**

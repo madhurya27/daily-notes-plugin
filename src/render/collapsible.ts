@@ -162,7 +162,7 @@ export class CollapsibleManager {
     /** Drops saved sections `file` no longer has. The panels stay: a hidden one renders no key. */
     forgetRemovedSections(file: TFile, sectionKeys: readonly string[]): void {
         if (Date.now() - file.stat.mtime < SETTLED_AFTER_MS) return;
-        this.store.retainOnly(
+        this.store.retainSections(
             file.path,
             new Set([...sectionKeys, PROPERTIES_SECTION_KEY, LINKED_MENTIONS_SECTION_KEY])
         );

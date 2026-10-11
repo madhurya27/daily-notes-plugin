@@ -10,7 +10,7 @@ function makeStore(collapsedByDefault = false): CollapsibleStateStore {
         collapsedOr: vi.fn().mockReturnValue(collapsedByDefault),
         setCollapsed: vi.fn(),
         clearForFile: vi.fn(),
-        retainOnly: vi.fn(),
+        retainSections: vi.fn(),
     });
 }
 
@@ -628,7 +628,7 @@ describe("CollapsibleManager — stale sections", () => {
     it("forgets the sections a settled note no longer has, keeping the properties panel's and the footer's", () => {
         manager.forgetRemovedSections(noteWritten(25), ["notes"]);
 
-        expect(store.retainOnly).toHaveBeenCalledWith(
+        expect(store.retainSections).toHaveBeenCalledWith(
             "file.md",
             new Set(["notes", PROPERTIES_SECTION_KEY, LINKED_MENTIONS_SECTION_KEY])
         );
@@ -637,6 +637,6 @@ describe("CollapsibleManager — stale sections", () => {
     it("forgets nothing of a note written in the last day: a heading may be mid-edit", () => {
         manager.forgetRemovedSections(noteWritten(23), ["notes"]);
 
-        expect(store.retainOnly).not.toHaveBeenCalled();
+        expect(store.retainSections).not.toHaveBeenCalled();
     });
 });

@@ -52,28 +52,22 @@ each change passes the other gates.
 
 ### Architecture
 
-1. **One collapse store, like the others.** Now one localStorage key per section
-   plus an index per file (`collapse-store.ts:61-67`): unprefixed, unlike
-   `daily-notes-stream:*`, so open to collisions, and never cleaned since keys
-   cannot be listed. One prefixed blob with `retainOnly` at layout ready fixes
-   both, and turns a `loadLocalStorage` read and parse per heading per render
-   (`collapse-store.ts:20`) into a map lookup.
-2. **Search refreshes on any vault event.** The view wraps each handler in
+1. **Search refreshes on any vault event.** The view wraps each handler in
    `applyChange` (`stream-view.ts:219`), so a new one must remember to, and the
    refresh runs on its own debounce beside the stream's queue. Have the stream
    announce when its notes change, a list change through `insertSorted` or
    `removeSorted` or a save of a listed note, and search refresh on that: only
    daily notes, after the change applied.
-3. **Two "block at the pane's top" lookups.** `captureAnchor` is linear
+2. **Two "block at the pane's top" lookups.** `captureAnchor` is linear
    (`scroll-position.ts:32`), `ScrollAnchor.blockAt` binary
    (`scroll-anchor.ts:392`). `AnchorSnapshot` and `StreamPlace` are one concept.
-4. **`ScrollAnchor.stream()` infers the container** from the first watched
+3. **`ScrollAnchor.stream()` infers the container** from the first watched
    block's parent (`scroll-anchor.ts:405`); pass it in.
-5. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
+4. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
    placeholder reservation, settling. Extract reservation (`reserve`, `expect`,
    `reserveKey`, the estimate).
-6. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
+5. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
    `LinkChanges` already diffs per source; one incremental index could serve
    both.
-7. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
+6. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
    `scrollToTop`, `onBaseResized`, `onFingerDown`/`Up`.

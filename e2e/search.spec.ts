@@ -311,7 +311,7 @@ test.describe("search the stream", () => {
         await expect(heading).not.toHaveClass(/is-collapsed/);
         // Unsaved: the fold still stands in the vault's own storage.
         const saved = await page.evaluate(() =>
-            Object.keys(localStorage).some((key) => key.includes("collapse:") && localStorage[key] === "true")
+            JSON.stringify(window.app.loadLocalStorage("daily-notes-stream:collapse")).includes("true")
         );
         expect(saved).toBe(true);
     });

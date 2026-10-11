@@ -48,8 +48,18 @@ const heading = (note: Locator, text: string, nth = 0) =>
 
 const chevron = (host: Locator) => host.locator(".collapse-indicator").first();
 
+/** The section's state as saved, null when none is. */
 const stored = (page: Page, sectionKey: string) =>
-    page.evaluate((key) => window.app.loadLocalStorage(key) as unknown, `collapse:${NOTE}:${sectionKey}`);
+    page.evaluate(
+        ({ path, key }) => {
+            const saved = window.app.loadLocalStorage("daily-notes-stream:collapse") as {
+                files: [string, [string, boolean][]][];
+            } | null;
+            const sections = new Map(saved?.files.find(([file]) => file === path)?.[1]);
+            return sections.get(key) ?? null;
+        },
+        { path: NOTE, key: sectionKey }
+    );
 
 test.describe("collapsing sections of a note", () => {
     let note: Locator;

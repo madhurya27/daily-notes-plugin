@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { CollapsibleStateStore } from "../../src/render/collapse-store";
+import { COLLAPSE_STATE_KEY, CollapsibleStateStore } from "../../src/render/collapse-store";
 import { asApp } from "../stream-view-fixture";
 
 function makeApp() {
@@ -21,6 +21,8 @@ describe("CollapsibleStateStore", () => {
         app = makeApp();
         store = new CollapsibleStateStore(asApp(app));
     });
+
+    const saved = (): unknown => app.loadLocalStorage(COLLAPSE_STATE_KEY);
 
     it("isCollapsed returns false when key not set", () => {
         expect(store.isCollapsed("file.md", "heading-1")).toBe(false);
@@ -48,31 +50,36 @@ describe("CollapsibleStateStore", () => {
         expect(store.collapsedOr("file.md", "properties", true)).toBe(false);
     });
 
-    describe("retainOnly", () => {
+    describe("retainSections", () => {
         it("forgets the sections not kept, and keeps the rest", () => {
             store.setCollapsed("file.md", "meeting", true);
-            store.setCollapsed("file.md", "old-heading", true);
+            store.setCollapsed("file.md", "old-heading", false);
 
-            store.retainOnly("file.md", new Set(["meeting"]));
+            store.retainSections("file.md", new Set(["meeting"]));
 
             expect(store.isCollapsed("file.md", "meeting")).toBe(true);
-            expect(app.loadLocalStorage("collapse:file.md:old-heading")).toBeNull();
-            expect(app.loadLocalStorage("collapse-idx:file.md")).toEqual(["meeting"]);
+            expect(store.collapsedOr("file.md", "old-heading", true)).toBe(true);
         });
 
-        it("drops the index once no section is left", () => {
+        it("drops the note once no section is left", () => {
             store.setCollapsed("file.md", "old-heading", true);
 
-            store.retainOnly("file.md", new Set());
+            store.retainSections("file.md", new Set());
 
-            expect(app.loadLocalStorage("collapse-idx:file.md")).toBeNull();
+            expect(saved()).toEqual({ version: 1, files: [] });
         });
 
         it("writes nothing when every stored section is kept", () => {
             store.setCollapsed("file.md", "meeting", true);
             app.saveLocalStorage.mockClear();
 
-            store.retainOnly("file.md", new Set(["meeting", "unstored"]));
+            store.retainSections("file.md", new Set(["meeting", "unstored"]));
+
+            expect(app.saveLocalStorage).not.toHaveBeenCalled();
+        });
+
+        it("writes nothing for a note with no saved sections", () => {
+            store.retainSections("file.md", new Set());
 
             expect(app.saveLocalStorage).not.toHaveBeenCalled();
         });
@@ -80,9 +87,31 @@ describe("CollapsibleStateStore", () => {
         it("leaves other files alone", () => {
             store.setCollapsed("other.md", "old-heading", true);
 
-            store.retainOnly("file.md", new Set());
+            store.retainSections("file.md", new Set());
 
             expect(store.isCollapsed("other.md", "old-heading")).toBe(true);
+        });
+    });
+
+    describe("retainOnly", () => {
+        // A note deleted while the plugin was off, or on another device, was never heard of.
+        it("forgets every note not in the vault", () => {
+            store.setCollapsed("kept.md", "intro", true);
+            store.setCollapsed("gone.md", "intro", true);
+
+            store.retainOnly(new Set(["kept.md", "unstored.md"]));
+
+            expect(store.isCollapsed("kept.md", "intro")).toBe(true);
+            expect(saved()).toEqual({ version: 1, files: [["kept.md", [["intro", true]]]] });
+        });
+
+        it("writes nothing when every stored note is kept", () => {
+            store.setCollapsed("kept.md", "intro", true);
+            app.saveLocalStorage.mockClear();
+
+            store.retainOnly(new Set(["kept.md"]));
+
+            expect(app.saveLocalStorage).not.toHaveBeenCalled();
         });
     });
 
@@ -117,7 +146,7 @@ describe("CollapsibleStateStore", () => {
         expect(store.isCollapsed("old.md", "heading-2")).toBe(false);
     });
 
-    it("migrate carries the index over, so a later clearForFile on the new path cleans up", () => {
+    it("migrate leaves the new path for a later clearForFile to clean up", () => {
         store.setCollapsed("old.md", "heading-1", true);
 
         store.migrate("old.md", "new.md");
@@ -138,12 +167,13 @@ describe("CollapsibleStateStore", () => {
         expect(() => store.migrate("old.md", "new.md")).not.toThrow();
     });
 
-    it("addToIndex does not duplicate keys on repeated setCollapsed(true)", () => {
+    it("writes nothing when a section's state is unchanged", () => {
         store.setCollapsed("file.md", "heading-1", true);
-        store.setCollapsed("file.md", "heading-1", true); // second call, same key
-        // clearForFile should still clean up correctly
-        store.clearForFile("file.md");
-        expect(store.isCollapsed("file.md", "heading-1")).toBe(false);
+        app.saveLocalStorage.mockClear();
+
+        store.setCollapsed("file.md", "heading-1", true);
+
+        expect(app.saveLocalStorage).not.toHaveBeenCalled();
     });
 
     it("clearForFile also drops explicitly expanded sections", () => {
@@ -154,23 +184,57 @@ describe("CollapsibleStateStore", () => {
         expect(store.collapsedOr("file.md", "key-a", true)).toBe(true);
     });
 
-    it("readIndex returns [] when stored index value is not an array", () => {
-        // Manually inject a non-array value into the index key
-        app.saveLocalStorage("collapse-idx:file.md", "bad-value");
-        // clearForFile iterates the index — should not throw
-        expect(() => store.clearForFile("file.md")).not.toThrow();
+    it("saves every note's sections under one key of the plugin's own", () => {
+        store.setCollapsed("notes/2025-01-01.md", "intro", true);
+        store.setCollapsed("notes/2025-01-01.md", "properties", false);
+
+        expect(app.saveLocalStorage.mock.calls.every(([key]) => key === COLLAPSE_STATE_KEY)).toBe(true);
+        expect(COLLAPSE_STATE_KEY).toMatch(/^daily-notes-stream:/);
+        expect(saved()).toEqual({
+            version: 1,
+            files: [
+                [
+                    "notes/2025-01-01.md",
+                    [
+                        ["intro", true],
+                        ["properties", false],
+                    ],
+                ],
+            ],
+        });
     });
 
-    it("uses vault-scoped storage keys with 'collapse:' prefix", () => {
-        store.setCollapsed("notes/2025-01-01.md", "intro", true);
-        const sectionCall = app.saveLocalStorage.mock.calls.find((c) => c[0].startsWith("collapse:"));
-        expect(sectionCall?.[0]).toBe("collapse:notes/2025-01-01.md:intro");
+    it("restores what the last session saved", () => {
+        store.setCollapsed("file.md", "intro", true);
+        store.setCollapsed("file.md", "properties", false);
+
+        const next = new CollapsibleStateStore(asApp(app));
+
+        expect(next.isCollapsed("file.md", "intro")).toBe(true);
+        expect(next.collapsedOr("file.md", "properties", true)).toBe(false);
     });
 
-    it("uses 'collapse-idx:' prefix for the index key", () => {
-        store.setCollapsed("notes/2025-01-01.md", "intro", true);
-        const indexCall = app.saveLocalStorage.mock.calls.find((c) => c[0].startsWith("collapse-idx:"));
-        expect(indexCall?.[0]).toBe("collapse-idx:notes/2025-01-01.md");
+    // Each heading of each render asks: one read and parse per lookup added up.
+    it("reads storage once, not per lookup", () => {
+        store.isCollapsed("file.md", "a");
+        store.collapsedOr("file.md", "b", true);
+        store.isCollapsed("other.md", "a");
+
+        expect(app.loadLocalStorage).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        ["nothing", null],
+        ["another version", { version: 2, files: [["file.md", [["intro", true]]]] }],
+        ["no list of files", { version: 1, files: "bad" }],
+        ["a malformed note", { version: 1, files: [["file.md", "bad"]] }],
+        ["a non-boolean state", { version: 1, files: [["file.md", [["intro", "yes"]]]] }],
+    ])("starts empty from %s stored", (_, value) => {
+        app.saveLocalStorage(COLLAPSE_STATE_KEY, value);
+
+        const next = new CollapsibleStateStore(asApp(app));
+
+        expect(next.collapsedOr("file.md", "intro", false)).toBe(false);
     });
 
     it("logs a refused save once, and throws from none", () => {
@@ -181,7 +245,8 @@ describe("CollapsibleStateStore", () => {
         });
 
         expect(() => store.setCollapsed("file.md", "heading-2", true)).not.toThrow();
-        expect(() => store.retainOnly("file.md", new Set())).not.toThrow();
+        expect(() => store.retainSections("file.md", new Set())).not.toThrow();
+        expect(() => store.retainOnly(new Set())).not.toThrow();
         expect(() => store.clearForFile("file.md")).not.toThrow();
         expect(() => store.migrate("file.md", "moved.md")).not.toThrow();
 

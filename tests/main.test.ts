@@ -3,7 +3,7 @@ import DailyNotesStreamPlugin from "../src/main";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/ui/stream-view";
 import { EMPTY_NOTES_KEY } from "../src/notes/empty-notes";
 import { DEFAULT_SETTINGS } from "../src/settings";
-import { CollapsibleStateStore } from "../src/render/collapse-store";
+import { COLLAPSE_STATE_KEY, CollapsibleStateStore } from "../src/render/collapse-store";
 import { BaseMeasurements } from "../src/render/bases/base-measurements";
 import { LAYOUT_MEMORY_KEY, LayoutMemory } from "../src/stream/layout-memory";
 import { Notice, TFile, WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
@@ -331,6 +331,29 @@ describe("DailyNotesStreamPlugin — collapse state", () => {
 
         expect(migrate).toHaveBeenCalledWith("Notes/old.md", "Notes/new.md");
         expect(clear).toHaveBeenCalledWith("Notes/gone.md");
+    });
+
+    // A note deleted while the plugin was off, or on another device, was never heard of.
+    it("forgets notes no longer in the vault once it is indexed", async () => {
+        __setMockNotes(["Notes/2025-01-01.md"]);
+        const app = makeApp();
+        app.loadLocalStorage.mockImplementation((key: string) =>
+            key === COLLAPSE_STATE_KEY
+                ? {
+                      version: 1,
+                      files: [
+                          ["Notes/2025-01-01.md", [["intro", true]]],
+                          ["Notes/gone.md", [["intro", true]]],
+                      ],
+                  }
+                : null
+        );
+        const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
+
+        await plugin.onload();
+
+        expect(plugin.collapseStore.isCollapsed("Notes/2025-01-01.md", "intro")).toBe(true);
+        expect(plugin.collapseStore.isCollapsed("Notes/gone.md", "intro")).toBe(false);
     });
 });
 

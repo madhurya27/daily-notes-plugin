@@ -128,7 +128,7 @@ the vault's "Search current file" hotkey (`hotkey.ts`).
 | Settings             | plugin data (`data.json`)      | syncs with the vault       |
 | Heights, Base widths | vault localStorage, per device | device-specific (ADR 0010) |
 | Empty-note verdicts  | vault localStorage, per device | a cache (D-072)            |
-| Collapsed sections   | vault localStorage             | `collapse-store.ts`        |
+| Collapsed sections   | vault localStorage             | `collapse-store.ts`, D-121 |
 
 Every localStorage store saves through `saveLoggingOnce`: a refused save is
 logged once, never thrown (D-071).
