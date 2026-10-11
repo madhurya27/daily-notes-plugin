@@ -14,6 +14,8 @@ interface JumpChoice {
     label: string;
     /** What the jump will do instead, when the date itself has no note. */
     fallback: string | null;
+    /** The label, lowercased, and the ISO date: what a query is found in, spelled once per open. */
+    searchText: string;
 }
 
 /**
@@ -52,11 +54,7 @@ export class JumpToDateModal extends SuggestModal<JumpChoice> {
         const needle = query.trim().toLowerCase();
         if (!needle) return this.choices;
 
-        // Both haystacks: the reader may reach for ISO whatever their own
-        // filenames look like.
-        const matches = this.choices.filter(
-            (choice) => choice.label.toLowerCase().includes(needle) || choice.date.format(ISO_FORMAT).includes(needle)
-        );
+        const matches = this.choices.filter((choice) => choice.searchText.includes(needle));
         if (matches.length > 0) return matches;
 
         const typed = this.readDate(query.trim());
@@ -85,7 +83,10 @@ export class JumpToDateModal extends SuggestModal<JumpChoice> {
     }
 
     private choice(date: Moment, fallback: string | null): JumpChoice {
-        return { date, label: this.service.formatDate(date), fallback };
+        const label = this.service.formatDate(date);
+        // Both: the reader may reach for ISO whatever their own filenames look
+        // like. The separator keeps a query from spanning the two.
+        return { date, label, fallback, searchText: `${label.toLowerCase()}\u0000${date.format(ISO_FORMAT)}` };
     }
 
     /**

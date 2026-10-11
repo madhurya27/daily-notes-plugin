@@ -46,6 +46,8 @@ export class DailyNoteService {
     private _streamLength = 0;
     /** The daily-notes config the cache was built from; null before the first build. */
     private builtFrom: string | null = null;
+    /** The date format the list was built with; null before the first build. */
+    private builtWith: DateFormat | null = null;
 
     /**
      * `markdownFiles`: the vault's, daily notes among them. `parsedDates`: shared
@@ -88,6 +90,7 @@ export class DailyNoteService {
         this.sorted = sorted;
         this._streamLength = 0;
         this.builtFrom = this.signature(format);
+        this.builtWith = format;
     }
 
     /** Newest first. */
@@ -117,8 +120,7 @@ export class DailyNoteService {
      * already present. Inside the stream, the stream takes the note in.
      */
     insertSorted(file: TFile): number {
-        const format = this.readFormat();
-        const date = this.parseDate(file, format);
+        const date = this.parseDate(file, this.format());
         if (!date || this.filter.isHidden(file, date)) return -1;
 
         const lo = this.firstIndexOnOrBefore(date.valueOf());
@@ -132,7 +134,7 @@ export class DailyNoteService {
 
     /** Whether `file` belongs in the list: a daily note the filter, prepared for it afresh, keeps. */
     async belongs(file: TFile): Promise<boolean> {
-        const date = this.parseDate(file, this.readFormat());
+        const date = this.parseDate(file, this.format());
         if (!date) return false;
         await this.filter.recheck(file);
         return !this.filter.isHidden(file, date);
@@ -140,7 +142,7 @@ export class DailyNoteService {
 
     /** Whether the filter leaves out any daily note. Walks the vault: for an empty stream only. */
     hidesAny(): boolean {
-        return this.datedNotes(this.readFormat()).some((note) => this.filter.isHidden(note.file, note.date));
+        return this.datedNotes(this.format()).some((note) => this.filter.isHidden(note.file, note.date));
     }
 
     /** Returns the removed index, or -1 when absent. Inside the stream, the stream drops it. */
@@ -177,12 +179,12 @@ export class DailyNoteService {
 
     /** `date` as this vault's filenames spell it, nested formats included. */
     formatDate(date: Moment): string {
-        return date.format(this.readFormat().basename);
+        return date.format(this.format().basename);
     }
 
     /** `text` read as one of this vault's filenames, or null when it is not. */
     parseNoteDate(text: string): Moment | null {
-        const date = moment(text, this.readFormat().basename, true);
+        const date = moment(text, this.format().basename, true);
         return date.isValid() ? date : null;
     }
 
@@ -232,6 +234,14 @@ export class DailyNoteService {
         return files
             .map((file, i) => ({ file, date: dates[i] ?? null }))
             .filter((note): note is DatedNote => note.date !== null);
+    }
+
+    /**
+     * The list's own: a config write refreshes the service, which rebuilds the
+     * list when the format changed. The settings' before the first build.
+     */
+    private format(): DateFormat {
+        return this.builtWith ?? this.readFormat();
     }
 
     private readFormat(): DateFormat {
