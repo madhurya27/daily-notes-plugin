@@ -66,7 +66,7 @@ export class NoteStream {
     private readonly catchUpDayOnceStill = debounce(
         () => {
             this.dayTurnWaiting = false;
-            void this.enqueue(async () => {});
+            void this.enqueueChange(async () => {});
         },
         SCROLL_IDLE_MS,
         true
@@ -172,7 +172,7 @@ export class NoteStream {
         () => {
             const files = [...this.pendingModified.values()];
             this.pendingModified.clear();
-            for (const file of files) void this.enqueue(() => this.applyModify(file));
+            for (const file of files) void this.enqueueChange(() => this.applyModify(file));
         },
         MODIFY_DEBOUNCE_MS,
         true
@@ -192,8 +192,16 @@ export class NoteStream {
      * One that stays is left alone: its linked mentions redraw themselves.
      */
     onLinksChanged(files: TFile[]): Promise<void> {
-        return this.enqueue(async () => {
+        return this.enqueueChange(async () => {
             for (const file of files) await this.reconsider(file);
+        });
+    }
+
+    /** A change from outside the reader's hands: the day's turn, if any, is caught up on first. */
+    private enqueueChange(task: () => Promise<void>): Promise<void> {
+        return this.enqueue(async () => {
+            await this.catchUpDay();
+            await task();
         });
     }
 
@@ -218,7 +226,7 @@ export class NoteStream {
 
     onFileCreate(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => this.insertNote(file));
+        void this.enqueueChange(async () => this.insertNote(file));
     }
 
     private insertNote(file: TFile): void {
@@ -252,12 +260,12 @@ export class NoteStream {
 
     onFileDelete(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => this.removeNote(file, file.path));
+        void this.enqueueChange(async () => this.removeNote(file, file.path));
     }
 
     onFileRename(file: TAbstractFile, oldPath: string) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => this.removeNote(file, oldPath));
+        void this.enqueueChange(async () => this.removeNote(file, oldPath));
         this.onFileCreate(file);
     }
 
@@ -433,7 +441,7 @@ export class NoteStream {
      * changed, a setting toggled, and returns to the reader's place (D-074).
      */
     refresh(): Promise<void> {
-        return this.enqueue(async () => {
+        return this.enqueueChange(async () => {
             // Drawn shifted, the notes are not where the scroll puts them.
             this.window.handOver();
             const place = this.place();
@@ -469,7 +477,7 @@ export class NoteStream {
      */
     onDailyNoteSettingsChange: Debouncer<[], void> = debounce(
         () => {
-            void this.enqueue(async () => {
+            void this.enqueueChange(async () => {
                 if (!(await this.service.refreshIfSettingsChanged())) return;
                 await this.reload();
             });
@@ -514,16 +522,13 @@ export class NoteStream {
     }
 
     /**
-     * Runs `task` after every queued mutation, so none interleave at an await,
-     * and after the day's turn, if any, is caught up on.
+     * Runs `task` after every queued mutation, so none interleave at an await.
+     * The reader's own loads, renders and jumps come here, leaving the day's
+     * turn alone: the notes at the top stay put under a scroll.
      */
     private enqueue(task: () => Promise<void>): Promise<void> {
         this.queue = this.queue
-            .then(async () => {
-                if (this.closed) return;
-                await this.catchUpDay();
-                await task();
-            })
+            .then(() => (this.closed ? undefined : task()))
             .catch((e) => console.error("DailyNotesStream: Failed to update the stream", e));
         return this.queue;
     }

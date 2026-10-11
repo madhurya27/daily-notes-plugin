@@ -2018,10 +2018,12 @@ Obsidian sent.
 
 ## D-123 — The day's turn waits for the stream's next change, or midnight (2026-10-11)
 
-**Decision:** before each queued task, the stream asks the service whether the
-day turned since it last looked; if so, it rechecks the last day's note and one
-made ahead for the new day. One timer per view also catches up a minute past
-midnight, once the reader has stopped scrolling, touching and wheeling.
+**Decision:** before each vault event, refresh or config write it applies, the
+stream asks the service whether the day turned since it last looked; if so, it
+rechecks the last day's note and one made ahead for the new day. One timer per
+view also catches up a minute past midnight, once the reader has stopped
+scrolling, touching and wheeling. The reader's own loads, renders and jumps
+never do.
 
 **Why:** yesterday's note showing until something happens costs the reader
 nothing, but a note made ahead for today would stay hidden in an idle stream.

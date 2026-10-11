@@ -655,6 +655,18 @@ describe("the day's turn", () => {
         expect(shown()).toEqual([older.path]);
     });
 
+    // The reader's own scroll moves nothing at the top under them.
+    it("leaves the day's empty note to a vault change or midnight, not a load or render the scroll asks for", async () => {
+        hide(yesterday);
+        await load(yesterday, older);
+
+        vi.setSystemTime(new Date(2025, 0, 3, 0, 30));
+        await stream.loadMoreNotes();
+        await noteWindow.enqueue(async () => {});
+
+        expect(shown()).toEqual([yesterday.path, older.path]);
+    });
+
     it("shows an empty note made ahead on the first change of its day", async () => {
         hide(ahead);
         await load(ahead, yesterday);
