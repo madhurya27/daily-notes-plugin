@@ -32,29 +32,17 @@ within each list.
 
 ### Bugs
 
-1. **Vault events during open are lost.** `onOpen` awaits `service.initialize()`
-   (`stream-view.ts:139`), which reads notes for empty-note checks, and only
-   then registers listeners (`:148-153`). A note synced in meanwhile is missing
-   until a refresh; one deleted meanwhile stays, rendering "Error rendering
-   note".
-2. **Collapse state is lost on a rename with no stream open.** Only an open view
-   migrates or clears it (`note-stream.ts:230,237`); the keys are orphaned.
-   `LayoutMemory` and `EmptyNotes` listen at plugin level (`main.ts`).
-3. **Non-ASCII headings fold by position.** `slugify` keeps only `a-z0-9`
-   (`collapsible.ts:4-9`): a Cyrillic, CJK or emoji heading slugs to `""`, so
-   its key is its occurrence index, which drifts as headings are added. Fix with
-   `[^\p{L}\p{N}]+`; ASCII keys stay the same.
-4. **Fold keys collide.** A second "Foo" gets `foo-2`, the key of a heading "Foo
-   2" (`collapsible.ts:174`).
-5. **A failed render duplicates the header.** The header and properties draw
+1. **Fold keys collide.** A second "Foo" gets `foo-2`, the key of a heading "Foo
+   2" (`collapsible.ts:175`).
+2. **A failed render duplicates the header.** The header and properties draw
    before the `try` (`note-renderer.ts:149-163`); if they throw, the next render
    appends to the same unemptied block.
-6. **An edit's re-render is not a layout change.** `NoteWindowManager.refresh`
+3. **An edit's re-render is not a layout change.** `NoteWindowManager.refresh`
    never bumps `changes`, unlike `render` (`note-window.ts:272` vs `:362`), so
    `scrollIntoPlace` can take the stream as settled mid-re-render.
-7. **Queued renders run after close.** `NoteStream.close()` leaves the queue
-   running (`note-stream.ts:91`); each renders, then is discarded.
-8. **"Today" is fixed at list build.** After midnight yesterday's empty note
+4. **Queued renders run after close.** `NoteStream.close()` leaves the queue
+   running (`note-stream.ts:92`); each renders, then is discarded.
+5. **"Today" is fixed at list build.** After midnight yesterday's empty note
    stays shown until a refresh (`empty-notes.ts:220`).
 
 ### Architecture
@@ -65,8 +53,8 @@ within each list.
 2. **One collapse store, like the others.** Now one localStorage key per section
    plus an index per file (`collapse-store.ts:61-67`): unprefixed, unlike
    `daily-notes-stream:*`, so open to collisions, and never cleaned since keys
-   cannot be listed. One prefixed blob with `retainOnly` at layout ready, and
-   rename/delete in `main.ts`, fixes this and bug 2.
+   cannot be listed. One prefixed blob with `retainOnly` at layout ready fixes
+   both.
 3. **Two "block at the pane's top" lookups.** `captureAnchor` is linear
    (`scroll-position.ts:32`), `ScrollAnchor.blockAt` binary
    (`scroll-anchor.ts:392`). `AnchorSnapshot` and `StreamPlace` are one concept.
@@ -85,11 +73,11 @@ within each list.
 
 1. **Search reads every daily note per query**, and superseded queries still run
    (`stream-search.ts:179`). `applyChange` re-searches on events for any file,
-   not only daily notes (`stream-view.ts:217`).
+   not only daily notes (`stream-view.ts:219`).
 2. **The first empty-note check reads every candidate at once**
    (`empty-notes.ts:110`), and open waits on it: a spike on a phone.
 3. **Linear lookups:** `DailyNoteService.indexOf` (`daily-note-service.ts:135`);
-   `refresh` maps every date to read one (`note-stream.ts:422`); the jump modal
+   `refresh` maps every date to read one (`note-stream.ts:417`); the jump modal
    re-reads the daily-notes settings per note.
 
 ### Smells
@@ -100,10 +88,10 @@ within each list.
 - `NoteBases.draw` only forwards to `slot.draw` (`note-bases.ts:115`); a
   redundant `else if (width <= …)` at `:98`.
 - Misplaced doc comments: two on `followLinkChanges`, none on `indexEmptyNotes`
-  (`main.ts:134-135`); the class comment above `BASE_RESIZED`
+  (`main.ts:142-143`); the class comment above `BASE_RESIZED`
   (`note-bases.ts:10-22`).
 - `note-window.ts:347` says `reload`/`rerenderAll` empty the container
   mid-render; they share the queue, so only `close()` does.
 - `_sorted`, `_notes` underscore names.
-- Settings load from `data.json` unvalidated (`main.ts:180`).
+- Settings load from `data.json` unvalidated (`main.ts:188`).
 - `onunload` throws if `onload` failed before the stores were made.

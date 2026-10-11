@@ -42,9 +42,10 @@ opens, so a view's own handler always reads an index already updated.
 
 ## Flow
 
-1. **Open.** The view awaits `service.initialize()`, which lists the vault's
-   daily notes through the empty-notes filter
-   ([ADR 0011](adr/0011-hide-template-only-notes.md)), then `stream.open()`.
+1. **Open.** The view listens for vault changes, then awaits
+   `service.initialize()`, which lists the vault's daily notes through the
+   empty-notes filter ([ADR 0011](adr/0011-hide-template-only-notes.md)), then
+   `stream.open()`. The queue holds what it heard meanwhile until then.
 2. **Load.** A sentinel after the last block (`infinite-scroll.ts`) comes into
    view; `NoteStream` appends the next batch of 10 as empty blocks, placed and
    indexed by path in `stream-blocks.ts`. `stream-state.ts` is the loaded range.
