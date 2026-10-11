@@ -35,6 +35,8 @@ Traps that span files, so no single file's comments can hold them.
   the anchor in the same task. Anything that changes a block's height another
   way jumps the screen a frame on iOS. A Base sets its own height only where it
   dispatches `BASE_RESIZED`, which re-pins its note there (D-108).
+  `e2e/stream.spec.ts`, "changes a rendered note's height only as it re-pins",
+  enforces it.
 - **No scroll containers inside a note on mobile**
   ([ADR 0008](../../docs/adr/0008-nothing-scrolls-on-mobile.md)): one ends iOS
   glides early. Under `.is-mobile`, clip with `overflow: clip`, never `hidden`
