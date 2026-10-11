@@ -79,19 +79,3 @@ each change passes the other gates.
 3. **Linear lookups:** `DailyNoteService.indexOf` (`daily-note-service.ts:135`);
    `refresh` maps every date to read one (`note-stream.ts:417`); the jump modal
    re-reads the daily-notes settings per note.
-
-### Smells
-
-- `window` (a `NoteWindow`) shadows the global throughout `note-window.ts`.
-- `(f) => this.blocks.get(f.path)` three times in `note-stream.ts` (343, 352,
-  481).
-- `NoteBases.draw` only forwards to `slot.draw` (`note-bases.ts:115`); a
-  redundant `else if (width <= …)` at `:98`.
-- Misplaced doc comments: two on `followLinkChanges`, none on `indexEmptyNotes`
-  (`main.ts:142-143`); the class comment above `BASE_RESIZED`
-  (`note-bases.ts:10-22`).
-- `note-window.ts:347` says `reload`/`rerenderAll` empty the container
-  mid-render; they share the queue, so only `close()` does.
-- `_sorted`, `_notes` underscore names.
-- Settings load from `data.json` unvalidated (`main.ts:188`).
-- `onunload` throws if `onload` failed before the stores were made.
