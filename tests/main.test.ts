@@ -59,6 +59,8 @@ async function loadPlugin(data: unknown = null) {
     const app = makeApp();
     const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
     plugin.data = data;
+    // Obsidian marks a plugin loaded before onload runs, so it unloads even one whose onload failed.
+    plugin.load();
     await plugin.onload();
     return { plugin, app };
 }
@@ -211,7 +213,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
         const { plugin, app } = await loadPlugin();
         await listed(plugin, app);
 
-        plugin.onunload();
+        plugin.unload();
 
         expect(app.saveLocalStorage).toHaveBeenCalledWith(
             EMPTY_NOTES_KEY,
@@ -227,7 +229,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
     it("reads no note unchanged since the last session", async () => {
         const first = await loadPlugin();
         await listed(first.plugin, first.app);
-        first.plugin.onunload();
+        first.plugin.unload();
         const saved: unknown = first.app.saveLocalStorage.mock.calls.find(([key]) => key === EMPTY_NOTES_KEY)![1];
 
         const app = makeApp();
@@ -393,9 +395,18 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         const { plugin, app } = await loadPlugin();
         plugin.layoutMemory.notes.keep("600:16px", "Notes/a.md", 300);
 
-        plugin.onunload();
+        plugin.unload();
 
         expect(app.saveLocalStorage).toHaveBeenCalledWith(LAYOUT_MEMORY_KEY, expect.anything());
+    });
+
+    it("unloads cleanly when its settings failed to load", async () => {
+        const plugin = new DailyNotesStreamPlugin(asApp(makeApp()), { id: "daily-notes-stream" } as PluginManifest);
+        plugin.loadData = () => Promise.reject(new Error("data.json unreadable"));
+        plugin.load();
+        await expect(plugin.onload()).rejects.toThrow("data.json unreadable");
+
+        expect(() => plugin.unload()).not.toThrow();
     });
 });
 
