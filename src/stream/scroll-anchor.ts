@@ -1,5 +1,6 @@
 import { Platform, debounce } from "obsidian";
 import { BASE_SLOT_CLASS } from "../render/bases/bases-as-cards";
+import { blockAt } from "./stream-blocks";
 
 /** How long the scroll is still before the stream counts it stopped (D-032). */
 export const SCROLL_IDLE_MS = 300;
@@ -284,7 +285,7 @@ export class ScrollAnchor {
         const drawn = document
             .elementsFromPoint(pane.left + pane.width / 2, pane.top + 1)
             .find((el) => el !== stream && stream.contains(el));
-        const crossing = drawn ?? this.blockAt(stream, pane.top);
+        const crossing = drawn ?? blockAt(stream, pane.top);
         if (!crossing) return;
 
         this.place = this.placeOf(stream, crossing);
@@ -386,19 +387,6 @@ export class ScrollAnchor {
         let next = el.nextElementSibling;
         while (next && next.getBoundingClientRect().height === 0) next = next.nextElementSibling;
         return next;
-    }
-
-    /** The block `paneTop` crosses, by halving: blocks stack, and a stream holds thousands. */
-    private blockAt(stream: HTMLElement, paneTop: number): Element | null {
-        const blocks = stream.children;
-        let low = 0;
-        let high = blocks.length;
-        while (low < high) {
-            const mid = (low + high) >> 1;
-            if (blocks[mid]!.getBoundingClientRect().bottom > paneTop) high = mid;
-            else low = mid + 1;
-        }
-        return blocks[low] ?? null;
     }
 
     /** What the blocks sit in, shifted while anything is owed. */

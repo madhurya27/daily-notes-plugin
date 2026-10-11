@@ -90,3 +90,16 @@ export class StreamBlocks {
         }
     }
 }
+
+/** The block `paneTop` crosses, by halving: blocks stack, and a stream holds thousands. */
+export function blockAt(stream: HTMLElement, paneTop: number): Element | null {
+    const blocks = stream.children;
+    let low = 0;
+    let high = blocks.length;
+    while (low < high) {
+        const mid = (low + high) >> 1;
+        if (blocks[mid]!.getBoundingClientRect().bottom > paneTop) high = mid;
+        else low = mid + 1;
+    }
+    return blocks[low] ?? null;
+}

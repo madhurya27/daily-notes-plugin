@@ -200,6 +200,13 @@ const shown = () => [...container.querySelectorAll<HTMLElement>("[data-source-pa
 
 const emptyState = () => container.querySelector(".daily-notes-empty-state");
 
+/** Lays the blocks out as the browser stacks them, each 540px tall, the first's top at `top`. */
+function stack(top: number) {
+    container.querySelectorAll<HTMLElement>("[data-source-path]").forEach((block, i) => {
+        block.getBoundingClientRect = () => ({ top: top + i * 540, bottom: top + (i + 1) * 540 }) as DOMRect;
+    });
+}
+
 afterEach(() => vi.useRealTimers());
 
 describe("loading a batch", () => {
@@ -1219,8 +1226,7 @@ describe("what a search moves through", () => {
     it("names the first note whose block reaches into the pane", async () => {
         await stream.loadMoreNotes();
         pane.getBoundingClientRect = () => rect(0, 800);
-        stream.blockOf(notes[0]!)!.getBoundingClientRect = () => rect(-900, -10);
-        stream.blockOf(notes[1]!)!.getBoundingClientRect = () => rect(-10, 390);
+        stack(-540);
 
         expect(stream.firstVisibleNote()).toBe(notes[1]);
     });
@@ -1258,8 +1264,7 @@ describe("the stream's place", () => {
 
     it("is the first note reaching into the pane, and how far above the pane it starts", async () => {
         await stream.loadMoreNotes();
-        stream.blockOf(notes[0]!)!.getBoundingClientRect = () => ({ top: -900, bottom: -10 }) as DOMRect;
-        stream.blockOf(notes[1]!)!.getBoundingClientRect = () => ({ top: -150, bottom: 390 }) as DOMRect;
+        stack(-690);
 
         expect(stream.place()).toMatchObject({ path: notes[1]!.path, offset: -150 });
     });
@@ -1267,7 +1272,7 @@ describe("the stream's place", () => {
     // Back rebuilds the view, which reserves what the plugin remembers (ADR 0010).
     it("holds only the place", async () => {
         await stream.loadMoreNotes();
-        stream.blockOf(notes[0]!)!.getBoundingClientRect = () => ({ top: -150, bottom: 390 }) as DOMRect;
+        stack(-150);
 
         expect(stream.place()).toEqual({ path: notes[0]!.path, offset: -150 });
     });
@@ -1352,7 +1357,8 @@ describe("the stream's place", () => {
         beforeEach(async () => {
             Object.defineProperty(pane, "scrollHeight", { value: 20000, configurable: true });
             await stream.loadMoreNotes();
-            stream.blockOf(notes[5]!)!.getBoundingClientRect = () => ({ top: -150, bottom: 390 }) as DOMRect;
+            // Notes[5] starts 150px above the pane's top.
+            stack(-2850);
             pane.scrollTop = 1000;
         });
 

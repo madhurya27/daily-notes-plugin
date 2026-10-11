@@ -52,16 +52,13 @@ each change passes the other gates.
 
 ### Architecture
 
-1. **Two "block at the pane's top" lookups.** `captureAnchor` is linear
-   (`scroll-position.ts:32`), `ScrollAnchor.blockAt` binary
-   (`scroll-anchor.ts:392`). `AnchorSnapshot` and `StreamPlace` are one concept.
-2. **`ScrollAnchor.stream()` infers the container** from the first watched
+1. **`ScrollAnchor.stream()` infers the container** from the first watched
    block's parent (`scroll-anchor.ts:405`); pass it in.
-3. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
+2. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
    placeholder reservation, settling. Extract reservation (`reserve`, `expect`,
    `reserveKey`, the estimate).
-4. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
+3. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
    `LinkChanges` already diffs per source; one incremental index could serve
    both.
-5. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
+4. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
    `scrollToTop`, `onBaseResized`, `onFingerDown`/`Up`.

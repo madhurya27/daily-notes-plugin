@@ -11,10 +11,9 @@ import { FrameDeferral } from "./frame-deferral";
 import { youtubeThumbnail } from "../render/video-thumbnails";
 import { webPageLink } from "../render/web-page-links";
 import {
-    captureAnchor,
-    type AnchorSnapshot,
     keepInPlace,
-    restoreAnchor,
+    readPlace,
+    scrollBlockTo,
     scrollIntoPlace,
     type StreamLayout,
     type StreamPlace,
@@ -334,7 +333,9 @@ export class NoteStream {
 
     /** The first note reaching into the pane; null when none does. */
     firstVisibleNote(): TFile | null {
-        return this.captureAnchor()?.file ?? null;
+        const place = this.place();
+        const index = place ? this.service.indexOf(place.path) : -1;
+        return index === -1 ? null : this.service.getBatch(index, 1)[0]!;
     }
 
     /**
@@ -342,9 +343,7 @@ export class NoteStream {
      * the view, whose placeholders reserve what the notes measured (ADR 0010).
      */
     place(): StreamPlace | null {
-        const anchor = this.captureAnchor();
-        if (!anchor) return null;
-        return { path: anchor.file.path, offset: anchor.relativeTopPx };
+        return readPlace(this.blocks.el, this.scrollRoot);
     }
 
     /**
@@ -471,7 +470,7 @@ export class NoteStream {
      */
     private async rerenderAll(): Promise<void> {
         const notes = this.service.streamedNotes();
-        const snapshot = this.captureAnchor();
+        const place = this.place();
 
         this.blocks.empty();
         this.scroll.detach();
@@ -483,12 +482,8 @@ export class NoteStream {
 
         this.attachScroll();
 
-        if (snapshot) restoreAnchor(snapshot, this.scrollRoot, (file) => this.blockOf(file));
-    }
-
-    /** The first note reaching into the pane, and where it sits; null when none does. */
-    private captureAnchor(): AnchorSnapshot | null {
-        return captureAnchor(this.service.streamedNotes(), this.scrollRoot, (file) => this.blockOf(file));
+        const block = place && this.blocks.get(place.path);
+        if (block) scrollBlockTo(block, place.offset, this.scrollRoot);
     }
 
     /**
