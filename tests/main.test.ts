@@ -38,6 +38,18 @@ function makeApp() {
     };
 }
 
+/** Every callback onload() gave `source.on(name)`. */
+function handlers(source: { on: { mock: { calls: unknown[][] } } }, name: string) {
+    return source.on.mock.calls
+        .filter(([event]) => event === name)
+        .map(([, callback]) => callback as (...args: unknown[]) => void);
+}
+
+/** Fires `name` at every callback onload() gave `source.on`, as Obsidian does. */
+function fire(source: { on: { mock: { calls: unknown[][] } } }, name: string, ...args: unknown[]): void {
+    for (const handler of handlers(source, name)) handler(...args);
+}
+
 /** A leaf that records the view state it was asked to open. */
 function makeLeaf(app: ReturnType<typeof makeApp>) {
     return { app, setViewState: vi.fn().mockResolvedValue(undefined) };
@@ -238,13 +250,8 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
         const { plugin, app } = await loadPlugin();
         const rename = vi.spyOn(plugin.emptyNotes, "rename");
         const forget = vi.spyOn(plugin.emptyNotes, "forget");
-        const handlers = (name: string) =>
-            app.vault.on.mock.calls
-                .filter(([event]) => event === name)
-                .map(([, callback]) => callback as (...args: unknown[]) => void);
-
-        for (const handler of handlers("rename")) handler({ path: "Notes/new.md" }, "Notes/old.md");
-        for (const handler of handlers("delete")) handler({ path: "Notes/gone.md" });
+        fire(app.vault, "rename", { path: "Notes/new.md" }, "Notes/old.md");
+        fire(app.vault, "delete", { path: "Notes/gone.md" });
 
         expect(rename).toHaveBeenCalledWith("Notes/old.md", "Notes/new.md");
         expect(forget).toHaveBeenCalledWith("Notes/gone.md");
@@ -252,13 +259,6 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
 });
 
 describe("DailyNotesStreamPlugin — link changes", () => {
-    /** Every callback onload() gave `source.on(name)`. */
-    function handlers(source: { on: { mock: { calls: unknown[][] } } }, name: string) {
-        return source.on.mock.calls
-            .filter(([event]) => event === name)
-            .map(([, callback]) => callback as (...args: unknown[]) => void);
-    }
-
     it("follows the cache's resolves, and the vault's deletes and renames, for every view", async () => {
         const { plugin, app } = await loadPlugin();
         const changes = plugin.linkChanges;
@@ -266,10 +266,10 @@ describe("DailyNotesStreamPlugin — link changes", () => {
             vi.spyOn(changes, name)
         );
 
-        for (const handler of handlers(app.metadataCache, "resolve")) handler({ path: "Meeting.md" });
-        for (const handler of handlers(app.metadataCache, "resolved")) handler();
-        for (const handler of handlers(app.vault, "delete")) handler({ path: "Gone.md" });
-        for (const handler of handlers(app.vault, "rename")) handler({ path: "New.md" }, "Old.md");
+        fire(app.metadataCache, "resolve", { path: "Meeting.md" });
+        fire(app.metadataCache, "resolved");
+        fire(app.vault, "delete", { path: "Gone.md" });
+        fire(app.vault, "rename", { path: "New.md" }, "Old.md");
 
         expect(spies.map((spy) => spy.mock.calls)).toEqual([
             [["Meeting.md"]],
@@ -286,7 +286,7 @@ describe("DailyNotesStreamPlugin — link changes", () => {
         vi.spyOn(plugin.backlinks, "invalidate").mockImplementation(() => void order.push("index"));
         vi.spyOn(plugin.linkChanges, "onResolved").mockImplementation(() => void order.push("views"));
 
-        for (const handler of handlers(app.metadataCache, "resolved")) handler();
+        fire(app.metadataCache, "resolved");
 
         expect(order).toEqual(["index", "views"]);
     });
@@ -317,12 +317,22 @@ describe("DailyNotesStreamPlugin — link changes", () => {
     });
 });
 
-describe("DailyNotesStreamPlugin — layout memory", () => {
-    /** The callback onload() gave `vault.on(name)`. */
-    function vaultEvent(app: ReturnType<typeof makeApp>, name: string): (...args: unknown[]) => void {
-        return app.vault.on.mock.calls.find(([event]) => event === name)![1] as (...args: unknown[]) => void;
-    }
+describe("DailyNotesStreamPlugin — collapse state", () => {
+    // Heard by the plugin, not a view: with no stream open, a rename lost the
+    // note's folds and left its old keys behind.
+    it("carries a note's collapse state across a rename, and forgets a deleted note's, with no view open", async () => {
+        const { plugin, app } = await loadPlugin();
+        const migrate = vi.spyOn(plugin.collapseStore, "migrate");
+        const clear = vi.spyOn(plugin.collapseStore, "clearForFile");
+        fire(app.vault, "rename", { path: "Notes/new.md" }, "Notes/old.md");
+        fire(app.vault, "delete", { path: "Notes/gone.md" });
 
+        expect(migrate).toHaveBeenCalledWith("Notes/old.md", "Notes/new.md");
+        expect(clear).toHaveBeenCalledWith("Notes/gone.md");
+    });
+});
+
+describe("DailyNotesStreamPlugin — layout memory", () => {
     it("keeps what the stream measured for every view", async () => {
         const { plugin } = await loadPlugin();
         expect(plugin.layoutMemory).toBeInstanceOf(LayoutMemory);
@@ -334,8 +344,8 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         const rename = vi.spyOn(memory, "rename");
         const forget = vi.spyOn(memory, "forget");
 
-        vaultEvent(app, "rename")({ path: "Notes/new.md" }, "Notes/old.md");
-        vaultEvent(app, "delete")({ path: "Notes/gone.md" });
+        fire(app.vault, "rename", { path: "Notes/new.md" }, "Notes/old.md");
+        fire(app.vault, "delete", { path: "Notes/gone.md" });
 
         expect(rename).toHaveBeenCalledWith("Notes/old.md", "Notes/new.md");
         expect(forget).toHaveBeenCalledWith("Notes/gone.md");
@@ -374,7 +384,7 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         const { plugin, app } = await loadPlugin();
         plugin.layoutMemory.notes.keep("600:16px", "Notes/a.md", 300);
 
-        vaultEvent(app, "modify")({ path: "Notes/a.md" });
+        fire(app.vault, "modify", { path: "Notes/a.md" });
 
         expect(plugin.layoutMemory.notes.heightOf("600:16px", "Notes/a.md")).toBeUndefined();
     });

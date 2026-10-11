@@ -1,7 +1,6 @@
 import { basesLoaded } from "../render/bases/bases-loaded";
 import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce } from "obsidian";
 import type { DailyNoteService, Moment } from "../notes/daily-note-service";
-import type { CollapsibleStateStore } from "../render/collapse-store";
 import type { NoteRenderer } from "../render/note-renderer";
 import { StreamState } from "./stream-state";
 import { StreamBlocks } from "./stream-blocks";
@@ -64,7 +63,6 @@ export class NoteStream {
 
     constructor(
         private readonly service: DailyNoteService,
-        private readonly collapseStore: CollapsibleStateStore,
         renderer: NoteRenderer,
         /** Every height measured, kept across sessions (ADR 0010). */
         memory: Pick<LayoutMemory, "notes">
@@ -212,8 +210,8 @@ export class NoteStream {
 
     /**
      * Keyed by rendered path, which differs from `file.path` after a rename:
-     * data-source-path is set at render time. Collapse state is the caller's —
-     * delete drops it, rename carries it over.
+     * data-source-path is set at render time. Collapse state is the plugin's
+     * to carry or drop.
      */
     private removeNote(file: TFile, renderedPath: string): void {
         const el = this.blocks.remove(renderedPath);
@@ -228,18 +226,12 @@ export class NoteStream {
 
     onFileDelete(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => {
-            this.removeNote(file, file.path);
-            this.collapseStore.clearForFile(file.path);
-        });
+        void this.enqueue(async () => this.removeNote(file, file.path));
     }
 
     onFileRename(file: TAbstractFile, oldPath: string) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => {
-            this.collapseStore.migrate(oldPath, file.path);
-            this.removeNote(file, oldPath);
-        });
+        void this.enqueue(async () => this.removeNote(file, oldPath));
         this.onFileCreate(file);
     }
 

@@ -7,12 +7,11 @@ import type { InfiniteScrollController } from "../../src/stream/infinite-scroll"
 import type { ScrollBoxGuard } from "../../src/stream/scroll-box-guard";
 import type { FrameDeferral } from "../../src/stream/frame-deferral";
 import type { DailyNoteService } from "../../src/notes/daily-note-service";
-import type { CollapsibleStateStore } from "../../src/render/collapse-store";
 import { NoteHeights } from "../../src/stream/note-heights";
 import { youtubeThumbnail } from "../../src/render/video-thumbnails";
 import { webPageLink } from "../../src/render/web-page-links";
 import { BASE_SLOT_CLASS } from "../../src/render/bases/bases-as-cards";
-import { flushPromises, makePlugin, makeService } from "../stream-view-fixture";
+import { flushPromises, makeService } from "../stream-view-fixture";
 
 /** What the stream constructed its window with, besides what it calls on it. */
 type FakeWindow = Mocked<NoteWindowManager> & {
@@ -133,7 +132,6 @@ function renameInPlace(file: TFile, path: string): TFile {
 }
 
 let service: Mocked<DailyNoteService>;
-let collapseStore: CollapsibleStateStore;
 let stream: NoteStream;
 let pane: HTMLElement;
 let container: HTMLElement;
@@ -147,10 +145,9 @@ let heights: NoteHeights;
 beforeEach(() => {
     Notice.reset();
     service = vi.mocked(makeService());
-    collapseStore = makePlugin().collapseStore;
     renderer = { onBaseLayout: vi.fn() };
     heights = new NoteHeights();
-    stream = new NoteStream(service, collapseStore, renderer as unknown as NoteRenderer, { notes: heights });
+    stream = new NoteStream(service, renderer as unknown as NoteRenderer, { notes: heights });
     noteWindow = fakes.windows.at(-1)!;
     infiniteScroll = fakes.scrolls.at(-1)!;
     guard = fakes.guards.at(-1)!;
@@ -348,7 +345,7 @@ describe("an event before the stream opens", () => {
     // The view listens while its notes are listed: what it hears waits for a
     // container to change.
     it("waits for open, then applies", async () => {
-        const unopened = new NoteStream(service, collapseStore, renderer as unknown as NoteRenderer, {
+        const unopened = new NoteStream(service, renderer as unknown as NoteRenderer, {
             notes: heights,
         });
 
@@ -416,23 +413,12 @@ describe("a note deleted", () => {
 
         expect(emptyState()).toBeNull();
     });
-
-    it("clears its collapse state whether or not it was loaded", async () => {
-        const clearSpy = vi.spyOn(collapseStore, "clearForFile");
-
-        stream.onFileDelete(new TFile("Notes/nonexistent.md"));
-        await flushPromises();
-
-        expect(clearSpy).toHaveBeenCalledWith("Notes/nonexistent.md");
-    });
 });
 
 describe("a note renamed", () => {
     it("does nothing for a non-TFile argument", async () => {
-        const migrate = vi.spyOn(collapseStore, "migrate");
         stream.onFileRename(new TAbstractFile("x"), "old.md");
         await flushPromises();
-        expect(migrate).not.toHaveBeenCalled();
         expect(service.removeSorted).not.toHaveBeenCalled();
     });
 
@@ -449,15 +435,6 @@ describe("a note renamed", () => {
         expect(service.removeSorted).toHaveBeenCalledWith("Notes/2025-01-05.md");
         expect(shown()).toEqual(["Notes/2025-01-05.md", "Notes/2025-01-02.md"]);
         expect(await loadedCount()).toBe(2);
-    });
-
-    it("carries its collapse state to the new path", async () => {
-        const migrateSpy = vi.spyOn(collapseStore, "migrate");
-
-        stream.onFileRename(note("2025-01-05"), "Notes/2025-01-01.md");
-        await flushPromises();
-
-        expect(migrateSpy).toHaveBeenCalledWith("Notes/2025-01-01.md", "Notes/2025-01-05.md");
     });
 
     it("leaves the stream when renamed out of the daily-note format", async () => {

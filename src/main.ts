@@ -35,7 +35,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         if (buildLabel()) new Notice(`Daily notes stream: ${buildLabel()}`);
         await this.loadSettings();
 
-        this.collapseStore = new CollapsibleStateStore(this.app);
+        this.rememberCollapse();
         this.rememberLayout();
         this.indexBacklinks();
         this.indexEmptyNotes();
@@ -97,6 +97,14 @@ export default class DailyNotesStreamPlugin extends Plugin {
     onunload() {
         this.layoutMemory.flush();
         this.emptyNotes.flush();
+    }
+
+    /** Collapsed sections follow a note across a rename, and out with a delete, whether or not a stream is open. */
+    private rememberCollapse(): void {
+        const store = (this.collapseStore = new CollapsibleStateStore(this.app));
+        const { vault } = this.app;
+        this.registerEvent(vault.on("rename", (file, oldPath) => store.migrate(oldPath, file.path)));
+        this.registerEvent(vault.on("delete", (file) => store.clearForFile(file.path)));
     }
 
     /**
