@@ -281,6 +281,7 @@ export class NoteWindowManager {
             this.repin(block);
             if (window.unloadWanted) this.leave(block);
         } finally {
+            this.changes++;
             window.rendering = false;
             window.unloadWanted = false;
         }

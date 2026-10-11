@@ -1993,6 +1993,19 @@ describe("NoteWindowManager.layoutChanges", () => {
         expect(manager.layoutChanges).toBe(before + 1);
     });
 
+    it("counts an edit's re-render: the note redraws at a height of its own", async () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        const before = manager.layoutChanges;
+
+        await manager.refresh(block);
+
+        expect(manager.layoutChanges).toBe(before + 1);
+    });
+
     it("counts an unload: shedding a note's content moves everything below it", async () => {
         const { manager } = makeManager();
         const block = manager.add(FILE);
