@@ -49,11 +49,7 @@ export class CollapsibleManager {
     /** Chevron → its section. */
     private readonly sections = new WeakMap<Element, Fold>();
 
-    /**
-     * One listener pair for the whole stream. Chevrons are rebuilt on every
-     * re-render, so registering per chevron would pile registrations on the
-     * component until it unloads.
-     */
+    /** One listener pair for the whole stream, so a re-rendered chevron needs none of its own. */
     delegate(component: Component, root: HTMLElement): void {
         component.registerDomEvent(root, "click", (evt) => {
             const toggle = this.toggleFor(evt.target);
