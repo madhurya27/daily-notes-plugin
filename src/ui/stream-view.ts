@@ -170,11 +170,11 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
 
         this.registerDomEvent(this.contentEl, "scroll", () => this.stream.onScroll());
         this.registerDomEvent(this.contentEl, "pointerdown", (evt) => this.stream.onTouch(evt.target));
-        this.registerDomEvent(this.contentEl, BASE_RESIZED, (evt) => this.stream.onBaseResized(evt.target));
+        this.registerDomEvent(this.contentEl, BASE_RESIZED, (evt) => this.stream.window.onBaseResized(evt.target));
         this.registerDomEvent(this.contentEl, "wheel", () => this.stream.onWheel(), { passive: true });
-        this.registerDomEvent(this.contentEl, "touchstart", () => this.stream.onFingerDown(), { passive: true });
+        this.registerDomEvent(this.contentEl, "touchstart", () => this.stream.window.onFingerDown(), { passive: true });
         for (const lift of ["touchend", "touchcancel"] as const)
-            this.registerDomEvent(this.contentEl, lift, () => this.stream.onFingerUp(), { passive: true });
+            this.registerDomEvent(this.contentEl, lift, () => this.stream.window.onFingerUp(), { passive: true });
         this.stream.open(this.contentEl, streamContainerEl);
         this.lifecycle = "open";
     }
@@ -199,7 +199,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
      * waits for the notes: the stream has no container then to lay out in.
      */
     onResize(): void {
-        if (this.lifecycle === "open") this.stream.onResize();
+        if (this.lifecycle === "open") this.stream.window.onResize();
     }
 
     async onClose() {
@@ -224,12 +224,12 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
     }
 
     scrollToTop(): void {
-        this.stream.scrollToTop();
+        this.stream.window.scrollToTop();
     }
 
     /** Before the stream opens there is nothing to forget: its notes are estimated as they load. */
     forgetHeights(): void {
-        if (this.lifecycle === "open") this.stream.forgetHeights();
+        if (this.lifecycle === "open") this.stream.window.forgetHeights();
     }
 
     refresh(): Promise<void> {

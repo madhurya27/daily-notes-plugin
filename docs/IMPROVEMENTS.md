@@ -49,8 +49,3 @@ each change passes the other gates.
    stays shown until a refresh (`empty-notes.ts:220`). `isHidden` reads the
    clock itself; hand the filter a clock instead, so the day's turn is a change
    the stream hears.
-
-### Architecture
-
-1. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
-   `scrollToTop`, `onBaseResized`, `onFingerDown`/`Up`.

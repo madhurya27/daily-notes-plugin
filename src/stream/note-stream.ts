@@ -41,7 +41,8 @@ const NO_NOTE_FOR_DATE = "No daily note on or before that date.";
  */
 export class NoteStream {
     private scroll = new InfiniteScrollController();
-    private window: NoteWindowManager;
+    /** What is rendered, and where blocks sit: the view hands it the pane's own events. */
+    readonly window: NoteWindowManager;
     private scrollRoot!: HTMLElement;
     private blocks = new StreamBlocks(() => this.scroll.getSentinel());
     private scrollBoxes: ScrollBoxGuard;
@@ -99,19 +100,6 @@ export class NoteStream {
         this.blocks.clear();
     }
 
-    onResize(): void {
-        this.window.onResize();
-    }
-
-    /** The layout memory was emptied: every placeholder is estimated afresh. */
-    forgetHeights(): void {
-        this.window.forgetHeights();
-    }
-
-    scrollToTop(): void {
-        this.window.scrollToTop();
-    }
-
     /** Unloads, style reads and frames' pages wait for the scroll to stop. */
     onScroll(): void {
         this.window.onScroll();
@@ -123,18 +111,6 @@ export class NoteStream {
     onTouch(target: EventTarget | null): void {
         this.letGoOfCentered();
         this.window.onTouch(target);
-    }
-
-    onBaseResized(target: EventTarget | null): void {
-        this.window.onBaseResized(target);
-    }
-
-    onFingerDown(): void {
-        this.window.onFingerDown();
-    }
-
-    onFingerUp(): void {
-        this.window.onFingerUp();
     }
 
     /** The reader scrolls the pane themselves. */

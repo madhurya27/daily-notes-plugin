@@ -813,11 +813,6 @@ describe("the pane", () => {
         expect(noteWindow.attach).toHaveBeenCalledWith(pane, container, expect.any(Function));
     });
 
-    it("passes a resize on to the window, which lays out for the new size", () => {
-        stream.onResize();
-        expect(noteWindow.onResize).toHaveBeenCalled();
-    });
-
     it("passes a scroll on to the window, which waits for it to stop before unloading", () => {
         stream.onScroll();
         expect(noteWindow.onScroll).toHaveBeenCalled();
@@ -827,13 +822,6 @@ describe("the pane", () => {
         const target = document.createElement("div");
         stream.onTouch(target);
         expect(noteWindow.onTouch).toHaveBeenCalledWith(target);
-    });
-
-    it("passes a finger going down and lifting on to the window", () => {
-        stream.onFingerDown();
-        expect(noteWindow.onFingerDown).toHaveBeenCalled();
-        stream.onFingerUp();
-        expect(noteWindow.onFingerUp).toHaveBeenCalled();
     });
 
     it("stops observing on close", () => {
@@ -1252,12 +1240,6 @@ describe("the heights the stream reserves", () => {
 
         expect(noteWindow.memory.heights).toBe(heights);
         expect(noteWindow.memory.layoutOf()).toBe("612:");
-    });
-
-    // Each placeholder is then estimated afresh from what is left (D-092).
-    it("pass the forgetting of every height on to the window", () => {
-        stream.forgetHeights();
-        expect(noteWindow.forgetHeights).toHaveBeenCalled();
     });
 });
 
