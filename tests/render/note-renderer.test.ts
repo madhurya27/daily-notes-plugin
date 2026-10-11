@@ -290,6 +290,31 @@ describe("NoteRenderer.renderInto", () => {
         expect(forget).not.toHaveBeenCalled();
     });
 
+    it("leaves the block empty when the header or properties throw, so a retry draws one header", async () => {
+        app.metadataCache.getFileCache.mockImplementationOnce(() => {
+            throw new Error("cache failed");
+        });
+        const view = new Component();
+        renderer = new NoteRenderer(
+            asApp(app),
+            view,
+            makeCollapsible(),
+            makeSettings({ showProperties: true }),
+            new SearchHighlighter(),
+            new BaseMeasurements(),
+            new BacklinkIndex(() => ({}))
+        );
+        const file = new TFile("Notes/2025-01-01.md");
+        const block = renderer.createBlock(file);
+
+        await expect(renderer.renderInto(block, file)).rejects.toThrow("cache failed");
+        expect(block.childElementCount).toBe(0);
+        expect(view.children).toHaveLength(0);
+
+        await renderer.renderInto(block, file);
+        expect(block.querySelectorAll(".daily-note-header")).toHaveLength(1);
+    });
+
     it("shows 'Error rendering note' text when the read rejects", async () => {
         app.vault.cachedRead = vi.fn().mockRejectedValue(new Error("read failed"));
         vi.spyOn(console, "error").mockImplementation(() => {});
