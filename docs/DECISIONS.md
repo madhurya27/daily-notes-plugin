@@ -1951,3 +1951,17 @@ beside the list, the count moves with it.
 
 - The count in `NoteStream` — each insert and remove must still repeat itself
   there.
+
+## D-119 — Lookups over the notes stay linear (2026-10-11)
+
+**Decision:** `DailyNoteService.indexOf` scans, `refresh` maps every date to
+read one, and the jump modal reads the daily-notes settings per note.
+
+**Why:** each runs once per event, refresh or modal open, never per note. Over
+1,095 notes at phone speed, the modal formats every date in 1.5 ms, 0.5 ms of it
+the settings; a scan is microseconds.
+
+**Rejected:**
+
+- A path→index map — kept in step with every insert and remove, for nothing
+  measurable.

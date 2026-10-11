@@ -68,14 +68,3 @@ each change passes the other gates.
    both.
 6. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
    `scrollToTop`, `onBaseResized`, `onFingerDown`/`Up`.
-
-### Performance
-
-1. **Search reads every daily note per query**, and superseded queries still run
-   (`stream-search.ts:179`). `applyChange` re-searches on events for any file,
-   not only daily notes (`stream-view.ts:219`).
-2. **The first empty-note check reads every candidate at once**
-   (`empty-notes.ts:110`), and open waits on it: a spike on a phone.
-3. **Linear lookups:** `DailyNoteService.indexOf` (`daily-note-service.ts:135`);
-   `refresh` maps every date to read one (`note-stream.ts:417`); the jump modal
-   re-reads the daily-notes settings per note.
