@@ -12,6 +12,7 @@ import { youtubeThumbnail } from "../render/video-thumbnails";
 import { webPageLink } from "../render/web-page-links";
 import {
     captureAnchor,
+    type AnchorSnapshot,
     keepInPlace,
     restoreAnchor,
     scrollIntoPlace,
@@ -327,8 +328,7 @@ export class NoteStream {
 
     /** The first note reaching into the pane; null when none does. */
     firstVisibleNote(): TFile | null {
-        const find = (f: TFile) => this.blocks.get(f.path);
-        return captureAnchor(this.service.streamedNotes(), this.scrollRoot, find)?.file ?? null;
+        return this.captureAnchor()?.file ?? null;
     }
 
     /**
@@ -336,8 +336,7 @@ export class NoteStream {
      * the view, whose placeholders reserve what the notes measured (ADR 0010).
      */
     place(): StreamPlace | null {
-        const find = (f: TFile) => this.blocks.get(f.path);
-        const anchor = captureAnchor(this.service.streamedNotes(), this.scrollRoot, find);
+        const anchor = this.captureAnchor();
         if (!anchor) return null;
         return { path: anchor.file.path, offset: anchor.relativeTopPx };
     }
@@ -464,9 +463,8 @@ export class NoteStream {
      * a thousand.
      */
     private async rerenderAll(): Promise<void> {
-        const find = (f: TFile) => this.blocks.get(f.path);
         const notes = this.service.streamedNotes();
-        const snapshot = captureAnchor(notes, this.scrollRoot, find);
+        const snapshot = this.captureAnchor();
 
         this.blocks.empty();
         this.scroll.detach();
@@ -478,7 +476,12 @@ export class NoteStream {
 
         this.attachScroll();
 
-        if (snapshot) restoreAnchor(snapshot, this.scrollRoot, find);
+        if (snapshot) restoreAnchor(snapshot, this.scrollRoot, (file) => this.blockOf(file));
+    }
+
+    /** The first note reaching into the pane, and where it sits; null when none does. */
+    private captureAnchor(): AnchorSnapshot | null {
+        return captureAnchor(this.service.streamedNotes(), this.scrollRoot, (file) => this.blockOf(file));
     }
 
     /**

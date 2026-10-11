@@ -7,6 +7,15 @@ import { fitBaseToWidth, laidOutWidth } from "./bases-fit";
 import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
 import type { WidthWatch } from "../note-widths";
 
+/** A Base set its height: its note re-pins in the same task (ADR 0013). */
+export const BASE_RESIZED = "daily-notes-base-resized";
+
+declare global {
+    interface HTMLElementEventMap {
+        [BASE_RESIZED]: Event;
+    }
+}
+
 /**
  * A note's Bases, each drawn into its own placeholder as a table or, when the
  * table is wider than the note, as cards — the rule a Markdown table follows
@@ -19,15 +28,6 @@ import type { WidthWatch } from "../note-widths";
  * Base is held at the height it showed until it settles; otherwise the text
  * below jumps and returns. A Base coming back into view is held by its note.
  */
-/** A Base set its height: its note re-pins in the same task (ADR 0013). */
-export const BASE_RESIZED = "daily-notes-base-resized";
-
-declare global {
-    interface HTMLElementEventMap {
-        [BASE_RESIZED]: Event;
-    }
-}
-
 export class NoteBases {
     /** Undefined until the first Base; null when nothing could be measured. */
     private headers: HeaderMetrics | null | undefined;
@@ -63,7 +63,7 @@ export class NoteBases {
             this.slots.set(placeholder, slot);
             if (base) this.track(base.path, slot, noteComponent);
             slots.push(slot);
-            await this.draw(slot, this.wantsCards(slot, width) ? "cards" : "table");
+            await slot.draw(this.wantsCards(slot, width) ? "cards" : "table");
         }
         // Redrawn inside the report, an emptied Base resizes the note a round
         // late, which WebKit logs as an error.
@@ -88,19 +88,20 @@ export class NoteBases {
             fitBaseToWidth(view);
             return;
         }
+        const width = laidOutWidth(view);
+        if (Number.isNaN(width)) return; // not laid out yet: keep measuring
         // Bases lays out inside a resize report: emptied there, the Base
         // resizes the note a round late, which WebKit logs as an error.
-        const width = laidOutWidth(view);
         if (width > view.clientWidth)
             window.setTimeout(() => {
                 if (!slot.gone && slot.mode === "table") void this.showCards(slot, slot.contentWidth);
             });
-        else if (width <= view.clientWidth) slot.letOut();
+        else slot.letOut();
     }
 
     private async recheck(slot: BaseSlot, width: number): Promise<void> {
         if (slot.mode === "cards") {
-            if (!this.wantsCards(slot, width)) await this.draw(slot, "table");
+            if (!this.wantsCards(slot, width)) await slot.draw("table");
             return;
         }
         const view = slot.placeholder.querySelector<HTMLElement>(".bases-view");
@@ -109,11 +110,7 @@ export class NoteBases {
 
     private showCards(slot: BaseSlot, width: number): Promise<void> {
         this.measured.markTooWide(slot.key(width));
-        return this.draw(slot, "cards");
-    }
-
-    private async draw(slot: BaseSlot, mode: "table" | "cards"): Promise<void> {
-        await slot.draw(mode);
+        return slot.draw("cards");
     }
 
     private wantsCards(slot: BaseSlot, width: number): boolean {
@@ -132,8 +129,7 @@ export class NoteBases {
         const definition = await this.app.vault.cachedRead(file);
         for (const slot of slots) {
             slot.redefine(definition);
-            if (slot.mode === "cards")
-                await this.draw(slot, this.wantsCards(slot, slot.contentWidth) ? "cards" : "table");
+            if (slot.mode === "cards") await slot.draw(this.wantsCards(slot, slot.contentWidth) ? "cards" : "table");
         }
     }
 

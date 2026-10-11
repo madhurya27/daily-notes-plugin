@@ -41,7 +41,7 @@ interface DatedNote {
 }
 
 export class DailyNoteService {
-    private _sorted: DatedNote[] = [];
+    private sorted: DatedNote[] = [];
     /** How many of the notes, newest first, the stream has loaded. */
     private _streamLength = 0;
     /** The daily-notes config the cache was built from; null before the first build. */
@@ -85,14 +85,14 @@ export class DailyNoteService {
 
     /** A new list starts a new stream. */
     private rebuilt(sorted: DatedNote[], format: DateFormat): void {
-        this._sorted = sorted;
+        this.sorted = sorted;
         this._streamLength = 0;
         this.builtFrom = this.signature(format);
     }
 
     /** Newest first. */
     getBatch(offset: number, limit: number): TFile[] {
-        return this._sorted.slice(offset, offset + limit).map((note) => note.file);
+        return this.sorted.slice(offset, offset + limit).map((note) => note.file);
     }
 
     /** How many of the notes, newest first, the stream has loaded. */
@@ -123,9 +123,9 @@ export class DailyNoteService {
 
         const lo = this.firstIndexOnOrBefore(date.valueOf());
         // A date maps to exactly one path, so the search lands on the duplicate.
-        if (this._sorted[lo]?.file.path === file.path) return -1;
+        if (this.sorted[lo]?.file.path === file.path) return -1;
 
-        this._sorted.splice(lo, 0, { file, date });
+        this.sorted.splice(lo, 0, { file, date });
         if (lo < this._streamLength) this._streamLength++;
         return lo;
     }
@@ -147,7 +147,7 @@ export class DailyNoteService {
     removeSorted(filePath: string): number {
         const index = this.indexOf(filePath);
         if (index === -1) return index;
-        this._sorted.splice(index, 1);
+        this.sorted.splice(index, 1);
         if (index < this._streamLength) this._streamLength--;
         return index;
     }
@@ -158,21 +158,21 @@ export class DailyNoteService {
      */
     indexForDate(target: Moment): number {
         const index = this.firstIndexOnOrBefore(target.clone().startOf("day").valueOf());
-        return index < this._sorted.length ? index : -1;
+        return index < this.sorted.length ? index : -1;
     }
 
     /** The index of the note at `path`; -1 when absent. */
     indexOf(path: string): number {
-        return this._sorted.findIndex((note) => note.file.path === path);
+        return this.sorted.findIndex((note) => note.file.path === path);
     }
 
     get length(): number {
-        return this._sorted.length;
+        return this.sorted.length;
     }
 
     /** Every note's date, newest first — the set a jump can land on. Not to be mutated. */
     dates(): Moment[] {
-        return this._sorted.map((note) => note.date);
+        return this.sorted.map((note) => note.date);
     }
 
     /** `date` as this vault's filenames spell it, nested formats included. */
@@ -192,10 +192,10 @@ export class DailyNoteService {
      */
     private firstIndexOnOrBefore(time: number): number {
         let lo = 0;
-        let hi = this._sorted.length;
+        let hi = this.sorted.length;
         while (lo < hi) {
             const mid = (lo + hi) >> 1;
-            if (this._sorted[mid]!.date.valueOf() > time) {
+            if (this.sorted[mid]!.date.valueOf() > time) {
                 lo = mid + 1;
             } else {
                 hi = mid;
