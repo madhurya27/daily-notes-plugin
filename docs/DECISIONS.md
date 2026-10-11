@@ -1964,8 +1964,8 @@ notes, microseconds.
 
 **Rejected:**
 
-- A path→index map — kept in step with every insert and remove, for nothing
-  measurable.
+- A path→index map — a second copy of the list's order that every insert and
+  remove must keep in step, the kind of copy D-118 removed.
 
 ## D-120 — The service dates notes by the format it listed them with (2026-10-11)
 
