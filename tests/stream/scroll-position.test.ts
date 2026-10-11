@@ -1,12 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { captureAnchor, keepInPlace, restoreAnchor, scrollIntoPlace } from "../../src/stream/scroll-position";
+import { keepInPlace, readPlace, scrollBlockTo, scrollIntoPlace } from "../../src/stream/scroll-position";
 import { SETTLE_MS } from "../../src/stream/height-hold";
-import { TFile } from "obsidian";
-
-function makeFile(path: string): TFile {
-    return new TFile(path);
-}
-
 /** Creates a minimal HTMLElement stub with controllable getBoundingClientRect. */
 function makeEl(rect: { top: number; bottom: number }): HTMLElement {
     return {
@@ -14,96 +8,46 @@ function makeEl(rect: { top: number; bottom: number }): HTMLElement {
     } as unknown as HTMLElement;
 }
 
-describe("captureAnchor", () => {
-    it("returns null when no notes are visible", () => {
-        const scrollEl = makeEl({ top: 500, bottom: 900 });
-        const result = captureAnchor([], scrollEl, () => null);
-        expect(result).toBeNull();
+describe("readPlace", () => {
+    /** A pane from `top` to 800, holding blocks at `rects` and a sentinel after them. */
+    function streamIn(top: number, ...rects: [path: string, top: number, bottom: number][]) {
+        const pane = makeEl({ top, bottom: 800 });
+        const stream = document.createElement("div");
+        for (const [path, blockTop, bottom] of rects) {
+            const block = stream.createDiv();
+            block.dataset.sourcePath = path;
+            block.getBoundingClientRect = () => ({ top: blockTop, bottom }) as DOMRect;
+        }
+        const last = rects.at(-1)?.[2] ?? 0;
+        stream.createDiv().getBoundingClientRect = () => ({ top: last, bottom: last + 1 }) as DOMRect;
+        return { pane, stream };
+    }
+
+    it("is the first note reaching into the pane, and how far above the pane's top it starts", () => {
+        const { pane, stream } = streamIn(200, ["Notes/a.md", 0, 100], ["Notes/b.md", 100, 300]);
+
+        expect(readPlace(stream, pane)).toEqual({ path: "Notes/b.md", offset: -100 });
     });
 
-    it("returns null when findElement returns null for all notes", () => {
-        const files = [makeFile("Notes/a.md")];
-        const scrollEl = makeEl({ top: 0, bottom: 500 });
-        const result = captureAnchor(files, scrollEl, () => null);
-        expect(result).toBeNull();
+    it("is the first note when the stream starts inside the pane", () => {
+        const { pane, stream } = streamIn(0, ["Notes/a.md", 10, 200], ["Notes/b.md", 200, 400]);
+
+        expect(readPlace(stream, pane)).toEqual({ path: "Notes/a.md", offset: 10 });
     });
 
-    it("skips elements whose bottom is at or above the scroll container top", () => {
-        const files = [makeFile("Notes/a.md"), makeFile("Notes/b.md")];
-        const scrollEl = makeEl({ top: 200, bottom: 700 });
-
-        // 'a' is fully above the scroll container (bottom=100, scrollRect.top=200 → elBottom=-100)
-        const elA = makeEl({ top: 0, bottom: 100 });
-        // 'b' is partially visible (bottom=300, scrollRect.top=200 → elBottom=100 > 0)
-        const elB = makeEl({ top: 150, bottom: 300 });
-
-        const findElement = (f: TFile) => (f.path === "Notes/a.md" ? elA : elB);
-        const result = captureAnchor(files, scrollEl, findElement);
-
-        expect(result).not.toBeNull();
-        expect(result!.file.path).toBe("Notes/b.md");
-        // relativeTopPx = elB.top(150) - scrollRect.top(200) = -50
-        expect(result!.relativeTopPx).toBe(-50);
-    });
-
-    it("picks the first note with a positive elBottom", () => {
-        const files = [makeFile("Notes/a.md"), makeFile("Notes/b.md")];
-        const scrollEl = makeEl({ top: 0, bottom: 500 });
-
-        const elA = makeEl({ top: 10, bottom: 200 });
-        const elB = makeEl({ top: 210, bottom: 400 });
-
-        const result = captureAnchor(files, scrollEl, (f) => (f.path === "Notes/a.md" ? elA : elB));
-
-        expect(result!.file.path).toBe("Notes/a.md");
-        expect(result!.relativeTopPx).toBe(10); // 10 - 0
+    it("is nowhere once the pane is past every note, or in an empty stream", () => {
+        expect(readPlace(streamIn(500, ["Notes/a.md", 0, 100]).stream, makeEl({ top: 500, bottom: 800 }))).toBeNull();
+        expect(readPlace(streamIn(0).stream, makeEl({ top: 0, bottom: 800 }))).toBeNull();
     });
 });
 
-describe("restoreAnchor", () => {
-    it("adjusts scrollTop by the delta between old and new relative top", () => {
-        const file = makeFile("Notes/a.md");
-        const snapshot = { file, relativeTopPx: 50 };
+describe("scrollBlockTo", () => {
+    it("scrolls by however far the block moved from the offset", () => {
+        const scrollEl = { getBoundingClientRect: () => ({ top: 0, bottom: 500 }), scrollTop: 200 } as HTMLElement;
 
-        let scrollTop = 200;
-        const scrollEl = {
-            getBoundingClientRect: () => ({ top: 0, bottom: 500 }),
-            get scrollTop() {
-                return scrollTop;
-            },
-            set scrollTop(v: number) {
-                scrollTop = v;
-            },
-        } as unknown as HTMLElement;
+        scrollBlockTo(makeEl({ top: 80, bottom: 300 }), 50, scrollEl);
 
-        // After re-render the element is now at top=80 (relative=80)
-        const el = makeEl({ top: 80, bottom: 300 });
-
-        restoreAnchor(snapshot, scrollEl, () => el);
-
-        // delta = currentRelativeTop(80) - snapshot.relativeTopPx(50) = 30
-        // new scrollTop = 200 + 30 = 230
-        expect(scrollTop).toBe(230);
-    });
-
-    it("does nothing when findElement returns null", () => {
-        const file = makeFile("Notes/a.md");
-        const snapshot = { file, relativeTopPx: 50 };
-
-        let scrollTop = 100;
-        const scrollEl = {
-            getBoundingClientRect: () => ({ top: 0, bottom: 500 }),
-            get scrollTop() {
-                return scrollTop;
-            },
-            set scrollTop(v: number) {
-                scrollTop = v;
-            },
-        } as unknown as HTMLElement;
-
-        restoreAnchor(snapshot, scrollEl, () => null);
-
-        expect(scrollTop).toBe(100); // unchanged
+        expect(scrollEl.scrollTop).toBe(230);
     });
 });
 

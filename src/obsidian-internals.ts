@@ -121,3 +121,23 @@ export function getSearchHotkeys(app: App): Hotkey[] {
 export function getViewTitle(view: ItemView): HTMLElement | null {
     return (view as unknown as { titleEl?: HTMLElement }).titleEl ?? null;
 }
+
+/**
+ * Removes this vault's localStorage keys whose name `matches` picks, and says
+ * how many. No public API lists them: `saveLocalStorage` prefixes each name
+ * with the vault's unpublished `appId`. A vault without one removes nothing.
+ */
+export function removeLocalStorageKeys(
+    app: App,
+    matches: (name: string) => boolean,
+    storage: Storage = window.localStorage
+): number {
+    const { appId } = app as unknown as { appId?: string };
+    if (!appId) return 0;
+    const prefix = `${appId}-`;
+    const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter(
+        (key): key is string => key !== null && key.startsWith(prefix) && matches(key.slice(prefix.length))
+    );
+    for (const key of keys) storage.removeItem(key);
+    return keys.length;
+}

@@ -55,6 +55,14 @@ async function remove(page: Page, paths: string[]): Promise<void> {
     }, paths);
 }
 
+/** Renames through the file manager, as the file explorer does. */
+async function rename(page: Page, from: string, to: string): Promise<void> {
+    await page.evaluate(
+        ({ from, to }) => window.app.fileManager.renameFile(window.app.vault.getFileByPath(from)!, to),
+        { from, to }
+    );
+}
+
 /** The newest note's footer, drawn. */
 async function footerOfNewest(page: Page): Promise<Locator> {
     const container = await openStream(page);
@@ -73,7 +81,7 @@ test.describe("linked mentions", () => {
     test.afterEach(async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(() => window.app.workspace.detachLeavesOfType("markdown"));
-        await remove(page, [...Object.keys(SOURCES), "Later.md"]);
+        await remove(page, [...Object.keys(SOURCES), "Later.md", "Journey.md"]);
     });
 
     test("lists the notes linking to a note under it, with the text around each link", async ({ obsidian }) => {
@@ -122,6 +130,25 @@ test.describe("linked mentions", () => {
 
         await expect(footer.locator(".daily-note-mentions-count")).toHaveText("3");
         await expect(footer.locator(".daily-note-mention-title")).toHaveText(["Plan", "Later", "Trip"]);
+    });
+
+    test("drops a linking note once it is deleted", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const footer = await footerOfNewest(page);
+
+        await page.evaluate(() => window.app.vault.delete(window.app.vault.getFileByPath("Trip.md")!));
+
+        await expect(footer.locator(".daily-note-mentions-count")).toHaveText("1");
+        await expect(footer.locator(".daily-note-mention-title")).toHaveText(["Plan"]);
+    });
+
+    test("follows a linking note across its rename", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const footer = await footerOfNewest(page);
+
+        await rename(page, "Trip.md", "Journey.md");
+
+        await expect(footer.locator(".daily-note-mention-title")).toHaveText(["Plan", "Journey"]);
     });
 
     test("stays collapsed once collapsed, on the next open too", async ({ obsidian }) => {

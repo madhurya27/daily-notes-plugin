@@ -1,16 +1,6 @@
-import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 import { TFile, moment, normalizePath } from "obsidian";
 import { ParsedDates } from "./parsed-dates";
-
-/** The daily-note naming rules, read once per public operation. */
-interface DateFormat {
-    /** Full format, possibly with folder segments (e.g. `YYYY/MM/YYYY-MM-DD`). */
-    path: string;
-    /** Last segment only — what the file's basename must match. */
-    basename: string;
-    /** Configured daily-notes folder ("" when unset). */
-    folder: string;
-}
+import { readDateFormat, type DateFormat } from "./daily-note-format";
 
 /** `obsidian` exports moment as a value, so the type comes from its return. */
 export type Moment = ReturnType<typeof moment>;
@@ -41,9 +31,15 @@ interface DatedNote {
 }
 
 export class DailyNoteService {
-    private _sorted: DatedNote[] = [];
+    private sorted: DatedNote[] = [];
+    /** How many of the notes, newest first, the stream has loaded. */
+    private _streamLength = 0;
     /** The daily-notes config the cache was built from; null before the first build. */
     private builtFrom: string | null = null;
+    /** The date format the list was built with; null before the first build. */
+    private builtWith: DateFormat | null = null;
+    /** The day the filter's "today" was last read on, by the list or by `catchUpDay`. */
+    private seenDay: Moment = moment();
 
     /**
      * `markdownFiles`: the vault's, daily notes among them. `parsedDates`: shared
@@ -61,10 +57,9 @@ export class DailyNoteService {
      * the view blank, and the next refresh lists again.
      */
     async initialize(): Promise<void> {
-        const format = this.readFormat();
+        const format = readDateFormat();
         try {
-            this._sorted = await this.buildSorted(format);
-            this.builtFrom = this.signature(format);
+            this.rebuilt(await this.buildSorted(format), format);
         } catch (error) {
             console.error("DailyNotesStream: Failed to list the daily notes", error);
         }
@@ -76,35 +71,77 @@ export class DailyNoteService {
      * did. Returns whether it rebuilt.
      */
     async refreshIfSettingsChanged(): Promise<boolean> {
-        const format = this.readFormat();
+        const format = readDateFormat();
         if (this.signature(format) === this.builtFrom) return false;
-        this._sorted = await this.buildSorted(format);
-        this.builtFrom = this.signature(format);
+        this.rebuilt(await this.buildSorted(format), format);
         return true;
+    }
+
+    /**
+     * The notes the day's turn may hide or show, once per turn: the last day's,
+     * no longer today's, and one made ahead for the new day. Nothing runs at
+     * midnight; the next change asks (ADR 0011).
+     */
+    catchUpDay(): TFile[] {
+        const today = moment();
+        if (today.isSame(this.seenDay, "day")) return [];
+        const seen = this.seenDay;
+        this.seenDay = today;
+        return this.datedNotes(this.format())
+            .filter((note) => note.date.isSame(seen, "day") || note.date.isSame(today, "day"))
+            .map((note) => note.file);
+    }
+
+    /** A new list starts a new stream. */
+    private rebuilt(sorted: DatedNote[], format: DateFormat): void {
+        this.sorted = sorted;
+        this._streamLength = 0;
+        this.builtFrom = this.signature(format);
+        this.builtWith = format;
     }
 
     /** Newest first. */
     getBatch(offset: number, limit: number): TFile[] {
-        return this._sorted.slice(offset, offset + limit).map((note) => note.file);
+        return this.sorted.slice(offset, offset + limit).map((note) => note.file);
     }
 
-    /** Returns the insertion index, or -1 when not a daily note, hidden, or already present. */
+    /** How many of the notes, newest first, the stream has loaded. */
+    get streamLength(): number {
+        return this._streamLength;
+    }
+
+    /** The notes the stream has loaded, newest first. */
+    streamedNotes(): TFile[] {
+        return this.getBatch(0, this._streamLength);
+    }
+
+    /** Loads the next `limit` notes into the stream; returns them, none past the last note. */
+    extendStream(limit: number): TFile[] {
+        const notes = this.getBatch(this._streamLength, limit);
+        this._streamLength += notes.length;
+        return notes;
+    }
+
+    /**
+     * Returns the insertion index, or -1 when not a daily note, hidden, or
+     * already present. Inside the stream, the stream takes the note in.
+     */
     insertSorted(file: TFile): number {
-        const format = this.readFormat();
-        const date = this.parseDate(file, format);
+        const date = this.parseDate(file, this.format());
         if (!date || this.filter.isHidden(file, date)) return -1;
 
         const lo = this.firstIndexOnOrBefore(date.valueOf());
         // A date maps to exactly one path, so the search lands on the duplicate.
-        if (this._sorted[lo]?.file.path === file.path) return -1;
+        if (this.sorted[lo]?.file.path === file.path) return -1;
 
-        this._sorted.splice(lo, 0, { file, date });
+        this.sorted.splice(lo, 0, { file, date });
+        if (lo < this._streamLength) this._streamLength++;
         return lo;
     }
 
     /** Whether `file` belongs in the list: a daily note the filter, prepared for it afresh, keeps. */
     async belongs(file: TFile): Promise<boolean> {
-        const date = this.parseDate(file, this.readFormat());
+        const date = this.parseDate(file, this.format());
         if (!date) return false;
         await this.filter.recheck(file);
         return !this.filter.isHidden(file, date);
@@ -112,13 +149,15 @@ export class DailyNoteService {
 
     /** Whether the filter leaves out any daily note. Walks the vault: for an empty stream only. */
     hidesAny(): boolean {
-        return this.datedNotes(this.readFormat()).some((note) => this.filter.isHidden(note.file, note.date));
+        return this.datedNotes(this.format()).some((note) => this.filter.isHidden(note.file, note.date));
     }
 
-    /** Returns the removed index, or -1 when absent. */
+    /** Returns the removed index, or -1 when absent. Inside the stream, the stream drops it. */
     removeSorted(filePath: string): number {
         const index = this.indexOf(filePath);
-        if (index !== -1) this._sorted.splice(index, 1);
+        if (index === -1) return index;
+        this.sorted.splice(index, 1);
+        if (index < this._streamLength) this._streamLength--;
         return index;
     }
 
@@ -128,31 +167,31 @@ export class DailyNoteService {
      */
     indexForDate(target: Moment): number {
         const index = this.firstIndexOnOrBefore(target.clone().startOf("day").valueOf());
-        return index < this._sorted.length ? index : -1;
+        return index < this.sorted.length ? index : -1;
     }
 
     /** The index of the note at `path`; -1 when absent. */
     indexOf(path: string): number {
-        return this._sorted.findIndex((note) => note.file.path === path);
+        return this.sorted.findIndex((note) => note.file.path === path);
     }
 
     get length(): number {
-        return this._sorted.length;
+        return this.sorted.length;
     }
 
     /** Every note's date, newest first — the set a jump can land on. Not to be mutated. */
     dates(): Moment[] {
-        return this._sorted.map((note) => note.date);
+        return this.sorted.map((note) => note.date);
     }
 
     /** `date` as this vault's filenames spell it, nested formats included. */
     formatDate(date: Moment): string {
-        return date.format(this.readFormat().basename);
+        return date.format(this.format().basename);
     }
 
     /** `text` read as one of this vault's filenames, or null when it is not. */
     parseNoteDate(text: string): Moment | null {
-        const date = moment(text, this.readFormat().basename, true);
+        const date = moment(text, this.format().basename, true);
         return date.isValid() ? date : null;
     }
 
@@ -162,10 +201,10 @@ export class DailyNoteService {
      */
     private firstIndexOnOrBefore(time: number): number {
         let lo = 0;
-        let hi = this._sorted.length;
+        let hi = this.sorted.length;
         while (lo < hi) {
             const mid = (lo + hi) >> 1;
-            if (this._sorted[mid]!.date.valueOf() > time) {
+            if (this.sorted[mid]!.date.valueOf() > time) {
                 lo = mid + 1;
             } else {
                 hi = mid;
@@ -186,6 +225,7 @@ export class DailyNoteService {
 
     private async buildSorted(format: DateFormat): Promise<DatedNote[]> {
         const notes = this.datedNotes(format);
+        this.seenDay = moment();
         await this.filter.prepare(notes.map((note) => note.file));
         return notes
             .filter((note) => !this.filter.isHidden(note.file, note.date))
@@ -204,14 +244,12 @@ export class DailyNoteService {
             .filter((note): note is DatedNote => note.date !== null);
     }
 
-    private readFormat(): DateFormat {
-        const settings = getDailyNoteSettings();
-        const path = settings.format || "YYYY-MM-DD";
-        return {
-            path,
-            basename: path.split("/").pop() || "YYYY-MM-DD",
-            folder: settings.folder ?? "",
-        };
+    /**
+     * The list's own: a config write refreshes the service, which rebuilds the
+     * list when the format changed. The settings' before the first build.
+     */
+    private format(): DateFormat {
+        return this.builtWith ?? readDateFormat();
     }
 
     /** Parses a markdown file's basename against the date format. */
@@ -227,9 +265,7 @@ export class DailyNoteService {
      */
     private parseDate(file: TFile, format: DateFormat) {
         // Cheaper than the strict parse below, and most vault files fail it.
-        // Obsidian normalizes an unset folder to "/", hence the trim.
-        const folder = normalizePath(format.folder).replace(/^\/+|\/+$/g, "");
-        if (folder && !normalizePath(file.path).startsWith(`${folder}/`)) return null;
+        if (format.folder && !normalizePath(file.path).startsWith(`${format.folder}/`)) return null;
 
         const date = this.parseBasename(file, format);
         if (!date) return null;

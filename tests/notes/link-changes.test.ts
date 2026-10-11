@@ -72,8 +72,8 @@ describe("LinkChanges", () => {
         expect(heard).toEqual([]);
     });
 
-    it.each(["", "/"])("with no daily-notes folder (%j), follows links to every note", (unset) => {
-        folder = unset;
+    it("with no daily-notes folder, follows links to every note", () => {
+        folder = "";
         resolve("Meeting.md", "2026-03-15.md", "Projects/Plan.md");
 
         changes.onResolved();

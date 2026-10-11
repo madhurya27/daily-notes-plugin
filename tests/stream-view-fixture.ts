@@ -27,8 +27,11 @@ export function asApp(stub: object): App {
 export function makeService(): DailyNoteService {
     return fake<DailyNoteService>({
         getBatch: vi.fn().mockReturnValue([]),
+        extendStream: vi.fn().mockReturnValue([]),
+        streamedNotes: vi.fn().mockReturnValue([]),
         initialize: vi.fn().mockResolvedValue(undefined),
         refreshIfSettingsChanged: vi.fn().mockResolvedValue(false),
+        catchUpDay: vi.fn().mockReturnValue([]),
         insertSorted: vi.fn().mockReturnValue(-1),
         removeSorted: vi.fn().mockReturnValue(-1),
         indexOf: vi.fn().mockReturnValue(-1),
@@ -39,6 +42,7 @@ export function makeService(): DailyNoteService {
         formatDate: vi.fn().mockReturnValue(""),
         parseNoteDate: vi.fn().mockReturnValue(null),
         length: 0,
+        streamLength: 0,
     });
 }
 
@@ -112,23 +116,25 @@ export function makeStubbedView(app: object = makeApp()) {
         onBaseModified: vi.fn().mockResolvedValue(undefined),
     });
     // The window manager hands back placeholders; rendering is its business.
-    view["stream"]["window"] = fake<NoteWindowManager>({
-        attach: vi.fn(),
-        detach: vi.fn(),
-        add: vi.fn(() => document.createElement("div")),
-        remove: vi.fn(),
-        refresh: vi.fn().mockResolvedValue(undefined),
-        render: vi.fn(),
-        onResize: vi.fn(),
-        onScroll: vi.fn(),
-        onTouch: vi.fn(),
-        onFingerDown: vi.fn(),
-        onBaseResized: vi.fn(),
-        onFingerUp: vi.fn(),
-        scrollToTop: vi.fn(),
-        forgetHeights: vi.fn(),
-        handOver: vi.fn(),
-        layoutChanges: 0,
+    Object.assign(view["stream"], {
+        window: fake<NoteWindowManager>({
+            attach: vi.fn(),
+            detach: vi.fn(),
+            add: vi.fn(() => document.createElement("div")),
+            remove: vi.fn(),
+            refresh: vi.fn().mockResolvedValue(undefined),
+            render: vi.fn(),
+            onResize: vi.fn(),
+            onScroll: vi.fn(),
+            onTouch: vi.fn(),
+            onFingerDown: vi.fn(),
+            onBaseResized: vi.fn(),
+            onFingerUp: vi.fn(),
+            scrollToTop: vi.fn(),
+            forgetHeights: vi.fn(),
+            handOver: vi.fn(),
+            layoutChanges: 0,
+        }),
     });
     view["collapsible"] = fake<CollapsibleManager>({ delegate: vi.fn() });
     view["stream"]["scroll"] = fake<InfiniteScrollController>({

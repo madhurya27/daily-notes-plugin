@@ -1,10 +1,11 @@
 import { Component, TFile, setIcon } from "obsidian";
 import { CollapsibleStateStore } from "./collapse-store";
 
+/** Letters, their combining marks and digits in any script; ASCII text slugs as it always has. */
 function slugify(text: string): string {
     return text
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/[^\p{L}\p{M}\p{N}]+/gu, "-")
         .replace(/^-|-$/g, "");
 }
 
@@ -161,7 +162,7 @@ export class CollapsibleManager {
     /** Drops saved sections `file` no longer has. The panels stay: a hidden one renders no key. */
     forgetRemovedSections(file: TFile, sectionKeys: readonly string[]): void {
         if (Date.now() - file.stat.mtime < SETTLED_AFTER_MS) return;
-        this.store.retainOnly(
+        this.store.retainSections(
             file.path,
             new Set([...sectionKeys, PROPERTIES_SECTION_KEY, LINKED_MENTIONS_SECTION_KEY])
         );
@@ -169,12 +170,13 @@ export class CollapsibleManager {
 
     /**
      * Same-text headings would share one stored state. The first occurrence keeps
-     * the bare key, so state saved before this disambiguation still applies.
+     * the bare key, so state saved before this disambiguation still applies; the
+     * rest take a "#", which no slug contains, so "Foo 2" keeps its own.
      */
     private uniqueKey(key: string, seenKeys: Map<string, number>): string {
         const occurrence = (seenKeys.get(key) ?? 0) + 1;
         seenKeys.set(key, occurrence);
-        return occurrence === 1 ? key : `${key}-${occurrence}`;
+        return occurrence === 1 ? key : `${key}#${occurrence}`;
     }
 
     private processHeaders(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): string[] {

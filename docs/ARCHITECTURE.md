@@ -42,19 +42,21 @@ opens, so a view's own handler always reads an index already updated.
 
 ## Flow
 
-1. **Open.** The view awaits `service.initialize()`, which lists the vault's
-   daily notes through the empty-notes filter
-   ([ADR 0011](adr/0011-hide-template-only-notes.md)), then `stream.open()`.
+1. **Open.** The view listens for vault changes, then awaits
+   `service.initialize()`, which lists the vault's daily notes through the
+   empty-notes filter ([ADR 0011](adr/0011-hide-template-only-notes.md)), then
+   `stream.open()`. The queue holds what it heard meanwhile until then.
 2. **Load.** A sentinel after the last block (`infinite-scroll.ts`) comes into
    view; `NoteStream` appends the next batch of 10 as empty blocks, placed and
-   indexed by path in `stream-blocks.ts`. `stream-state.ts` is the loaded range.
+   indexed by path in `stream-blocks.ts`. The service counts how many it has
+   loaded, its `streamLength` (D-118).
 3. **Render.** `NoteWindowManager` (`note-window.ts`) renders blocks within a
    margin of the viewport and empties them well past it, keeping their height
    ([ADR 0006](adr/0006-unload-off-screen-notes.md)). Each rendered note owns a
    child `Component`, discarded on unload.
 4. **Change.** Vault and metadata events become `NoteStream` mutations: insert,
    remove, re-render, reconsider whether a note is hidden. Saves are debounced
-   per path. An open search re-reads after each.
+   per path. An open search re-reads once the stream says its notes changed.
 
 Every mutation of the stream — batches, events, renders, jumps, rebuilds — runs
 through one promise queue, so none interleaves at an `await`
@@ -100,8 +102,9 @@ in, an image loads. Three mechanisms keep the reader's place.
   the task that tells `ScrollAnchor`
   ([ADR 0013](adr/0013-pin-rendered-note-heights.md)). Once the scroll is still,
   it re-reserves unloaded notes at what they are now expected at
-  ([ADR 0014](adr/0014-re-reserve-placeholders-at-rest.md)), drawing the notes
-  above moving first ([ADR 0015](adr/0015-shift-before-shrinking-above.md)).
+  (`reservations.ts`) ([ADR 0014](adr/0014-re-reserve-placeholders-at-rest.md)),
+  drawing the notes above moving first
+  ([ADR 0015](adr/0015-shift-before-shrinking-above.md)).
 - `ScrollAnchor` undoes shifts above the reader where the platform does not:
   Chromium anchors natively, iOS WebKit does not.
 
@@ -126,7 +129,7 @@ the vault's "Search current file" hotkey (`hotkey.ts`).
 | Settings             | plugin data (`data.json`)      | syncs with the vault       |
 | Heights, Base widths | vault localStorage, per device | device-specific (ADR 0010) |
 | Empty-note verdicts  | vault localStorage, per device | a cache (D-072)            |
-| Collapsed sections   | vault localStorage             | `collapse-store.ts`        |
+| Collapsed sections   | vault localStorage             | `collapse-store.ts`, D-121 |
 
 Every localStorage store saves through `saveLoggingOnce`: a refused save is
 logged once, never thrown (D-071).

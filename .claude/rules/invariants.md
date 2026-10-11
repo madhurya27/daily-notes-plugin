@@ -9,16 +9,15 @@ paths:
 
 Traps that span files, so no single file's comments can hold them.
 
-- **`state.notes` always equals `service.getBatch(0, state.length)`.** Breaking
-  it desyncs `getBatch()` pagination: notes skipped or duplicated on further
-  scroll. `create`/`delete`/`rename` must route through
-  `service.insertSorted`/`removeSorted`, and a note is rendered only when its
-  global index falls in `[0, offset)`.
+- **The blocks are `service.streamedNotes()`, in order** (D-118). Load through
+  `service.extendStream`; `create`/`delete`/`rename` through
+  `service.insertSorted`/`removeSorted`, which keep `streamLength`. A block is
+  placed only when its note's index is below `streamLength`.
 - **Each view owns its `DailyNoteService`.** Every view gets every vault event;
   a shared cache hands the second view's `insertSorted` a -1.
 - **`rename` gets `(file, oldPath)`.** Obsidian mutates `TFile` in place, so the
   DOM's `data-source-path` is the _old_ path: look the element up by `oldPath`,
-  remove from cache and state by `file.path`.
+  remove from the service by `file.path`.
 - **A note re-renders on `metadataCache.on("changed")`, not
   `vault.on("modify")`**: the cache lags the write, and the renderer reads the
   cache. `modify` only redraws cards copied from a `.base` file, which has no

@@ -107,15 +107,17 @@ describe("DailyNotesStreamView — search", () => {
         expect(count()).toBe("2 notes");
     });
 
-    it("recounts after the vault changes under an open search", async () => {
+    /** The stream tells the view its notes changed, as it does once a change is applied. */
+    const notesChanged = () => view["stream"]["notesChanged"]();
+
+    it("recounts once the stream's notes change under an open search", async () => {
         input().value = "dentist";
         input().dispatchEvent(new Event("input"));
         await settle();
         SOURCES["Notes/2025-01-02.md"] = "dentist";
 
         try {
-            const changed = app.metadataCache.on.mock.calls.find(([name]) => name === "changed")![1];
-            changed(NOTES[1]);
+            notesChanged();
             await settle();
 
             expect(count()).toBe("3 notes");
@@ -124,23 +126,17 @@ describe("DailyNotesStreamView — search", () => {
         }
     });
 
-    it.each(["create", "delete", "rename"])("recounts after a vault %s", async (event) => {
+    it("re-reads nothing for a change outside the daily notes", async () => {
         input().value = "dentist";
         input().dispatchEvent(new Event("input"));
         await settle();
-        NOTES.push(new TFile("Notes/2024-12-31.md"));
-        SOURCES["Notes/2024-12-31.md"] = "dentist";
+        const reads = app.vault.cachedRead.mock.calls.length;
+        const changed = app.metadataCache.on.mock.calls.find(([name]) => name === "changed")![1];
 
-        try {
-            Object.assign(view["service"], { length: NOTES.length });
-            const handler = app.vault.on.mock.calls.find(([name]) => name === event)![1];
-            handler(NOTES[3], "old.md");
-            await settle();
+        changed(new TFile("Meeting.md"));
+        await settle();
 
-            expect(count()).toBe("3 notes");
-        } finally {
-            NOTES.pop();
-        }
+        expect(app.vault.cachedRead.mock.calls.length).toBe(reads);
     });
 
     it("drops a recount still waiting when the view closes", async () => {
@@ -148,9 +144,8 @@ describe("DailyNotesStreamView — search", () => {
         input().dispatchEvent(new Event("input"));
         await settle();
         const reads = app.vault.cachedRead.mock.calls.length;
-        const changed = app.metadataCache.on.mock.calls.find(([name]) => name === "changed")![1];
 
-        changed(NOTES[1]);
+        notesChanged();
         await view.onClose();
         await settle();
 

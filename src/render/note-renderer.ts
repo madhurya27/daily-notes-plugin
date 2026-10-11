@@ -150,17 +150,15 @@ export class NoteRenderer {
         noteComponent.load();
         this.component.addChild(noteComponent);
 
-        const header = block.createDiv({ cls: "daily-note-header" });
-        const dateLink = header.createEl("a", {
-            text: file.basename,
-            cls: "daily-note-title",
-            // href keeps the title focusable and Enter-activatable; the click
-            // handler opens the note itself.
-            href: "#",
-        });
-        this.titles.set(dateLink, file);
-
-        this.renderProperties(block, file);
+        // A block left half-drawn would take a second header on the next render.
+        try {
+            this.renderHeader(block, file);
+            this.renderProperties(block, file);
+        } catch (error) {
+            this.discard(noteComponent);
+            block.empty();
+            throw error;
+        }
 
         // "markdown-rendered" is how Obsidian scopes its whole reading-view
         // stylesheet — list indent included. Without it a rendered note falls
@@ -213,6 +211,18 @@ export class NoteRenderer {
     /** Frees everything the note registered while it was rendered. */
     discard(noteComponent: Component): void {
         this.component.removeChild(noteComponent);
+    }
+
+    private renderHeader(block: HTMLElement, file: TFile): void {
+        const header = block.createDiv({ cls: "daily-note-header" });
+        const dateLink = header.createEl("a", {
+            text: file.basename,
+            cls: "daily-note-title",
+            // href keeps the title focusable and Enter-activatable; the click
+            // handler opens the note itself.
+            href: "#",
+        });
+        this.titles.set(dateLink, file);
     }
 
     private renderProperties(container: HTMLElement, file: TFile): void {

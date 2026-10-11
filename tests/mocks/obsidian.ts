@@ -122,7 +122,10 @@ export class Component {
         this.loaded = false;
         while (this.children.length) this.removeChild(this.children[0]!);
         for (const cb of this.cleanups.splice(0)) cb();
+        this.onunload();
     }
+
+    onunload(): void {}
 
     addChild<T extends Component>(child: T): T {
         this.children.push(child);
@@ -405,7 +408,7 @@ export class PluginSettingTab {
     setControlValue(_key: string, _value: unknown): void | Promise<void> {}
 }
 
-export class Plugin {
+export class Plugin extends Component {
     app: App;
     manifest: PluginManifest;
     /** Registrations recorded so tests can invoke what onload() wired up. */
@@ -417,6 +420,7 @@ export class Plugin {
     data: unknown = null;
 
     constructor(app: App, manifest: PluginManifest) {
+        super();
         this.app = app;
         this.manifest = manifest;
     }
@@ -444,7 +448,6 @@ export class Plugin {
     addSettingTab(tab: PluginSettingTab) {
         this.settingTabs.push(tab);
     }
-    registerEvent(_ref: EventRef) {}
 }
 
 /** Mutable, so a test can stand in for either platform. */

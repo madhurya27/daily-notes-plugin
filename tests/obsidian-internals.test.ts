@@ -8,6 +8,7 @@ import {
     onPostProcessorChange,
     onVaultConfigChange,
     openTagSearch,
+    removeLocalStorageKeys,
 } from "../src/obsidian-internals";
 
 /** Builds an App-shaped object; `config` is the internal vault config under test. */
@@ -255,5 +256,37 @@ describe("getViewTitle", () => {
 
     it("returns null once the internal is gone", () => {
         expect(getViewTitle({} as ItemView)).toBeNull();
+    });
+});
+
+describe("removeLocalStorageKeys", () => {
+    /** Storage holding `keys`, as several vaults' saveLocalStorage would leave it. */
+    function storageOf(...keys: string[]): Storage {
+        const storage = new Map(keys.map((key) => [key, "true"]));
+        return {
+            get length() {
+                return storage.size;
+            },
+            key: (index: number) => [...storage.keys()][index] ?? null,
+            removeItem: (key: string) => void storage.delete(key),
+        } as Storage;
+    }
+    const app = { appId: "vault1" } as unknown as App;
+    const keysOf = (storage: Storage) => Array.from({ length: storage.length }, (_, i) => storage.key(i));
+
+    it("removes this vault's keys the predicate picks, by their unprefixed name, and counts them", () => {
+        const storage = storageOf("vault1-old:a", "vault1-old:b", "vault1-kept", "vault2-old:a", "old:a");
+
+        const removed = removeLocalStorageKeys(app, (name) => name.startsWith("old:"), storage);
+
+        expect(removed).toBe(2);
+        expect(keysOf(storage)).toEqual(["vault1-kept", "vault2-old:a", "old:a"]);
+    });
+
+    it("removes nothing when the vault has no id to scope by", () => {
+        const storage = storageOf("old:a", "-old:a");
+
+        expect(removeLocalStorageKeys({} as App, () => true, storage)).toBe(0);
+        expect(keysOf(storage)).toEqual(["old:a", "-old:a"]);
     });
 });

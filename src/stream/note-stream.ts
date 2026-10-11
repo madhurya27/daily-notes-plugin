@@ -1,21 +1,20 @@
 import { basesLoaded } from "../render/bases/bases-loaded";
-import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce } from "obsidian";
+import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce, moment } from "obsidian";
 import type { DailyNoteService, Moment } from "../notes/daily-note-service";
-import type { CollapsibleStateStore } from "../render/collapse-store";
 import type { NoteRenderer } from "../render/note-renderer";
-import { StreamState } from "./stream-state";
 import { StreamBlocks } from "./stream-blocks";
 import { InfiniteScrollController } from "./infinite-scroll";
 import { NoteWindowManager } from "./note-window";
 import { layoutOf, type LayoutMemory } from "./layout-memory";
 import { ScrollBoxGuard } from "./scroll-box-guard";
 import { FrameDeferral } from "./frame-deferral";
+import { SCROLL_IDLE_MS } from "./scroll-anchor";
 import { youtubeThumbnail } from "../render/video-thumbnails";
 import { webPageLink } from "../render/web-page-links";
 import {
-    captureAnchor,
     keepInPlace,
-    restoreAnchor,
+    readPlace,
+    scrollBlockTo,
     scrollIntoPlace,
     type StreamLayout,
     type StreamPlace,
@@ -28,6 +27,9 @@ const MODIFY_DEBOUNCE_MS = 300;
 const CONFIG_DEBOUNCE_MS = 1000;
 
 const BATCH_SIZE = 10;
+
+/** Past midnight, so a timer running early still finds the new day. */
+const DAY_TURN_DELAY_MS = 60_000;
 
 const NO_NOTES = "No daily notes found. Please check your daily notes settings.";
 
@@ -42,18 +44,33 @@ const NO_NOTE_FOR_DATE = "No daily note on or before that date.";
  * time through a single queue (ADR 0004).
  */
 export class NoteStream {
-    private state = new StreamState();
     private scroll = new InfiniteScrollController();
-    private window: NoteWindowManager;
+    /** What is rendered, and where blocks sit: the view hands it the pane's own events. */
+    readonly window: NoteWindowManager;
     private scrollRoot!: HTMLElement;
     private blocks = new StreamBlocks(() => this.scroll.getSentinel());
     private scrollBoxes: ScrollBoxGuard;
     private readonly frames = new FrameDeferral(youtubeThumbnail, webPageLink);
 
+    /** Lets the queue run: until `open`, there is no container to change. */
+    private opened!: () => void;
     // Serialized: an event interleaving with an in-flight batch would leave
-    // state and the service cache disagreeing.
-    private queue: Promise<void> = Promise.resolve();
+    // the blocks and the service's stream disagreeing.
+    private queue: Promise<void> = new Promise((resolve) => (this.opened = resolve));
     private loadPending = false;
+    /** Closed, the queue drops what is still waiting: each would render, then be discarded. */
+    private closed = false;
+    private midnight: number | null = null;
+    /** The day turned while the reader was moving the pane: caught up once they stop. */
+    private dayTurnWaiting = false;
+    private readonly catchUpDayOnceStill = debounce(
+        () => {
+            this.dayTurnWaiting = false;
+            void this.enqueueChange(async () => {});
+        },
+        SCROLL_IDLE_MS,
+        true
+    );
     /** Lets go of the match last centered; a no-op once it has. */
     private letGoOfCentered = () => {};
 
@@ -62,10 +79,11 @@ export class NoteStream {
 
     constructor(
         private readonly service: DailyNoteService,
-        private readonly collapseStore: CollapsibleStateStore,
         renderer: NoteRenderer,
         /** Every height measured, kept across sessions (ADR 0010). */
-        memory: Pick<LayoutMemory, "notes">
+        memory: Pick<LayoutMemory, "notes">,
+        /** Its daily notes changed — listed, unlisted or saved — and the change is applied. */
+        private readonly notesChanged: () => void = () => {}
     ) {
         this.window = new NoteWindowManager(renderer, this.enqueue.bind(this), memory.notes, () =>
             layoutOf(this.blocks.el)
@@ -77,8 +95,7 @@ export class NoteStream {
     open(scrollRoot: HTMLElement, container: HTMLElement): void {
         this.scrollRoot = scrollRoot;
         this.blocks.attach(container);
-        this.state.reset();
-        this.window.attach(scrollRoot, this.loadedToEnd);
+        this.window.attach(scrollRoot, container, this.loadedToEnd);
         // iOS ends a glide early on a scroll box, or on a frame starting its page;
         // Android is held to the same rules (ADR 0008, D-087).
         if (Platform.isMobile) {
@@ -86,9 +103,32 @@ export class NoteStream {
             this.frames.attach(container);
         }
         this.attachScroll();
+        this.armMidnight();
+        this.opened();
+    }
+
+    /**
+     * A note made ahead comes due at midnight with no change to show it: the
+     * stream catches up once then, when the reader is still (D-123).
+     */
+    private armMidnight(): void {
+        const untilMidnight = moment().add(1, "day").startOf("day").diff(moment());
+        this.midnight = window.setTimeout(() => {
+            this.dayTurnWaiting = true;
+            this.catchUpDayOnceStill();
+            this.armMidnight();
+        }, untilMidnight + DAY_TURN_DELAY_MS);
+    }
+
+    /** The reader moved the pane: a catch-up due waits for them to stop. */
+    private readerMoved(): void {
+        if (this.dayTurnWaiting) this.catchUpDayOnceStill();
     }
 
     close(): void {
+        this.closed = true;
+        if (this.midnight !== null) window.clearTimeout(this.midnight);
+        this.catchUpDayOnceStill.cancel();
         this.letGoOfCentered();
         this.onDailyNoteSettingsChange.cancel();
         this.flushModified.cancel();
@@ -99,21 +139,9 @@ export class NoteStream {
         this.blocks.clear();
     }
 
-    onResize(): void {
-        this.window.onResize();
-    }
-
-    /** The layout memory was emptied: every placeholder is estimated afresh. */
-    forgetHeights(): void {
-        this.window.forgetHeights();
-    }
-
-    scrollToTop(): void {
-        this.window.scrollToTop();
-    }
-
     /** Unloads, style reads and frames' pages wait for the scroll to stop. */
     onScroll(): void {
+        this.readerMoved();
         this.window.onScroll();
         this.scrollBoxes.onScroll();
         this.frames.onScroll();
@@ -121,24 +149,14 @@ export class NoteStream {
 
     /** A touch is the reader's own: a match held in place is let go. */
     onTouch(target: EventTarget | null): void {
+        this.readerMoved();
         this.letGoOfCentered();
         this.window.onTouch(target);
     }
 
-    onBaseResized(target: EventTarget | null): void {
-        this.window.onBaseResized(target);
-    }
-
-    onFingerDown(): void {
-        this.window.onFingerDown();
-    }
-
-    onFingerUp(): void {
-        this.window.onFingerUp();
-    }
-
     /** The reader scrolls the pane themselves. */
     onWheel(): void {
+        this.readerMoved();
         this.letGoOfCentered();
     }
 
@@ -154,7 +172,7 @@ export class NoteStream {
         () => {
             const files = [...this.pendingModified.values()];
             this.pendingModified.clear();
-            for (const file of files) void this.enqueue(() => this.applyModify(file));
+            for (const file of files) void this.enqueueChange(() => this.applyModify(file));
         },
         MODIFY_DEBOUNCE_MS,
         true
@@ -163,8 +181,10 @@ export class NoteStream {
     /** A save may hide a note, or show one again (ADR 0011); otherwise it re-renders. */
     private async applyModify(file: TFile): Promise<void> {
         if (await this.reconsider(file)) return;
+        if (this.service.indexOf(file.path) === -1) return;
         const el = this.blocks.get(file.path);
         if (el) await this.window.refresh(el);
+        this.notesChanged();
     }
 
     /**
@@ -172,9 +192,26 @@ export class NoteStream {
      * One that stays is left alone: its linked mentions redraw themselves.
      */
     onLinksChanged(files: TFile[]): Promise<void> {
-        return this.enqueue(async () => {
+        return this.enqueueChange(async () => {
             for (const file of files) await this.reconsider(file);
         });
+    }
+
+    /** A change from outside the reader's hands: the day's turn, if any, is caught up on first. */
+    private enqueueChange(task: () => Promise<void>): Promise<void> {
+        return this.enqueue(async () => {
+            await this.catchUpDay();
+            await task();
+        });
+    }
+
+    /**
+     * Today's note shows however empty. Nothing runs at midnight: the next
+     * change hides the last day's and shows one made ahead for the new day
+     * (ADR 0011).
+     */
+    private async catchUpDay(): Promise<void> {
+        for (const file of this.service.catchUpDay()) await this.reconsider(file);
     }
 
     /** Takes `file` out, or puts it back, when whether it belongs changed; whether it did. */
@@ -189,54 +226,46 @@ export class NoteStream {
 
     onFileCreate(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => this.insertNote(file));
+        void this.enqueueChange(async () => this.insertNote(file));
     }
 
     private insertNote(file: TFile): void {
-        // Single source of truth for sort order, and what keeps the service
-        // cache aligned with `this.state.length`. -1 when not a daily note.
+        // -1 when not a daily note.
         const globalIndex = this.service.insertSorted(file);
         if (globalIndex === -1) return;
-        if (globalIndex >= this.state.length) {
+        this.notesChanged();
+        if (globalIndex >= this.service.streamLength) {
             // Beyond the loaded range — a visible sentinel loads it now.
             this.scroll.recheck();
             return;
         }
 
-        this.blocks.insertBefore(file.path, this.window.add(file), this.state.notes[globalIndex]?.path);
-        this.state.insert(globalIndex, file);
+        const next = this.service.getBatch(globalIndex + 1, 1)[0];
+        this.blocks.insertBefore(file.path, this.window.add(file), next?.path);
     }
 
     /**
      * Keyed by rendered path, which differs from `file.path` after a rename:
-     * data-source-path is set at render time. Collapse state is the caller's —
-     * delete drops it, rename carries it over.
+     * data-source-path is set at render time. Collapse state is the plugin's
+     * to carry or drop.
      */
     private removeNote(file: TFile, renderedPath: string): void {
         const el = this.blocks.remove(renderedPath);
         if (el) this.window.remove(el);
 
-        const globalIndex = this.service.removeSorted(file.path);
-        if (globalIndex !== -1 && globalIndex < this.state.length) {
-            this.state.remove(file.path);
-        }
+        if (this.service.removeSorted(file.path) === -1) return;
+        this.notesChanged();
         if (this.service.length === 0) this.showEmptyState();
     }
 
     onFileDelete(file: TAbstractFile) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => {
-            this.removeNote(file, file.path);
-            this.collapseStore.clearForFile(file.path);
-        });
+        void this.enqueueChange(async () => this.removeNote(file, file.path));
     }
 
     onFileRename(file: TAbstractFile, oldPath: string) {
         if (!(file instanceof TFile)) return;
-        void this.enqueue(async () => {
-            this.collapseStore.migrate(oldPath, file.path);
-            this.removeNote(file, oldPath);
-        });
+        void this.enqueueChange(async () => this.removeNote(file, oldPath));
         this.onFileCreate(file);
     }
 
@@ -253,10 +282,10 @@ export class NoteStream {
     }
 
     private async loadBatch(): Promise<void> {
-        const batch = this.service.getBatch(this.state.length, BATCH_SIZE);
+        const batch = this.service.extendStream(BATCH_SIZE);
         if (batch.length === 0) {
             // No recheck: re-triggering on an empty batch spins forever.
-            if (this.state.length === 0) this.showEmptyState();
+            if (this.service.streamLength === 0) this.showEmptyState();
             return;
         }
 
@@ -265,7 +294,6 @@ export class NoteStream {
         for (const file of batch) {
             this.blocks.append(file.path, this.window.add(file));
         }
-        this.state.append(batch);
 
         this.scroll.recheck();
     }
@@ -300,7 +328,7 @@ export class NoteStream {
      * Renders the note before any scroll reaches it, and waits for its Bases:
      * scrolled to first, it shows each empty, then filling in. Loading is one
      * enqueued task: interleaving with a scroll-triggered load would desync
-     * state from the service cache.
+     * the blocks from the service's stream.
      */
     private async readyIndex(index: number): Promise<HTMLElement | null> {
         this.letGoOfCentered();
@@ -340,8 +368,9 @@ export class NoteStream {
 
     /** The first note reaching into the pane; null when none does. */
     firstVisibleNote(): TFile | null {
-        const find = (f: TFile) => this.blocks.get(f.path);
-        return captureAnchor(this.state.notes, this.scrollRoot, find)?.file ?? null;
+        const place = this.place();
+        const index = place ? this.service.indexOf(place.path) : -1;
+        return index === -1 ? null : this.service.getBatch(index, 1)[0]!;
     }
 
     /**
@@ -349,10 +378,7 @@ export class NoteStream {
      * the view, whose placeholders reserve what the notes measured (ADR 0010).
      */
     place(): StreamPlace | null {
-        const find = (f: TFile) => this.blocks.get(f.path);
-        const anchor = captureAnchor(this.state.notes, this.scrollRoot, find);
-        if (!anchor) return null;
-        return { path: anchor.file.path, offset: anchor.relativeTopPx };
+        return readPlace(this.blocks.el, this.scrollRoot);
     }
 
     /**
@@ -385,9 +411,9 @@ export class NoteStream {
     private async loadUntilScrollable(scrollTop: number): Promise<void> {
         const root = this.scrollRoot;
         while (root.scrollHeight - root.clientHeight < scrollTop) {
-            const before = this.state.length;
+            const before = this.service.streamLength;
             await this.loadBatch();
-            if (this.state.length === before) return;
+            if (this.service.streamLength === before) return;
         }
     }
 
@@ -402,12 +428,12 @@ export class NoteStream {
      * stream ends first — the cache shrank under the index mid-jump.
      */
     private async loadThrough(index: number): Promise<TFile | undefined> {
-        while (this.state.length <= index) {
-            const before = this.state.length;
+        while (this.service.streamLength <= index) {
+            const before = this.service.streamLength;
             await this.loadBatch();
-            if (this.state.length === before) return undefined;
+            if (this.service.streamLength === before) return undefined;
         }
-        return this.state.notes[index];
+        return this.service.getBatch(index, 1)[0];
     }
 
     /**
@@ -415,7 +441,7 @@ export class NoteStream {
      * changed, a setting toggled, and returns to the reader's place (D-074).
      */
     refresh(): Promise<void> {
-        return this.enqueue(async () => {
+        return this.enqueueChange(async () => {
             // Drawn shifted, the notes are not where the scroll puts them.
             this.window.handOver();
             const place = this.place();
@@ -451,7 +477,7 @@ export class NoteStream {
      */
     onDailyNoteSettingsChange: Debouncer<[], void> = debounce(
         () => {
-            void this.enqueue(async () => {
+            void this.enqueueChange(async () => {
                 if (!(await this.service.refreshIfSettingsChanged())) return;
                 await this.reload();
             });
@@ -466,8 +492,8 @@ export class NoteStream {
         this.scrollRoot.scrollTop = 0;
         this.scroll.detach();
         this.resetWindow();
-        this.state.reset();
         this.attachScroll();
+        this.notesChanged();
         await this.loadBatch();
     }
 
@@ -478,15 +504,12 @@ export class NoteStream {
      * a thousand.
      */
     private async rerenderAll(): Promise<void> {
-        const find = (f: TFile) => this.blocks.get(f.path);
-        const snapshot = captureAnchor(this.state.notes, this.scrollRoot, find);
-
-        const notes = [...this.state.notes];
+        const notes = this.service.streamedNotes();
+        const place = this.place();
 
         this.blocks.empty();
         this.scroll.detach();
         this.resetWindow();
-        this.state.reset();
 
         for (const file of notes) {
             this.blocks.append(file.path, this.window.add(file));
@@ -494,17 +517,18 @@ export class NoteStream {
 
         this.attachScroll();
 
-        if (snapshot) restoreAnchor(snapshot, this.scrollRoot, find);
-
-        this.state.reset(notes);
+        const block = place && this.blocks.get(place.path);
+        if (block) scrollBlockTo(block, place.offset, this.scrollRoot);
     }
 
     /**
      * Runs `task` after every queued mutation, so none interleave at an await.
+     * The reader's own loads, renders and jumps come here, leaving the day's
+     * turn alone: the notes at the top stay put under a scroll.
      */
     private enqueue(task: () => Promise<void>): Promise<void> {
         this.queue = this.queue
-            .then(task)
+            .then(() => (this.closed ? undefined : task()))
             .catch((e) => console.error("DailyNotesStream: Failed to update the stream", e));
         return this.queue;
     }
@@ -514,11 +538,11 @@ export class NoteStream {
         this.scroll.attach(this.scrollRoot, this.blocks.el, () => this.loadMoreNotes());
     }
 
-    private readonly loadedToEnd = () => this.state.length >= this.service.length;
+    private readonly loadedToEnd = () => this.service.streamLength >= this.service.length;
 
     /** Frees every note and starts the observers over. */
     private resetWindow(): void {
         this.window.detach();
-        this.window.attach(this.scrollRoot, this.loadedToEnd);
+        this.window.attach(this.scrollRoot, this.blocks.el, this.loadedToEnd);
     }
 }

@@ -129,7 +129,7 @@ function makeManager(
     heights = new NoteHeights()
 ) {
     const manager = new NoteWindowManager(renderer as never, makeQueue(), heights, () => LAYOUT, measure);
-    manager.attach(scrollRoot, moreBelow);
+    manager.attach(scrollRoot, document.createElement("div"), moreBelow);
     return { manager, renderer, scrollRoot, heights };
 }
 
@@ -164,7 +164,7 @@ afterEach(() => {
 describe("NoteWindowManager measurement", () => {
     it("measures the laid-out box by default", () => {
         const manager = new NoteWindowManager(makeRenderer() as never, makeQueue(), new NoteHeights(), () => LAYOUT);
-        manager.attach(document.createElement("div"), moreBelow);
+        manager.attach(document.createElement("div"), document.createElement("div"), moreBelow);
         const block = manager.add(FILE);
         block.getBoundingClientRect = () => ({ height: 321 }) as DOMRect;
         document.body.appendChild(block);
@@ -259,7 +259,7 @@ describe("NoteWindowManager remembered heights", () => {
                 () => 500,
                 estimate
             );
-            manager.attach(makeScrollRoot(800), moreBelow);
+            manager.attach(makeScrollRoot(800), document.createElement("div"), moreBelow);
             return { manager, estimate };
         }
 
@@ -364,7 +364,7 @@ describe("NoteWindowManager remembered heights", () => {
     it("reads the layout once for a batch of placeholders", async () => {
         const layoutOf = vi.fn(() => LAYOUT);
         const manager = new NoteWindowManager(makeRenderer() as never, makeQueue(), new NoteHeights(), layoutOf);
-        manager.attach(makeScrollRoot(800), moreBelow);
+        manager.attach(makeScrollRoot(800), document.createElement("div"), moreBelow);
 
         for (let day = 1; day <= 3; day++) manager.add(new TFile(`Notes/2025-01-0${day}.md`));
         expect(layoutOf).toHaveBeenCalledOnce();
@@ -602,7 +602,7 @@ describe("NoteWindowManager after the pane's width changes", () => {
         const root = makeScrollRoot(800);
         Object.defineProperty(root, "scrollTop", { value: 2000, configurable: true });
         Object.defineProperty(root, "scrollHeight", { value: 2000 + 800 + below, configurable: true });
-        manager.attach(root, moreBelow);
+        manager.attach(root, document.createElement("div"), moreBelow);
         /** The layout is read once per task: the width changes in the next one. */
         const narrow = async () => {
             await settle();
@@ -1773,7 +1773,7 @@ describe("NoteWindowManager teardown", () => {
         const block = manager.add(FILE);
         observers.observe.mockClear();
 
-        manager.attach(document.createElement("div"), moreBelow);
+        manager.attach(document.createElement("div"), document.createElement("div"), moreBelow);
 
         expect(observers.observe).toHaveBeenCalledWith(block);
     });
@@ -1791,7 +1791,7 @@ describe("NoteWindowManager teardown", () => {
 
     it("re-attaching replaces the observers rather than stacking them", () => {
         const { manager } = makeManager();
-        manager.attach(document.createElement("div"), moreBelow);
+        manager.attach(document.createElement("div"), document.createElement("div"), moreBelow);
         expect(observers.disconnect).toHaveBeenCalledTimes(2);
         expect(observers.margins).toHaveLength(4);
     });
@@ -1858,15 +1858,16 @@ describe("NoteWindowManager scroll anchoring", () => {
         placed.mockRestore();
     });
 
-    it("tells the anchor when every note is loaded", () => {
+    it("hands the anchor the stream, and tells it when every note is loaded", () => {
         const attach = vi.spyOn(ScrollAnchor.prototype, "attach");
         const loadedToEnd = () => true;
         const manager = new NoteWindowManager(makeRenderer() as never, makeQueue(), new NoteHeights(), () => LAYOUT);
         const root = makeScrollRoot(800);
+        const stream = document.createElement("div");
 
-        manager.attach(root, loadedToEnd);
+        manager.attach(root, stream, loadedToEnd);
 
-        expect(attach).toHaveBeenCalledWith(root, loadedToEnd);
+        expect(attach).toHaveBeenCalledWith(root, stream, loadedToEnd);
         attach.mockRestore();
     });
 
@@ -1906,7 +1907,7 @@ describe("NoteWindowManager scroll anchoring", () => {
         const block = manager.add(FILE);
         resizeObserver.observe.mockClear();
 
-        manager.attach(scrollRoot, moreBelow);
+        manager.attach(scrollRoot, document.createElement("div"), moreBelow);
 
         expect(resizeObserver.observe).toHaveBeenCalledWith(block);
     });
@@ -1972,7 +1973,7 @@ describe("NoteWindowManager watches no pinned block's own size", () => {
     it("watches no pinned block when re-attached", async () => {
         const { manager, scrollRoot, block } = await rendered();
 
-        manager.attach(scrollRoot, moreBelow);
+        manager.attach(scrollRoot, document.createElement("div"), moreBelow);
 
         expect(watched(block)).toBe(false);
         expect(watched(block.firstElementChild!)).toBe(true);
@@ -1988,6 +1989,19 @@ describe("NoteWindowManager.layoutChanges", () => {
 
         fire(observers.render, block, true);
         await settle();
+
+        expect(manager.layoutChanges).toBe(before + 1);
+    });
+
+    it("counts an edit's re-render: the note redraws at a height of its own", async () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        const before = manager.layoutChanges;
+
+        await manager.refresh(block);
 
         expect(manager.layoutChanges).toBe(before + 1);
     });

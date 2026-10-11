@@ -1,11 +1,5 @@
-import { TFile } from "obsidian";
 import { SETTLE_MS } from "./height-hold";
-
-export interface AnchorSnapshot {
-    file: TFile;
-    /** Top of the anchor element relative to the scroll container's top, captured before re-render */
-    relativeTopPx: number;
-}
+import { blockAt } from "./stream-blocks";
 
 /**
  * Where the stream is scrolled to, in a form Obsidian's history can keep: the
@@ -22,50 +16,19 @@ export function isStreamPlace(value: unknown): value is StreamPlace {
     return typeof path === "string" && typeof offset === "number";
 }
 
-/**
- * Captures the first note element that is at or below the current scroll position
- * as an anchor for later restoration.
- *
- * Uses getBoundingClientRect() relative to the scroll container so that
- * position: relative ancestors do not affect the measurement.
- */
-export function captureAnchor(
-    notes: readonly TFile[],
-    scrollEl: HTMLElement,
-    findElement: (file: TFile) => HTMLElement | null
-): AnchorSnapshot | null {
-    const scrollRect = scrollEl.getBoundingClientRect();
-
-    for (const file of notes) {
-        const el = findElement(file);
-        if (!el) continue;
-        const elRect = el.getBoundingClientRect();
-        const elBottom = elRect.bottom - scrollRect.top;
-        if (elBottom > 0) {
-            return {
-                file,
-                relativeTopPx: elRect.top - scrollRect.top,
-            };
-        }
-    }
-    return null;
+/** Where `stream` is scrolled to in `scrollEl`; null when no note reaches into the pane. */
+export function readPlace(stream: HTMLElement, scrollEl: HTMLElement): StreamPlace | null {
+    const paneTop = scrollEl.getBoundingClientRect().top;
+    const block = blockAt(stream, paneTop);
+    // Past the last note, the infinite-scroll sentinel.
+    const path = block instanceof HTMLElement ? block.dataset.sourcePath : undefined;
+    if (path === undefined) return null;
+    return { path, offset: block!.getBoundingClientRect().top - paneTop };
 }
 
-/**
- * Restores scroll position so that the anchor element is at the same relative
- * position it was at when captureAnchor was called.
- */
-export function restoreAnchor(
-    snapshot: AnchorSnapshot,
-    scrollEl: HTMLElement,
-    findElement: (file: TFile) => HTMLElement | null
-): void {
-    const el = findElement(snapshot.file);
-    if (!el) return;
-    const scrollRect = scrollEl.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-    const currentRelativeTop = elRect.top - scrollRect.top;
-    scrollEl.scrollTop += currentRelativeTop - snapshot.relativeTopPx;
+/** Scrolls `scrollEl` so `block`'s top sits `offset` below the pane's top. */
+export function scrollBlockTo(block: HTMLElement, offset: number, scrollEl: HTMLElement): void {
+    scrollEl.scrollTop += block.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top - offset;
 }
 
 /** Passes over a scroll before it is left where it landed. */

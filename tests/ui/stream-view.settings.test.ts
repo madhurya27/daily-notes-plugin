@@ -25,10 +25,9 @@ describe("DailyNotesStreamView — Obsidian's daily-notes settings changed", () 
         vi.useRealTimers();
     });
 
-    /** Runs the debounced handler and drains the mutation queue. */
+    /** Runs the debounced handler and drains the mutation queue; not every timer: midnight's re-arms. */
     async function settle() {
-        await vi.runAllTimersAsync();
-        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(1_000);
     }
 
     // What a changed format does to the stream is note-stream.test.ts's.

@@ -1,14 +1,15 @@
 import { Keymap, Notice, PaneType, Plugin, WorkspaceLeaf } from "obsidian";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "./ui/stream-view";
 import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab } from "./settings";
-import { CollapsibleStateStore } from "./render/collapse-store";
+import { CollapsibleStateStore, isOldCollapseKey } from "./render/collapse-store";
 import { DailyNoteService } from "./notes/daily-note-service";
 import { ParsedDates } from "./notes/parsed-dates";
 import { LayoutMemory } from "./stream/layout-memory";
 import { BacklinkIndex } from "./notes/backlink-index";
 import { EMPTY_NOTES_KEY, EmptyNotes, hideEmptyNotes } from "./notes/empty-notes";
 import { LinkChanges } from "./notes/link-changes";
-import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
+import { readDateFormat } from "./notes/daily-note-format";
+import { removeLocalStorageKeys } from "./obsidian-internals";
 
 /** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
 declare const BUILD_LABEL: string;
@@ -35,7 +36,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         if (buildLabel()) new Notice(`Daily notes stream: ${buildLabel()}`);
         await this.loadSettings();
 
-        this.collapseStore = new CollapsibleStateStore(this.app);
+        this.rememberCollapse();
         this.rememberLayout();
         this.indexBacklinks();
         this.indexEmptyNotes();
@@ -89,14 +90,23 @@ export default class DailyNotesStreamPlugin extends Plugin {
                 name: "Forget measured note heights",
                 callback: () => this.forgetNoteHeights(),
             });
+            this.addCommand({
+                id: "forget-collapse-state",
+                name: "Forget collapse state",
+                callback: () => this.forgetCollapseState(),
+            });
         }
 
         this.addSettingTab(new DailyNotesStreamSettingTab(this.app, this));
     }
 
-    onunload() {
-        this.layoutMemory.flush();
-        this.emptyNotes.flush();
+    /** Collapsed sections follow a note across a rename, and out with a delete, whether or not a stream is open. */
+    private rememberCollapse(): void {
+        const store = (this.collapseStore = new CollapsibleStateStore(this.app));
+        const { vault, workspace } = this.app;
+        this.registerEvent(vault.on("rename", (file, oldPath) => store.migrate(oldPath, file.path)));
+        this.registerEvent(vault.on("delete", (file) => store.clearForFile(file.path)));
+        workspace.onLayoutReady(() => store.retainOnly(new Set(vault.getMarkdownFiles().map((file) => file.path))));
     }
 
     /**
@@ -107,6 +117,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
     private rememberLayout(): void {
         const memory = (this.layoutMemory = new LayoutMemory(this.app));
         const { vault, workspace } = this.app;
+        this.register(() => memory.flush());
         this.registerEvent(vault.on("rename", (file, oldPath) => memory.rename(oldPath, file.path)));
         this.registerEvent(vault.on("delete", (file) => memory.forget(file.path)));
         this.registerEvent(vault.on("modify", (file) => memory.notes.forget(file.path)));
@@ -121,6 +132,19 @@ export default class DailyNotesStreamPlugin extends Plugin {
         }
     }
 
+    /** Every open stream redraws with nothing folded; the keys builds before D-121 saved go too. */
+    private forgetCollapseState(): void {
+        this.collapseStore.forgetAll();
+        removeLocalStorageKeys(this.app, isOldCollapseKey);
+        for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_NOTES_STREAM)) {
+            if (leaf.view instanceof DailyNotesStreamView) {
+                leaf.view.refresh().catch((error) => {
+                    console.error("DailyNotesStream: Failed to refresh view on forgetting collapse state", error);
+                });
+            }
+        }
+    }
+
     /**
      * Registered before any view opens, so a view's own `resolved` handler
      * always looks up an index already told the links changed.
@@ -131,13 +155,12 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.registerEvent(metadataCache.on("resolved", () => this.backlinks.invalidate()));
     }
 
-    /** Registered before any view opens, so a renamed note's verdict has moved by the time a view looks. */
     /** Registered after `indexBacklinks`, so a view told of a change reads a current index. */
     private followLinkChanges(): void {
         const { vault, metadataCache } = this.app;
         const changes = (this.linkChanges = new LinkChanges(
             () => metadataCache.resolvedLinks,
-            () => getDailyNoteSettings().folder ?? ""
+            () => readDateFormat().folder
         ));
         this.registerEvent(metadataCache.on("resolve", (file) => changes.onResolve(file.path)));
         this.registerEvent(metadataCache.on("resolved", () => changes.onResolved()));
@@ -145,6 +168,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.registerEvent(vault.on("rename", (file, oldPath) => changes.onRename(oldPath, file.path)));
     }
 
+    /** Registered before any view opens, so a renamed note's verdict has moved by the time a view looks. */
     private indexEmptyNotes(): void {
         const { vault, metadataCache } = this.app;
         const notes = (this.emptyNotes = new EmptyNotes(
@@ -157,6 +181,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
                 save: (value) => this.app.saveLocalStorage(EMPTY_NOTES_KEY, value),
             }
         ));
+        this.register(() => notes.flush());
         this.registerEvent(vault.on("rename", (file, oldPath) => notes.rename(oldPath, file.path)));
         this.registerEvent(vault.on("delete", (file) => notes.forget(file.path)));
     }

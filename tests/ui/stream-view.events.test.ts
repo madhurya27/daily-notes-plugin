@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { TFile } from "../mocks/obsidian";
-import { makeApp, makeStubbedView, makeViewSetup } from "../stream-view-fixture";
+import { flushPromises, makeApp, makeStubbedView, makeViewSetup } from "../stream-view-fixture";
 import { LinkChanges } from "../../src/notes/link-changes";
 
 // What each event does to the stream is note-stream.test.ts's; this is the wiring.
@@ -61,6 +61,48 @@ describe("DailyNotesStreamView — vault events", () => {
         const file = new TFile("Notes/2025-01-01.md");
         callbacks["rename"]?.(file, "Notes/old-name.md");
         expect(spy).toHaveBeenCalledWith(file, "Notes/old-name.md");
+    });
+
+    describe("while the notes are still being listed", () => {
+        /** A view whose `initialize` waits for `listed`, its callbacks registered so far. */
+        function openSlowly() {
+            const app = makeApp();
+            const { view, service } = makeStubbedView(app);
+            let listed!: () => void;
+            vi.mocked(service.initialize).mockReturnValue(new Promise<void>((resolve) => (listed = resolve)));
+            const opened = view.onOpen();
+            const callbacks = () => Object.fromEntries([...app.vault.on.mock.calls]);
+            return { service, callbacks, listed, opened };
+        }
+
+        // A note synced in, or deleted, as the stream opens: missed, it stayed
+        // wrong until a refresh.
+        it("applies a delete heard meanwhile once the stream opens", async () => {
+            const { service, callbacks, listed, opened } = openSlowly();
+
+            callbacks()["delete"]?.(new TFile("Notes/2025-01-01.md"));
+            await flushPromises();
+            expect(service.removeSorted).not.toHaveBeenCalled();
+
+            listed();
+            await opened;
+            await flushPromises();
+            expect(service.removeSorted).toHaveBeenCalledWith("Notes/2025-01-01.md");
+        });
+
+        it("applies a create heard meanwhile once the stream opens", async () => {
+            const { service, callbacks, listed, opened } = openSlowly();
+
+            const file = new TFile("Notes/2025-01-01.md");
+            callbacks()["create"]?.(file);
+            await flushPromises();
+            expect(service.insertSorted).not.toHaveBeenCalled();
+
+            listed();
+            await opened;
+            await flushPromises();
+            expect(service.insertSorted).toHaveBeenCalledWith(file);
+        });
     });
 
     // Mermaid's "Allow" fires it, as does a plugin adding or removing a post-processor.

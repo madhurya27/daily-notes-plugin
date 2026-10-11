@@ -1220,6 +1220,8 @@ it next changes.
   ones.
 - Trusting a saved empty note by the check's start time — a synced edit can
   carry an older `mtime`, and a written note would stay hidden.
+- Capping concurrent reads — on an iPhone 16 Pro, 1,095 cold reads at once take
+  344–398 ms with no frame over 15 ms; 8 or 32 at a time is no faster.
 
 ## D-073 — Views re-check only the notes whose incoming links changed (2026-09-28)
 
@@ -1936,3 +1938,99 @@ clutter; one wrongly hidden is lost writing.
   event, kept in plugin data — catches multi-line output, but not notes made
   before install, where hiding matters most; an undocumented event and a synced
   record per note. Revisit if users ask (`docs/TODO.md`).
+
+## D-118 — The service counts the stream's notes (2026-10-11)
+
+**Decision:** `DailyNoteService` keeps `streamLength`, how many notes, newest
+first, the stream has loaded. `insertSorted`/`removeSorted` move it, a rebuild
+empties it; `NoteStream` keeps no list of its own.
+
+**Why:** `StreamState` copied the list's first notes, and every list change had
+to repeat itself there or pagination skipped and repeated notes (ADR 0004). Kept
+beside the list, the count moves with it.
+
+**Rejected:**
+
+- The count in `NoteStream` — each insert and remove must still repeat itself
+  there.
+
+## D-119 — Lookups over the notes stay linear (2026-10-11)
+
+**Decision:** `DailyNoteService.indexOf` scans, and `refresh` maps every date to
+read one.
+
+**Why:** each runs once per event, refresh or Back, never per note: over 1,095
+notes, microseconds.
+
+**Rejected:**
+
+- A path→index map — a second copy of the list's order that every insert and
+  remove must keep in step, the kind of copy D-118 removed.
+
+## D-120 — The service dates notes by the format it listed them with (2026-10-11)
+
+**Decision:** `DailyNoteService` keeps the daily-notes format of its last build
+and parses, formats and inserts by it; only `refreshIfSettingsChanged` reads the
+settings, on each config write (D-002). The jump modal spells each choice's
+label and ISO date once per open.
+
+**Why:** a note made between a format change and the refresh was parsed by the
+new format into a list sorted by the old. Reading the settings per call also
+cost 1,095 reads per modal open.
+
+**Rejected:**
+
+- Reading the format once per modal open — still a read per insert, and still
+  out of step with the list until the refresh.
+
+## D-121 — Collapse state is one blob, its old keys dropped unread (2026-10-11)
+
+**Decision:** `CollapsibleStateStore` saves every note's sections under
+`daily-notes-stream:collapse`, read once at load and pruned to the vault's notes
+at layout ready, as the layout memory is. The old `collapse:*` and
+`collapse-idx:*` keys are never read; a device build's "Forget collapse state"
+command deletes them with the rest.
+
+**Why:** a key per section could not be listed, so a note deleted unheard left
+its keys forever, unprefixed beside other plugins'. Each heading of each render
+read and parsed one.
+
+**Rejected:**
+
+- Migrating the old keys — they cannot be listed, only read per path, so the
+  reader stays for good. Unpublished: only test devices hold any.
+
+## D-122 — The backlink index re-inverts the cache on each `resolved` (2026-10-11)
+
+**Decision:** `BacklinkIndex` stays lazy, inverting all of `resolvedLinks` on
+its first lookup after a `resolved`; `LinkChanges` keeps its own per-source
+diff.
+
+**Why:** 5 ms per inversion at 10,000 notes and 100,000 links on a 2026 Mac,
+once per save that a drawn footer hears. A full re-read is right whatever events
+Obsidian sent.
+
+**Rejected:**
+
+- One incremental index for both — correct only if Obsidian fires `resolve` for
+  every source whose links change, renames and deletes of targets included.
+  `e2e/linked-mentions.spec.ts` guards the delete and rename cases for a retry.
+
+## D-123 — The day's turn waits for the stream's next change, or midnight (2026-10-11)
+
+**Decision:** before each vault event, refresh or config write it applies, the
+stream asks the service whether the day turned since it last looked; if so, it
+rechecks the last day's note and one made ahead for the new day. One timer per
+view also catches up a minute past midnight, once the reader has stopped
+scrolling, touching and wheeling. The reader's own loads, renders and jumps
+never do.
+
+**Why:** yesterday's note showing until something happens costs the reader
+nothing, but a note made ahead for today would stay hidden in an idle stream.
+Waiting for stillness keeps the pane from moving under the reader.
+
+**Rejected:**
+
+- A check each minute — a timer firing all day for one moment a day.
+- Exempting the newest note instead of today's — skip days and an untouched note
+  stays shown until the next is made.

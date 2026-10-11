@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { StreamBlocks } from "../../src/stream/stream-blocks";
+import { StreamBlocks, blockAt } from "../../src/stream/stream-blocks";
 
 describe("StreamBlocks", () => {
     let container: HTMLElement;
@@ -22,7 +22,7 @@ describe("StreamBlocks", () => {
     const block = () => document.createElement("div");
 
     describe("get", () => {
-        // A per-lookup querySelector made captureAnchor O(n^2) across a
+        // A per-lookup querySelector made reading the place O(n^2) across a
         // refresh, and the window manager adds another hot caller.
         it("resolves a block through the index, not a DOM query", () => {
             const querySelector = vi.spyOn(container, "querySelector");
@@ -173,5 +173,52 @@ describe("StreamBlocks", () => {
         it("hiding without a message is a no-op", () => {
             expect(() => blocks.hideEmptyState()).not.toThrow();
         });
+    });
+});
+
+describe("blockAt", () => {
+    /** A stream of `count` blocks, each 100px tall, the first starting at `top`. */
+    function stacked(count: number, top = 0) {
+        const stream = document.createElement("div");
+        const reads = { count: 0 };
+        for (let i = 0; i < count; i++) {
+            const block = stream.createDiv();
+            block.getBoundingClientRect = () => {
+                reads.count++;
+                return { top: top + i * 100, bottom: top + (i + 1) * 100 } as DOMRect;
+            };
+        }
+        return { stream, reads };
+    }
+
+    it("is the block the pane's top crosses", () => {
+        const { stream } = stacked(5);
+
+        expect(blockAt(stream, 250)).toBe(stream.children[2]);
+    });
+
+    it("is the next block when the pane's top is on a boundary", () => {
+        const { stream } = stacked(5);
+
+        expect(blockAt(stream, 200)).toBe(stream.children[2]);
+    });
+
+    it("is the first block when the stream starts below the pane's top", () => {
+        const { stream } = stacked(5, 300);
+
+        expect(blockAt(stream, 0)).toBe(stream.children[0]);
+    });
+
+    it("is none past the stream's end, or in an empty stream", () => {
+        expect(blockAt(stacked(5).stream, 500)).toBeNull();
+        expect(blockAt(stacked(0).stream, 0)).toBeNull();
+    });
+
+    // A stream holds thousands of blocks; the place is read on every refresh and Back.
+    it("measures a few blocks, not every one above the pane's top", () => {
+        const { stream, reads } = stacked(1000);
+
+        expect(blockAt(stream, 99_950)).toBe(stream.children[999]);
+        expect(reads.count).toBeLessThanOrEqual(11);
     });
 });

@@ -30,7 +30,7 @@ import { isStreamPlace } from "../stream/scroll-position";
 
 export const VIEW_TYPE_DAILY_NOTES_STREAM = "daily-notes-stream-view";
 
-/** A vault change re-reads every note for an open search; a burst of saves needs one. */
+/** A change to the notes re-reads every one for an open search; a burst of them needs one. */
 const SEARCH_REFRESH_DEBOUNCE_MS = 500;
 
 export class DailyNotesStreamView extends ItemView implements HoverParent {
@@ -76,7 +76,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
             plugin.layoutMemory.bases,
             plugin.backlinks
         );
-        this.stream = new NoteStream(this.service, plugin.collapseStore, this.renderer, plugin.layoutMemory);
+        this.stream = new NoteStream(this.service, this.renderer, plugin.layoutMemory, () => this.refreshSearch());
 
         this.search = new StreamSearch(
             {
@@ -134,21 +134,15 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
             })
         );
 
-        // Not in onload(): the vault may not have indexed its files yet. Awaited:
-        // the first batch must already leave out what is hidden (ADR 0011).
-        await this.service.initialize();
-        if (this.lifecycle === "closed") return;
-
-        this.collapsible.delegate(this, streamContainerEl);
-        this.renderer.delegate(this, streamContainerEl);
-
+        // Heard while the notes are listed, and applied once the stream opens:
+        // a note synced in or deleted meanwhile is not missed.
         // metadataCache "changed", not vault "modify": the cache lags the write,
         // and the renderer reads it for frontmatter offsets and properties.
         const { metadataCache, vault } = this.app;
-        this.registerEvent(metadataCache.on("changed", (f) => this.applyChange(() => this.stream.onFileModify(f))));
-        this.registerEvent(vault.on("create", (f) => this.applyChange(() => this.stream.onFileCreate(f))));
-        this.registerEvent(vault.on("delete", (f) => this.applyChange(() => this.stream.onFileDelete(f))));
-        this.registerEvent(vault.on("rename", (f, old) => this.applyChange(() => this.stream.onFileRename(f, old))));
+        this.registerEvent(metadataCache.on("changed", (f) => this.stream.onFileModify(f)));
+        this.registerEvent(vault.on("create", (f) => this.stream.onFileCreate(f)));
+        this.registerEvent(vault.on("delete", (f) => this.stream.onFileDelete(f)));
+        this.registerEvent(vault.on("rename", (f, old) => this.stream.onFileRename(f, old)));
         // A Base has no metadata to wait for.
         this.registerEvent(vault.on("modify", (f) => void this.renderer.onBaseModified(f)));
         this.registerEvent(onPostProcessorChange(this.app, () => void this.refresh()));
@@ -156,9 +150,17 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         this.register(
             this.plugin.linkChanges.subscribe((paths) => {
                 const files = paths.map((path) => vault.getFileByPath(path)).filter((file) => file !== null);
-                this.applyChange(() => void this.stream.onLinksChanged(files));
+                void this.stream.onLinksChanged(files);
             })
         );
+
+        // Not in onload(): the vault may not have indexed its files yet. Awaited:
+        // the first batch must already leave out what is hidden (ADR 0011).
+        await this.service.initialize();
+        if (this.lifecycle === "closed") return;
+
+        this.collapsible.delegate(this, streamContainerEl);
+        this.renderer.delegate(this, streamContainerEl);
 
         this.addAction("calendar-1", "Jump to date", () => this.promptJumpToDate());
         this.addAction("text-search", "Search", () => this.searchBar.open());
@@ -168,11 +170,11 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
 
         this.registerDomEvent(this.contentEl, "scroll", () => this.stream.onScroll());
         this.registerDomEvent(this.contentEl, "pointerdown", (evt) => this.stream.onTouch(evt.target));
-        this.registerDomEvent(this.contentEl, BASE_RESIZED, (evt) => this.stream.onBaseResized(evt.target));
+        this.registerDomEvent(this.contentEl, BASE_RESIZED, (evt) => this.stream.window.onBaseResized(evt.target));
         this.registerDomEvent(this.contentEl, "wheel", () => this.stream.onWheel(), { passive: true });
-        this.registerDomEvent(this.contentEl, "touchstart", () => this.stream.onFingerDown(), { passive: true });
+        this.registerDomEvent(this.contentEl, "touchstart", () => this.stream.window.onFingerDown(), { passive: true });
         for (const lift of ["touchend", "touchcancel"] as const)
-            this.registerDomEvent(this.contentEl, lift, () => this.stream.onFingerUp(), { passive: true });
+            this.registerDomEvent(this.contentEl, lift, () => this.stream.window.onFingerUp(), { passive: true });
         this.stream.open(this.contentEl, streamContainerEl);
         this.lifecycle = "open";
     }
@@ -197,7 +199,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
      * waits for the notes: the stream has no container then to lay out in.
      */
     onResize(): void {
-        if (this.lifecycle === "open") this.stream.onResize();
+        if (this.lifecycle === "open") this.stream.window.onResize();
     }
 
     async onClose() {
@@ -213,12 +215,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         return false;
     }
 
-    /** Applies a vault change to the stream; an open search re-reads the notes after it. */
-    private applyChange(toStream: () => void): void {
-        toStream();
-        this.refreshSearch();
-    }
-
+    /** An open search re-reads the notes once the stream's changed. */
     private readonly refreshSearch = debounce(() => void this.search.refresh(), SEARCH_REFRESH_DEBOUNCE_MS, true);
 
     /** Asks for a date, then jumps to it. */
@@ -227,12 +224,12 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
     }
 
     scrollToTop(): void {
-        this.stream.scrollToTop();
+        this.stream.window.scrollToTop();
     }
 
     /** Before the stream opens there is nothing to forget: its notes are estimated as they load. */
     forgetHeights(): void {
-        if (this.lifecycle === "open") this.stream.forgetHeights();
+        if (this.lifecycle === "open") this.stream.window.forgetHeights();
     }
 
     refresh(): Promise<void> {

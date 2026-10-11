@@ -1,5 +1,6 @@
 import { Platform, debounce } from "obsidian";
 import { BASE_SLOT_CLASS } from "../render/bases/bases-as-cards";
+import { blockAt } from "./stream-blocks";
 
 /** How long the scroll is still before the stream counts it stopped (D-032). */
 export const SCROLL_IDLE_MS = 300;
@@ -20,7 +21,9 @@ type Place = { el: Element; top: number; height: number }[];
 export class ScrollAnchor {
     private observer: ResizeObserver | null = null;
     private scrollRoot: HTMLElement | null = null;
-    /** The blocks watched; their parent is the stream. */
+    /** What the blocks sit in, shifted while anything is owed. */
+    private stream: HTMLElement | null = null;
+    /** The blocks watched. */
     private readonly watched = new Set<Element>();
     /** Watched blocks whose size goes unobserved: they resize only when re-pinned, and are told of. */
     private readonly pins = new Set<Element>();
@@ -62,13 +65,15 @@ export class ScrollAnchor {
     /** Every note is loaded: nothing comes below the stream's end to fill what a shift draws past it. */
     private loadedToEnd!: () => boolean;
 
-    attach(scrollRoot: HTMLElement, loadedToEnd: () => boolean): void {
+    /** Holds the place of `stream`'s blocks, scrolled in `scrollRoot`. */
+    attach(scrollRoot: HTMLElement, stream: HTMLElement, loadedToEnd: () => boolean): void {
         this.detach();
         this.loadedToEnd = loadedToEnd;
         // iOS WebKit parses overflow-anchor, so CSS.supports says yes, and
         // anchors nothing: a phone's trace showed this never switched on.
         if (!Platform.isIosApp && CSS.supports("overflow-anchor", "auto")) return;
         this.scrollRoot = scrollRoot;
+        this.stream = stream;
         this.placeWidth = scrollRoot.clientWidth;
         // styles.css: overflow-anchor none, so no half-working native anchoring
         // corrects a second time.
@@ -127,7 +132,7 @@ export class ScrollAnchor {
      * of the resize after, the anchor finds nothing more owed (ADR 0015).
      */
     anticipate(moved: number): void {
-        const stream = this.stream();
+        const stream = this.stream;
         if (!this.scrollRoot || !stream || moved === 0) return;
         this.owed += moved;
         this.shift(stream);
@@ -195,7 +200,7 @@ export class ScrollAnchor {
      * view, iOS had drawn it a frame past already; a dropped frame doubles a step.
      */
     private topDueInView(moved: number): boolean {
-        const stream = this.stream();
+        const stream = this.stream;
         return this.owed < 0 && !!stream && this.topInPane(stream) + 2 * Math.max(moved, 0) >= 0;
     }
 
@@ -229,6 +234,7 @@ export class ScrollAnchor {
         this.place = [];
         this.scrollRoot?.removeClass("is-scroll-anchored");
         this.scrollRoot = null;
+        this.stream = null;
         this.unshift();
     }
 
@@ -263,7 +269,7 @@ export class ScrollAnchor {
         this.owed += moved;
         // Past the end, the place is lost once handed over all the same.
         if (this.loadedToEnd()) this.owed = Math.min(this.owed, this.below());
-        this.shift(this.stream()!);
+        this.shift(this.stream!);
         return true;
     }
 
@@ -275,7 +281,7 @@ export class ScrollAnchor {
     private pick(): void {
         this.place = [];
         this.reflowPlace = [];
-        const stream = this.stream();
+        const stream = this.stream;
         if (!stream) return;
         const pane = this.scrollRoot!.getBoundingClientRect();
         this.placeScroll = this.scrollRoot!.scrollTop;
@@ -284,7 +290,7 @@ export class ScrollAnchor {
         const drawn = document
             .elementsFromPoint(pane.left + pane.width / 2, pane.top + 1)
             .find((el) => el !== stream && stream.contains(el));
-        const crossing = drawn ?? this.blockAt(stream, pane.top);
+        const crossing = drawn ?? blockAt(stream, pane.top);
         if (!crossing) return;
 
         this.place = this.placeOf(stream, crossing);
@@ -386,25 +392,6 @@ export class ScrollAnchor {
         let next = el.nextElementSibling;
         while (next && next.getBoundingClientRect().height === 0) next = next.nextElementSibling;
         return next;
-    }
-
-    /** The block `paneTop` crosses, by halving: blocks stack, and a stream holds thousands. */
-    private blockAt(stream: HTMLElement, paneTop: number): Element | null {
-        const blocks = stream.children;
-        let low = 0;
-        let high = blocks.length;
-        while (low < high) {
-            const mid = (low + high) >> 1;
-            if (blocks[mid]!.getBoundingClientRect().bottom > paneTop) high = mid;
-            else low = mid + 1;
-        }
-        return blocks[low] ?? null;
-    }
-
-    /** What the blocks sit in, shifted while anything is owed. */
-    private stream(): HTMLElement | null {
-        const [block] = this.watched;
-        return block?.parentElement ?? null;
     }
 
     /**

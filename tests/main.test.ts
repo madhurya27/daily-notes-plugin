@@ -3,7 +3,7 @@ import DailyNotesStreamPlugin from "../src/main";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "../src/ui/stream-view";
 import { EMPTY_NOTES_KEY } from "../src/notes/empty-notes";
 import { DEFAULT_SETTINGS } from "../src/settings";
-import { CollapsibleStateStore } from "../src/render/collapse-store";
+import { COLLAPSE_STATE_KEY, CollapsibleStateStore } from "../src/render/collapse-store";
 import { BaseMeasurements } from "../src/render/bases/base-measurements";
 import { LAYOUT_MEMORY_KEY, LayoutMemory } from "../src/stream/layout-memory";
 import { Notice, TFile, WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
@@ -38,6 +38,18 @@ function makeApp() {
     };
 }
 
+/** Every callback onload() gave `source.on(name)`. */
+function handlers(source: { on: { mock: { calls: unknown[][] } } }, name: string) {
+    return source.on.mock.calls
+        .filter(([event]) => event === name)
+        .map(([, callback]) => callback as (...args: unknown[]) => void);
+}
+
+/** Fires `name` at every callback onload() gave `source.on`, as Obsidian does. */
+function fire(source: { on: { mock: { calls: unknown[][] } } }, name: string, ...args: unknown[]): void {
+    for (const handler of handlers(source, name)) handler(...args);
+}
+
 /** A leaf that records the view state it was asked to open. */
 function makeLeaf(app: ReturnType<typeof makeApp>) {
     return { app, setViewState: vi.fn().mockResolvedValue(undefined) };
@@ -47,6 +59,8 @@ async function loadPlugin(data: unknown = null) {
     const app = makeApp();
     const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
     plugin.data = data;
+    // Obsidian marks a plugin loaded before onload runs, so it unloads even one whose onload failed.
+    plugin.load();
     await plugin.onload();
     return { plugin, app };
 }
@@ -199,7 +213,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
         const { plugin, app } = await loadPlugin();
         await listed(plugin, app);
 
-        plugin.onunload();
+        plugin.unload();
 
         expect(app.saveLocalStorage).toHaveBeenCalledWith(
             EMPTY_NOTES_KEY,
@@ -215,7 +229,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
     it("reads no note unchanged since the last session", async () => {
         const first = await loadPlugin();
         await listed(first.plugin, first.app);
-        first.plugin.onunload();
+        first.plugin.unload();
         const saved: unknown = first.app.saveLocalStorage.mock.calls.find(([key]) => key === EMPTY_NOTES_KEY)![1];
 
         const app = makeApp();
@@ -238,13 +252,8 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
         const { plugin, app } = await loadPlugin();
         const rename = vi.spyOn(plugin.emptyNotes, "rename");
         const forget = vi.spyOn(plugin.emptyNotes, "forget");
-        const handlers = (name: string) =>
-            app.vault.on.mock.calls
-                .filter(([event]) => event === name)
-                .map(([, callback]) => callback as (...args: unknown[]) => void);
-
-        for (const handler of handlers("rename")) handler({ path: "Notes/new.md" }, "Notes/old.md");
-        for (const handler of handlers("delete")) handler({ path: "Notes/gone.md" });
+        fire(app.vault, "rename", { path: "Notes/new.md" }, "Notes/old.md");
+        fire(app.vault, "delete", { path: "Notes/gone.md" });
 
         expect(rename).toHaveBeenCalledWith("Notes/old.md", "Notes/new.md");
         expect(forget).toHaveBeenCalledWith("Notes/gone.md");
@@ -252,13 +261,6 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
 });
 
 describe("DailyNotesStreamPlugin — link changes", () => {
-    /** Every callback onload() gave `source.on(name)`. */
-    function handlers(source: { on: { mock: { calls: unknown[][] } } }, name: string) {
-        return source.on.mock.calls
-            .filter(([event]) => event === name)
-            .map(([, callback]) => callback as (...args: unknown[]) => void);
-    }
-
     it("follows the cache's resolves, and the vault's deletes and renames, for every view", async () => {
         const { plugin, app } = await loadPlugin();
         const changes = plugin.linkChanges;
@@ -266,10 +268,10 @@ describe("DailyNotesStreamPlugin — link changes", () => {
             vi.spyOn(changes, name)
         );
 
-        for (const handler of handlers(app.metadataCache, "resolve")) handler({ path: "Meeting.md" });
-        for (const handler of handlers(app.metadataCache, "resolved")) handler();
-        for (const handler of handlers(app.vault, "delete")) handler({ path: "Gone.md" });
-        for (const handler of handlers(app.vault, "rename")) handler({ path: "New.md" }, "Old.md");
+        fire(app.metadataCache, "resolve", { path: "Meeting.md" });
+        fire(app.metadataCache, "resolved");
+        fire(app.vault, "delete", { path: "Gone.md" });
+        fire(app.vault, "rename", { path: "New.md" }, "Old.md");
 
         expect(spies.map((spy) => spy.mock.calls)).toEqual([
             [["Meeting.md"]],
@@ -286,7 +288,7 @@ describe("DailyNotesStreamPlugin — link changes", () => {
         vi.spyOn(plugin.backlinks, "invalidate").mockImplementation(() => void order.push("index"));
         vi.spyOn(plugin.linkChanges, "onResolved").mockImplementation(() => void order.push("views"));
 
-        for (const handler of handlers(app.metadataCache, "resolved")) handler();
+        fire(app.metadataCache, "resolved");
 
         expect(order).toEqual(["index", "views"]);
     });
@@ -317,12 +319,45 @@ describe("DailyNotesStreamPlugin — link changes", () => {
     });
 });
 
-describe("DailyNotesStreamPlugin — layout memory", () => {
-    /** The callback onload() gave `vault.on(name)`. */
-    function vaultEvent(app: ReturnType<typeof makeApp>, name: string): (...args: unknown[]) => void {
-        return app.vault.on.mock.calls.find(([event]) => event === name)![1] as (...args: unknown[]) => void;
-    }
+describe("DailyNotesStreamPlugin — collapse state", () => {
+    // Heard by the plugin, not a view: with no stream open, a rename lost the
+    // note's folds and left its old keys behind.
+    it("carries a note's collapse state across a rename, and forgets a deleted note's, with no view open", async () => {
+        const { plugin, app } = await loadPlugin();
+        const migrate = vi.spyOn(plugin.collapseStore, "migrate");
+        const clear = vi.spyOn(plugin.collapseStore, "clearForFile");
+        fire(app.vault, "rename", { path: "Notes/new.md" }, "Notes/old.md");
+        fire(app.vault, "delete", { path: "Notes/gone.md" });
 
+        expect(migrate).toHaveBeenCalledWith("Notes/old.md", "Notes/new.md");
+        expect(clear).toHaveBeenCalledWith("Notes/gone.md");
+    });
+
+    // A note deleted while the plugin was off, or on another device, was never heard of.
+    it("forgets notes no longer in the vault once it is indexed", async () => {
+        __setMockNotes(["Notes/2025-01-01.md"]);
+        const app = makeApp();
+        app.loadLocalStorage.mockImplementation((key: string) =>
+            key === COLLAPSE_STATE_KEY
+                ? {
+                      version: 1,
+                      files: [
+                          ["Notes/2025-01-01.md", [["intro", true]]],
+                          ["Notes/gone.md", [["intro", true]]],
+                      ],
+                  }
+                : null
+        );
+        const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
+
+        await plugin.onload();
+
+        expect(plugin.collapseStore.isCollapsed("Notes/2025-01-01.md", "intro")).toBe(true);
+        expect(plugin.collapseStore.isCollapsed("Notes/gone.md", "intro")).toBe(false);
+    });
+});
+
+describe("DailyNotesStreamPlugin — layout memory", () => {
     it("keeps what the stream measured for every view", async () => {
         const { plugin } = await loadPlugin();
         expect(plugin.layoutMemory).toBeInstanceOf(LayoutMemory);
@@ -334,8 +369,8 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         const rename = vi.spyOn(memory, "rename");
         const forget = vi.spyOn(memory, "forget");
 
-        vaultEvent(app, "rename")({ path: "Notes/new.md" }, "Notes/old.md");
-        vaultEvent(app, "delete")({ path: "Notes/gone.md" });
+        fire(app.vault, "rename", { path: "Notes/new.md" }, "Notes/old.md");
+        fire(app.vault, "delete", { path: "Notes/gone.md" });
 
         expect(rename).toHaveBeenCalledWith("Notes/old.md", "Notes/new.md");
         expect(forget).toHaveBeenCalledWith("Notes/gone.md");
@@ -374,7 +409,7 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         const { plugin, app } = await loadPlugin();
         plugin.layoutMemory.notes.keep("600:16px", "Notes/a.md", 300);
 
-        vaultEvent(app, "modify")({ path: "Notes/a.md" });
+        fire(app.vault, "modify", { path: "Notes/a.md" });
 
         expect(plugin.layoutMemory.notes.heightOf("600:16px", "Notes/a.md")).toBeUndefined();
     });
@@ -383,9 +418,18 @@ describe("DailyNotesStreamPlugin — layout memory", () => {
         const { plugin, app } = await loadPlugin();
         plugin.layoutMemory.notes.keep("600:16px", "Notes/a.md", 300);
 
-        plugin.onunload();
+        plugin.unload();
 
         expect(app.saveLocalStorage).toHaveBeenCalledWith(LAYOUT_MEMORY_KEY, expect.anything());
+    });
+
+    it("unloads cleanly when its settings failed to load", async () => {
+        const plugin = new DailyNotesStreamPlugin(asApp(makeApp()), { id: "daily-notes-stream" } as PluginManifest);
+        plugin.loadData = () => Promise.reject(new Error("data.json unreadable"));
+        plugin.load();
+        await expect(plugin.onload()).rejects.toThrow("data.json unreadable");
+
+        expect(() => plugin.unload()).not.toThrow();
     });
 });
 
@@ -636,11 +680,11 @@ describe("DailyNotesStreamPlugin — two open streams", () => {
         __setMockNotes(["Notes/2026-08-28.md", "Notes/2026-08-27.md"]);
         const streams = await openTwoViews();
 
-        const deleted = streams[0]!["state"].notes[0]!;
+        const deleted = streams[0]!["service"].streamedNotes()[0]!;
         for (const stream of streams) stream.onFileDelete(deleted);
         await Promise.all(streams.map((stream) => stream.refresh()));
 
-        expect(streams.map((stream) => stream["state"].notes.map((f) => f.path))).toEqual([
+        expect(streams.map((stream) => stream["service"].streamedNotes().map((f) => f.path))).toEqual([
             ["Notes/2026-08-27.md"],
             ["Notes/2026-08-27.md"],
         ]);
@@ -703,5 +747,77 @@ describe("DailyNotesStreamPlugin — forget-note-heights command", () => {
         expect(plugin.layoutMemory.notes.heightOf("600:16px", "Notes/2025-01-01.md")).toBeUndefined();
         expect(forgetHeights).toHaveBeenCalledTimes(1);
         expect(other.forgetHeights).not.toHaveBeenCalled();
+    });
+});
+
+// A testing aid, to start from no folds: only a build put on a device offers it.
+describe("DailyNotesStreamPlugin — forget-collapse-state command", () => {
+    /** The browser's localStorage, which jsdom here leaves out. */
+    const stored = new Map<string, string>();
+    beforeEach(() => {
+        Notice.reset();
+        stored.clear();
+        vi.stubGlobal("localStorage", {
+            get length() {
+                return stored.size;
+            },
+            key: (index: number) => [...stored.keys()][index] ?? null,
+            removeItem: (key: string) => void stored.delete(key),
+        });
+    });
+    afterEach(() => vi.unstubAllGlobals());
+    const offered = (p: DailyNotesStreamPlugin) => p.commands.some((c) => c.id === "forget-collapse-state");
+    const forget = (p: DailyNotesStreamPlugin) => {
+        p.commands.find((c) => c.id === "forget-collapse-state")!.callback!();
+    };
+
+    it("is not offered in a release build", async () => {
+        vi.stubGlobal("BUILD_LABEL", "");
+        const { plugin } = await loadPlugin();
+        expect(offered(plugin)).toBe(false);
+    });
+
+    it("forgets every fold, and removes this vault's keys from before D-121, leaving other vaults'", async () => {
+        vi.stubGlobal("BUILD_LABEL", "amber otter");
+        const { plugin, app } = await loadPlugin();
+        Object.assign(app, { appId: "vault1" });
+        plugin.collapseStore.setCollapsed("Notes/2025-01-01.md", "intro", true);
+        stored.set("vault1-collapse:Notes/2025-01-01.md:intro", "true");
+        stored.set("vault1-collapse-idx:Notes/2025-01-01.md", '["intro"]');
+        stored.set("vault2-collapse:Notes/2025-01-01.md:intro", "true");
+
+        forget(plugin);
+
+        expect(plugin.collapseStore.isCollapsed("Notes/2025-01-01.md", "intro")).toBe(false);
+        expect(app.saveLocalStorage).toHaveBeenLastCalledWith(COLLAPSE_STATE_KEY, null);
+        expect([...stored.keys()]).toEqual(["vault2-collapse:Notes/2025-01-01.md:intro"]);
+    });
+
+    it("redraws every open stream, so what was folded shows open", async () => {
+        vi.stubGlobal("BUILD_LABEL", "amber otter");
+        const { plugin, app } = await loadPlugin();
+        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, makeService());
+        const refresh = vi.spyOn(view, "refresh").mockResolvedValue();
+        const other = { refresh: vi.fn() };
+        app.workspace.getLeavesOfType.mockReturnValue([{ view }, { view: other }]);
+
+        forget(plugin);
+
+        expect(refresh).toHaveBeenCalledOnce();
+        expect(other.refresh).not.toHaveBeenCalled();
+    });
+    it("logs a stream that fails to redraw", async () => {
+        vi.stubGlobal("BUILD_LABEL", "amber otter");
+        const { plugin, app } = await loadPlugin();
+        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, makeService());
+        vi.spyOn(view, "refresh").mockRejectedValue(new Error("gone"));
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        app.workspace.getLeavesOfType.mockReturnValue([{ view }]);
+
+        forget(plugin);
+        await flushPromises();
+
+        expect(error).toHaveBeenCalledWith(expect.stringMatching(/^DailyNotesStream: /), expect.any(Error));
+        error.mockRestore();
     });
 });
