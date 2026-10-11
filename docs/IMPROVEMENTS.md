@@ -46,7 +46,9 @@ each change passes the other gates.
 4. **Queued renders run after close.** `NoteStream.close()` leaves the queue
    running (`note-stream.ts:92`); each renders, then is discarded.
 5. **"Today" is fixed at list build.** After midnight yesterday's empty note
-   stays shown until a refresh (`empty-notes.ts:220`).
+   stays shown until a refresh (`empty-notes.ts:220`). `isHidden` reads the
+   clock itself; hand the filter a clock instead, so the day's turn is a change
+   the stream hears.
 
 ### Architecture
 
@@ -54,17 +56,24 @@ each change passes the other gates.
    plus an index per file (`collapse-store.ts:61-67`): unprefixed, unlike
    `daily-notes-stream:*`, so open to collisions, and never cleaned since keys
    cannot be listed. One prefixed blob with `retainOnly` at layout ready fixes
-   both.
-2. **Two "block at the pane's top" lookups.** `captureAnchor` is linear
+   both, and turns a `loadLocalStorage` read and parse per heading per render
+   (`collapse-store.ts:20`) into a map lookup.
+2. **Search refreshes on any vault event.** The view wraps each handler in
+   `applyChange` (`stream-view.ts:219`), so a new one must remember to, and the
+   refresh runs on its own debounce beside the stream's queue. Have the stream
+   announce when its notes change, a list change through `insertSorted` or
+   `removeSorted` or a save of a listed note, and search refresh on that: only
+   daily notes, after the change applied.
+3. **Two "block at the pane's top" lookups.** `captureAnchor` is linear
    (`scroll-position.ts:32`), `ScrollAnchor.blockAt` binary
    (`scroll-anchor.ts:392`). `AnchorSnapshot` and `StreamPlace` are one concept.
-3. **`ScrollAnchor.stream()` infers the container** from the first watched
+4. **`ScrollAnchor.stream()` infers the container** from the first watched
    block's parent (`scroll-anchor.ts:405`); pass it in.
-4. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
+5. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
    placeholder reservation, settling. Extract reservation (`reserve`, `expect`,
    `reserveKey`, the estimate).
-5. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
+6. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
    `LinkChanges` already diffs per source; one incremental index could serve
    both.
-6. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
+7. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
    `scrollToTop`, `onBaseResized`, `onFingerDown`/`Up`.
