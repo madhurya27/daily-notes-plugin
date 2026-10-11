@@ -218,7 +218,7 @@ describe("loading a batch", () => {
     });
 
     it("tells the window once every note is loaded", async () => {
-        const loadedToEnd = noteWindow.attach.mock.calls.at(-1)![1];
+        const loadedToEnd = noteWindow.attach.mock.calls.at(-1)![2];
 
         await load(...makeNotes(15));
         expect(loadedToEnd()).toBe(false);
@@ -804,6 +804,15 @@ describe("refresh", () => {
 });
 
 describe("the pane", () => {
+    it("hands the window the blocks' container, on open and after a refresh", async () => {
+        expect(noteWindow.attach).toHaveBeenCalledWith(pane, container, expect.any(Function));
+        noteWindow.attach.mockClear();
+
+        await stream.refresh();
+
+        expect(noteWindow.attach).toHaveBeenCalledWith(pane, container, expect.any(Function));
+    });
+
     it("passes a resize on to the window, which lays out for the new size", () => {
         stream.onResize();
         expect(noteWindow.onResize).toHaveBeenCalled();

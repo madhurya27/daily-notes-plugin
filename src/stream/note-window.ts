@@ -97,15 +97,15 @@ export class NoteWindowManager {
         this.reservedFrom = this.reserveKey();
     }
 
-    /** `loadedToEnd`: every note is loaded, and nothing comes below the stream's end. */
-    attach(scrollRoot: HTMLElement, loadedToEnd: () => boolean): void {
+    /** `stream` holds the blocks; `loadedToEnd`: every note is loaded, and nothing comes below its end. */
+    attach(scrollRoot: HTMLElement, stream: HTMLElement, loadedToEnd: () => boolean): void {
         this.detachObservers();
         this.scrollRoot = scrollRoot;
         this.observeMargins(scrollRoot);
         // Made before the anchor's, so it hears a report first: reports run in
         // that order, and the anchor must read each note re-pinned.
         this.resizes = new ResizeObserver((entries) => this.contentResized(entries.map(({ target }) => target)));
-        this.anchor.attach(scrollRoot, loadedToEnd);
+        this.anchor.attach(scrollRoot, stream, loadedToEnd);
 
         for (const [block, window] of this.windows) {
             this.observe(block);
