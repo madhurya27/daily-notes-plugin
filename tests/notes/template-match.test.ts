@@ -56,6 +56,28 @@ describe("templatePattern", () => {
         expect(matches("## Notes\n- <% tp.file.cursor() %> Called Mara\n", template)).toBe(false);
     });
 
+    it("reads a cursor on the last line as nothing, the blank lines before it trimmed with it", () => {
+        const template = "## Tasks\n- [ ] \n\n<% tp.file.cursor() %>\n";
+
+        expect(matches("## Tasks\n- [ ] \n\n", template)).toBe(true);
+        expect(matches("## Tasks\n- [ ] \n\n<% tp.file.cursor() %>\n", template)).toBe(true);
+        expect(matches("## Tasks\n- [ ] \n\nCalled Mara\n", template)).toBe(false);
+    });
+
+    it("reads placeholders closing the template, filled with nothing, as trimmed with the blank lines before them", () => {
+        const template = "A\n\n{{date}}\n\n{{time}}";
+
+        expect(matches("A", template)).toBe(true);
+        expect(matches("A\n\n2026-10-11", template)).toBe(true);
+        expect(matches("A\n\n2026-10-11\n\n09:00", template)).toBe(true);
+        expect(matches("A\n2026-10-11", template)).toBe(false);
+        expect(matches("A\n\n2026-10-11\nwritten", template)).toBe(false);
+    });
+
+    it("still wants blank lines the template keeps between text", () => {
+        expect(matches("A\nB", "A\n\nB")).toBe(false);
+    });
+
     it.each([
         ["-%> drops the one newline after it", "A\n<%* x -%>\nB\n\nC", "A\nB\n\nC"],
         ["<%- drops the one newline before it", "A\n\n<%- x %>\nB", "A\n\nB"],

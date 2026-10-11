@@ -41,21 +41,60 @@ function trimStart(literal: string, trim: Trim): string {
  */
 export function templatePattern(template: string | null): RegExp {
     const normalized = normalize(template ?? "");
-    let source = "";
+    const parts: Part[] = [];
     let literalFrom = 0;
     let trimAfter: Trim;
     for (const match of normalized.matchAll(PLACEHOLDER)) {
         const block = match[0];
         const trimBefore = /^<%[-_]/.test(block) ? (block[2] as Trim) : undefined;
-        const literal = trimEnd(trimStart(normalized.slice(literalFrom, match.index), trimAfter), trimBefore);
-        // Filled in with nothing, a placeholder leaves the space before it trailing, and trimmed.
-        source += escapeRegExp(literal).replace(/[ \t]+$/, "[ \\t]*");
-        source += CURSOR.test(block) ? CURSOR_LEFT : ON_ONE_LINE;
+        parts.push(
+            ...literalParts(trimEnd(trimStart(normalized.slice(literalFrom, match.index), trimAfter), trimBefore))
+        );
+        parts.push({ kind: "placeholder", source: CURSOR.test(block) ? CURSOR_LEFT : ON_ONE_LINE });
         trimAfter = /[-_]%>$/.test(block) ? (block.at(-3) as Trim) : undefined;
         literalFrom = match.index + block.length;
     }
-    source += escapeRegExp(trimStart(normalized.slice(literalFrom), trimAfter));
-    return new RegExp(`^${source}$`);
+    parts.push(...literalParts(trimStart(normalized.slice(literalFrom), trimAfter)));
+    return new RegExp(`^${joinParts(parts)}$`);
+}
+
+/** A piece of the pattern: template text, the whitespace after it, or a placeholder. */
+interface Part {
+    kind: "text" | "gap" | "placeholder";
+    source: string;
+}
+
+/** A literal as its text and the whitespace closing it. */
+function literalParts(literal: string): Part[] {
+    const [, text = "", gap = ""] = /^([\s\S]*?)(\s*)$/.exec(literal)!;
+    const parts: Part[] = [];
+    if (text) parts.push({ kind: "text", source: escapeRegExp(text) });
+    // Filled in with nothing, a placeholder leaves the space before it trailing, and trimmed.
+    if (gap) parts.push({ kind: "gap", source: escapeRegExp(gap).replace(/[ \t]+$/, "[ \\t]*") });
+    return parts;
+}
+
+/**
+ * The parts in order. Past the last text, placeholders filled in with
+ * nothing leave the note ending in whitespace, which `normalize` trims: each
+ * gap there may be missing, with all that follows it.
+ */
+function joinParts(parts: Part[]): string {
+    let tail = parts.length;
+    while (tail > 0 && parts[tail - 1]!.kind !== "text") tail--;
+    let source = parts
+        .slice(0, tail)
+        .map((part) => part.source)
+        .join("");
+    let open = 0;
+    for (const part of parts.slice(tail)) {
+        if (part.kind === "gap") {
+            source += "(?:";
+            open++;
+        }
+        source += part.source;
+    }
+    return source + ")?".repeat(open);
 }
 
 /** Whether `text` holds nothing but what `pattern`'s template put there. */
