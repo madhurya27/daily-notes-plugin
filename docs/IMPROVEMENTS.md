@@ -47,26 +47,23 @@ within each list.
 
 ### Architecture
 
-1. **`StreamState` duplicates the service's list prefix**, which is why the
-   first rule in `.claude/rules/invariants.md` exists. A loaded count, reading
-   notes from the service, removes the desync class outright.
-2. **One collapse store, like the others.** Now one localStorage key per section
+1. **One collapse store, like the others.** Now one localStorage key per section
    plus an index per file (`collapse-store.ts:61-67`): unprefixed, unlike
    `daily-notes-stream:*`, so open to collisions, and never cleaned since keys
    cannot be listed. One prefixed blob with `retainOnly` at layout ready fixes
    both.
-3. **Two "block at the pane's top" lookups.** `captureAnchor` is linear
+2. **Two "block at the pane's top" lookups.** `captureAnchor` is linear
    (`scroll-position.ts:32`), `ScrollAnchor.blockAt` binary
    (`scroll-anchor.ts:392`). `AnchorSnapshot` and `StreamPlace` are one concept.
-4. **`ScrollAnchor.stream()` infers the container** from the first watched
+3. **`ScrollAnchor.stream()` infers the container** from the first watched
    block's parent (`scroll-anchor.ts:405`); pass it in.
-5. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
+4. **`NoteWindowManager` does four jobs** in 639 lines: windowing, pinning,
    placeholder reservation, settling. Extract reservation (`reserve`, `expect`,
    `reserveKey`, the estimate).
-6. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
+5. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
    `LinkChanges` already diffs per source; one incremental index could serve
    both.
-7. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
+6. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
    `scrollToTop`, `onBaseResized`, `onFingerDown`/`Up`.
 
 ### Performance

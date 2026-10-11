@@ -1936,3 +1936,18 @@ clutter; one wrongly hidden is lost writing.
   event, kept in plugin data — catches multi-line output, but not notes made
   before install, where hiding matters most; an undocumented event and a synced
   record per note. Revisit if users ask (`docs/TODO.md`).
+
+## D-118 — The service counts the stream's notes (2026-10-11)
+
+**Decision:** `DailyNoteService` keeps `streamLength`, how many notes, newest
+first, the stream has loaded. `insertSorted`/`removeSorted` move it, a rebuild
+empties it; `NoteStream` keeps no list of its own.
+
+**Why:** `StreamState` copied the list's first notes, and every list change had
+to repeat itself there or pagination skipped and repeated notes (ADR 0004). Kept
+beside the list, the count moves with it.
+
+**Rejected:**
+
+- The count in `NoteStream` — each insert and remove must still repeat itself
+  there.

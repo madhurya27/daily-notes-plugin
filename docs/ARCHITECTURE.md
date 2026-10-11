@@ -48,7 +48,8 @@ opens, so a view's own handler always reads an index already updated.
    `stream.open()`. The queue holds what it heard meanwhile until then.
 2. **Load.** A sentinel after the last block (`infinite-scroll.ts`) comes into
    view; `NoteStream` appends the next batch of 10 as empty blocks, placed and
-   indexed by path in `stream-blocks.ts`. `stream-state.ts` is the loaded range.
+   indexed by path in `stream-blocks.ts`. The service counts how many it has
+   loaded, its `streamLength` (D-118).
 3. **Render.** `NoteWindowManager` (`note-window.ts`) renders blocks within a
    margin of the viewport and empties them well past it, keeping their height
    ([ADR 0006](adr/0006-unload-off-screen-notes.md)). Each rendered note owns a

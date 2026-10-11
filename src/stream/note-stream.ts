@@ -2,7 +2,6 @@ import { basesLoaded } from "../render/bases/bases-loaded";
 import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce } from "obsidian";
 import type { DailyNoteService, Moment } from "../notes/daily-note-service";
 import type { NoteRenderer } from "../render/note-renderer";
-import { StreamState } from "./stream-state";
 import { StreamBlocks } from "./stream-blocks";
 import { InfiniteScrollController } from "./infinite-scroll";
 import { NoteWindowManager } from "./note-window";
@@ -41,7 +40,6 @@ const NO_NOTE_FOR_DATE = "No daily note on or before that date.";
  * time through a single queue (ADR 0004).
  */
 export class NoteStream {
-    private state = new StreamState();
     private scroll = new InfiniteScrollController();
     private window: NoteWindowManager;
     private scrollRoot!: HTMLElement;
@@ -52,7 +50,7 @@ export class NoteStream {
     /** Lets the queue run: until `open`, there is no container to change. */
     private opened!: () => void;
     // Serialized: an event interleaving with an in-flight batch would leave
-    // state and the service cache disagreeing.
+    // the blocks and the service's stream disagreeing.
     private queue: Promise<void> = new Promise((resolve) => (this.opened = resolve));
     private loadPending = false;
     /** Lets go of the match last centered; a no-op once it has. */
@@ -77,7 +75,6 @@ export class NoteStream {
     open(scrollRoot: HTMLElement, container: HTMLElement): void {
         this.scrollRoot = scrollRoot;
         this.blocks.attach(container);
-        this.state.reset();
         this.window.attach(scrollRoot, this.loadedToEnd);
         // iOS ends a glide early on a scroll box, or on a frame starting its page;
         // Android is held to the same rules (ADR 0008, D-087).
@@ -194,18 +191,17 @@ export class NoteStream {
     }
 
     private insertNote(file: TFile): void {
-        // Single source of truth for sort order, and what keeps the service
-        // cache aligned with `this.state.length`. -1 when not a daily note.
+        // -1 when not a daily note.
         const globalIndex = this.service.insertSorted(file);
         if (globalIndex === -1) return;
-        if (globalIndex >= this.state.length) {
+        if (globalIndex >= this.service.streamLength) {
             // Beyond the loaded range — a visible sentinel loads it now.
             this.scroll.recheck();
             return;
         }
 
-        this.blocks.insertBefore(file.path, this.window.add(file), this.state.notes[globalIndex]?.path);
-        this.state.insert(globalIndex, file);
+        const next = this.service.getBatch(globalIndex + 1, 1)[0];
+        this.blocks.insertBefore(file.path, this.window.add(file), next?.path);
     }
 
     /**
@@ -217,10 +213,7 @@ export class NoteStream {
         const el = this.blocks.remove(renderedPath);
         if (el) this.window.remove(el);
 
-        const globalIndex = this.service.removeSorted(file.path);
-        if (globalIndex !== -1 && globalIndex < this.state.length) {
-            this.state.remove(file.path);
-        }
+        this.service.removeSorted(file.path);
         if (this.service.length === 0) this.showEmptyState();
     }
 
@@ -248,10 +241,10 @@ export class NoteStream {
     }
 
     private async loadBatch(): Promise<void> {
-        const batch = this.service.getBatch(this.state.length, BATCH_SIZE);
+        const batch = this.service.extendStream(BATCH_SIZE);
         if (batch.length === 0) {
             // No recheck: re-triggering on an empty batch spins forever.
-            if (this.state.length === 0) this.showEmptyState();
+            if (this.service.streamLength === 0) this.showEmptyState();
             return;
         }
 
@@ -260,7 +253,6 @@ export class NoteStream {
         for (const file of batch) {
             this.blocks.append(file.path, this.window.add(file));
         }
-        this.state.append(batch);
 
         this.scroll.recheck();
     }
@@ -295,7 +287,7 @@ export class NoteStream {
      * Renders the note before any scroll reaches it, and waits for its Bases:
      * scrolled to first, it shows each empty, then filling in. Loading is one
      * enqueued task: interleaving with a scroll-triggered load would desync
-     * state from the service cache.
+     * the blocks from the service's stream.
      */
     private async readyIndex(index: number): Promise<HTMLElement | null> {
         this.letGoOfCentered();
@@ -336,7 +328,7 @@ export class NoteStream {
     /** The first note reaching into the pane; null when none does. */
     firstVisibleNote(): TFile | null {
         const find = (f: TFile) => this.blocks.get(f.path);
-        return captureAnchor(this.state.notes, this.scrollRoot, find)?.file ?? null;
+        return captureAnchor(this.service.streamedNotes(), this.scrollRoot, find)?.file ?? null;
     }
 
     /**
@@ -345,7 +337,7 @@ export class NoteStream {
      */
     place(): StreamPlace | null {
         const find = (f: TFile) => this.blocks.get(f.path);
-        const anchor = captureAnchor(this.state.notes, this.scrollRoot, find);
+        const anchor = captureAnchor(this.service.streamedNotes(), this.scrollRoot, find);
         if (!anchor) return null;
         return { path: anchor.file.path, offset: anchor.relativeTopPx };
     }
@@ -380,9 +372,9 @@ export class NoteStream {
     private async loadUntilScrollable(scrollTop: number): Promise<void> {
         const root = this.scrollRoot;
         while (root.scrollHeight - root.clientHeight < scrollTop) {
-            const before = this.state.length;
+            const before = this.service.streamLength;
             await this.loadBatch();
-            if (this.state.length === before) return;
+            if (this.service.streamLength === before) return;
         }
     }
 
@@ -397,12 +389,12 @@ export class NoteStream {
      * stream ends first — the cache shrank under the index mid-jump.
      */
     private async loadThrough(index: number): Promise<TFile | undefined> {
-        while (this.state.length <= index) {
-            const before = this.state.length;
+        while (this.service.streamLength <= index) {
+            const before = this.service.streamLength;
             await this.loadBatch();
-            if (this.state.length === before) return undefined;
+            if (this.service.streamLength === before) return undefined;
         }
-        return this.state.notes[index];
+        return this.service.getBatch(index, 1)[0];
     }
 
     /**
@@ -461,7 +453,6 @@ export class NoteStream {
         this.scrollRoot.scrollTop = 0;
         this.scroll.detach();
         this.resetWindow();
-        this.state.reset();
         this.attachScroll();
         await this.loadBatch();
     }
@@ -474,14 +465,12 @@ export class NoteStream {
      */
     private async rerenderAll(): Promise<void> {
         const find = (f: TFile) => this.blocks.get(f.path);
-        const snapshot = captureAnchor(this.state.notes, this.scrollRoot, find);
-
-        const notes = [...this.state.notes];
+        const notes = this.service.streamedNotes();
+        const snapshot = captureAnchor(notes, this.scrollRoot, find);
 
         this.blocks.empty();
         this.scroll.detach();
         this.resetWindow();
-        this.state.reset();
 
         for (const file of notes) {
             this.blocks.append(file.path, this.window.add(file));
@@ -490,8 +479,6 @@ export class NoteStream {
         this.attachScroll();
 
         if (snapshot) restoreAnchor(snapshot, this.scrollRoot, find);
-
-        this.state.reset(notes);
     }
 
     /**
@@ -509,7 +496,7 @@ export class NoteStream {
         this.scroll.attach(this.scrollRoot, this.blocks.el, () => this.loadMoreNotes());
     }
 
-    private readonly loadedToEnd = () => this.state.length >= this.service.length;
+    private readonly loadedToEnd = () => this.service.streamLength >= this.service.length;
 
     /** Frees every note and starts the observers over. */
     private resetWindow(): void {

@@ -646,11 +646,11 @@ describe("DailyNotesStreamPlugin — two open streams", () => {
         __setMockNotes(["Notes/2026-08-28.md", "Notes/2026-08-27.md"]);
         const streams = await openTwoViews();
 
-        const deleted = streams[0]!["state"].notes[0]!;
+        const deleted = streams[0]!["service"].streamedNotes()[0]!;
         for (const stream of streams) stream.onFileDelete(deleted);
         await Promise.all(streams.map((stream) => stream.refresh()));
 
-        expect(streams.map((stream) => stream["state"].notes.map((f) => f.path))).toEqual([
+        expect(streams.map((stream) => stream["service"].streamedNotes().map((f) => f.path))).toEqual([
             ["Notes/2026-08-27.md"],
             ["Notes/2026-08-27.md"],
         ]);

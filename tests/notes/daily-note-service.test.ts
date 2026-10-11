@@ -133,6 +133,99 @@ describe("DailyNoteService", () => {
         });
     });
 
+    describe("the stream: the newest notes, as many as it has loaded", () => {
+        async function serviceOf(...dates: string[]): Promise<DailyNoteService> {
+            __setMockNotes(dates.map((date) => `Notes/${date}.md`));
+            const svc = new DailyNoteService(__mockMarkdownFiles);
+            await svc.initialize();
+            return svc;
+        }
+
+        const basenames = (files: TFile[]) => files.map((file) => file.basename);
+
+        it("starts empty", async () => {
+            const svc = await serviceOf("2025-01-01");
+
+            expect(svc.streamLength).toBe(0);
+            expect(svc.streamedNotes()).toEqual([]);
+        });
+
+        it("extends by the next newest notes, and returns them", async () => {
+            const svc = await serviceOf("2025-01-01", "2025-01-02", "2025-01-03");
+
+            expect(basenames(svc.extendStream(2))).toEqual(["2025-01-03", "2025-01-02"]);
+            expect(basenames(svc.extendStream(2))).toEqual(["2025-01-01"]);
+            expect(svc.streamLength).toBe(3);
+            expect(basenames(svc.streamedNotes())).toEqual(["2025-01-03", "2025-01-02", "2025-01-01"]);
+        });
+
+        it("extends by nothing past the last note", async () => {
+            const svc = await serviceOf("2025-01-01");
+            svc.extendStream(1);
+
+            expect(svc.extendStream(1)).toEqual([]);
+            expect(svc.streamLength).toBe(1);
+        });
+
+        it("takes in a note inserted inside it", async () => {
+            const svc = await serviceOf("2025-01-01", "2025-01-05");
+            svc.extendStream(1);
+
+            svc.insertSorted(new TFile("Notes/2025-01-06.md"));
+
+            expect(basenames(svc.streamedNotes())).toEqual(["2025-01-06", "2025-01-05"]);
+        });
+
+        it("leaves out a note inserted at or past its end", async () => {
+            const svc = await serviceOf("2025-01-01", "2025-01-05");
+            svc.extendStream(1);
+
+            svc.insertSorted(new TFile("Notes/2025-01-03.md"));
+
+            expect(basenames(svc.streamedNotes())).toEqual(["2025-01-05"]);
+            expect(basenames(svc.extendStream(1))).toEqual(["2025-01-03"]);
+        });
+
+        it("drops a note removed inside it", async () => {
+            const svc = await serviceOf("2025-01-01", "2025-01-02", "2025-01-03");
+            svc.extendStream(2);
+
+            svc.removeSorted("Notes/2025-01-03.md");
+
+            expect(basenames(svc.streamedNotes())).toEqual(["2025-01-02"]);
+            expect(basenames(svc.extendStream(1))).toEqual(["2025-01-01"]);
+        });
+
+        it("keeps its length when a note past its end is removed", async () => {
+            const svc = await serviceOf("2025-01-01", "2025-01-02", "2025-01-03");
+            svc.extendStream(1);
+
+            svc.removeSorted("Notes/2025-01-01.md");
+
+            expect(svc.streamLength).toBe(1);
+        });
+
+        it("empties when the list is built again", async () => {
+            const svc = await serviceOf("2025-01-01");
+            svc.extendStream(1);
+
+            __setMockSettings({ format: "YYYY-MM-DD", folder: "Journal" });
+            __setMockNotes(["Journal/2025-01-01.md"]);
+            await svc.refreshIfSettingsChanged();
+
+            expect(svc.streamLength).toBe(0);
+        });
+
+        it("stays as it is when the list is not built again", async () => {
+            const svc = await serviceOf("2025-01-01");
+            svc.extendStream(1);
+
+            await svc.refreshIfSettingsChanged();
+
+            expect(svc.streamLength).toBe(1);
+        });
+    });
+
     describe("instance: insertSorted", () => {
         it("inserts a newer note at index 0", async () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });

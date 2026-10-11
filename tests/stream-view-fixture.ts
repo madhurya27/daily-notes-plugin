@@ -27,6 +27,8 @@ export function asApp(stub: object): App {
 export function makeService(): DailyNoteService {
     return fake<DailyNoteService>({
         getBatch: vi.fn().mockReturnValue([]),
+        extendStream: vi.fn().mockReturnValue([]),
+        streamedNotes: vi.fn().mockReturnValue([]),
         initialize: vi.fn().mockResolvedValue(undefined),
         refreshIfSettingsChanged: vi.fn().mockResolvedValue(false),
         insertSorted: vi.fn().mockReturnValue(-1),
@@ -39,6 +41,7 @@ export function makeService(): DailyNoteService {
         formatDate: vi.fn().mockReturnValue(""),
         parseNoteDate: vi.fn().mockReturnValue(null),
         length: 0,
+        streamLength: 0,
     });
 }
 

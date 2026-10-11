@@ -42,6 +42,8 @@ interface DatedNote {
 
 export class DailyNoteService {
     private _sorted: DatedNote[] = [];
+    /** How many of the notes, newest first, the stream has loaded. */
+    private _streamLength = 0;
     /** The daily-notes config the cache was built from; null before the first build. */
     private builtFrom: string | null = null;
 
@@ -63,8 +65,7 @@ export class DailyNoteService {
     async initialize(): Promise<void> {
         const format = this.readFormat();
         try {
-            this._sorted = await this.buildSorted(format);
-            this.builtFrom = this.signature(format);
+            this.rebuilt(await this.buildSorted(format), format);
         } catch (error) {
             console.error("DailyNotesStream: Failed to list the daily notes", error);
         }
@@ -78,9 +79,15 @@ export class DailyNoteService {
     async refreshIfSettingsChanged(): Promise<boolean> {
         const format = this.readFormat();
         if (this.signature(format) === this.builtFrom) return false;
-        this._sorted = await this.buildSorted(format);
-        this.builtFrom = this.signature(format);
+        this.rebuilt(await this.buildSorted(format), format);
         return true;
+    }
+
+    /** A new list starts a new stream. */
+    private rebuilt(sorted: DatedNote[], format: DateFormat): void {
+        this._sorted = sorted;
+        this._streamLength = 0;
+        this.builtFrom = this.signature(format);
     }
 
     /** Newest first. */
@@ -88,7 +95,27 @@ export class DailyNoteService {
         return this._sorted.slice(offset, offset + limit).map((note) => note.file);
     }
 
-    /** Returns the insertion index, or -1 when not a daily note, hidden, or already present. */
+    /** How many of the notes, newest first, the stream has loaded. */
+    get streamLength(): number {
+        return this._streamLength;
+    }
+
+    /** The notes the stream has loaded, newest first. */
+    streamedNotes(): TFile[] {
+        return this.getBatch(0, this._streamLength);
+    }
+
+    /** Loads the next `limit` notes into the stream; returns them, none past the last note. */
+    extendStream(limit: number): TFile[] {
+        const notes = this.getBatch(this._streamLength, limit);
+        this._streamLength += notes.length;
+        return notes;
+    }
+
+    /**
+     * Returns the insertion index, or -1 when not a daily note, hidden, or
+     * already present. Inside the stream, the stream takes the note in.
+     */
     insertSorted(file: TFile): number {
         const format = this.readFormat();
         const date = this.parseDate(file, format);
@@ -99,6 +126,7 @@ export class DailyNoteService {
         if (this._sorted[lo]?.file.path === file.path) return -1;
 
         this._sorted.splice(lo, 0, { file, date });
+        if (lo < this._streamLength) this._streamLength++;
         return lo;
     }
 
@@ -115,10 +143,12 @@ export class DailyNoteService {
         return this.datedNotes(this.readFormat()).some((note) => this.filter.isHidden(note.file, note.date));
     }
 
-    /** Returns the removed index, or -1 when absent. */
+    /** Returns the removed index, or -1 when absent. Inside the stream, the stream drops it. */
     removeSorted(filePath: string): number {
         const index = this.indexOf(filePath);
-        if (index !== -1) this._sorted.splice(index, 1);
+        if (index === -1) return index;
+        this._sorted.splice(index, 1);
+        if (index < this._streamLength) this._streamLength--;
         return index;
     }
 
