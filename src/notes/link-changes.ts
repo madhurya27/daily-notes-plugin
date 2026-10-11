@@ -1,5 +1,3 @@
-import { normalizePath } from "obsidian";
-
 type Listener = (paths: string[]) => void;
 
 /**
@@ -13,7 +11,7 @@ export class LinkChanges {
     private readonly changed = new Set<string>();
     private readonly listeners = new Set<Listener>();
 
-    /** `folder`: the daily-notes folder, "" or "/" when unset. */
+    /** `folder`: the daily-notes folder as `readDateFormat` gives it, "" when unset. */
     constructor(
         private readonly links: () => Record<string, Record<string, number>>,
         private readonly folder: () => string
@@ -56,8 +54,7 @@ export class LinkChanges {
 
     /** `source`'s links into the daily-notes folder, but not to itself. */
     private followedTargets(source: string): string[] {
-        // Obsidian normalizes an unset folder to "/", hence the trim.
-        const folder = normalizePath(this.folder()).replace(/^\/+|\/+$/g, "");
+        const folder = this.folder();
         const prefix = folder ? `${folder}/` : "";
         return Object.keys(this.links()[source] ?? {}).filter(
             (target) => target !== source && target.startsWith(prefix)

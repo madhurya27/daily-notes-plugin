@@ -1,16 +1,6 @@
-import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 import { TFile, moment, normalizePath } from "obsidian";
 import { ParsedDates } from "./parsed-dates";
-
-/** The daily-note naming rules, read once per public operation. */
-interface DateFormat {
-    /** Full format, possibly with folder segments (e.g. `YYYY/MM/YYYY-MM-DD`). */
-    path: string;
-    /** Last segment only — what the file's basename must match. */
-    basename: string;
-    /** Configured daily-notes folder ("" when unset). */
-    folder: string;
-}
+import { readDateFormat, type DateFormat } from "./daily-note-format";
 
 /** `obsidian` exports moment as a value, so the type comes from its return. */
 export type Moment = ReturnType<typeof moment>;
@@ -65,7 +55,7 @@ export class DailyNoteService {
      * the view blank, and the next refresh lists again.
      */
     async initialize(): Promise<void> {
-        const format = this.readFormat();
+        const format = readDateFormat();
         try {
             this.rebuilt(await this.buildSorted(format), format);
         } catch (error) {
@@ -79,7 +69,7 @@ export class DailyNoteService {
      * did. Returns whether it rebuilt.
      */
     async refreshIfSettingsChanged(): Promise<boolean> {
-        const format = this.readFormat();
+        const format = readDateFormat();
         if (this.signature(format) === this.builtFrom) return false;
         this.rebuilt(await this.buildSorted(format), format);
         return true;
@@ -241,17 +231,7 @@ export class DailyNoteService {
      * list when the format changed. The settings' before the first build.
      */
     private format(): DateFormat {
-        return this.builtWith ?? this.readFormat();
-    }
-
-    private readFormat(): DateFormat {
-        const settings = getDailyNoteSettings();
-        const path = settings.format || "YYYY-MM-DD";
-        return {
-            path,
-            basename: path.split("/").pop() || "YYYY-MM-DD",
-            folder: settings.folder ?? "",
-        };
+        return this.builtWith ?? readDateFormat();
     }
 
     /** Parses a markdown file's basename against the date format. */
@@ -267,9 +247,7 @@ export class DailyNoteService {
      */
     private parseDate(file: TFile, format: DateFormat) {
         // Cheaper than the strict parse below, and most vault files fail it.
-        // Obsidian normalizes an unset folder to "/", hence the trim.
-        const folder = normalizePath(format.folder).replace(/^\/+|\/+$/g, "");
-        if (folder && !normalizePath(file.path).startsWith(`${folder}/`)) return null;
+        if (format.folder && !normalizePath(file.path).startsWith(`${format.folder}/`)) return null;
 
         const date = this.parseBasename(file, format);
         if (!date) return null;

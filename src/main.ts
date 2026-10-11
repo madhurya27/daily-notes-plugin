@@ -8,7 +8,7 @@ import { LayoutMemory } from "./stream/layout-memory";
 import { BacklinkIndex } from "./notes/backlink-index";
 import { EMPTY_NOTES_KEY, EmptyNotes, hideEmptyNotes } from "./notes/empty-notes";
 import { LinkChanges } from "./notes/link-changes";
-import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
+import { readDateFormat } from "./notes/daily-note-format";
 
 /** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
 declare const BUILD_LABEL: string;
@@ -140,7 +140,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         const { vault, metadataCache } = this.app;
         const changes = (this.linkChanges = new LinkChanges(
             () => metadataCache.resolvedLinks,
-            () => getDailyNoteSettings().folder ?? ""
+            () => readDateFormat().folder
         ));
         this.registerEvent(metadataCache.on("resolve", (file) => changes.onResolve(file.path)));
         this.registerEvent(metadataCache.on("resolved", () => changes.onResolved()));
