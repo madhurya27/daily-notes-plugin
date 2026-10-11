@@ -1220,6 +1220,8 @@ it next changes.
   ones.
 - Trusting a saved empty note by the check's start time — a synced edit can
   carry an older `mtime`, and a written note would stay hidden.
+- Capping concurrent reads — on an iPhone 16 Pro, 1,095 cold reads at once take
+  344–398 ms with no frame over 15 ms; 8 or 32 at a time is no faster.
 
 ## D-073 — Views re-check only the notes whose incoming links changed (2026-09-28)
 
@@ -1954,14 +1956,29 @@ beside the list, the count moves with it.
 
 ## D-119 — Lookups over the notes stay linear (2026-10-11)
 
-**Decision:** `DailyNoteService.indexOf` scans, `refresh` maps every date to
-read one, and the jump modal reads the daily-notes settings per note.
+**Decision:** `DailyNoteService.indexOf` scans, and `refresh` maps every date to
+read one.
 
-**Why:** each runs once per event, refresh or modal open, never per note. Over
-1,095 notes at phone speed, the modal formats every date in 1.5 ms, 0.5 ms of it
-the settings; a scan is microseconds.
+**Why:** each runs once per event, refresh or Back, never per note: over 1,095
+notes, microseconds.
 
 **Rejected:**
 
 - A path→index map — kept in step with every insert and remove, for nothing
   measurable.
+
+## D-120 — The service dates notes by the format it listed them with (2026-10-11)
+
+**Decision:** `DailyNoteService` keeps the daily-notes format of its last build
+and parses, formats and inserts by it; only `refreshIfSettingsChanged` reads the
+settings, on each config write (D-002). The jump modal spells each choice's
+label and ISO date once per open.
+
+**Why:** a note made between a format change and the refresh was parsed by the
+new format into a list sorted by the old. Reading the settings per call also
+cost 1,095 reads per modal open.
+
+**Rejected:**
+
+- Reading the format once per modal open — still a read per insert, and still
+  out of step with the list until the refresh.
