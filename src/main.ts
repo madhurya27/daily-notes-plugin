@@ -135,7 +135,6 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.registerEvent(metadataCache.on("resolved", () => this.backlinks.invalidate()));
     }
 
-    /** Registered before any view opens, so a renamed note's verdict has moved by the time a view looks. */
     /** Registered after `indexBacklinks`, so a view told of a change reads a current index. */
     private followLinkChanges(): void {
         const { vault, metadataCache } = this.app;
@@ -149,6 +148,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.registerEvent(vault.on("rename", (file, oldPath) => changes.onRename(oldPath, file.path)));
     }
 
+    /** Registered before any view opens, so a renamed note's verdict has moved by the time a view looks. */
     private indexEmptyNotes(): void {
         const { vault, metadataCache } = this.app;
         const notes = (this.emptyNotes = new EmptyNotes(

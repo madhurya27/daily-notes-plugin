@@ -344,7 +344,7 @@ export class NoteWindowManager {
                 if (window.unloadWanted) return;
 
                 const { component, footer } = await this.renderer.renderInto(block, window.file);
-                // reload() and rerenderAll() empty the container mid-flight: the
+                // close() empties the container mid-flight, off the queue: the
                 // block that comes back from the await may be nobody's child.
                 if (!block.isConnected || !this.windows.has(block)) {
                     this.renderer.discard(component);
