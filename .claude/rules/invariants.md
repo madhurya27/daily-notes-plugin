@@ -12,9 +12,12 @@ Traps that span files, so no single file's comments can hold them.
 - **The blocks are `service.streamedNotes()`, in order** (D-118). Load through
   `service.extendStream`; `create`/`delete`/`rename` through
   `service.insertSorted`/`removeSorted`, which keep `streamLength`. A block is
-  placed only when its note's index is below `streamLength`.
-- **Each view owns its `DailyNoteService`.** Every view gets every vault event;
-  a shared cache hands the second view's `insertSorted` a -1.
+  placed only when `insertSorted` reports the note `inStream`.
+- **Each view owns its `DailyNoteService`.** Its list must change in step with
+  its DOM, inside its queue
+  ([ADR 0004](../../docs/adr/0004-serialize-view-mutations.md)). A list shared
+  by views would shift under one that is mid-load, and pagination would skip or
+  repeat notes.
 - **`rename` gets `(file, oldPath)`.** Obsidian mutates `TFile` in place, so the
   DOM's `data-source-path` is the _old_ path: look the element up by `oldPath`,
   remove from the service by `file.path`.
@@ -32,11 +35,6 @@ Traps that span files, so no single file's comments can hold them.
   the anchor in the same task. Anything that changes a block's height another
   way jumps the screen a frame on iOS. A Base sets its own height only where it
   dispatches `BASE_RESIZED`, which re-pins its note there (D-108).
-- **Delegated listeners.** Chevrons, note titles and links are rebuilt on every
-  re-render, so `CollapsibleManager.delegate()` and `NoteRenderer.delegate()`
-  register one listener per gesture on the stream container, resolving the
-  target through a `WeakMap` or the DOM. Per-element listeners would pile up on
-  the view until it closes.
 - **No scroll containers inside a note on mobile**
   ([ADR 0008](../../docs/adr/0008-nothing-scrolls-on-mobile.md)): one ends iOS
   glides early. Under `.is-mobile`, clip with `overflow: clip`, never `hidden`

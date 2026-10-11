@@ -16,6 +16,24 @@ test("flicks reach the oldest note, each note once, newest first", async ({ phon
     expect(paths).toEqual([...paths].sort().reverse());
 });
 
+// Unmeasured, every note grows from its estimate as it renders, the Bases
+// among them (EMBEDS_NOTE in vault.ts) as they fill in (ADR 0013).
+test("flicks to the oldest note and back change a rendered note's height only as it re-pins", async ({ phone }) => {
+    await phone.forgetHeights();
+    await phone.openStream();
+    const total = await phone.run(
+        () => window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view.service.length
+    );
+    await phone.watchPins();
+
+    for (let flicks = 0; flicks < 100 && !(await phone.atEnd()); flicks++) await phone.flick("up", 3);
+    for (let flicks = 0; flicks < 100 && (await phone.scrollTop()) > 0; flicks++) await phone.flick("down", 3);
+
+    const { unpinned, rendered } = await phone.stopWatchingPins();
+    expect(rendered).toBe(total);
+    expect(unpinned).toEqual([]);
+});
+
 // Each flick starts on the newest notes, which hold what once stopped a
 // glide dead within 0.4 s (STALLERS in vault.ts).
 test("flicks from the top glide on", async ({ phone }) => {

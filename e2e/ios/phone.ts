@@ -379,6 +379,62 @@ export class Phone {
         });
     }
 
+    /**
+     * Starts watching each rendered note's height, as a task ends and each
+     * frame; `stopWatchingPins` reports a change made with no re-pin or
+     * unload beside it (ADR 0013). Also counts the notes seen rendered.
+     */
+    async watchPins(): Promise<void> {
+        await this.run((s: string) => {
+            const pane = document.querySelector(s)!.parentElement!;
+            /** What only a re-pin or an unload changes. */
+            const state = (block: HTMLElement) =>
+                [
+                    block.style.getPropertyValue("--daily-note-pinned-height"),
+                    block.classList.contains("is-pinned"),
+                    block.classList.contains("is-unloaded"),
+                ].join();
+            const seen = new Map<HTMLElement, { state: string; height: number }>();
+            const rendered = new Set<string>();
+            const watch = { unpinned: [] as string[], rendered: 0, on: true, tasks: null as MutationObserver | null };
+            (window as unknown as { streamPins: typeof watch }).streamPins = watch;
+            const check = () => {
+                for (const block of pane.querySelectorAll<HTMLElement>(".daily-note-block")) {
+                    const now = { state: state(block), height: block.getBoundingClientRect().height };
+                    const was = seen.get(block);
+                    seen.set(block, now);
+                    if (block.classList.contains("is-unloaded")) continue;
+                    rendered.add(block.dataset.sourcePath!);
+                    if (was && now.state === was.state && Math.abs(now.height - was.height) > 0.5)
+                        watch.unpinned.push(`${block.dataset.sourcePath}: ${was.height} → ${now.height}`);
+                }
+                watch.rendered = rendered.size;
+            };
+            watch.tasks = new MutationObserver(check);
+            watch.tasks.observe(pane, { subtree: true, childList: true, attributes: true, characterData: true });
+            const frame = () => {
+                if (!watch.on) return;
+                check();
+                requestAnimationFrame(frame);
+            };
+            requestAnimationFrame(frame);
+        }, STREAM);
+    }
+
+    /** Since `watchPins`: each height change made with no re-pin, and how many notes rendered. */
+    stopWatchingPins(): Promise<{ unpinned: string[]; rendered: number }> {
+        return this.run(() => {
+            const watch = (
+                window as unknown as {
+                    streamPins: { unpinned: string[]; rendered: number; on: boolean; tasks: MutationObserver };
+                }
+            ).streamPins;
+            watch.on = false;
+            watch.tasks.disconnect();
+            return { unpinned: watch.unpinned, rendered: watch.rendered };
+        });
+    }
+
     /** The stream's place: the first note reaching into the pane. */
     place(): Promise<Place> {
         return this.run((s: string) => {

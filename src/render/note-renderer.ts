@@ -263,10 +263,7 @@ export class NoteRenderer {
     /** Title → its note. Weak, so titles dropped by a re-render are collectable. */
     private readonly titles = new WeakMap<HTMLElement, TFile>();
 
-    /**
-     * One listener per gesture for the whole stream: a title or link per
-     * note would pile registrations on the view until it closes.
-     */
+    /** One listener per gesture for the whole stream, so a re-rendered title or link needs none of its own. */
     delegate(view: HoverView, root: HTMLElement): void {
         view.registerDomEvent(root, "click", (evt) => {
             // A click's target is the element under the pointer, never a text node.

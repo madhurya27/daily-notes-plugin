@@ -6,6 +6,7 @@ import {
     openStream,
     closeSearchPanes,
     restoreScrollAnchoring,
+    seededDate,
     SEEDED_DAYS,
     withoutScrollAnchoring,
     writeDailyNotesConfig,
@@ -783,6 +784,101 @@ test.describe("daily notes stream in real Obsidian", () => {
 
                 expect(offBy.length).toBeGreaterThan(0);
                 expect(offBy).toEqual(offBy.map(() => 0));
+            });
+
+            // A Base, unmeasured notes and a scroll down and back: renders,
+            // unloads and Bases filling in, each a height change.
+            test.describe("through a scroll down and back", () => {
+                const path = `Notes/${seededDate(SEEDED_DAYS)}.md`;
+                const base = ["```base", "views:", "  - type: table", "    name: Files", "```", ""].join("\n");
+
+                test.beforeEach(async ({ obsidian }) => {
+                    await obsidian.page.evaluate(
+                        async ({ path, text }) => void (await window.app.vault.create(path, text)),
+                        { path, text: base.repeat(2) }
+                    );
+                });
+                test.afterEach(async ({ obsidian }) => {
+                    await obsidian.page.evaluate(
+                        (p) => window.app.vault.delete(window.app.vault.getFileByPath(p)!),
+                        path
+                    );
+                });
+
+                test("changes a rendered note's height only as it re-pins", async ({ obsidian }) => {
+                    const { page } = obsidian;
+                    await page.evaluate(() =>
+                        window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.restore(null)
+                    );
+                    const container = await openStream(page);
+
+                    const { sawBases, unpinned } = await container.locator("xpath=..").evaluate(async (pane, path) => {
+                        const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                        /** What only a re-pin or an unload changes. */
+                        const state = (block: HTMLElement) =>
+                            [
+                                block.style.getPropertyValue("--daily-note-pinned-height"),
+                                block.classList.contains("is-pinned"),
+                                block.classList.contains("is-unloaded"),
+                            ].join();
+                        const seen = new Map<HTMLElement, { state: string; height: number }>();
+                        const unpinned: string[] = [];
+                        let sawBases = false;
+                        // Read as a task ends and as a frame starts: before Chromium's
+                        // resize reports, so what iOS would paint.
+                        const check = () => {
+                            sawBases ||= pane.querySelectorAll(`[data-source-path="${path}"] .bases-view`).length === 2;
+                            for (const block of pane.querySelectorAll<HTMLElement>(".daily-note-block")) {
+                                const now = { state: state(block), height: block.getBoundingClientRect().height };
+                                const was = seen.get(block);
+                                seen.set(block, now);
+                                if (!was || block.classList.contains("is-unloaded")) continue;
+                                if (now.state === was.state && Math.abs(now.height - was.height) > 0.5)
+                                    unpinned.push(`${block.dataset.sourcePath}: ${was.height} → ${now.height}`);
+                            }
+                        };
+                        const tasks = new MutationObserver(check);
+                        tasks.observe(pane, {
+                            subtree: true,
+                            childList: true,
+                            attributes: true,
+                            characterData: true,
+                        });
+                        let watching = true;
+                        void (async () => {
+                            while (watching) {
+                                check();
+                                await frame();
+                            }
+                        })();
+
+                        const step = pane.clientHeight / 3;
+                        const settle = async () => {
+                            for (let i = 0; i < 10; i++) await frame();
+                        };
+                        const down = async () => {
+                            const last = pane.scrollTop;
+                            pane.scrollTop += step;
+                            await frame();
+                            await frame();
+                            return pane.scrollTop !== last;
+                        };
+                        // At the end, a batch may still be loading.
+                        while ((await down()) || (await settle(), await down()));
+                        while (pane.scrollTop > 0) {
+                            pane.scrollTop -= step;
+                            await frame();
+                            await frame();
+                        }
+                        await settle();
+                        watching = false;
+                        tasks.disconnect();
+                        return { sawBases, unpinned };
+                    }, path);
+
+                    expect(sawBases).toBe(true);
+                    expect(unpinned).toEqual([]);
+                });
             });
         });
 
