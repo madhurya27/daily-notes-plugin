@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { COLLAPSE_STATE_KEY, CollapsibleStateStore } from "../../src/render/collapse-store";
+import { COLLAPSE_STATE_KEY, CollapsibleStateStore, isOldCollapseKey } from "../../src/render/collapse-store";
 import { asApp } from "../stream-view-fixture";
 
 function makeApp() {
@@ -113,6 +113,17 @@ describe("CollapsibleStateStore", () => {
 
             expect(app.saveLocalStorage).not.toHaveBeenCalled();
         });
+    });
+
+    it("forgetAll forgets every note's sections, and the key that held them", () => {
+        store.setCollapsed("a.md", "intro", true);
+        store.setCollapsed("b.md", "properties", false);
+
+        store.forgetAll();
+
+        expect(store.isCollapsed("a.md", "intro")).toBe(false);
+        expect(store.collapsedOr("b.md", "properties", true)).toBe(true);
+        expect(saved()).toBeNull();
     });
 
     it("clearForFile removes all entries for that file", () => {
@@ -260,5 +271,19 @@ describe("CollapsibleStateStore", () => {
         store.clearForFile("a.md");
         expect(store.isCollapsed("a.md", "section")).toBe(false);
         expect(store.isCollapsed("b.md", "section")).toBe(true);
+    });
+});
+
+describe("isOldCollapseKey", () => {
+    it.each([
+        ["collapse:Notes/2025-01-01.md:intro", true],
+        ["collapse:Notes/a: b.md:li-0-milk", true],
+        ["collapse-idx:Notes/2025-01-01.md", true],
+        ["daily-notes-stream:collapse", false],
+        ["collapse:sidebar", false],
+        ["collapse-idx:sidebar", false],
+        ["other-collapse:Notes/a.md:intro", false],
+    ])("%s is %s", (name, old) => {
+        expect(isOldCollapseKey(name)).toBe(old);
     });
 });

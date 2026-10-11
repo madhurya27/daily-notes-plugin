@@ -8,6 +8,11 @@ const VERSION = 1;
 
 type Sections = Map<string, boolean>;
 
+/** A key builds before D-121 saved: one per section, and an index per note. */
+export function isOldCollapseKey(name: string): boolean {
+    return /^collapse(-idx)?:.*\.md(:|$)/.test(name);
+}
+
 /**
  * Collapse state, one per plugin, read once and saved whole on each change.
  * Keys: slugified text for headers, `li-{depth}-{own text}` for list items.
@@ -64,6 +69,12 @@ export class CollapsibleStateStore {
         if (gone.length === 0) return;
         for (const path of gone) this.files.delete(path);
         this.save();
+    }
+
+    /** Starts over from nothing folded, as on a new device. */
+    forgetAll(): void {
+        this.files.clear();
+        this.saveLogged(() => this.app.saveLocalStorage(COLLAPSE_STATE_KEY, null));
     }
 
     clearForFile(filePath: string): void {

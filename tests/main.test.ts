@@ -749,3 +749,75 @@ describe("DailyNotesStreamPlugin — forget-note-heights command", () => {
         expect(other.forgetHeights).not.toHaveBeenCalled();
     });
 });
+
+// A testing aid, to start from no folds: only a build put on a device offers it.
+describe("DailyNotesStreamPlugin — forget-collapse-state command", () => {
+    /** The browser's localStorage, which jsdom here leaves out. */
+    const stored = new Map<string, string>();
+    beforeEach(() => {
+        Notice.reset();
+        stored.clear();
+        vi.stubGlobal("localStorage", {
+            get length() {
+                return stored.size;
+            },
+            key: (index: number) => [...stored.keys()][index] ?? null,
+            removeItem: (key: string) => void stored.delete(key),
+        });
+    });
+    afterEach(() => vi.unstubAllGlobals());
+    const offered = (p: DailyNotesStreamPlugin) => p.commands.some((c) => c.id === "forget-collapse-state");
+    const forget = (p: DailyNotesStreamPlugin) => {
+        p.commands.find((c) => c.id === "forget-collapse-state")!.callback!();
+    };
+
+    it("is not offered in a release build", async () => {
+        vi.stubGlobal("BUILD_LABEL", "");
+        const { plugin } = await loadPlugin();
+        expect(offered(plugin)).toBe(false);
+    });
+
+    it("forgets every fold, and removes this vault's keys from before D-121, leaving other vaults'", async () => {
+        vi.stubGlobal("BUILD_LABEL", "amber otter");
+        const { plugin, app } = await loadPlugin();
+        Object.assign(app, { appId: "vault1" });
+        plugin.collapseStore.setCollapsed("Notes/2025-01-01.md", "intro", true);
+        stored.set("vault1-collapse:Notes/2025-01-01.md:intro", "true");
+        stored.set("vault1-collapse-idx:Notes/2025-01-01.md", '["intro"]');
+        stored.set("vault2-collapse:Notes/2025-01-01.md:intro", "true");
+
+        forget(plugin);
+
+        expect(plugin.collapseStore.isCollapsed("Notes/2025-01-01.md", "intro")).toBe(false);
+        expect(app.saveLocalStorage).toHaveBeenLastCalledWith(COLLAPSE_STATE_KEY, null);
+        expect([...stored.keys()]).toEqual(["vault2-collapse:Notes/2025-01-01.md:intro"]);
+    });
+
+    it("redraws every open stream, so what was folded shows open", async () => {
+        vi.stubGlobal("BUILD_LABEL", "amber otter");
+        const { plugin, app } = await loadPlugin();
+        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, makeService());
+        const refresh = vi.spyOn(view, "refresh").mockResolvedValue();
+        const other = { refresh: vi.fn() };
+        app.workspace.getLeavesOfType.mockReturnValue([{ view }, { view: other }]);
+
+        forget(plugin);
+
+        expect(refresh).toHaveBeenCalledOnce();
+        expect(other.refresh).not.toHaveBeenCalled();
+    });
+    it("logs a stream that fails to redraw", async () => {
+        vi.stubGlobal("BUILD_LABEL", "amber otter");
+        const { plugin, app } = await loadPlugin();
+        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(app)), plugin, makeService());
+        vi.spyOn(view, "refresh").mockRejectedValue(new Error("gone"));
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        app.workspace.getLeavesOfType.mockReturnValue([{ view }]);
+
+        forget(plugin);
+        await flushPromises();
+
+        expect(error).toHaveBeenCalledWith(expect.stringMatching(/^DailyNotesStream: /), expect.any(Error));
+        error.mockRestore();
+    });
+});

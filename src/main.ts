@@ -1,7 +1,7 @@
 import { Keymap, Notice, PaneType, Plugin, WorkspaceLeaf } from "obsidian";
 import { DailyNotesStreamView, VIEW_TYPE_DAILY_NOTES_STREAM } from "./ui/stream-view";
 import { DEFAULT_SETTINGS, DailyNotesStreamSettings, DailyNotesStreamSettingTab } from "./settings";
-import { CollapsibleStateStore } from "./render/collapse-store";
+import { CollapsibleStateStore, isOldCollapseKey } from "./render/collapse-store";
 import { DailyNoteService } from "./notes/daily-note-service";
 import { ParsedDates } from "./notes/parsed-dates";
 import { LayoutMemory } from "./stream/layout-memory";
@@ -9,6 +9,7 @@ import { BacklinkIndex } from "./notes/backlink-index";
 import { EMPTY_NOTES_KEY, EmptyNotes, hideEmptyNotes } from "./notes/empty-notes";
 import { LinkChanges } from "./notes/link-changes";
 import { readDateFormat } from "./notes/daily-note-format";
+import { removeLocalStorageKeys } from "./obsidian-internals";
 
 /** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
 declare const BUILD_LABEL: string;
@@ -89,6 +90,11 @@ export default class DailyNotesStreamPlugin extends Plugin {
                 name: "Forget measured note heights",
                 callback: () => this.forgetNoteHeights(),
             });
+            this.addCommand({
+                id: "forget-collapse-state",
+                name: "Forget collapse state",
+                callback: () => this.forgetCollapseState(),
+            });
         }
 
         this.addSettingTab(new DailyNotesStreamSettingTab(this.app, this));
@@ -123,6 +129,19 @@ export default class DailyNotesStreamPlugin extends Plugin {
         this.layoutMemory.forgetAll();
         for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_NOTES_STREAM)) {
             if (leaf.view instanceof DailyNotesStreamView) leaf.view.forgetHeights();
+        }
+    }
+
+    /** Every open stream redraws with nothing folded; the keys builds before D-121 saved go too. */
+    private forgetCollapseState(): void {
+        this.collapseStore.forgetAll();
+        removeLocalStorageKeys(this.app, isOldCollapseKey);
+        for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_NOTES_STREAM)) {
+            if (leaf.view instanceof DailyNotesStreamView) {
+                leaf.view.refresh().catch((error) => {
+                    console.error("DailyNotesStream: Failed to refresh view on forgetting collapse state", error);
+                });
+            }
         }
     }
 

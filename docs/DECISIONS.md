@@ -1988,7 +1988,8 @@ cost 1,095 reads per modal open.
 **Decision:** `CollapsibleStateStore` saves every note's sections under
 `daily-notes-stream:collapse`, read once at load and pruned to the vault's notes
 at layout ready, as the layout memory is. The old `collapse:*` and
-`collapse-idx:*` keys are neither read nor removed.
+`collapse-idx:*` keys are never read; a device build's "Forget collapse state"
+command deletes them with the rest.
 
 **Why:** a key per section could not be listed, so a note deleted unheard left
 its keys forever, unprefixed beside other plugins'. Each heading of each render
