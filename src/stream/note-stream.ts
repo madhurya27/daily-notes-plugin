@@ -54,6 +54,8 @@ export class NoteStream {
     // the blocks and the service's stream disagreeing.
     private queue: Promise<void> = new Promise((resolve) => (this.opened = resolve));
     private loadPending = false;
+    /** Closed, the queue drops what is still waiting: each would render, then be discarded. */
+    private closed = false;
     /** Lets go of the match last centered; a no-op once it has. */
     private letGoOfCentered = () => {};
 
@@ -90,6 +92,7 @@ export class NoteStream {
     }
 
     close(): void {
+        this.closed = true;
         this.letGoOfCentered();
         this.onDailyNoteSettingsChange.cancel();
         this.flushModified.cancel();
@@ -467,7 +470,7 @@ export class NoteStream {
      */
     private enqueue(task: () => Promise<void>): Promise<void> {
         this.queue = this.queue
-            .then(task)
+            .then(() => (this.closed ? undefined : task()))
             .catch((e) => console.error("DailyNotesStream: Failed to update the stream", e));
         return this.queue;
     }

@@ -16,7 +16,9 @@ import { BASE_SLOT_CLASS } from "../../src/render/bases/bases-as-cards";
 import { flushPromises } from "../stream-view-fixture";
 
 /** What the stream constructed its window with, besides what it calls on it. */
-type FakeWindow = Mocked<NoteWindowManager> & {
+type FakeWindow = Omit<Mocked<NoteWindowManager>, "enqueue"> & {
+    /** The stream's queue, as the window's renders reach it. */
+    enqueue: (task: () => Promise<void>) => Promise<void>;
     memory: {
         heights: NoteHeights;
         layoutOf: () => string;
@@ -512,6 +514,15 @@ describe("a note modified", () => {
         stream.close();
         await vi.runAllTimersAsync();
         expect(noteWindow.refresh).not.toHaveBeenCalled();
+    });
+
+    it("drops renders still queued when the stream closes", async () => {
+        await load(note("2025-01-01"));
+        const render = vi.fn().mockResolvedValue(undefined);
+        void noteWindow.enqueue(render);
+        stream.close();
+        await vi.runAllTimersAsync();
+        expect(render).not.toHaveBeenCalled();
     });
 
     it("does nothing for a note that is not loaded", async () => {
