@@ -31,7 +31,11 @@ priority.
       shows ~200-char excerpts; ours is the full note. Better, not new.
 - [ ] Keep the place across a restart. `StreamPlace` lives only in ephemeral
       state, so Back finds it but a restored tab opens at the newest note.
-      Persist it in `getState`; a stream opened fresh still starts at the top.
+      Persist it in `getState`; a stream opened fresh still starts at today.
+- [ ] Open at today's note, not the newest: notes made ahead for future days sit
+      above it, and scrolling up still reaches them. Through the jump's path
+      (D-082), so the notes above load as for any jump. With no note today, the
+      nearest older one (D-015); with no future notes, the top as now.
 - [ ] Show in stream: a command and a file-menu item on a daily note that open
       the stream at it, through the jump's path (D-082). From a note, only Back
       reaches the stream now.
