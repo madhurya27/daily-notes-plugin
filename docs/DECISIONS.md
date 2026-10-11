@@ -2015,3 +2015,18 @@ Obsidian sent.
 - One incremental index for both — correct only if Obsidian fires `resolve` for
   every source whose links change, renames and deletes of targets included.
   `e2e/linked-mentions.spec.ts` guards the delete and rename cases for a retry.
+
+## D-123 — The day's turn waits for the stream's next change (2026-10-11)
+
+**Decision:** before each queued task, the stream asks the service whether the
+day turned since it last looked; if so, it rechecks the last day's note and one
+made ahead for the new day. Nothing runs at midnight.
+
+**Why:** yesterday's note showing until something happens costs the reader
+nothing; any change, not only today's note being made, catches up.
+
+**Rejected:**
+
+- A check each minute — a timer per view for a note that does no harm.
+- Exempting the newest note instead of today's — skip days and an untouched note
+  stays shown until the next is made.

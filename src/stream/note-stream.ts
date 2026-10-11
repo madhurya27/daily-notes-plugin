@@ -158,6 +158,15 @@ export class NoteStream {
         });
     }
 
+    /**
+     * Today's note shows however empty. Nothing runs at midnight: the next
+     * change hides the last day's and shows one made ahead for the new day
+     * (ADR 0011).
+     */
+    private async catchUpDay(): Promise<void> {
+        for (const file of this.service.catchUpDay()) await this.reconsider(file);
+    }
+
     /** Takes `file` out, or puts it back, when whether it belongs changed; whether it did. */
     private async reconsider(file: TFile): Promise<boolean> {
         const listed = this.service.indexOf(file.path) !== -1;
@@ -466,11 +475,16 @@ export class NoteStream {
     }
 
     /**
-     * Runs `task` after every queued mutation, so none interleave at an await.
+     * Runs `task` after every queued mutation, so none interleave at an await,
+     * and after the day's turn, if any, is caught up on.
      */
     private enqueue(task: () => Promise<void>): Promise<void> {
         this.queue = this.queue
-            .then(() => (this.closed ? undefined : task()))
+            .then(async () => {
+                if (this.closed) return;
+                await this.catchUpDay();
+                await task();
+            })
             .catch((e) => console.error("DailyNotesStream: Failed to update the stream", e));
         return this.queue;
     }

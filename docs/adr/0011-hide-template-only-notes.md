@@ -30,7 +30,8 @@ reach the views, D-073.
 - A Templater block that writes a whole section makes the pattern loose.
 - Emptiness changes on edit, so a note enters or leaves `_sorted` on `changed`,
   through `insertSorted` / `removeSorted`.
-- A stream left open past midnight keeps yesterday's empty note until a rebuild.
+- Past midnight, yesterday's empty note shows until the stream's next change,
+  which also shows an empty note made ahead for the new day (D-123).
 - An unreadable template hides nothing.
 
 ## Rejected alternatives

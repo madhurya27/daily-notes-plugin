@@ -142,7 +142,7 @@ function renameInPlace(file: TFile, path: string): TFile {
 
 /** The vault's markdown files. */
 let vault: TFile[];
-/** Paths the filter hides; hiding another lists the notes again. */
+/** Paths the filter hides, today's aside, as the real filter does; hiding another lists the notes again. */
 let hidden: Set<string>;
 let service: DailyNoteService;
 let stream: NoteStream;
@@ -164,7 +164,7 @@ beforeEach(() => {
     const filter: NoteFilter = {
         prepare: () => Promise.resolve(),
         recheck: () => Promise.resolve(),
-        isHidden: (file) => hidden.has(file.path),
+        isHidden: (file, date) => hidden.has(file.path) && !date.isSame(moment(), "day"),
         signature: () => [...hidden].join("\n"),
     };
     service = new DailyNoteService(() => vault, new ParsedDates(), filter);
@@ -629,6 +629,36 @@ describe("links to daily notes changed", () => {
 
         expect(noteWindow.refresh).not.toHaveBeenCalled();
         expect(shown()).toEqual([file.path]);
+    });
+});
+
+// Nothing runs at midnight: the next change catches up (ADR 0011).
+describe("the day's turn", () => {
+    const [older, yesterday, ahead] = [note("2025-01-01"), note("2025-01-02"), note("2025-01-03")];
+
+    beforeEach(() => vi.useFakeTimers({ now: new Date(2025, 0, 2, 12), toFake: ["Date"] }));
+
+    it("leaves the day's empty note shown past midnight, and hides it on the next change", async () => {
+        hide(yesterday);
+        await load(yesterday, older);
+
+        vi.setSystemTime(new Date(2025, 0, 3, 0, 30));
+        expect(shown()).toEqual([yesterday.path, older.path]);
+
+        await stream.onLinksChanged([]);
+
+        expect(shown()).toEqual([older.path]);
+    });
+
+    it("shows an empty note made ahead on the first change of its day", async () => {
+        hide(ahead);
+        await load(ahead, yesterday);
+        expect(shown()).toEqual([yesterday.path]);
+
+        vi.setSystemTime(new Date(2025, 0, 3, 0, 30));
+        await stream.refresh();
+
+        expect(shown()).toEqual([ahead.path, yesterday.path]);
     });
 });
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { DailyNoteService, type NoteFilter } from "../../src/notes/daily-note-service";
 import { ParsedDates } from "../../src/notes/parsed-dates";
 import {
@@ -773,5 +773,46 @@ describe("DailyNoteService: hidden notes", () => {
         hidden.push("Notes/2025-01-02.md");
 
         expect(svc.hidesAny()).toBe(true);
+    });
+
+    // Nothing runs at midnight: the next change asks (ADR 0011).
+    describe("the day's turn", () => {
+        beforeEach(() => vi.useFakeTimers({ now: new Date(2025, 0, 2, 12) }));
+        afterEach(() => vi.useRealTimers());
+
+        async function built() {
+            const { filter } = filterHiding([]);
+            const svc = new DailyNoteService(__mockMarkdownFiles, new ParsedDates(), filter);
+            await svc.initialize();
+            return svc;
+        }
+
+        it("names no note, walking no vault, while the day stands", async () => {
+            const svc = await built();
+            const walk = vi.spyOn(svc as unknown as { datedNotes: () => unknown }, "datedNotes");
+
+            vi.setSystemTime(new Date(2025, 0, 2, 23, 59));
+
+            expect(svc.catchUpDay()).toEqual([]);
+            expect(walk).not.toHaveBeenCalled();
+        });
+
+        it("names the day's note before and the one made ahead for the new day, once", async () => {
+            const svc = await built();
+
+            vi.setSystemTime(new Date(2025, 0, 3, 0, 30));
+
+            expect(svc.catchUpDay().map((file) => file.path)).toEqual(["Notes/2025-01-02.md", "Notes/2025-01-03.md"]);
+            expect(svc.catchUpDay()).toEqual([]);
+        });
+
+        it("names nothing after a list built since: it was built for the new day", async () => {
+            const svc = await built();
+
+            vi.setSystemTime(new Date(2025, 0, 3, 0, 30));
+            await svc.initialize();
+
+            expect(svc.catchUpDay()).toEqual([]);
+        });
     });
 });

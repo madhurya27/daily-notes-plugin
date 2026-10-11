@@ -38,6 +38,8 @@ export class DailyNoteService {
     private builtFrom: string | null = null;
     /** The date format the list was built with; null before the first build. */
     private builtWith: DateFormat | null = null;
+    /** The day the filter's "today" was last read on, by the list or by `catchUpDay`. */
+    private seenDay: Moment = moment();
 
     /**
      * `markdownFiles`: the vault's, daily notes among them. `parsedDates`: shared
@@ -73,6 +75,21 @@ export class DailyNoteService {
         if (this.signature(format) === this.builtFrom) return false;
         this.rebuilt(await this.buildSorted(format), format);
         return true;
+    }
+
+    /**
+     * The notes the day's turn may hide or show, once per turn: the last day's,
+     * no longer today's, and one made ahead for the new day. Nothing runs at
+     * midnight; the next change asks (ADR 0011).
+     */
+    catchUpDay(): TFile[] {
+        const today = moment();
+        if (today.isSame(this.seenDay, "day")) return [];
+        const seen = this.seenDay;
+        this.seenDay = today;
+        return this.datedNotes(this.format())
+            .filter((note) => note.date.isSame(seen, "day") || note.date.isSame(today, "day"))
+            .map((note) => note.file);
     }
 
     /** A new list starts a new stream. */
@@ -208,6 +225,7 @@ export class DailyNoteService {
 
     private async buildSorted(format: DateFormat): Promise<DatedNote[]> {
         const notes = this.datedNotes(format);
+        this.seenDay = moment();
         await this.filter.prepare(notes.map((note) => note.file));
         return notes
             .filter((note) => !this.filter.isHidden(note.file, note.date))
