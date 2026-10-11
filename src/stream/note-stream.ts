@@ -1,5 +1,5 @@
 import { basesLoaded } from "../render/bases/bases-loaded";
-import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce } from "obsidian";
+import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce, moment } from "obsidian";
 import type { DailyNoteService, Moment } from "../notes/daily-note-service";
 import type { NoteRenderer } from "../render/note-renderer";
 import { StreamBlocks } from "./stream-blocks";
@@ -8,6 +8,7 @@ import { NoteWindowManager } from "./note-window";
 import { layoutOf, type LayoutMemory } from "./layout-memory";
 import { ScrollBoxGuard } from "./scroll-box-guard";
 import { FrameDeferral } from "./frame-deferral";
+import { SCROLL_IDLE_MS } from "./scroll-anchor";
 import { youtubeThumbnail } from "../render/video-thumbnails";
 import { webPageLink } from "../render/web-page-links";
 import {
@@ -26,6 +27,9 @@ const MODIFY_DEBOUNCE_MS = 300;
 const CONFIG_DEBOUNCE_MS = 1000;
 
 const BATCH_SIZE = 10;
+
+/** Past midnight, so a timer running early still finds the new day. */
+const DAY_TURN_DELAY_MS = 60_000;
 
 const NO_NOTES = "No daily notes found. Please check your daily notes settings.";
 
@@ -56,6 +60,17 @@ export class NoteStream {
     private loadPending = false;
     /** Closed, the queue drops what is still waiting: each would render, then be discarded. */
     private closed = false;
+    private midnight: number | null = null;
+    /** The day turned while the reader was moving the pane: caught up once they stop. */
+    private dayTurnWaiting = false;
+    private readonly catchUpDayOnceStill = debounce(
+        () => {
+            this.dayTurnWaiting = false;
+            void this.enqueue(async () => {});
+        },
+        SCROLL_IDLE_MS,
+        true
+    );
     /** Lets go of the match last centered; a no-op once it has. */
     private letGoOfCentered = () => {};
 
@@ -88,11 +103,32 @@ export class NoteStream {
             this.frames.attach(container);
         }
         this.attachScroll();
+        this.armMidnight();
         this.opened();
+    }
+
+    /**
+     * A note made ahead comes due at midnight with no change to show it: the
+     * stream catches up once then, when the reader is still (D-123).
+     */
+    private armMidnight(): void {
+        const untilMidnight = moment().add(1, "day").startOf("day").diff(moment());
+        this.midnight = window.setTimeout(() => {
+            this.dayTurnWaiting = true;
+            this.catchUpDayOnceStill();
+            this.armMidnight();
+        }, untilMidnight + DAY_TURN_DELAY_MS);
+    }
+
+    /** The reader moved the pane: a catch-up due waits for them to stop. */
+    private readerMoved(): void {
+        if (this.dayTurnWaiting) this.catchUpDayOnceStill();
     }
 
     close(): void {
         this.closed = true;
+        if (this.midnight !== null) window.clearTimeout(this.midnight);
+        this.catchUpDayOnceStill.cancel();
         this.letGoOfCentered();
         this.onDailyNoteSettingsChange.cancel();
         this.flushModified.cancel();
@@ -105,6 +141,7 @@ export class NoteStream {
 
     /** Unloads, style reads and frames' pages wait for the scroll to stop. */
     onScroll(): void {
+        this.readerMoved();
         this.window.onScroll();
         this.scrollBoxes.onScroll();
         this.frames.onScroll();
@@ -112,12 +149,14 @@ export class NoteStream {
 
     /** A touch is the reader's own: a match held in place is let go. */
     onTouch(target: EventTarget | null): void {
+        this.readerMoved();
         this.letGoOfCentered();
         this.window.onTouch(target);
     }
 
     /** The reader scrolls the pane themselves. */
     onWheel(): void {
+        this.readerMoved();
         this.letGoOfCentered();
     }
 

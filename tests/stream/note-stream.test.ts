@@ -14,6 +14,7 @@ import { youtubeThumbnail } from "../../src/render/video-thumbnails";
 import { webPageLink } from "../../src/render/web-page-links";
 import { BASE_SLOT_CLASS } from "../../src/render/bases/bases-as-cards";
 import { flushPromises } from "../stream-view-fixture";
+import { SCROLL_IDLE_MS } from "../../src/stream/scroll-anchor";
 
 /** What the stream constructed its window with, besides what it calls on it. */
 type FakeWindow = Omit<Mocked<NoteWindowManager>, "enqueue"> & {
@@ -209,7 +210,11 @@ function stack(top: number) {
     });
 }
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+    // Clears its midnight timer.
+    stream.close();
+    vi.useRealTimers();
+});
 
 describe("loading a batch", () => {
     it("places a block per note and holds them for the next batch", async () => {
@@ -659,6 +664,58 @@ describe("the day's turn", () => {
         await stream.refresh();
 
         expect(shown()).toEqual([ahead.path, yesterday.path]);
+    });
+
+    describe("with the stream open and still at midnight", () => {
+        /** Opens a stream again on the fake clock, so its midnight timer is a fake one. */
+        beforeEach(() => {
+            stream.close();
+            vi.useFakeTimers({ now: new Date(2025, 0, 2, 12) });
+            stream = new NoteStream(service, renderer as unknown as NoteRenderer, { notes: heights }, notesChanged);
+            noteWindow = fakes.windows.at(-1)!;
+            infiniteScroll = fakes.scrolls.at(-1)!;
+            stream.open(pane, container);
+        });
+
+        const HOURS = 60 * 60 * 1000;
+
+        it("shows a note made ahead shortly after midnight, with no change to prompt it", async () => {
+            hide(ahead);
+            await load(ahead, yesterday);
+
+            await vi.advanceTimersByTimeAsync(12 * HOURS - 1000);
+            expect(shown()).toEqual([yesterday.path]);
+            await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+
+            expect(shown()).toEqual([ahead.path, yesterday.path]);
+        });
+
+        it("waits while the reader scrolls, touches or wheels, and catches up once they stop", async () => {
+            hide(ahead);
+            await load(ahead, yesterday);
+            // Midnight's timer has fired: the catch-up waits on the reader.
+            await vi.advanceTimersByTimeAsync(12 * HOURS + 60 * 1000);
+
+            for (const interact of [() => stream.onScroll(), () => stream.onTouch(null), () => stream.onWheel()]) {
+                await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 100);
+                interact();
+            }
+            await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
+            expect(shown()).toEqual([yesterday.path]);
+            await vi.advanceTimersByTimeAsync(1);
+
+            expect(shown()).toEqual([ahead.path, yesterday.path]);
+        });
+
+        it("catches up again the next midnight", async () => {
+            const after = note("2025-01-04");
+            hide(ahead, after);
+            await load(after, ahead, yesterday);
+
+            await vi.advanceTimersByTimeAsync(36 * HOURS + 2 * 60 * 1000);
+
+            expect(shown()).toEqual([after.path, yesterday.path]);
+        });
     });
 });
 

@@ -2016,17 +2016,19 @@ Obsidian sent.
   every source whose links change, renames and deletes of targets included.
   `e2e/linked-mentions.spec.ts` guards the delete and rename cases for a retry.
 
-## D-123 — The day's turn waits for the stream's next change (2026-10-11)
+## D-123 — The day's turn waits for the stream's next change, or midnight (2026-10-11)
 
 **Decision:** before each queued task, the stream asks the service whether the
 day turned since it last looked; if so, it rechecks the last day's note and one
-made ahead for the new day. Nothing runs at midnight.
+made ahead for the new day. One timer per view also catches up a minute past
+midnight, once the reader has stopped scrolling, touching and wheeling.
 
 **Why:** yesterday's note showing until something happens costs the reader
-nothing; any change, not only today's note being made, catches up.
+nothing, but a note made ahead for today would stay hidden in an idle stream.
+Waiting for stillness keeps the pane from moving under the reader.
 
 **Rejected:**
 
-- A check each minute — a timer per view for a note that does no harm.
+- A check each minute — a timer firing all day for one moment a day.
 - Exempting the newest note instead of today's — skip days and an untouched note
   stays shown until the next is made.
