@@ -1,10 +1,11 @@
 import { Component, TFile, setIcon } from "obsidian";
 import { CollapsibleStateStore } from "./collapse-store";
 
+/** Letters, their combining marks and digits in any script; ASCII text slugs as it always has. */
 function slugify(text: string): string {
     return text
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/[^\p{L}\p{M}\p{N}]+/gu, "-")
         .replace(/^-|-$/g, "");
 }
 

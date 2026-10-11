@@ -309,6 +309,21 @@ describe("CollapsibleManager — headers", () => {
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "hello-world", true);
     });
 
+    // Slugged to "", every such heading was keyed by its place, and its fold
+    // moved to another heading once one was added above.
+    it.each([
+        ["Задачи на день", "задачи-на-день"],
+        ["今日のメモ", "今日のメモ"],
+        ["Café ☕ notes", "café-notes"],
+        ["आज के काम", "आज-के-काम"],
+    ])("keeps the letters of a heading in any script: %s", (heading, key) => {
+        const content = document.createElement("div");
+        content.innerHTML = `<h1>${heading}</h1>`;
+        makeCollapsible(manager, content, "file.md");
+        clickChevron(content.querySelector("h1") as HTMLElement);
+        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", key, true);
+    });
+
     it("leading and trailing hyphens are removed from slug", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h1>---Section---</h1>";
