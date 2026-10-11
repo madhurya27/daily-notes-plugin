@@ -30,8 +30,11 @@ pnpm run build && pnpm run seed   # reseed .dev/demo-vault/, a realistic journal
 ## Releases
 
 Bump with `pnpm version`, merge, push the tag: the workflow drafts the release
-with its assets. Write its notes from `git log --first-parent <last tag>..` —
-what a reader notices, in plain words — then publish (D-115).
+with its assets. pnpm tags `v0.6.1`, ignoring `.npmrc`; the workflow wants
+`0.6.1`, so retag before pushing. A `0.x` draft stays unpublished, without notes
+(D-100). From `1.0.0`, write its notes from
+`git log --first-parent <last tag>..` — what a reader notices, in plain words —
+then publish (D-115).
 
 ## Quality gates
 
