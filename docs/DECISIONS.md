@@ -1998,3 +1998,19 @@ read and parsed one.
 
 - Migrating the old keys — they cannot be listed, only read per path, so the
   reader stays for good. Unpublished: only test devices hold any.
+
+## D-122 — The backlink index re-inverts the cache on each `resolved` (2026-10-11)
+
+**Decision:** `BacklinkIndex` stays lazy, inverting all of `resolvedLinks` on
+its first lookup after a `resolved`; `LinkChanges` keeps its own per-source
+diff.
+
+**Why:** 5 ms per inversion at 10,000 notes and 100,000 links on a 2026 Mac,
+once per save that a drawn footer hears. A full re-read is right whatever events
+Obsidian sent.
+
+**Rejected:**
+
+- One incremental index for both — correct only if Obsidian fires `resolve` for
+  every source whose links change, renames and deletes of targets included.
+  `e2e/linked-mentions.spec.ts` guards the delete and rename cases for a retry.

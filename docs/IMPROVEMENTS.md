@@ -52,8 +52,5 @@ each change passes the other gates.
 
 ### Architecture
 
-1. **`BacklinkIndex` re-inverts the whole vault on every `resolved`.**
-   `LinkChanges` already diffs per source; one incremental index could serve
-   both.
-2. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
+1. **`NoteStream` is a middle man** for `onResize`, `forgetHeights`,
    `scrollToTop`, `onBaseResized`, `onFingerDown`/`Up`.
