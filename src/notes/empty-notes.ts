@@ -217,7 +217,7 @@ export function hideEmptyNotes(
         prepare: (files) => (settings().hideEmptyNotes ? notes.checkAll(files) : Promise.resolve()),
         recheck: (file) => (settings().hideEmptyNotes ? notes.refresh([file]) : Promise.resolve()),
         isHidden: (file: TFile, date: Moment) =>
-            settings().hideEmptyNotes && !date.isSame(moment(), "day") && notes.isEmpty(file) && !hasMentions(file),
+            settings().hideEmptyNotes && notes.isEmpty(file) && !date.isSame(moment(), "day") && !hasMentions(file),
         signature: () => {
             const { hideEmptyNotes, showLinkedMentions } = settings();
             return `${hideEmptyNotes}\u0000${showLinkedMentions}\u0000${notes.templatePath()}`;
