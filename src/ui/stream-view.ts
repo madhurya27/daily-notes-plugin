@@ -134,14 +134,8 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
             })
         );
 
-        // Not in onload(): the vault may not have indexed its files yet. Awaited:
-        // the first batch must already leave out what is hidden (ADR 0011).
-        await this.service.initialize();
-        if (this.lifecycle === "closed") return;
-
-        this.collapsible.delegate(this, streamContainerEl);
-        this.renderer.delegate(this, streamContainerEl);
-
+        // Heard while the notes are listed, and applied once the stream opens:
+        // a note synced in or deleted meanwhile is not missed.
         // metadataCache "changed", not vault "modify": the cache lags the write,
         // and the renderer reads it for frontmatter offsets and properties.
         const { metadataCache, vault } = this.app;
@@ -159,6 +153,14 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
                 this.applyChange(() => void this.stream.onLinksChanged(files));
             })
         );
+
+        // Not in onload(): the vault may not have indexed its files yet. Awaited:
+        // the first batch must already leave out what is hidden (ADR 0011).
+        await this.service.initialize();
+        if (this.lifecycle === "closed") return;
+
+        this.collapsible.delegate(this, streamContainerEl);
+        this.renderer.delegate(this, streamContainerEl);
 
         this.addAction("calendar-1", "Jump to date", () => this.promptJumpToDate());
         this.addAction("text-search", "Search", () => this.searchBar.open());

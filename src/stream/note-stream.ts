@@ -50,9 +50,11 @@ export class NoteStream {
     private scrollBoxes: ScrollBoxGuard;
     private readonly frames = new FrameDeferral(youtubeThumbnail, webPageLink);
 
+    /** Lets the queue run: until `open`, there is no container to change. */
+    private opened!: () => void;
     // Serialized: an event interleaving with an in-flight batch would leave
     // state and the service cache disagreeing.
-    private queue: Promise<void> = Promise.resolve();
+    private queue: Promise<void> = new Promise((resolve) => (this.opened = resolve));
     private loadPending = false;
     /** Lets go of the match last centered; a no-op once it has. */
     private letGoOfCentered = () => {};
@@ -86,6 +88,7 @@ export class NoteStream {
             this.frames.attach(container);
         }
         this.attachScroll();
+        this.opened();
     }
 
     close(): void {

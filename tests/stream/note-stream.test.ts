@@ -344,6 +344,24 @@ describe("a note created", () => {
     });
 });
 
+describe("an event before the stream opens", () => {
+    // The view listens while its notes are listed: what it hears waits for a
+    // container to change.
+    it("waits for open, then applies", async () => {
+        const unopened = new NoteStream(service, collapseStore, renderer as unknown as NoteRenderer, {
+            notes: heights,
+        });
+
+        unopened.onFileDelete(note("2025-01-01"));
+        await flushPromises();
+        expect(service.removeSorted).not.toHaveBeenCalled();
+
+        unopened.open(document.createElement("div"), document.createElement("div"));
+        await flushPromises();
+        expect(service.removeSorted).toHaveBeenCalledWith("Notes/2025-01-01.md");
+    });
+});
+
 describe("a note deleted", () => {
     it("does nothing for a non-TFile argument", async () => {
         stream.onFileDelete(new TAbstractFile("not-a-tfile"));
