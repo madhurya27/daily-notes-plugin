@@ -30,6 +30,9 @@ developer dashboard; there is no `community-plugins.json` entry to append.
 Unverified by tests: each fix starts with one that fails. Ordered by priority
 within each list.
 
+`pnpm run test:ios` runs once, after every item below has landed; until then,
+each change passes the other gates.
+
 ### Bugs
 
 1. **Fold keys collide.** A second "Foo" gets `foo-2`, the key of a heading "Foo
