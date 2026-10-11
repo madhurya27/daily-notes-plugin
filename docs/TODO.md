@@ -4,6 +4,9 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] A template ending in `<% tp.file.cursor() %>` on its own line: once
+      Templater jumps there, the note ends in blank lines, which `normalize`
+      trims, while the pattern still wants them. Such a note shows as written.
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.
