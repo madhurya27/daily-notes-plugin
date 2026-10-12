@@ -31,16 +31,24 @@ template to set up, and it never changes your notes.
 
 ## Before you install
 
-| Question                               | Answer                                                                                                                                                                                                                                                                                                                                         |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Which notes does it show?              | The notes in the folder set in **Settings → Daily notes**, including its subfolders, whose names match the date format set there. If you use Periodic Notes with its daily notes turned on, the stream uses Periodic Notes' folder and format instead.                                                                                         |
-| Can I edit in the stream?              | No. Click a note's date to open it for editing. The stream updates as you type.                                                                                                                                                                                                                                                                |
-| Does it change my notes?               | No. It only reads them.                                                                                                                                                                                                                                                                                                                        |
-| What does it store?                    | Your settings, saved in the plugin's folder. Which sections you folded, and layout measurements that keep scrolling steady, are kept separately on each device.                                                                                                                                                                                |
-| Does it go online?                     | No. The only things that load from the web are embeds you put in your notes yourself, such as videos.                                                                                                                                                                                                                                          |
-| Does it slow down with years of notes? | No. Only the notes near what you're reading are loaded at a time, and it's tested on three years of daily notes.                                                                                                                                                                                                                               |
-| Which devices does it run on?          | Desktop and mobile. It needs Obsidian 1.14.4 or later.                                                                                                                                                                                                                                                                                         |
-| Does it work with other plugins?       | Yes. Dataview tables and Bases are shown the way Obsidian shows them, except that on a phone or tablet one too wide for the screen is reshaped to fit; see [Phone and tablet](#phone-and-tablet). Templates made with the core Templates plugin or with Templater are recognised when empty notes are hidden; see [Empty notes](#empty-notes). |
+- **Which notes does it show?** The notes in the folder set in **Settings →
+  Daily notes**, including its subfolders, whose names match the date format set
+  there. If you use Periodic Notes with its daily notes turned on, the stream
+  uses Periodic Notes' folder and format instead.
+- **What does it store?** Your settings, saved in the plugin's folder. Which
+  sections you folded, and layout measurements that keep scrolling steady, are
+  kept separately on each device.
+- **Does it go online?** No. The only things that load from the web are embeds
+  you put in your notes yourself, such as videos.
+- **Does it slow down with years of notes?** No. Only the notes near what you're
+  reading are loaded at a time, and it's tested on three years of daily notes.
+- **Which devices does it run on?** Desktop and mobile. It needs Obsidian 1.14.4
+  or later.
+- **Does it work with other plugins?** Yes. Dataview tables and Bases are shown
+  the way Obsidian shows them, except that on a phone or tablet one too wide for
+  the screen is reshaped to fit; see [Phone and tablet](#phone-and-tablet).
+  Templates made with the core Templates plugin or with Templater are recognised
+  when empty notes are hidden; see [Empty notes](#empty-notes).
 
 If you want to edit notes directly inside the feed, this plugin doesn't do that,
 but
@@ -178,6 +186,8 @@ instead:
 | Code block                   | Long lines wrap                                                                     |
 | Diagram                      | Smaller, to fit the width (on desktop too)                                          |
 | Embedded note                | Shown in full, not in a box of its own that scrolls                                 |
+| YouTube video                | Its thumbnail; tap it to watch on YouTube                                           |
+| Embedded web page            | Shown as it is; tap it to open the page in your browser                             |
 | Any other embed that scrolls | Cut off at its edge                                                                 |
 
 On desktop, wide tables and code blocks scroll sideways in their own box, as

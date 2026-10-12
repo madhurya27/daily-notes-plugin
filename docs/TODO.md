@@ -13,6 +13,8 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
     - [ ] Release `1.0.0`, the first public version (D-100). Delete the `0.x`
           entries from `versions.json` in the bump commit; write the notes from
           the README
+    - [ ] Once listed, lead the README's Install with **Settings → Community
+          plugins → Browse**; keep the manual download as the alternative
 
 ## Features
 
