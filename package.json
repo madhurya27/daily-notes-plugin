@@ -53,8 +53,5 @@
         "vitest": "^4.0.18",
         "webdriverio": "^9.32.0",
         "yaml": "2.8.1"
-    },
-    "dependencies": {
-        "obsidian-daily-notes-interface": "^0.9.4"
     }
 }

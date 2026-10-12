@@ -1,5 +1,5 @@
-import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 import { normalizePath } from "obsidian";
+import type { DailyNoteSettings } from "../obsidian-internals";
 
 /** The daily-note naming rules, as Obsidian's daily-notes settings give them. */
 export interface DateFormat {
@@ -11,13 +11,12 @@ export interface DateFormat {
     folder: string;
 }
 
-export function readDateFormat(): DateFormat {
-    const settings = getDailyNoteSettings();
+export function readDateFormat(settings: DailyNoteSettings): DateFormat {
     const path = settings.format || "YYYY-MM-DD";
     return {
         path,
         basename: path.split("/").pop() || "YYYY-MM-DD",
         // Obsidian normalizes an unset folder to "/", hence the trim.
-        folder: normalizePath(settings.folder ?? "").replace(/^\/+|\/+$/g, ""),
+        folder: normalizePath(settings.folder?.trim() ?? "").replace(/^\/+|\/+$/g, ""),
     };
 }

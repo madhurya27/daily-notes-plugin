@@ -1,6 +1,7 @@
 import { TFile, moment, normalizePath } from "obsidian";
 import { ParsedDates } from "./parsed-dates";
 import { readDateFormat, type DateFormat } from "./daily-note-format";
+import type { DailyNoteSettings } from "../obsidian-internals";
 
 /** `obsidian` exports moment as a value, so the type comes from its return. */
 export type Moment = ReturnType<typeof moment>;
@@ -54,6 +55,7 @@ export class DailyNoteService {
      */
     constructor(
         private readonly markdownFiles: () => TFile[],
+        private readonly dailyNoteSettings: () => DailyNoteSettings,
         private readonly parsedDates = new ParsedDates(),
         private readonly filter = SHOW_ALL
     ) {}
@@ -63,7 +65,7 @@ export class DailyNoteService {
      * the view blank, and the next refresh lists again.
      */
     async initialize(): Promise<void> {
-        const format = readDateFormat();
+        const format = this.readFormat();
         try {
             this.rebuilt(await this.buildSorted(format), format);
         } catch (error) {
@@ -77,7 +79,7 @@ export class DailyNoteService {
      * did. Returns whether it rebuilt.
      */
     async refreshIfSettingsChanged(): Promise<boolean> {
-        const format = readDateFormat();
+        const format = this.readFormat();
         if (this.signature(format) === this.builtFrom) return false;
         this.rebuilt(await this.buildSorted(format), format);
         return true;
@@ -253,7 +255,11 @@ export class DailyNoteService {
      * list when the format changed. The settings' before the first build.
      */
     private format(): DateFormat {
-        return this.builtWith ?? readDateFormat();
+        return this.builtWith ?? this.readFormat();
+    }
+
+    private readFormat(): DateFormat {
+        return readDateFormat(this.dailyNoteSettings());
     }
 
     /** Parses a markdown file's basename against the date format. */

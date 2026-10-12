@@ -16,7 +16,6 @@ export default defineConfig({
     resolve: {
         alias: {
             obsidian: resolve(__dirname, "tests/mocks/obsidian.ts"),
-            "obsidian-daily-notes-interface": resolve(__dirname, "tests/mocks/daily-notes-interface.ts"),
         },
     },
 });

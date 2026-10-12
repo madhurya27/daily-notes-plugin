@@ -7,7 +7,7 @@ import type { CollapsibleManager } from "../src/render/collapsible";
 import type { NoteWindowManager } from "../src/stream/note-window";
 import type { InfiniteScrollController } from "../src/stream/infinite-scroll";
 import { Component, WorkspaceLeaf, type App, type EventRef, type TFile } from "./mocks/obsidian";
-import { __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
+import { __setMockNotes } from "./mocks/daily-notes";
 import { CollapsibleStateStore } from "../src/render/collapse-store";
 import { BacklinkIndex } from "../src/notes/backlink-index";
 import { LinkChanges } from "../src/notes/link-changes";
@@ -103,7 +103,6 @@ export function flushPromises(): Promise<void> {
  * yet opened — for tests that must act between construction and onOpen.
  */
 export function makeStubbedView(app: object = makeApp()) {
-    __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
     __setMockNotes([]);
     const plugin = makePlugin();
     const service = makeService();

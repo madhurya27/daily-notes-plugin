@@ -8,7 +8,7 @@ import type { ScrollBoxGuard } from "../../src/stream/scroll-box-guard";
 import type { FrameDeferral } from "../../src/stream/frame-deferral";
 import { DailyNoteService, type NoteFilter } from "../../src/notes/daily-note-service";
 import { ParsedDates } from "../../src/notes/parsed-dates";
-import { __setMockSettings } from "../mocks/daily-notes-interface";
+import { __mockSettings, __setMockSettings } from "../mocks/daily-notes";
 import { NoteHeights } from "../../src/stream/note-heights";
 import { youtubeThumbnail } from "../../src/render/video-thumbnails";
 import { webPageLink } from "../../src/render/web-page-links";
@@ -168,7 +168,7 @@ beforeEach(() => {
         isHidden: (file, date) => hidden.has(file.path) && !date.isSame(moment(), "day"),
         signature: () => [...hidden].join("\n"),
     };
-    service = new DailyNoteService(() => vault, new ParsedDates(), filter);
+    service = new DailyNoteService(() => vault, __mockSettings, new ParsedDates(), filter);
     renderer = { onBaseLayout: vi.fn() };
     heights = new NoteHeights();
     notesChanged = vi.fn<() => void>();

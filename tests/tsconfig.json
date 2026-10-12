@@ -7,8 +7,7 @@
         "baseUrl": "..",
         // Mirrors vitest.config.ts's aliases: tests import the mocks' API.
         "paths": {
-            "obsidian": ["tests/mocks/obsidian.ts"],
-            "obsidian-daily-notes-interface": ["tests/mocks/daily-notes-interface.ts"]
+            "obsidian": ["tests/mocks/obsidian.ts"]
         }
     },
     "include": ["**/*.ts"]

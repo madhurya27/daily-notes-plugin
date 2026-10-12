@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import DailyNotesStreamPlugin from "../../src/main";
 import { DailyNotesStreamSettingTab, DEFAULT_SETTINGS } from "../../src/settings";
-import { __setMockNotes, __setMockSettings } from "../mocks/daily-notes-interface";
+import { __setMockNotes } from "../mocks/daily-notes";
 import type { PluginManifest } from "../mocks/obsidian";
 import { asApp, fake } from "../stream-view-fixture";
 
@@ -13,7 +13,6 @@ const manifest = JSON.parse(readFileSync(resolve(repoRoot, "manifest.json"), "ut
 
 /** Loads the plugin far enough to read the commands it registers. */
 async function loadedPlugin() {
-    __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
     __setMockNotes([]);
     const app = {
         vault: { on: vi.fn().mockReturnValue({}) },

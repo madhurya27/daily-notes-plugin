@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vite
 import type { Moment } from "moment";
 import { JumpToDateModal, JUMP_SUGGESTION_LIMIT } from "../../src/ui/jump-to-date-modal";
 import { DailyNoteService } from "../../src/notes/daily-note-service";
-import { __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "obsidian-daily-notes-interface";
+import { __mockSettings, __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "../mocks/daily-notes";
 import { Platform, moment } from "obsidian";
 import { asApp, makeApp } from "../stream-view-fixture";
 
@@ -14,7 +14,7 @@ describe("JumpToDateModal", () => {
     async function open(format: string, basenames: string[]) {
         __setMockSettings({ format, folder: "Notes" });
         __setMockNotes(basenames.map((name) => `Notes/${name}.md`));
-        const service = new DailyNoteService(__mockMarkdownFiles);
+        const service = new DailyNoteService(__mockMarkdownFiles, __mockSettings);
         await service.initialize();
         modal = new JumpToDateModal(asApp(makeApp()), service, onSubmit);
         modal.close = vi.fn();

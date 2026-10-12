@@ -9,7 +9,7 @@ import { BacklinkIndex } from "./notes/backlink-index";
 import { EMPTY_NOTES_KEY, EmptyNotes, hideEmptyNotes } from "./notes/empty-notes";
 import { LinkChanges } from "./notes/link-changes";
 import { readDateFormat } from "./notes/daily-note-format";
-import { removeLocalStorageKeys } from "./obsidian-internals";
+import { getDailyNoteSettings, removeLocalStorageKeys } from "./obsidian-internals";
 
 /** Set by esbuild from the environment: the build put on a device to test. Empty in a release. */
 declare const BUILD_LABEL: string;
@@ -45,10 +45,16 @@ export default class DailyNotesStreamPlugin extends Plugin {
         // Each view owns its service (.claude/rules/invariants.md); they share only the parsed dates and verdicts.
         const parsedDates = new ParsedDates();
         const markdownFiles = () => this.app.vault.getMarkdownFiles();
+        const dailyNoteSettings = () => getDailyNoteSettings(this.app);
         const filter = hideEmptyNotes(this.emptyNotes, this.backlinks, () => this.settings);
         this.registerView(
             VIEW_TYPE_DAILY_NOTES_STREAM,
-            (leaf) => new DailyNotesStreamView(leaf, this, new DailyNoteService(markdownFiles, parsedDates, filter))
+            (leaf) =>
+                new DailyNotesStreamView(
+                    leaf,
+                    this,
+                    new DailyNoteService(markdownFiles, dailyNoteSettings, parsedDates, filter)
+                )
         );
 
         this.registerHoverLinkSource(VIEW_TYPE_DAILY_NOTES_STREAM, {
@@ -160,7 +166,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         const { vault, metadataCache } = this.app;
         const changes = (this.linkChanges = new LinkChanges(
             () => metadataCache.resolvedLinks,
-            () => readDateFormat().folder
+            () => readDateFormat(getDailyNoteSettings(this.app)).folder
         ));
         this.registerEvent(metadataCache.on("resolve", (file) => changes.onResolve(file.path)));
         this.registerEvent(metadataCache.on("resolved", () => changes.onResolved()));
@@ -179,7 +185,8 @@ export default class DailyNotesStreamPlugin extends Plugin {
             {
                 load: (): unknown => this.app.loadLocalStorage(EMPTY_NOTES_KEY),
                 save: (value) => this.app.saveLocalStorage(EMPTY_NOTES_KEY, value),
-            }
+            },
+            () => getDailyNoteSettings(this.app)
         ));
         this.register(() => notes.flush());
         this.registerEvent(vault.on("rename", (file, oldPath) => notes.rename(oldPath, file.path)));
