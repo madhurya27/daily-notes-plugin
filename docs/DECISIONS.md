@@ -660,7 +660,7 @@ one DOM from the start — unlike the per-search `<mark>` wrappers rejected abov
 ## D-039 — Release tags are annotated from 1.0.0 (2026-09-25)
 
 **Decision:** from `1.0.0` on, each release is tagged
-`git tag -a <version> -m "<version>"`. `0.1.0` and `0.2.0` stay lightweight.
+`git tag -a <version> -m "<version>"`.
 
 **Why:** annotated tags are the common convention for releases: they record who
 tagged and when, and `git describe` and `git push --follow-tags` act on them
@@ -668,8 +668,6 @@ alone.
 
 **Rejected:**
 
-- Recreating `0.1.0` and `0.2.0` as annotated — force-pushes tags already
-  released.
 - Signed tags (`-s`) — no signing key is set up.
 
 ## D-040 — The stream opens in the current tab (2026-09-25)
@@ -1695,8 +1693,8 @@ before the re-pin.
 
 **Decision:** until 1.0, `minAppVersion` is the latest public Obsidian, raised
 at the next version bump; the stream drops what only older versions need.
-`1.0.0` is the first public release: the `0.x` drafts stay unpublished, their
-tags stay, and `versions.json` keeps no `0.x` entry past it (2026-10-09).
+`1.0.0` is the first public release, and `versions.json` keeps no `0.x` entry
+past it (2026-10-09). The `0.x` drafts and tags are deleted (D-125).
 
 **Why:** nothing is released publicly before 1.0, so no reader runs an older
 Obsidian, and a workaround for one is dead code. Obsidian offers an older
@@ -1707,8 +1705,6 @@ would point at a draft nobody can download.
 
 - Keeping 1.8.7 — carries rules like D-085's for readers who do not exist.
 - Publishing the `0.x` drafts — releases nobody outside ran.
-- Deleting the `0.x` drafts and tags — the tags mark history worth diffing
-  against; drafts are private.
 
 ## D-101 — A turn's scroll change is never the reader's (2026-10-07)
 
@@ -2058,3 +2054,17 @@ in their own window.
   stall outlives it.
 - A visible window behind others — still the user's to see, and macOS throttles
   a covered one.
+
+## D-125 — History rewritten once, before the repo goes public (2026-10-12)
+
+**Decision:** history keeps only the images at the tip of `main` and
+`archive/sideways-scroll`, and the `0.x` tags and drafts are deleted. Old
+commits show no images.
+
+**Why:** old image versions were 20 MB of a 29 MB clone. Rewritten commits need
+new tags, and no reader ran a `0.x` draft.
+
+**Rejected:**
+
+- One fresh commit — loses the messages that hold each change's why (ADR 0001).
+- Recreating the `0.x` tags — they would mark releases nobody outside ran.
