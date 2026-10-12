@@ -624,12 +624,7 @@ test.describe("daily notes stream in real Obsidian", () => {
             // glide may move the scroll until it stops.
             test("leaves a glide the only thing moving the scroll, and the text moving with it", async ({
                 obsidian,
-                mobileLayout,
             }) => {
-                test.skip(
-                    mobileLayout && process.env.E2E_SHOW_WINDOW !== "1",
-                    "the hidden phone window draws a frame a second, too slow to glide"
-                );
                 const { page } = obsidian;
                 const container = await openUnanchored(page);
                 const blocks = container.locator(".daily-note-block");
@@ -685,14 +680,7 @@ test.describe("daily notes stream in real Obsidian", () => {
             test.beforeEach(({ obsidian }) => withoutScrollAnchoring(obsidian.page));
             test.afterEach(({ obsidian }) => restoreScrollAnchoring(obsidian.page));
 
-            test("draws a note rendering above the pane with the shift that keeps the place", async ({
-                obsidian,
-                mobileLayout,
-            }) => {
-                test.skip(
-                    mobileLayout && process.env.E2E_SHOW_WINDOW !== "1",
-                    "the hidden phone window draws a frame a second, too slow to glide"
-                );
+            test("draws a note rendering above the pane with the shift that keeps the place", async ({ obsidian }) => {
                 const { page } = obsidian;
                 // Unmeasured, every note renders unheld: the case that jumped.
                 await page.evaluate(() =>

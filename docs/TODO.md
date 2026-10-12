@@ -7,10 +7,6 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.
-- [ ] Two desktop e2e specs fail under the full suite's load, never alone (3 of
-      3 runs each, 2026-10-11): `e2e/search.spec.ts`, "shows no Base on screen
-      before it fills in", counted 20 of 120 frames; `e2e/stream.spec.ts`,
-      "keeps the place as a note above the pane grows", took 17s, not 2s.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;

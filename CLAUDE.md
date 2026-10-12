@@ -51,9 +51,7 @@ needs the other gates, plus a run of whatever the change touches.
   plugged in, for any change to how the stream scrolls, loads or turns.
 - **Look at a UI change before handing it over.** Screenshot it from the e2e
   harness, desktop and mobile, and inspect the image: measurements prove a rule
-  was matched, not that the result looks right. Run it with `E2E_SHOW_WINDOW=1`:
-  the harness hides Obsidian, and a hidden window takes no screenshot (the page
-  reports itself closed).
+  was matched, not that the result looks right.
 
 ## Documentation
 

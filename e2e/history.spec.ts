@@ -39,7 +39,7 @@ function measurePlaces(page: Page) {
 
 const place = (page: Page) => page.evaluate(() => window.streamPlace!());
 
-/** Waits until the stream's place has held still: renders push it about, a Base fills in later still, and the phone window draws a frame a second. */
+/** Waits until the stream's place has held still: renders push it about, and a Base fills in later still. */
 async function settledPlace(page: Page) {
     let before = await place(page);
     let stillSince = Date.now();
