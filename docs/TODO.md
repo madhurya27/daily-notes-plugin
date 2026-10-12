@@ -9,8 +9,7 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       match was marked current. Neither came back in 50 cold starts.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
-    - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**;
-          history reviewed and rewritten (D-125)
+    - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**
     - [ ] Release `1.0.0`, the first public version (D-100). Delete the `0.x`
           entries from `versions.json` in the bump commit; write the notes from
           the README
