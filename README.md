@@ -85,7 +85,7 @@ read-only, so clicking a task's checkbox doesn't tick it; open the note to edit
 it. Some content is reshaped so the stream scrolls smoothly, mostly on a phone
 or tablet; see [Phone and tablet](#phone-and-tablet).
 
-<img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="440">
+<img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="600">
 
 ### Empty notes
 
@@ -119,7 +119,7 @@ daily-note format or as `YYYY-MM-DD`. If that day has no note, you go to the
 closest earlier day that does. The calendar button in the list opens your
 device's date picker.
 
-<img src="docs/images/jump-desktop.png" alt="The jump-to-date prompt listing the vault's dates" width="440">
+<img src="docs/images/jump-desktop.png" alt="The jump-to-date prompt listing the vault's dates" width="600">
 
 ### Search
 
@@ -138,21 +138,21 @@ is inside a folded section, search unfolds it. If the counter reads
 `2 / 5 · hidden`, the match is in a part of the note that isn't shown, such as
 hidden properties or an embed.
 
-<img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Mara" width="440">
+<img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Mara" width="600">
 
 ### Fold sections
 
 Click the arrow beside a heading or nested list to fold it. The stream remembers
 what you folded.
 
-<img src="docs/images/collapse-desktop.png" alt="A note with every section folded to its heading" width="440">
+<img src="docs/images/collapse-desktop.png" alt="A note with every section folded to its heading" width="600">
 
 ### Linked mentions
 
 Each note ends with a list of the notes that link to it, quoting the lines
 around each link.
 
-<img src="docs/images/mentions-desktop.png" alt="A note's linked mentions: a project note and a project log, each quoting the line that links to it" width="440">
+<img src="docs/images/mentions-desktop.png" alt="A note's linked mentions: a project note and a project log, each quoting the line that links to it" width="600">
 
 ### Open notes and links
 
@@ -220,7 +220,7 @@ Each collapse setting appears only while its section is shown.
 
 The stream follows Obsidian's theme, light or dark.
 
-<img src="docs/images/stream-dark-desktop.png" alt="The stream in Obsidian's dark theme" width="440">
+<img src="docs/images/stream-dark-desktop.png" alt="The stream in Obsidian's dark theme" width="600">
 
 ## Troubleshooting
 

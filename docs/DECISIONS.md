@@ -2068,3 +2068,19 @@ new tags, and no reader ran a `0.x` draft.
 
 - One fresh commit — loses the messages that hold each change's why (ADR 0001).
 - Recreating the `0.x` tags — they would mark releases nobody outside ran.
+
+## D-126 — The README's desktop stills crop to the note column (2026-10-12)
+
+**Decision:** each desktop still is the top 520 px of the note column, from
+under the view's header, with a 32 px margin and a 1 px border, shown 600 px
+wide.
+
+**Why:** the whole 1024 px window at 440 px showed its text at 43%, too small to
+read; cropped, it shows at 79%. The recording above them already shows the
+window. Without the border, a light still runs into GitHub's white page.
+
+**Rejected:**
+
+- The whole window, shown wider — 78% text needs 800 px, and six stills that
+  tall double the README's length.
+- A smaller window — Obsidian's narrow layout, not the one readers see.

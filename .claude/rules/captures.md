@@ -20,8 +20,9 @@ pnpm run capture:recording     # rewrite only docs/images/demo-desktop.webp, the
 pnpm run capture:recording:ios # rewrite only docs/images/demo-phone.webp, on the plugged-in iPhone
 ```
 
-- The desktop captures show the window: the transparent e2e window lays out at
-  1x, not the display's scale.
+- The desktop stills are the top of the note column, framed; the desktop
+  recording shows the window (D-126). The transparent e2e window lays out at 1x,
+  not the display's scale.
 - The recordings are animated WebPs: they need `img2webp` (`brew install webp`);
   the phone's capture needs `swift` (Xcode). D-116 has why.
 - The phone's screen is captured over USB from before Appium connects: starting

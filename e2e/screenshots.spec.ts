@@ -25,7 +25,47 @@ async function showStream(page: Page): Promise<void> {
 async function capture(page: Page, name: string, testInfo: TestInfo): Promise<void> {
     await page.waitForTimeout(1000);
     const layout = testInfo.project.name === "mobile" ? "phone" : "desktop";
-    await page.screenshot({ path: join(OUT, `${name}-${layout}.png`) });
+    const path = join(OUT, `${name}-${layout}.png`);
+    if (layout === "phone") return void (await page.screenshot({ path }));
+
+    const clip = await noteColumn(page);
+    const frame = await framed(page, clip);
+    try {
+        await page.screenshot({ path, clip });
+    } finally {
+        await frame.evaluate((el) => el.remove());
+    }
+}
+
+type Box = { x: number; y: number; width: number; height: number };
+
+/** A border along `box`'s edges, drawn into the still (D-126). */
+async function framed(page: Page, box: Box) {
+    return page.evaluateHandle(({ x, y, width, height }) => {
+        const frame = document.body.appendChild(document.createElement("div"));
+        Object.assign(frame.style, {
+            position: "fixed",
+            left: `${x}px`,
+            top: `${y}px`,
+            width: `${width}px`,
+            height: `${height}px`,
+            boxSizing: "border-box",
+            border: "1px solid var(--background-modifier-border)",
+            pointerEvents: "none",
+            zIndex: "100000",
+        });
+        return frame;
+    }, box);
+}
+
+/** The top of the note column, from under the view's header so an open search bar shows (D-126). */
+async function noteColumn(page: Page): Promise<Box> {
+    const leaf = page.locator(".workspace-leaf.mod-active");
+    const header = await leaf.locator(".view-header").boundingBox();
+    const column = await leaf.locator(".daily-notes-stream-container").boundingBox();
+    if (!header || !column) throw new Error("the stream is not on screen");
+    const margin = 32;
+    return { x: column.x - margin, y: header.y + header.height, width: column.width + 2 * margin, height: 520 };
 }
 
 test.describe("README screenshots", () => {
@@ -64,8 +104,9 @@ test.describe("README screenshots", () => {
         await page.locator('.view-action[aria-label="Search"]').click();
         const bar = page.locator(".daily-notes-search");
         await bar.locator("input").fill("Mara");
+        // Typing makes the first match current; the second is the one a step scrolls into view.
         await page.keyboard.press("Enter");
-        await expect(bar.locator(".document-search-count")).toHaveText(/^1 \/ \d+$/);
+        await expect(bar.locator(".document-search-count")).toHaveText(/^2 \/ \d+$/);
         await capture(page, "search", testInfo);
     });
 
