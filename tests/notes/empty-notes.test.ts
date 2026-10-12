@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { TFile, moment } from "../mocks/obsidian";
-import { __setMockSettings } from "../mocks/daily-notes-interface";
+import { __mockSettings, __setMockSettings } from "../mocks/daily-notes";
 import { EmptyNotes, hideEmptyNotes } from "../../src/notes/empty-notes";
 import { BacklinkIndex } from "../../src/notes/backlink-index";
 
@@ -26,7 +26,7 @@ function vaultOf(texts: Record<string, string>, store = storeOf()) {
     };
     const read = vi.fn((file: TFile) => Promise.resolve(texts[file.path] ?? ""));
     const resolve = vi.fn((linkpath: string) => (`${linkpath}.md` in texts ? fileAt(`${linkpath}.md`) : null));
-    return { texts, fileAt, read, resolve, store, notes: new EmptyNotes({ read, resolve }, store) };
+    return { texts, fileAt, read, resolve, store, notes: new EmptyNotes({ read, resolve }, store, __mockSettings) };
 }
 
 /** Rewrites `path`, as a save does: new text, new mtime. */
@@ -111,6 +111,12 @@ describe("EmptyNotes", () => {
 
         expect(vault.notes.isEmpty(a)).toBe(false);
         expect(vault.notes.templatePath()).toBe("Templates/Journal");
+    });
+
+    it("reads the template path without the spaces around it", () => {
+        __setMockSettings({ format: "YYYY-MM-DD", folder: "", template: " Templates/Daily " });
+
+        expect(vaultOf({}).notes.templatePath()).toBe("Templates/Daily");
     });
 
     it("shows a note it could not read, and reads it again next time", async () => {
@@ -414,7 +420,7 @@ describe("EmptyNotes across sessions", () => {
     ])("reads every note over %s", async (_, saved) => {
         const vault = vaultOf({ ...TEXTS });
         vault.store.load.mockReturnValue(saved);
-        const notes = new EmptyNotes({ read: vault.read, resolve: vault.resolve }, vault.store);
+        const notes = new EmptyNotes({ read: vault.read, resolve: vault.resolve }, vault.store, __mockSettings);
 
         await notes.checkAll([vault.fileAt("empty.md"), vault.fileAt("written.md")]);
 

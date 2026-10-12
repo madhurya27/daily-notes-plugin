@@ -1,16 +1,17 @@
 import { TFile } from "./obsidian";
-import type { IDailyNoteSettings } from "obsidian-daily-notes-interface/dist/index";
+import type { DailyNoteSettings } from "../../src/obsidian-internals";
 
 /** The vault's files, whatever their extension. */
 let mockFiles: TFile[] = [];
-let mockSettings: IDailyNoteSettings = {
+let mockSettings: DailyNoteSettings = {
     format: "YYYY-MM-DD",
     folder: "Notes",
 };
 
 let settingsCallCount = 0;
 
-export function getDailyNoteSettings() {
+/** The daily-notes settings, as `getDailyNoteSettings` would read them. */
+export function __mockSettings() {
     settingsCallCount++;
     return mockSettings;
 }
@@ -33,6 +34,6 @@ export function __mockMarkdownFiles(): TFile[] {
     return mockFiles.filter((file) => file.extension === "md");
 }
 
-export function __setMockSettings(settings: IDailyNoteSettings) {
+export function __setMockSettings(settings: DailyNoteSettings) {
     mockSettings = settings;
 }

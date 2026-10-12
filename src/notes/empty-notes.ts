@@ -1,9 +1,9 @@
-import { getDailyNoteSettings } from "obsidian-daily-notes-interface";
 import { debounce, moment, type TFile } from "obsidian";
 import type { Moment, NoteFilter } from "./daily-note-service";
 import { isTemplateOnly, templatePattern } from "./template-match";
 import type { BacklinkIndex } from "./backlink-index";
 import type { DailyNotesStreamSettings } from "../settings";
+import type { DailyNoteSettings } from "../obsidian-internals";
 import { saveLoggingOnce } from "../local-storage";
 
 /** How much a note may outgrow its template and still be read: more is writing. */
@@ -71,14 +71,15 @@ export class EmptyNotes {
 
     constructor(
         private readonly reader: NoteReader,
-        private readonly store: VerdictStore
+        private readonly store: VerdictStore,
+        private readonly dailyNoteSettings: () => DailyNoteSettings
     ) {
         this.saved = restore(store.load());
     }
 
     /** The template path the daily-notes settings name. */
     templatePath(): string {
-        return getDailyNoteSettings().template ?? "";
+        return this.dailyNoteSettings().template?.trim() ?? "";
     }
 
     /** `refresh`, for every daily note: what the next session trusts dates from when it began. */
@@ -152,7 +153,7 @@ export class EmptyNotes {
     }
 
     /**
-     * Resolved as `obsidian-daily-notes-interface` resolves it; read again only
+     * Resolved as Obsidian resolves a link to it; read again only
      * once changed. Null when it cannot be read: nothing is empty until it is.
      */
     private async readTemplate(): Promise<Template | null> {

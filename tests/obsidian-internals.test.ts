@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { App, ItemView } from "obsidian";
 import {
+    getDailyNoteSettings,
     getPropertyIcon,
     getReadableLineLength,
     getSearchHotkeys,
@@ -288,5 +289,44 @@ describe("removeLocalStorageKeys", () => {
 
         expect(removeLocalStorageKeys({} as App, () => true, storage)).toBe(0);
         expect(keysOf(storage)).toEqual(["old:a", "-old:a"]);
+    });
+});
+
+describe("getDailyNoteSettings", () => {
+    const daily = { format: "YYYY/MM/DD", folder: "Journal", template: "Templates/Day" };
+    /** An app whose core daily-notes plugin holds `core`, and Periodic Notes `periodic`. */
+    const appWith = (core?: unknown, periodic?: unknown): App =>
+        ({
+            internalPlugins: {
+                getPluginById: (id: string) => (id === "daily-notes" ? { instance: { options: core } } : undefined),
+            },
+            plugins: { getPlugin: (id: string) => (id === "periodic-notes" ? periodic : null) },
+        }) as unknown as App;
+
+    it("reads the core daily-notes plugin's options", () => {
+        expect(getDailyNoteSettings(appWith(daily))).toEqual(daily);
+    });
+
+    it("reads Periodic Notes' daily settings when it has them enabled", () => {
+        const periodic = {
+            settings: { daily: { enabled: true, format: "DD.MM.YYYY", folder: "Days", template: "T" } },
+        };
+
+        expect(getDailyNoteSettings(appWith(daily, periodic))).toEqual({
+            format: "DD.MM.YYYY",
+            folder: "Days",
+            template: "T",
+        });
+    });
+
+    it("keeps the core options when Periodic Notes has daily notes off", () => {
+        const periodic = { settings: { daily: { enabled: false, format: "DD.MM.YYYY" } } };
+
+        expect(getDailyNoteSettings(appWith(daily, periodic))).toEqual(daily);
+    });
+
+    it("reads nothing set when the internals are gone", () => {
+        expect(getDailyNoteSettings({} as App)).toEqual({});
+        expect(getDailyNoteSettings(appWith(undefined))).toEqual({});
     });
 });

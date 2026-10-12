@@ -136,6 +136,6 @@ logged once, never thrown (D-071).
 
 ## Obsidian internals
 
-Unsupported APIs are read only in `obsidian-internals.ts`: readable line length,
-the vault config "raw" event, global search's `setQuery`, property icons,
-hotkeys, a view's title element.
+Unsupported APIs are read only in `obsidian-internals.ts`: the daily-notes
+settings (D-127), readable line length, the vault config "raw" event, global
+search's `setQuery`, property icons, hotkeys, a view's title element.

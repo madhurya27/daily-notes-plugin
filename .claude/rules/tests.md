@@ -6,9 +6,10 @@ paths:
 
 # Tests
 
-- Unit: Vitest + jsdom, mocking `obsidian` and `obsidian-daily-notes-interface`
-  from `tests/mocks/`. The mocks take their signatures from the real API, so
-  tests typecheck against them (D-025).
+- Unit: Vitest + jsdom, mocking `obsidian` from `tests/mocks/`, where
+  `daily-notes.ts` holds the vault's notes and daily-notes settings. The mocks
+  take their signatures from the real API, so tests typecheck against them
+  (D-025).
 - **The split is a contract**
   ([ADR 0002](../../docs/adr/0002-real-obsidian-e2e.md)): jsdom loads no
   stylesheet, so a visibility assertion there proves nothing. Real rendering,

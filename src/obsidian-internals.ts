@@ -43,10 +43,38 @@ export function onPostProcessorChange(app: App, handler: () => void): EventRef {
     return (app.workspace as unknown as WorkspaceInternal).on("post-processor-change", handler);
 }
 
-/** The core search plugin's unpublished handle, reached through the registry. */
+/** The core plugins' unpublished handles, reached through the registry. */
 type InternalPlugins = {
     getPluginById(id: "global-search"): { instance?: { openGlobalSearch(query: string): void } } | undefined;
+    getPluginById(id: "daily-notes"): { instance?: { options?: DailyNoteSettings } } | undefined;
 };
+
+/** Where daily notes live and what they are named, as the user set it; unset fields are absent. */
+export interface DailyNoteSettings {
+    format?: string;
+    folder?: string;
+    template?: string;
+}
+
+/** Periodic Notes' settings, which replace the core plugin's while it has daily notes on. */
+type CommunityPlugins = {
+    getPlugin(id: "periodic-notes"): { settings?: { daily?: DailyNoteSettings & { enabled?: boolean } } } | null;
+};
+
+/**
+ * No public API: the daily-notes settings, from Periodic Notes while it has
+ * daily notes on, else from the core plugin. Nothing set once the internals go.
+ */
+export function getDailyNoteSettings(app: App): DailyNoteSettings {
+    const { internalPlugins, plugins } = app as unknown as {
+        internalPlugins?: InternalPlugins;
+        plugins?: CommunityPlugins;
+    };
+    const periodic = plugins?.getPlugin("periodic-notes")?.settings?.daily;
+    const { format, folder, template } =
+        (periodic?.enabled ? periodic : internalPlugins?.getPluginById("daily-notes")?.instance?.options) ?? {};
+    return { format, folder, template };
+}
 
 /** The core search view, whose query a pane of our own has to set itself. */
 type SearchView = { setQuery?(query: string): void };

@@ -3,8 +3,3 @@ allowBuilds:
     edgedriver: false
     esbuild: true
     geckodriver: false
-
-# obsidian-daily-notes-interface depends on obsidian via a GitHub tarball;
-# pnpm blocks exotic subdependencies, so point it at the registry release.
-overrides:
-    obsidian: 1.13.1

@@ -2084,3 +2084,17 @@ window. Without the border, a light still runs into GitHub's white page.
 - The whole window, shown wider — 78% text needs 800 px, and six stills that
   tall double the README's length.
 - A smaller window — Obsidian's narrow layout, not the one readers see.
+
+## D-127 — The daily-notes settings are read without a library (2026-10-12)
+
+**Decision:** `getDailyNoteSettings(app)` in `src/obsidian-internals.ts` reads
+Periodic Notes' daily settings while it has them on, else the core plugin's, and
+the callers take it as a function.
+
+**Why:** `obsidian-daily-notes-interface` was bundled for this one function. It
+reached Obsidian through the bare `window.app` global, sat unmaintained since
+2021, and shipped its MIT notice nowhere in `main.js`.
+
+**Rejected:** keeping it and adding its notice to `main.js` — it would still be
+a dependency for 20 lines, and the one unsupported access outside the internals
+file.

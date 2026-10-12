@@ -8,10 +8,11 @@ import { BaseMeasurements } from "../src/render/bases/base-measurements";
 import { LAYOUT_MEMORY_KEY, LayoutMemory } from "../src/stream/layout-memory";
 import { Notice, TFile, WorkspaceLeaf, type PluginManifest, type WorkspaceLeaf as Leaf } from "./mocks/obsidian";
 import { asApp, makeService } from "./stream-view-fixture";
-import { __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "./mocks/daily-notes-interface";
+import { __mockSettings, __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "./mocks/daily-notes";
 
 function makeApp() {
     return {
+        internalPlugins: { getPluginById: () => ({ instance: { options: __mockSettings() } }) },
         vault: {
             on: vi.fn().mockReturnValue({}),
             cachedRead: vi.fn().mockResolvedValue(""),

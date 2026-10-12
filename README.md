@@ -237,6 +237,21 @@ The stream follows Obsidian's theme, light or dark.
 pnpm install && pnpm test && pnpm run lint && pnpm run build
 ```
 
+## Credits
+
+Thank you to the authors and maintainers of the projects that inspired this
+plugin:
+
+- [Logseq](https://github.com/logseq/logseq)
+- [obsidian-daily-notes-interface](https://github.com/liamcain/obsidian-daily-notes-interface)
+- [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor)
+- [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review)
+- [Calendar](https://github.com/liamcain/obsidian-calendar-plugin)
+- [Jump to Date](https://github.com/TfTHacker/obsidian42-jump-to-date)
+- [Dataview](https://github.com/blacksmithgu/obsidian-dataview)
+- [Periodic Notes](https://github.com/liamcain/obsidian-periodic-notes)
+- [Templater](https://github.com/SilentVoid13/Templater)
+
 ## License
 
 MIT
