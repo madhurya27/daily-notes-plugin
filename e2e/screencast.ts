@@ -6,8 +6,8 @@ import { writeWebp } from "../scripts/recording.mjs";
 
 /**
  * Records the page while `scene` plays and writes it to `output` as a lossless
- * animated WebP. Frames come from Chromium's screencast, so the window must be on screen
- * (E2E_SHOW_WINDOW=1), as for screenshots.
+ * animated WebP. Frames come from Chromium's screencast, at the display's scale only
+ * with the window shown (E2E_SHOW_WINDOW=1), as for screenshots.
  */
 export async function record(page: Page, output: string, scene: () => Promise<void>): Promise<void> {
     const cdp = await page.context().newCDPSession(page);

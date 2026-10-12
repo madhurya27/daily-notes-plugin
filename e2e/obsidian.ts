@@ -1,4 +1,12 @@
-import { test as base, chromium, expect, type Browser, type Locator, type Page } from "@playwright/test";
+import {
+    test as base,
+    chromium,
+    expect,
+    type Browser,
+    type CDPSession,
+    type Locator,
+    type Page,
+} from "@playwright/test";
 import { execFileSync, spawn, type ChildProcess } from "child_process";
 import { createServer } from "net";
 import { mkdirSync, mkdtempSync, writeFileSync, copyFileSync, rmSync } from "fs";
@@ -8,24 +16,20 @@ import { fileURLToPath } from "url";
 
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
 const OBSIDIAN_BUNDLE = process.env.OBSIDIAN_BUNDLE ?? "/Applications/Obsidian.app";
-/** Set to watch the run happen; otherwise the window never reaches the screen. */
+/** Set to watch the run happen; otherwise nothing of the window shows. */
 const SHOW_WINDOW = process.env.E2E_SHOW_WINDOW === "1";
 const VAULT_ID = "e2e0000000000001";
 
-// Hidden means occluded, and Chromium throttles occluded renderers: timers crawl
-// and IntersectionObserver stops firing — what the scroll tests wait on.
+// Out of sight means occluded, and Chromium throttles occluded renderers: timers
+// crawl and IntersectionObserver stops firing — what the scroll tests wait on.
 const NO_THROTTLE = [
     "--disable-backgrounding-occluded-windows",
     "--disable-renderer-backgrounding",
     "--disable-background-timer-throttling",
 ];
-// Hidden in the phone layout, the window drew about a frame a second and a smooth
-// scroll never moved. Drawing without vsync fixes that; on desktop, which draws
-// normally hidden, it made the jump and menu tests flaky.
-const PHONE_FRAMES = ["--disable-gpu-vsync", "--disable-frame-rate-limit"];
 /**
  * Shrunk to Obsidian's minimum and parked in a corner, so the flash before the
- * hide is a small square. The renderer lays out at VIEWPORT regardless.
+ * cloak is a small square. The renderer lays out at VIEWPORT regardless.
  */
 const MIN_WINDOW = { width: 300, height: 200 };
 const VIEWPORT = { width: 1024, height: 800 };
@@ -142,15 +146,22 @@ function seedVault(): string {
     return vault;
 }
 
+export interface WindowOnScreen {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    alpha: number;
+}
+
 export interface ObsidianApp {
     page: Page;
     vaultPath: string;
-    isHidden: () => boolean;
     isFrontmost: () => boolean;
-    windowBounds: () => { width: number; height: number; x: number; y: number } | null;
+    windowsOnScreen: () => WindowOnScreen[];
 }
 
-async function launch(extraArgs: string[]): Promise<{
+async function launch(): Promise<{
     app: ObsidianApp;
     dispose: () => Promise<void>;
 }> {
@@ -200,7 +211,7 @@ async function launch(extraArgs: string[]): Promise<{
     }
 
     const port = await freePort();
-    const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE, ...extraArgs];
+    const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${port}`, ...NO_THROTTLE];
     // detached: Electron's helpers outlive a parent-only kill; signal the group.
     const proc: ChildProcess | null = SHOW_WINDOW
         ? spawn(OBSIDIAN, args, { stdio: "ignore", detached: true })
@@ -220,8 +231,8 @@ async function launch(extraArgs: string[]): Promise<{
         // Armed as soon as Playwright can reach the page; the grab before that
         // is the only one left.
         const app = await startUp((browser = await connectWithRetry(port)), userDataDir, vaultPath);
-        // Settles the hidden state, rather than trust the last event.
-        if (!SHOW_WINDOW) hideApp(userDataDir);
+        // Settles the cloak, rather than trust the last event.
+        if (!SHOW_WINDOW) await showCloaked(app.page);
         return { app, dispose };
     } catch (error) {
         await dispose();
@@ -229,15 +240,14 @@ async function launch(extraArgs: string[]): Promise<{
     }
 }
 
-/** Drives Obsidian's first-run dance until the plugin is live and the window hidden. */
+/** Drives Obsidian's first-run dance until the plugin is live and the window cloaked. */
 async function startUp(browser: Browser, userDataDir: string, vaultPath: string): Promise<ObsidianApp> {
     const context = browser.contexts()[0]!;
     const page = context.pages()[0]!;
     // The window is 300x200; lay the page out normally so scroll behaves.
     if (!SHOW_WINDOW) {
-        await guardFocus(page);
-        const cdp = await context.newCDPSession(page);
-        await cdp.send("Emulation.setDeviceMetricsOverride", { ...VIEWPORT, deviceScaleFactor: 1, mobile: false });
+        await cloakWindow(page);
+        await layOut(page, VIEWPORT);
     }
     // Playwright emulates light on attach; null restores the system preference.
     await page.emulateMedia({ colorScheme: null });
@@ -268,28 +278,17 @@ async function startUp(browser: Browser, userDataDir: string, vaultPath: string)
     await page.evaluate(() => window.app.setting?.close?.());
     await expect(page.locator(".modal-container")).toHaveCount(0);
 
-    const isHidden = () => {
-        const pid = mainProcessPid(userDataDir);
-        return pid !== null && systemEvents(pid, "get visible") === "false";
-    };
     const isFrontmost = () => {
         const pid = mainProcessPid(userDataDir);
         return pid !== null && systemEvents(pid, "get frontmost") === "true";
     };
 
-    const windowBounds = () => {
+    const windowsOnScreen = () => {
         const pid = mainProcessPid(userDataDir);
-        if (pid === null) return null;
-        const size = systemEvents(pid, "get size of first window");
-        const position = systemEvents(pid, "get position of first window");
-        if (!size || !position) return null;
-        const [width, height] = size.split(",").map((n) => Number(n.trim()));
-        const [x, y] = position.split(",").map((n) => Number(n.trim()));
-        if ([width, height, x, y].some((n) => !Number.isFinite(n))) return null;
-        return { width: width!, height: height!, x: x!, y: y! };
+        return pid === null ? [] : onScreen(pid);
     };
 
-    return { page, vaultPath, isHidden, isFrontmost, windowBounds };
+    return { page, vaultPath, isFrontmost, windowsOnScreen };
 }
 
 /**
@@ -354,48 +353,86 @@ function secondaryScreen(): Screen | null {
 }
 
 /**
- * Takes the window out of the user's way from inside the app. `open -g -j` stops
- * LaunchServices activating it, not Obsidian activating itself — at first paint,
- * when the vault opens, and on the reload `emulateMobile` triggers.
+ * Takes the window out of the user's way from inside the app, yet keeps it on
+ * screen: hidden, it can fall to a frame or two a second for good (D-124).
+ * Shown fully transparent and click-through, it draws as any window does.
  *
- * An accessory process has no menu bar and macOS will not front it, so the grabs
- * stop rather than get undone; the listeners cover the window between launch and
- * this call. A reload drops them, and the policy with them: callers re-arm.
+ * `open -g -j` stops LaunchServices activating it, not Obsidian activating itself
+ * — at first paint, when the vault opens, and on the reload `emulateMobile`
+ * triggers. A grab hides the app, handing the focus back, and the window is shown
+ * again without it. An accessory process has no menu bar and macOS will not front
+ * it, so the grabs stop rather than get undone; the listeners cover the window
+ * between launch and this call. A reload drops them, and the policy with them:
+ * callers re-arm.
  */
-async function guardFocus(page: Page): Promise<void> {
+async function cloakWindow(page: Page): Promise<void> {
     // The preload sets the bridge; a loaded machine attaches before it runs.
     await page.waitForFunction(() => window.electron?.remote !== undefined, null, { polling: 10 });
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
         const { remote } = window.electron;
-        const win = remote.getCurrentWindow();
-        const hide = () => remote.app.hide();
-        win.on("show", hide);
-        win.on("focus", hide);
+        /** Electron's BrowserWindow, as far as the guard uses it. */
+        type Win = {
+            isVisible(): boolean;
+            showInactive(): void;
+            setOpacity(opacity: number): void;
+            setIgnoreMouseEvents(ignore: boolean): void;
+            on(event: string, listener: () => void): void;
+        };
+        const windows = (): Win[] => remote.BrowserWindow.getAllWindows();
+        const cloak = (win: Win) => {
+            win.setOpacity(0);
+            win.setIgnoreMouseEvents(true);
+        };
+        /** Resolves once the windows are back: the hide lands later, undoing a show before it. */
+        const handBackFocus = () =>
+            new Promise<void>((resolve) => {
+                const shown = windows().filter((win) => win.isVisible());
+                remote.app.hide();
+                const giveUp = Date.now() + 2000;
+                const showOnceHidden = () => {
+                    if (!remote.app.isHidden() && Date.now() < giveUp) return void setTimeout(showOnceHidden, 10);
+                    for (const win of shown) win.showInactive();
+                    resolve();
+                };
+                showOnceHidden();
+            });
+        // Settings, on desktop, open in a window of their own.
+        const guard = (win: Win) => {
+            cloak(win);
+            win.on("show", () => cloak(win));
+            win.on("focus", () => void handBackFocus());
+        };
+        windows().forEach(guard);
+        remote.app.on("browser-window-created", (_event: unknown, win: Win) => guard(win));
         remote.app.setActivationPolicy("accessory");
-        hide();
+        await handBackFocus();
+    });
+}
+
+/** Shows the cloaked main window, whatever startup left it as. */
+async function showCloaked(page: Page): Promise<void> {
+    await page.evaluate(() => {
+        const win = window.electron.remote.getCurrentWindow();
+        win.setOpacity(0);
+        win.setIgnoreMouseEvents(true);
+        // Even when Electron calls it visible: it does so while the app is hidden.
+        win.showInactive();
     });
 }
 
 /**
- * Hides the app, waiting for it to own a window first — hiding before that
- * window exists is undone by the show, and seeding the window offscreen does not
- * work either: macOS clamps saved bounds back onto a display. The watcher above
- * does the hiding during startup; this settles the final state afterwards.
+ * A process's windows on screen, as the window server has them. System Events
+ * lists none for a window shown again after its app was hidden.
  */
-function hideApp(userDataDir: string): void {
-    const deadline = Date.now() + 20_000;
-    while (Date.now() < deadline) {
-        const pid = mainProcessPid(userDataDir);
-        if (
-            pid !== null &&
-            systemEvents(pid, "count of windows") !== "0" &&
-            systemEvents(pid, "set visible to false") !== null
-        ) {
-            return;
-        }
-        execFileSync("sleep", ["0.25"]);
-    }
-    throw new Error("Could not hide the Obsidian window; re-run with E2E_SHOW_WINDOW=1");
+function onScreen(pid: number): WindowOnScreen[] {
+    const script =
+        "ObjC.import('CoreGraphics'); JSON.stringify(ObjC.deepUnwrap(ObjC.castRefToObject(" +
+        "$.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0))).filter(w => " +
+        `w.kCGWindowOwnerPID === ${pid} && w.kCGWindowLayer === 0).map(w => ({ ` +
+        "x: w.kCGWindowBounds.X, y: w.kCGWindowBounds.Y, width: w.kCGWindowBounds.Width, " +
+        "height: w.kCGWindowBounds.Height, alpha: w.kCGWindowAlpha })))";
+    const out = execFileSync("osascript", ["-l", "JavaScript", "-e", script], { encoding: "utf8" });
+    return JSON.parse(out) as WindowOnScreen[];
 }
 
 /** Runs one System Events statement against a process; null when it is not addressable yet. */
@@ -470,6 +507,7 @@ async function connectWithRetry(port: number): Promise<Browser> {
 
 interface TestFixtures {
     freshPluginState: void;
+    projectLayout: void;
 }
 
 interface WorkerFixtures {
@@ -500,10 +538,19 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         },
         { auto: true },
     ],
+    // A test's own session may have set the viewport and taken it with it.
+    projectLayout: [
+        async ({ obsidian, mobileLayout }, use) => {
+            if (mobileLayout) await layOut(obsidian.page, PHONE_VIEWPORT);
+            else if (!SHOW_WINDOW) await layOut(obsidian.page, VIEWPORT);
+            await use();
+        },
+        { auto: true },
+    ],
     mobileLayout: [false, { scope: "worker", option: true }],
     obsidian: [
         async ({ mobileLayout }, use: (app: ObsidianApp) => Promise<void>) => {
-            const { app, dispose } = await launch(mobileLayout && !SHOW_WINDOW ? PHONE_FRAMES : []);
+            const { app, dispose } = await launch();
             if (mobileLayout) await applyMobileLayout(app.page);
             await use(app);
             await dispose();
@@ -519,18 +566,28 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
  * tap that does nothing) need both.
  */
 async function applyMobileLayout(page: Page): Promise<void> {
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Emulation.setDeviceMetricsOverride", {
-        ...PHONE_VIEWPORT,
-        deviceScaleFactor: 1,
-        mobile: false,
-    });
+    await layOut(page, PHONE_VIEWPORT);
     await page.evaluate(() => window.app.emulateMobile(true));
     // emulateMobile tears the workspace down and rebuilds it; every leaf goes
     // with it, so tests must open their own view afterwards (they all do).
     await page.waitForFunction(() => window.app?.workspace?.layoutReady === true, null, { timeout: 60_000 });
     // The reload shows the window again, and took the guard with it.
-    if (!SHOW_WINDOW) await guardFocus(page);
+    if (!SHOW_WINDOW) await cloakWindow(page);
+}
+
+/** Each page's layout session. Detached, a session takes its viewport with it. */
+const layoutSessions = new WeakMap<Page, CDPSession>();
+
+/** Lays the page out at a size its small window cannot give it. */
+async function layOut(page: Page, viewport: { width: number; height: number }): Promise<void> {
+    let cdp = layoutSessions.get(page);
+    if (!cdp) {
+        cdp = await page.context().newCDPSession(page);
+        layoutSessions.set(page, cdp);
+    }
+    // The same size again is ignored, though another session's detach cleared it.
+    await cdp.send("Emulation.clearDeviceMetricsOverride");
+    await cdp.send("Emulation.setDeviceMetricsOverride", { ...viewport, deviceScaleFactor: 1, mobile: false });
 }
 
 /** The per-project option playwright.config.ts sets. */

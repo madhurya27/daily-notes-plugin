@@ -156,7 +156,8 @@ relaunching — 1.6s against 3s, for one more script to learn and maintain.
 ## D-010 — The e2e window is hidden from inside Obsidian (2026-09-21)
 
 **Decision:** the harness installs `show` and `focus` listeners on the window
-through Electron's remote bridge, hiding the app from its own renderer.
+through Electron's remote bridge, hiding the app from its own renderer. Hidden
+no longer stays hidden: D-124 shows the window again, transparent.
 
 **Why:** Obsidian activates itself at first paint, when the vault opens, and on
 the `emulateMobile` reload. Hidden and frontmost are separate states, so a run
@@ -2034,3 +2035,26 @@ Waiting for stillness keeps the pane from moving under the reader.
 - A check each minute — a timer firing all day for one moment a day.
 - Exempting the newest note instead of today's — skip days and an untouched note
   stays shown until the next is made.
+
+## D-124 — The e2e window stays on screen, transparent (2026-10-12)
+
+**Decision:** the harness shows every Obsidian window at opacity 0, ignoring the
+mouse, instead of hiding the app, and without the phone layout's vsync flags.
+Before each test it lays the page out at the project's size again, from one
+session that never detaches.
+
+**Why:** hidden, a window whose viewport was set again drew a frame or two a
+second once a tab opened, until its worker restarted, timing out whichever
+frame-bound test came next. On screen it draws normally, takes screenshots, and
+the phone layout glides. A detached session takes its viewport with it, and the
+page falls back to its 300x200 window at its next layout, as when settings open
+in their own window.
+
+**Rejected:**
+
+- Drawing without vsync on desktop, as the phone layout does — 4 of 5 full runs
+  then failed a menu or settings test.
+- Skipping the one desktop test that resizes — it checks real behavior, and the
+  stall outlives it.
+- A visible window behind others — still the user's to see, and macOS throttles
+  a covered one.
