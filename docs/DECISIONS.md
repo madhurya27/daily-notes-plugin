@@ -1148,8 +1148,9 @@ all, about 7 ms a note. The spec's budgets are about twice these.
 
 - Bases off the queue, held by a `HeightHold` — 16 ms a Base, for a hold per
   Base.
-- Batching width reads in one `requestAnimationFrame` — saves part of 7 ms a
-  note.
+- Batching width reads in one `requestAnimationFrame` — at most 1 ms of layout a
+  note (2026-10): with them stubbed out, the plugin forced 80 ms less over 40
+  notes but all layout fell by only 40 ms, the rest moving to the next frame.
 
 ## D-069 — A first open parses every date in one task (2026-09-28)
 
