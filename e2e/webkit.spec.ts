@@ -94,6 +94,20 @@ test.describe("in iOS's engine", () => {
         }
     });
 
+    // WebKit restyles every element inheriting a custom property that changed (D-129).
+    test("keeps a pinned height from the elements inside the note", async ({ obsidian, inWebKit }) => {
+        const container = await openStream(obsidian.page);
+        await expect(container.locator(".daily-note-block.is-pinned").first()).toBeAttached();
+
+        const phone = await inWebKit();
+
+        const inside = await phone
+            .locator(".daily-note-block.is-pinned .daily-note-content")
+            .first()
+            .evaluate((el) => getComputedStyle(el).getPropertyValue("--daily-note-pinned-height"));
+        expect(inside).toBe("");
+    });
+
     // MathJax 3 put each equation on a layer of its own, in WebKit only: on an
     // iPhone, a flick begun on a note holding math then stopped dead (D-085).
     test("puts no equation on a layer of its own", async ({ obsidian, inWebKit }) => {

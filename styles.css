@@ -36,6 +36,19 @@
     overflow-anchor: none;
 }
 
+/* Read only by the element they are set on. Inherited, a change restyled every
+   element inside it: the whole note at each re-pin, the whole stream at each
+   shift (D-129). */
+@property --daily-note-pinned-height {
+    syntax: "*";
+    inherits: false;
+}
+
+@property --daily-notes-scroll-shift {
+    syntax: "*";
+    inherits: false;
+}
+
 .daily-notes-stream-container.is-scroll-shifted {
     transform: translateY(var(--daily-notes-scroll-shift));
 }

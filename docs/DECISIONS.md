@@ -2115,3 +2115,19 @@ is up to 366 notes, and the old single limit of 50 cut it off in November.
 - Every date, on open and on a query — a third of a second on a phone, more with
   each year.
 - Two calendar months back from today — a sparse journal opens on few notes.
+
+## D-129 — A pinned height and the scroll shift do not inherit (2026-10-13)
+
+**Decision:** `styles.css` registers `--daily-note-pinned-height` and
+`--daily-notes-scroll-shift` with `@property`, `inherits: false`.
+
+**Why:** a custom property inherits by default, so each change restyled every
+element under the one it was set on: the whole note at each re-pin, the whole
+stream at each shift. Re-pinning a 10,000-line note took 140 ms on an M5, 570 ms
+with the CPU slowed 4x; 2–3 ms not inherited. A save of that note at phone speed
+froze 4.9 s, now 1.8 s; a 200-line note's, 55 ms, now under a long task.
+
+**Rejected:**
+
+- Resetting them on the children, as `--daily-note-held-height` is — as fast (2
+  ms), but a rule per property at every level that must stop it.

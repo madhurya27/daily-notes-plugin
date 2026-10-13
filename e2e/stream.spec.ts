@@ -774,6 +774,25 @@ test.describe("daily notes stream in real Obsidian", () => {
                 expect(offBy).toEqual(offBy.map(() => 0));
             });
 
+            // Inherited, a re-pin restyled every element of the note: 0.5 s
+            // for a 10,000-line note at a phone's speed (D-129).
+            test("keeps a pinned height and the stream's shift from the elements inside", async ({ obsidian }) => {
+                const container = await openStream(obsidian.page);
+                await expect(container.locator(".daily-note-block.is-pinned").first()).toBeAttached();
+
+                const inside = await container.evaluate((stream) => {
+                    stream.style.setProperty("--daily-notes-scroll-shift", "-5px");
+                    const content = stream.querySelector(".daily-note-block.is-pinned .daily-note-content")!;
+                    const style = getComputedStyle(content);
+                    const values = ["--daily-note-pinned-height", "--daily-notes-scroll-shift"].map((name) =>
+                        style.getPropertyValue(name)
+                    );
+                    stream.style.removeProperty("--daily-notes-scroll-shift");
+                    return values;
+                });
+                expect(inside).toEqual(["", ""]);
+            });
+
             // A Base, unmeasured notes and a scroll down and back: renders,
             // unloads and Bases filling in, each a height change.
             test.describe("through a scroll down and back", () => {
