@@ -1,8 +1,8 @@
 # Daily notes stream
 
-Read your daily notes like a journal. Every day appears on one page, with the
-newest at the top and older days loading as you scroll. The stream is for
-reading; to edit a note, click its date.
+Read your daily notes as one continuous timeline. Every day appears on one page,
+with the newest at the top and older days loading as you scroll. The stream is
+for reading; to edit a note, click its date.
 
 It works with the daily notes you already have. There's no new folder, format or
 template to set up, and it never changes your notes. It's lightweight, and stays
@@ -39,8 +39,10 @@ fast with years of notes.
 - **What does it store?** Your settings, saved in the plugin's folder. Which
   sections you folded, and layout measurements that keep scrolling steady, are
   kept separately on each device.
-- **Does it go online?** No. The only things that load from the web are embeds
-  you put in your notes yourself, such as videos.
+- **Is it private?** Yes. It collects no telemetry or analytics, needs no
+  account, and never sends your notes or anything about you anywhere. The only
+  things that load from the web are embeds you put in your notes yourself, such
+  as videos.
 - **Does it slow down with years of notes?** No. It's tested on five years of
   daily notes, and stays fast and light on memory throughout: only the notes
   near what you're reading are loaded at a time.
@@ -100,11 +102,12 @@ another note links to, so you can see its linked mentions. A note made from an
 older version of your template shows too, because it no longer matches the
 current one.
 
-Templates made with the core Templates plugin or with Templater both work. Some
-Templater commands produce text that can't be known in advance: commands that
-write several lines, such as `tp.file.include`, and commands that choose between
-sections. A note made from a template that uses them shows even before you write
-in it.
+Templates made with the core Templates plugin or with Templater both work. A
+placeholder such as `{{date}}` or `<% tp.date.now() %>` can fill in anything on
+its own line. A Templater command that can write more than one line, such as
+`tp.file.include` or an `if` that picks between sections, can't be matched. A
+note made from a template that uses one always shows, even before you write in
+it.
 
 To show every note, turn off **Hide empty notes** in [settings](#settings).
 

@@ -60,6 +60,13 @@ priority.
       every block for a note.
 - [ ] Leave out a note by property (`stream: false`): a `NoteFilter`, like
       hiding empty notes, for days not to show when the screen is shared.
+- [ ] Say under **Hide empty notes** whether the daily-notes template can be
+      matched, naming the block that stops it (`if`, loops, `tp.web.*`,
+      `tp.user.*`). A `tp.user.*` script may write one line or several: "may
+      always show".
+- [ ] Match `tp.file.include` by inlining the included file into the template
+      pattern (D-117), its own blocks read the same way. Wait for a user who
+      includes a file in their daily template.
 
 Out of scope:
 
