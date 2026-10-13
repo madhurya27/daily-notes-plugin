@@ -13,6 +13,7 @@ import { mkdirSync, mkdtempSync, writeFileSync, copyFileSync, rmSync } from "fs"
 import { tmpdir } from "os";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { TARGET_PHONE_WORKLOAD_MS, WORKLOAD_NOTE, cpuSlowdown, timeWorkload } from "./phone-speed";
 
 const OBSIDIAN = process.env.OBSIDIAN_PATH ?? "/Applications/Obsidian.app/Contents/MacOS/Obsidian";
 const OBSIDIAN_BUNDLE = process.env.OBSIDIAN_BUNDLE ?? "/Applications/Obsidian.app";
@@ -704,17 +705,23 @@ export async function restoreScrollAnchoring(page: Page) {
     });
 }
 
-/** Lighthouse's mobile preset: a laptop's CPU slowed to a phone's. */
-const PHONE_CPU_SLOWDOWN = 4;
+/** What the workload takes each instance unthrottled, timed once. */
+const machineWorkloadMs = new WeakMap<Page, number>();
 
 /**
- * Slows the CPU to a phone's for timings taken in the mobile project, whose
- * Chromium otherwise runs at laptop speed. Returns the undo: tests share the
- * instance.
+ * Slows the CPU to an average iPhone's, with margin, for timings taken in the mobile project,
+ * whose Chromium otherwise runs at laptop speed: as much as makes the workload
+ * take this machine as long as that phone (`phone-speed.ts`). The stream must
+ * be open. Returns the undo: tests share the instance.
  */
 export async function emulatePhoneCpu(page: Page): Promise<() => Promise<void>> {
+    let machineMs = machineWorkloadMs.get(page);
+    if (machineMs === undefined) {
+        machineMs = await page.evaluate(timeWorkload, WORKLOAD_NOTE);
+        machineWorkloadMs.set(page, machineMs);
+    }
     const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Emulation.setCPUThrottlingRate", { rate: PHONE_CPU_SLOWDOWN });
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpuSlowdown(machineMs, TARGET_PHONE_WORKLOAD_MS) });
     return async () => {
         await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
         await cdp.detach();
