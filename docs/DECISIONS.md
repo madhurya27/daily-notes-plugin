@@ -2133,22 +2133,21 @@ froze 4.9 s, now 1.8 s; a 200-line note's, 55 ms, now under a long task.
 - Resetting them on the children, as `--daily-note-held-height` is — as fast (2
   ms), but a rule per property at every level that must stop it.
 
-## D-131 — Specs time a laptop slowed to an average iPhone's, with margin (2026-10-13)
+## D-131 — Specs time a laptop slowed below every supported iPhone (2026-10-13)
 
 **Decision:** `emulatePhoneCpu` times a fixed workload (`e2e/phone-speed.ts`) on
-the machine, then slows its CPU until the workload takes 16 ms: an A15 iPhone's
-(13 or 14) 13 ms, and a quarter to spare. 13 ms is an iPhone 16 Pro's 8.4–9.0 ms
-times its 1.55 single-core lead on Geekbench 6. `e2e/ios/phone-speed.spec.ts`
-keeps that ratio to the real phone.
+the machine, then slows its CPU until the workload takes 20 ms: about 2.3 times
+an iPhone 16 Pro's 7.6–9.0 ms. `e2e/ios/phone-speed.spec.ts` keeps that ratio to
+the real phone.
 
-**Why:** the fixed 4x slowed an M5 to 22–29 ms, slower than an iPhone 11: the
-limits and thresholds timed at it held for a device no reader carries, and a
-slower laptop ran slower still.
+**Why:** the fixed 4x slowed an M5 to 22–29 ms, and a slower laptop ran slower
+still. 20 ms is below an iPhone 11 (~18 ms, half a 16 Pro's single core on
+Geekbench 6), the oldest iOS 26 runs on, and near the quicker mid-range Androids
+(~29 ms estimated for a Galaxy A35).
 
 **Rejected:**
 
 - The fixed 4x, Lighthouse's preset — set for an average desktop, not an M5.
-- The A15's 13 ms bare — no margin for a phone warm, low on charge or older.
-- An iPhone 11 (~18 ms), the oldest iOS 26 runs on — the slow end, not the
-  average.
-- A mid-range Android — no device here to keep the number honest.
+- An A15 iPhone's ~13 ms, or 16 with margin — misses the older iPhones and every
+  mid-range Android.
+- A mid-range Android's ~29 ms — no device here to keep the number honest.

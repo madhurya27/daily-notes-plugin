@@ -1,10 +1,10 @@
 /// <reference path="./global.d.ts" />
 
 /**
- * The phone the specs time against: an iPhone 13 or 14 (A15), an average one,
- * about 1.55 times slower than an iPhone 16 Pro on Geekbench 6 single-core,
- * with a quarter to spare. A laptop is slowed until the same workload takes it
- * as long.
+ * The phone the specs time against: slower than any iPhone iOS 26 runs on,
+ * the iPhone 11 half an iPhone 16 Pro's single-core speed on Geekbench 6, and
+ * as fast as the quicker mid-range Androids (D-131). A laptop is slowed until
+ * the same workload takes it as long.
  */
 
 /** A day's entries, about 5,000 characters: a note the stream draws whole. */
@@ -30,8 +30,8 @@ export const WORKLOAD_NOTE = Array.from({ length: 10 }, (_, n) =>
     ].join("\n")
 ).join("\n\n");
 
-/** What the workload takes an A15 iPhone, 13 ms, and a quarter more. */
-export const TARGET_PHONE_WORKLOAD_MS = 16;
+/** What the workload takes that phone, in ms: an iPhone 16 Pro's, about 2.3 times. */
+export const TARGET_PHONE_WORKLOAD_MS = 20;
 
 /** How much to slow a machine whose workload takes `machineMs` to one taking `targetMs`. */
 export function cpuSlowdown(machineMs: number, targetMs: number): number {

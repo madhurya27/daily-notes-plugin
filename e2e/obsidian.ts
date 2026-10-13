@@ -709,7 +709,7 @@ export async function restoreScrollAnchoring(page: Page) {
 const machineWorkloadMs = new WeakMap<Page, number>();
 
 /**
- * Slows the CPU to an average iPhone's, with margin, for timings taken in the mobile project,
+ * Slows the CPU to a slow phone's for timings taken in the mobile project,
  * whose Chromium otherwise runs at laptop speed: as much as makes the workload
  * take this machine as long as that phone (`phone-speed.ts`). The stream must
  * be open. Returns the undo: tests share the instance.
