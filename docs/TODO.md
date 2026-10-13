@@ -15,6 +15,14 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
           the README
     - [ ] Once listed, lead the README's Install with **Settings → Community
           plugins → Browse**; keep the manual download as the alternative
+- [ ] Time limits in `memory.spec.ts` and `render-cost.spec.ts` hold only on a
+      machine as fast as an M5: a fixed 4x slowdown leaves a slower one slower.
+      Time a fixed workload first and set the slowdown from it, as Lighthouse
+      does, so every machine runs at one phone speed.
+- [ ] Revisit D-068's rejected batching of width reads in one
+      `requestAnimationFrame`: re-measured, the plugin forces about 7 ms of
+      layout a note, not 1.5. Measure what batching saves with
+      `render-cost.spec.ts`.
 
 ## Features
 

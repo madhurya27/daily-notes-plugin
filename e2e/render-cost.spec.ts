@@ -152,8 +152,10 @@ test.describe("render cost on mobile, a Base and equations per note", () => {
         expect(drawn.rows).toBeGreaterThan(0);
         expect(drawn.equations).toBe(2);
         expect(baseMs.length).toBeGreaterThanOrEqual(NOTES);
-        // About 4x what phone speed measured (D-068).
-        expect(sorted.at(-1)).toBeLessThan(250);
-        expect(ms(ours)).toBeLessThan(250);
+        // About 2x the most measured (D-068). The count holds on any machine;
+        // the times only on one as fast as an M5.
+        expect(ours.length).toBeLessThan(1700);
+        expect(sorted.at(-1)).toBeLessThan(150);
+        expect(ms(ours)).toBeLessThan(580);
     });
 });

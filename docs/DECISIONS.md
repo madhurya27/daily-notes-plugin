@@ -1138,16 +1138,17 @@ docs promise only "better performance", so the timing test is the guard.
 **Decision:** on mobile a render still awaits each Base, then measures its
 tables and equations in place.
 
-**Why:** scrolling 40 notes, each embedding a Base over 1,095 notes plus
+**Why:** scrolling 40 notes, each embedding a Base over 1,825 notes plus
 equations and a wide table (`e2e/render-cost.spec.ts`, CPU slowed 4x to a
-phone's): a Base held the queue 16 ms median, 60–74 ms at most; every layout the
-plugin forced came to 55–60 ms in all, about 1.5 ms a note.
+phone's, on an M5, in the on-screen window of D-124): a Base held the queue 19
+ms median, 29–74 ms at most; the plugin forced 797–857 layouts, 266–290 ms in
+all, about 7 ms a note. The spec's budgets are about twice these.
 
 **Rejected:**
 
 - Bases off the queue, held by a `HeightHold` — 16 ms a Base, for a hold per
   Base.
-- Batching width reads in one `requestAnimationFrame` — saves part of 1.5 ms a
+- Batching width reads in one `requestAnimationFrame` — saves part of 7 ms a
   note.
 
 ## D-069 — A first open parses every date in one task (2026-09-28)
