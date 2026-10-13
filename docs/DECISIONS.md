@@ -2073,12 +2073,13 @@ new tags, and no reader ran a `0.x` draft.
 ## D-126 — The README's desktop stills crop to the note column (2026-10-12)
 
 **Decision:** each desktop still is the top 520 px of the note column, from
-under the view's header, with a 32 px margin and a 1 px border, shown 600 px
-wide.
+under the view's header, with a 32 px margin and a 1 px border, shown 800 px
+wide, as the recording above them is.
 
 **Why:** the whole 1024 px window at 440 px showed its text at 43%, too small to
-read; cropped, it shows at 79%. The recording above them already shows the
-window. Without the border, a light still runs into GitHub's white page.
+read; cropped, it shows at 105%, and the stills line up with the recording. The
+recording above them already shows the window. Without the border, a light still
+runs into GitHub's white page.
 
 **Rejected:**
 
