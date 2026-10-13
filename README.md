@@ -54,10 +54,8 @@ fast with years of notes.
   Templates made with the core Templates plugin or with Templater are recognised
   when empty notes are hidden; see [Empty notes](#empty-notes).
 
-If you want to edit notes directly inside the feed, this plugin doesn't do that,
-but
-[Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor)
-does.
+If you want to edit notes directly inside the feed, try
+[Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
 ## Install
 
