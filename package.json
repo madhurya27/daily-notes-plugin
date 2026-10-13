@@ -28,8 +28,7 @@
         "capture:screenshots": "pnpm run build && CAPTURE_SCREENSHOTS=1 E2E_SHOW_WINDOW=1 playwright test screenshots.spec.ts",
         "capture:recording": "pnpm run build && CAPTURE_RECORDING=1 E2E_SHOW_WINDOW=1 playwright test recording.spec.ts --project=desktop",
         "capture:recording:ios": "pnpm run build && pnpm run typecheck:e2e && CAPTURE_RECORDING=1 playwright test -c playwright.ios.config.ts recording.spec.ts",
-        "test:memory": "pnpm run build && pnpm run typecheck:e2e && E2E_SEED_DAYS=1095 playwright test memory.spec.ts render-cost.spec.ts",
-        "test:compare": "pnpm run build && pnpm run typecheck:e2e && E2E_SEED_DAYS=1825 playwright test compare.spec.ts"
+        "test:memory": "pnpm run build && pnpm run typecheck:e2e && E2E_SEED_DAYS=1825 playwright test memory.spec.ts render-cost.spec.ts"
     },
     "keywords": [],
     "license": "MIT",

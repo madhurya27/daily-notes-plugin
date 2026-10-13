@@ -2,7 +2,7 @@ import { test, expect, openStream, emulatePhoneCpu, seededDate, SEEDED_DAYS } fr
 
 /**
  * On mobile a render awaits each Base, then measures tables and equations
- * (D-068). Needs the three-year vault, so it runs
+ * (D-068). Needs a vault of three years or more, so it runs
  * under `pnpm run test:memory`.
  */
 

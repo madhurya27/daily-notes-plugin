@@ -5,7 +5,7 @@ import { test, expect, openStream, emulatePhoneCpu, seededDate, SEEDED_DAYS } fr
  * its end. Only meaningful against a vault that size, so it runs on its own —
  * `pnpm run test:memory` — rather than in the ordinary e2e sweep.
  */
-const YEARS = 3;
+const YEARS = 5;
 
 test.describe("a multi-year vault scrolled to the end", () => {
     test.skip(SEEDED_DAYS < YEARS * 365, "run via pnpm run test:memory");
@@ -74,7 +74,7 @@ test.describe("a multi-year vault scrolled to the end", () => {
             (el) => el.querySelectorAll(".daily-note-block.is-unloaded *").length
         );
         expect(unloadedChildren).toBe(0);
-        // Reaching the end of a three-year vault must not cost more heap than
+        // Reaching the end of a five-year vault must not cost more heap than
         // the first ten notes did.
         expect(end.heapMb).toBeLessThan(first.heapMb * 2);
     });
@@ -200,7 +200,7 @@ test.describe("opening a multi-year vault", () => {
             const Service = service.constructor;
             const Dates = service.parsedDates.constructor;
             const time = async () => {
-                const fresh = new Service(() => app.vault.getMarkdownFiles(), new Dates());
+                const fresh = new Service(() => app.vault.getMarkdownFiles(), service.dailyNoteSettings, new Dates());
                 const start = performance.now();
                 await fresh.initialize();
                 return { ms: Math.round(performance.now() - start), notes: fresh.length as number };
@@ -241,7 +241,7 @@ test.describe("opening a multi-year vault", () => {
             const { app } = window;
             const notes = app.plugins.plugins["daily-notes-stream"].emptyNotes;
             notes.flush();
-            const fresh = new notes.constructor(notes.reader, notes.store);
+            const fresh = new notes.constructor(notes.reader, notes.store, notes.dailyNoteSettings);
             const daily = app.vault
                 .getMarkdownFiles()
                 .filter((file: { path: string }) => file.path.startsWith("Notes/"));
