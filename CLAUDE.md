@@ -69,4 +69,6 @@ Update docs in the same branch as the change that makes them stale:
   wording, never the reverse. Its npm commands are the exception: this repo uses
   pnpm.
 - `docs/ARCHITECTURE.md` — layers, ownership, flow, file map.
+- `docs/plans/` — plans and design notes, gitignored: never committed. What
+  lasts moves to an ADR or a `D-` entry before the plan is deleted.
 - This file and `.claude/rules/` — commands, invariants, instructions.

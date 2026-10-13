@@ -34,5 +34,8 @@ coverage/
 test-results/
 /.dev/
 
+# plans and design notes, never committed
+/docs/plans
+
 # this Mac's settings for test:ios
 /e2e/ios/.env
