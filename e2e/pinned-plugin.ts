@@ -53,8 +53,21 @@ export const TEMPLATER: PinnedPlugin = {
     },
 };
 
+/** The nearest alternative, benchmarked against in `compare.spec.ts`. */
+export const DAILY_NOTES_EDITOR: PinnedPlugin = {
+    id: "daily-notes-editor",
+    name: "Daily Notes Editor",
+    repo: "Quorafind/Obsidian-Daily-Notes-Editor",
+    version: "1.1.0",
+    sha256: {
+        "main.js": "1c8638431dc3a65be10c9ba33ebc2fac759b640d2940e3a44fcc812e4971d3df",
+        "manifest.json": "281aaf360015115d6c629387d92a0cca02571150a6729b0216d8b5eba469e265",
+        "styles.css": "23037d9fb00cd43368983dc5d04b6aa5941c21943db9baea97531264ea50917e",
+    },
+};
+
 /** Every plugin a spec installs, fetched before the run. */
-export const PINNED_PLUGINS = [DATAVIEW, PERIODIC_NOTES, TEMPLATER];
+export const PINNED_PLUGINS = [DATAVIEW, PERIODIC_NOTES, TEMPLATER, DAILY_NOTES_EDITOR];
 
 const dirOf = (plugin: PinnedPlugin) =>
     resolve(dirname(fileURLToPath(import.meta.url)), "..", ".dev", "e2e-plugins", `${plugin.id}-${plugin.version}`);

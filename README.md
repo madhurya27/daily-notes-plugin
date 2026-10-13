@@ -5,7 +5,8 @@ newest at the top and older days loading as you scroll. The stream is for
 reading; to edit a note, click its date.
 
 It works with the daily notes you already have. There's no new folder, format or
-template to set up, and it never changes your notes.
+template to set up, and it never changes your notes. It's lightweight, and stays
+fast with years of notes.
 
 <p><img src="docs/images/demo-desktop.webp" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Mara, a jump goes to an older date, and the command palette scrolls it back to the top" width="800"></p>
 
@@ -40,8 +41,11 @@ template to set up, and it never changes your notes.
   kept separately on each device.
 - **Does it go online?** No. The only things that load from the web are embeds
   you put in your notes yourself, such as videos.
-- **Does it slow down with years of notes?** No. Only the notes near what you're
-  reading are loaded at a time, and it's tested on three years of daily notes.
+- **Does it slow down with years of notes?** No. It's tested on five years of
+  daily notes, and stays fast and light on memory throughout: only the notes
+  near what you're reading are loaded at a time.
+- **Does it need anything else installed?** No. It has no dependencies: it
+  contains no code from other projects and uses only what Obsidian provides.
 - **Which devices does it run on?** Desktop and mobile. It needs Obsidian 1.14.4
   or later.
 - **Does it work with other plugins?** Yes. Dataview tables and Bases are shown
