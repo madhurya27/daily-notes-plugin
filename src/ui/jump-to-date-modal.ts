@@ -4,8 +4,10 @@ import type { DailyNoteService, Moment } from "../notes/daily-note-service";
 /** The one format every reader can fall back on, whatever their vault uses. */
 const ISO_FORMAT = "YYYY-MM-DD";
 
-/** As many dates as a reader scans before narrowing the query instead. */
-export const JUMP_SUGGESTION_LIMIT = 50;
+/** About two months of notes on open: the list draws fast on a phone (D-128). */
+export const JUMP_OPEN_LIMIT = 62;
+/** About a year once a query is typed, so a year lists all its notes. */
+export const JUMP_SEARCH_LIMIT = 366;
 
 /** A date the reader can jump to; `fallback` when no note carries it. */
 interface JumpChoice {
@@ -33,7 +35,7 @@ export class JumpToDateModal extends SuggestModal<JumpChoice> {
         super(app);
         this.service = service;
         this.onSubmit = onSubmit;
-        this.limit = JUMP_SUGGESTION_LIMIT;
+        this.limit = JUMP_SEARCH_LIMIT;
         this.choices = service.dates().map((date) => this.choice(date, null));
 
         this.setPlaceholder(`Jump to a date, e.g. ${service.formatDate(moment())}`);
@@ -52,7 +54,7 @@ export class JumpToDateModal extends SuggestModal<JumpChoice> {
 
     getSuggestions(query: string): JumpChoice[] {
         const needle = query.trim().toLowerCase();
-        if (!needle) return this.choices;
+        if (!needle) return this.choices.slice(0, JUMP_OPEN_LIMIT);
 
         const matches = this.choices.filter((choice) => choice.searchText.includes(needle));
         if (matches.length > 0) return matches;

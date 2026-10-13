@@ -2100,3 +2100,18 @@ reached Obsidian through the bare `window.app` global, sat unmaintained since
 **Rejected:** keeping it and adding its notice to `main.js` — it would still be
 a dependency for 20 lines, and the one unsupported access outside the internals
 file.
+
+## D-128 — The jump list opens on two months, a query lists a year (2026-10-13)
+
+**Decision:** the jump prompt lists the newest 62 notes on open, and up to 366
+matches once a query is typed.
+
+**Why:** over 1,825 notes at phone speed, opening on every date took 313 ms to
+its first frame, against 41 ms for 50; on an M5, 38 ms against 8. A typed year
+is up to 366 notes, and the old single limit of 50 cut it off in November.
+
+**Rejected:**
+
+- Every date, on open and on a query — a third of a second on a phone, more with
+  each year.
+- Two calendar months back from today — a sparse journal opens on few notes.

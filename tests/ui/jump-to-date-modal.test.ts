@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vitest";
 import type { Moment } from "moment";
-import { JumpToDateModal, JUMP_SUGGESTION_LIMIT } from "../../src/ui/jump-to-date-modal";
+import { JumpToDateModal, JUMP_OPEN_LIMIT, JUMP_SEARCH_LIMIT } from "../../src/ui/jump-to-date-modal";
 import { DailyNoteService } from "../../src/notes/daily-note-service";
 import { __mockSettings, __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "../mocks/daily-notes";
 import { Platform, moment } from "obsidian";
@@ -57,15 +57,31 @@ describe("JumpToDateModal", () => {
         expect(listed()).toEqual(["03-02-2025"]);
     });
 
-    it("keeps the list to what a reader can scan", async () => {
-        await open(
-            "YYYY-MM-DD",
-            Array.from({ length: JUMP_SUGGESTION_LIMIT + 10 }, (_, i) =>
-                moment("2025-01-01", "YYYY-MM-DD", true).add(i, "days").format("YYYY-MM-DD")
-            )
-        );
+    /** `count` consecutive days from `first`, as ISO basenames. */
+    const days = (first: string, count: number) =>
+        Array.from({ length: count }, (_, i) => moment(first, "YYYY-MM-DD", true).add(i, "days").format("YYYY-MM-DD"));
 
-        expect(listed()).toHaveLength(JUMP_SUGGESTION_LIMIT);
+    it("opens on about two months of the newest dates", async () => {
+        await open("YYYY-MM-DD", days("2025-01-01", 500));
+
+        expect(listed()).toHaveLength(JUMP_OPEN_LIMIT);
+        expect(listed()[0]).toBe("2026-05-15");
+    });
+
+    it("lists a whole year once a query is typed", async () => {
+        await open("YYYY-MM-DD", days("2024-06-01", 700));
+
+        modal.type("2025");
+
+        expect(listed()).toHaveLength(365);
+    });
+
+    it("keeps a typed query's list to about a year", async () => {
+        await open("YYYY-MM-DD", days("2024-06-01", 700));
+
+        modal.type("20");
+
+        expect(listed()).toHaveLength(JUMP_SEARCH_LIMIT);
     });
 
     it("submits the date that was chosen", async () => {

@@ -119,10 +119,11 @@ To show every note, turn off **Hide empty notes** in [settings](#settings).
 | Go back to the newest | Run `Daily notes stream: Scroll to top`, or on mobile tap the title at the top |
 | Go to a date          | Click the calendar icon at the top, or run `Daily notes stream: Jump to date`  |
 
-The jump list shows every day that has a note. You can type a date in your
-daily-note format or as `YYYY-MM-DD`. If that day has no note, you go to the
-closest earlier day that does. The calendar button in the list opens your
-device's date picker.
+The jump list opens on your 62 newest notes, about two months. Type to search
+the rest: a year, such as `2025`, lists every day of it that has a note. You can
+type a date in your daily-note format or as `YYYY-MM-DD`. If that day has no
+note, you go to the closest earlier day that does. The calendar button in the
+list opens your device's date picker.
 
 <img src="docs/images/jump-desktop.png" alt="The jump-to-date prompt listing the vault's dates" width="800">
 
