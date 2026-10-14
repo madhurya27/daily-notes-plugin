@@ -21,7 +21,7 @@ const XML_ENTITIES = [
     ["&gt;", ">"],
     ["&amp;", "&"],
 ] as const;
-type Seen = { path: string; index: number; text: string; top: number };
+type Seen = { path: string; kind: string; index: number; text: string; top: number };
 /** A point in the web view, in CSS pixels, and the viewport's width they are measured against. */
 export type Point = { x: number; y: number; viewport: number };
 /** A touch the harness sent: from where to where, in the screen's points, and when, in Unix ms, for how long. */
@@ -38,8 +38,17 @@ const LIFT_TO_NEXT_STROKE_MS = 500;
 /** How far `placeAt` looks: past the first two batches of the harness's notes, some 20 screens each. */
 const SCREENS = 60;
 
-/** A note's blocks as the reader takes them in: its title, property rows, Markdown blocks and mentions. */
-const TEXT_BLOCKS = ".daily-note-title, .metadata-property, .daily-note-content > *, .daily-note-mention";
+/**
+ * A note's blocks as the reader takes them in: its title, property rows,
+ * Markdown blocks and mentions. A block is known by its place among its own
+ * kind: a property added, or a hidden run's spacer, moves no other kind's.
+ */
+const TEXT_KINDS = [
+    ".daily-note-title",
+    ".metadata-property",
+    ".daily-note-content > :not(.daily-note-far-run)",
+    ".daily-note-mention",
+];
 
 /** The `.daily-note-block` selector `target` starts with, if any: up to the first space outside brackets. */
 function blockOf(target: string): string | undefined {
@@ -292,7 +301,8 @@ export class Phone {
      */
     async followReader(): Promise<void> {
         await this.run(
-            (s: string, blocks: string) => {
+            (s: string, kinds: string[]) => {
+                const blocks = kinds.join(", ");
                 const pane = document.querySelector(s)!.parentElement!;
                 const box = pane.getBoundingClientRect();
                 const middle = box.top + box.height / 2;
@@ -311,9 +321,12 @@ export class Phone {
                     );
                     if (!at) return null;
                     const note = at.closest<HTMLElement>(".daily-note-block")!;
+                    const kind = kinds.find((k) => at.matches(k))!;
                     return {
                         path: CSS.escape(note.dataset.sourcePath!),
-                        index: [...note.querySelectorAll(blocks)].indexOf(at),
+                        kind,
+                        index: [...note.querySelectorAll(kind)].indexOf(at),
+                        text: at.textContent,
                         start: at.getBoundingClientRect().top,
                         last: at.getBoundingClientRect().top,
                         from: scrolled(),
@@ -337,10 +350,13 @@ export class Phone {
                     lastScroll = scroll;
                     follow.rendered = Math.max(follow.rendered, follow.unloaded - unloaded());
                     const block = pane.querySelector(`.daily-note-block[data-source-path="${eye.path}"]`);
-                    const text = block?.querySelectorAll(blocks)[eye.index];
+                    const at = block?.querySelectorAll(eye.kind)[eye.index];
+                    // Another block in its place: its note is drawing again, short of it so far.
+                    const text = at?.textContent === eye.text ? at : null;
                     if (!text) {
+                        // Its note on screen without it: a blank where the reader was, until it is back.
                         if (block && onScreen(block)) follow.drifts.push(NaN);
-                        eye = pick();
+                        else eye = pick();
                         requestAnimationFrame(frame);
                         return;
                     }
@@ -358,7 +374,7 @@ export class Phone {
                 requestAnimationFrame(frame);
             },
             STREAM,
-            TEXT_BLOCKS
+            TEXT_KINDS
         );
     }
 
@@ -899,37 +915,39 @@ export class Phone {
      */
     seen(): Promise<Seen> {
         return this.run(
-            (s: string, blocks: string) => {
+            (s: string, kinds: string[]) => {
                 const stream = document.querySelector(s)!;
                 const pane = stream.parentElement!.getBoundingClientRect();
                 for (const note of stream.querySelectorAll<HTMLElement>(".daily-note-block")) {
                     if (note.getBoundingClientRect().bottom <= pane.top) continue;
-                    const all = [...note.querySelectorAll<HTMLElement>(blocks)];
-                    const index = all.findIndex((b) => b.getBoundingClientRect().bottom > pane.top);
-                    if (index === -1) continue;
-                    const el = all[index]!;
+                    const el = [...note.querySelectorAll<HTMLElement>(kinds.join(", "))].find(
+                        (b) => b.getBoundingClientRect().bottom > pane.top
+                    );
+                    if (!el) continue;
+                    const kind = kinds.find((k) => el.matches(k))!;
+                    const index = [...note.querySelectorAll(kind)].indexOf(el);
                     const top = Math.round(el.getBoundingClientRect().top - pane.top);
-                    return { path: note.dataset.sourcePath!, index, text: el.innerText.trim().slice(0, 60), top };
+                    const text = el.innerText.trim().slice(0, 60);
+                    return { path: note.dataset.sourcePath!, kind, index, text, top };
                 }
                 throw new Error("No text in view.");
             },
             STREAM,
-            TEXT_BLOCKS
+            TEXT_KINDS
         );
     }
 
     /** Where `seen`'s block is now, from the pane's top: found by its place in the note, since a Base redraws its text on a turn. */
     topOf(seen: Seen): Promise<number> {
         return this.run(
-            (s: string, blocks: string, { path, index, text }: Seen) => {
+            (s: string, { path, kind, index, text }: Seen) => {
                 const stream = document.querySelector(s)!;
                 const note = stream.querySelector(`.daily-note-block[data-source-path="${CSS.escape(path)}"]`)!;
-                const el = note.querySelectorAll<HTMLElement>(blocks)[index];
+                const el = note.querySelectorAll<HTMLElement>(kind)[index];
                 if (!el) throw new Error(`"${text}" is gone from ${path}.`);
                 return Math.round(el.getBoundingClientRect().top - stream.parentElement!.getBoundingClientRect().top);
             },
             STREAM,
-            TEXT_BLOCKS,
             seen
         );
     }
