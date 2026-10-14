@@ -2664,6 +2664,25 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         for (const spacer of watched) expect(observers.unobserve).toHaveBeenCalledWith(spacer);
     });
 
+    it("stops watching the spacers a save updating the note in place took away", async () => {
+        const { manager, renderer, block, spacers } = await renderedLong();
+        manager.onScroll();
+        await still();
+        const [shown, kept] = spacers();
+        renderer.update.mockImplementation(async () => {
+            renderer.farRuns.reveal(shown!);
+            return true;
+        });
+        observers.unobserve.mockClear();
+
+        await manager.refresh(block);
+
+        // By identity: the two spacers are equal nodes.
+        const unwatched = observers.unobserve.mock.calls.map(([el]) => el as unknown);
+        expect(unwatched).toContain(shown);
+        expect(unwatched).not.toContain(kept);
+    });
+
     it("shows every run at a new width: their spacers measured the old one", async () => {
         const { manager, far, spacers, narrow } = await renderedLong();
         manager.onScroll();

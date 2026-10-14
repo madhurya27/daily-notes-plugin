@@ -4,8 +4,6 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] Every save to a long note with hidden runs freezes the iPhone once,
-      wherever the edit: 140 ms at 5,000 lines, 360–590 ms at 10,000 (ADR 0021).
 - [ ] Opening the stream with heights forgotten, the anchor shifts it
       2,252–2,298 px at the top, once, as the long note below the newest starts
       drawing: in every iPhone capture, on `main` before ADR 0022 too. Whether a

@@ -597,17 +597,83 @@ describe("NoteRenderer, a note by section", () => {
             expect(texts()).toContain("Day Y. lorem");
         });
 
-        it("are shown again before a save updates the note in place", async () => {
-            renderer = makeRenderer(today);
-            await open(days(400));
-            for (const run of renderer.runsOf(component)) farRuns.hide(run);
-            const changed = days(400);
-            changed[200] = `Day X.${FILLER}`;
+        describe("over a save that updated the note in place", () => {
+            const textsOf = (runs: Element[][]) => runs.map((run) => run.map((el) => el.textContent));
+            const shown = () => texts().filter((t) => t !== "");
 
-            expect(await save(changed)).toBe(true);
+            /** Each spacer stands just above its own hidden run, and nothing hidden stands elsewhere. */
+            function spacersInPlace() {
+                const children = Array.from(content().children);
+                children.forEach((el, i) => {
+                    const before = children[i - 1];
+                    if (el.hasClass("daily-note-far-run")) expect(children[i + 1]!.hasClass("is-far")).toBe(true);
+                    else if (el.hasClass("is-far"))
+                        expect(before!.hasClass("is-far") || before!.hasClass("daily-note-far-run")).toBe(true);
+                });
+            }
 
-            expect(content().querySelector(".is-far, .daily-note-far-run")).toBeNull();
-            expect(texts()[200]).toBe("Day X. lorem");
+            async function openHidden() {
+                renderer = makeRenderer(today);
+                await open(days(400));
+                for (const run of renderer.runsOf(component)) farRuns.hide(run);
+                return renderer.runsOf(component);
+            }
+
+            it("keep their sections, however long the changed one grew", async () => {
+                const before = textsOf(await openHidden());
+                const changed = days(400);
+                changed[200] = `Day X.${" lorem".repeat(400)}`;
+
+                expect(await save(changed)).toBe(true);
+
+                const after = textsOf(renderer.runsOf(component));
+                const i = before.findIndex((run) => run.includes("Day 200. lor"));
+                expect(after).toEqual(
+                    before.map((run, j) =>
+                        j === i ? run.map((t) => (t === "Day 200. lor" ? "Day X. lorem" : t)) : run
+                    )
+                );
+            });
+
+            it("show only the run a save changed, the rest left hidden", async () => {
+                const runs = await openHidden();
+                const changed = days(400);
+                changed[200] = `Day X.${FILLER}`;
+
+                expect(await save(changed)).toBe(true);
+
+                const x = Array.from(content().children).find((el) => el.textContent === "Day X. lorem")!;
+                expect(x.hasClass("is-far")).toBe(false);
+                expect(content().querySelectorAll(".daily-note-far-run")).toHaveLength(runs.length - 1);
+                expect(shown()[200]).toBe("Day X. lorem");
+                spacersInPlace();
+            });
+
+            it("show the runs either side of sections inserted between two", async () => {
+                const runs = await openHidden();
+                const firstOfThird = runs[2]![0]!.textContent!;
+                const at = days(400).findIndex((d) => d.startsWith(firstOfThird));
+                const changed = days(400);
+                changed.splice(at, 0, `Day N.${FILLER}`);
+
+                expect(await save(changed)).toBe(true);
+
+                expect(shown()[at]).toBe("Day N. lorem");
+                expect(content().querySelectorAll(".daily-note-far-run")).toHaveLength(runs.length - 2);
+                spacersInPlace();
+            });
+
+            it("lose a run whose sections a save took away", async () => {
+                const runs = await openHidden();
+                const second = runs[1]!.map((el) => el.textContent!);
+                const changed = days(400).filter((d) => !second.includes(d.slice(0, 12)));
+
+                expect(await save(changed)).toBe(true);
+
+                expect(textsOf(renderer.runsOf(component))).toEqual(textsOf(runs).filter((_, i) => i !== 1));
+                expect(shown()).toEqual(changed.map((d) => d.slice(0, 12)));
+                spacersInPlace();
+            });
         });
     });
 

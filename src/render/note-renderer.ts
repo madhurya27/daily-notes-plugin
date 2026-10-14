@@ -132,6 +132,31 @@ function firstNodeOf(sections: RenderedSection[]): ChildNode | null {
     return sections.find((section) => section.nodes.length > 0)?.nodes[0] ?? null;
 }
 
+/** Sections taken together from the end up to a run's length: a note drawn from there grows at its top, and only its topmost run changes. */
+function groupByLength(sections: RenderedSection[]): RenderedSection[][] {
+    const runs: RenderedSection[][] = [];
+    let length = Infinity;
+    for (const section of [...sections].reverse()) {
+        if (length + section.source.length > CHUNK_CHARS) {
+            runs.unshift([]);
+            length = 0;
+        }
+        length += section.source.length;
+        runs[0]!.unshift(section);
+    }
+    return runs;
+}
+
+/** Sections in runs, each starting at one of `starts` or at the note's top. */
+function groupByStarts(sections: RenderedSection[], starts: WeakSet<RenderedSection>): RenderedSection[][] {
+    const runs: RenderedSection[][] = [];
+    for (const section of sections) {
+        if (runs.length === 0 || starts.has(section)) runs.push([]);
+        runs[runs.length - 1]!.push(section);
+    }
+    return runs;
+}
+
 /** What a note's rendered Markdown is drawn into, below its title and properties. */
 export const NOTE_CONTENT_CLASS = "daily-note-content";
 
@@ -174,6 +199,8 @@ export class NoteRenderer {
     private readonly sectioned = new WeakMap<Component, SectionedNote>();
     /** What each note rendered a section or a run at a time drew, by its component. */
     private readonly drawn = new WeakMap<Component, RenderedSection[]>();
+    /** The section each run starts at, fixed once a note is drawn: a save changes no run it left alone. */
+    private readonly runStarts = new WeakMap<Component, WeakSet<RenderedSection>>();
     /**
      * Notes saved while rendered, by path: they render by section from then
      * on. Until a save a note renders whole, which for a long one costs half.
@@ -318,8 +345,10 @@ export class NoteRenderer {
             )
                 return false;
 
-            // Sections replaced among hidden ones would show beside a spacer still standing for them.
-            this.farRuns.revealAll(note.contentEl);
+            // Sections replaced among hidden ones would show beside a spacer
+            // still standing for them: the runs they and their neighbours are in show.
+            for (const section of note.sections.slice(Math.max(0, start - 1), endBefore + 1))
+                for (const node of section.nodes) this.farRuns.reveal(node);
             const next = firstNodeOf(note.sections.slice(endBefore));
             for (const section of removed) {
                 section.nodes.forEach((node) => node.remove());
@@ -330,6 +359,10 @@ export class NoteRenderer {
                 rendered.push(await this.renderSection(note.contentEl, next, source, file, noteComponent));
             }
             note.sections.splice(start, endBefore - start, ...rendered);
+            const starts = this.runStarts.get(noteComponent);
+            // A run that lost the section it started at starts at what took its place.
+            const heir = note.sections[start];
+            if (starts && heir && removed.some((section) => starts.has(section))) starts.add(heir);
             if (frontmatterChanged) {
                 this.redrawProperties(block, note.contentEl, file);
                 note.frontmatter = frontmatter;
@@ -356,18 +389,11 @@ export class NoteRenderer {
      * the stream to hide when far (ADR 0021); none for a note rendered whole.
      */
     runsOf(noteComponent: Component): Element[][] {
-        const runs: Element[][] = [];
-        let length = Infinity;
-        // From its end: a note drawn from there grows at its top, and only its topmost run changes.
-        for (const { source, nodes } of [...(this.drawn.get(noteComponent) ?? [])].reverse()) {
-            if (length + source.length > CHUNK_CHARS) {
-                runs.unshift([]);
-                length = 0;
-            }
-            length += source.length;
-            runs[0]!.unshift(...nodes.filter((node): node is Element => node instanceof Element));
-        }
-        return runs.filter((run) => run.length > 0);
+        const sections = this.drawn.get(noteComponent) ?? [];
+        const starts = this.runStarts.get(noteComponent);
+        return (starts ? groupByStarts(sections, starts) : groupByLength(sections))
+            .map((run) => run.flatMap((section) => section.nodes.filter((node) => node instanceof Element)))
+            .filter((run) => run.length > 0);
     }
 
     /** Gone from the vault: its read fails, and its block is about to go. */
@@ -421,6 +447,7 @@ export class NoteRenderer {
                     await this.renderSection(contentEl, firstNodeOf(sections), source, file, noteComponent)
                 );
         }
+        this.runStarts.set(noteComponent, new WeakSet(groupByLength(sections).map((run) => run[0]!)));
         if (Platform.isMobile) {
             await this.bases.render(
                 contentEl,

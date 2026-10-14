@@ -332,6 +332,8 @@ export class NoteWindowManager {
         }
         if (!updated) return false;
         this.changes++;
+        // The runs the save touched are shown, their spacers gone.
+        for (const spacer of window.spacers) if (!spacer.isConnected) this.unwatchSpacer(window, spacer);
         this.repin(block);
         this.watchRuns(block, window);
         window.keepOnceSettled?.();
@@ -595,9 +597,15 @@ export class NoteWindowManager {
 
     /** A hidden run's spacer entered the render margin. */
     private showRun(spacer: HTMLElement): void {
+        const window = this.windowOf(spacer);
         this.renderer.farRuns.reveal(spacer);
+        if (window) this.unwatchSpacer(window, spacer);
+        else this.renderObserver?.unobserve(spacer);
+    }
+
+    private unwatchSpacer(window: NoteWindow, spacer: HTMLElement): void {
         this.renderObserver?.unobserve(spacer);
-        this.windowOf(spacer)?.spacers.delete(spacer);
+        window.spacers.delete(spacer);
     }
 
     private showRuns(block: HTMLElement, window: NoteWindow): void {

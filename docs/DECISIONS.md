@@ -2203,3 +2203,18 @@ frontmatter; a Base's formulas may, through `this`.
 
 - Anchoring a whole render by the reader's distance from the note's end — wrong
   for an edit below the reader, and the blank frames stay.
+
+## D-134 — A drawn note's runs keep their sections (2026-10-14)
+
+**Decision:** once a note is drawn, each run (ADR 0021) keeps the sections it
+started with; a save swaps sections inside their run, and shows only the runs
+holding what it removes and those either side of what it inserts.
+
+**Why:** grouped by length afresh, a save that lengthened one section regrouped
+every run above it, so a save showed every run first: on the iPhone, one 140–590
+ms task per save to a 5,000–10,000-line note, wherever the edit.
+
+**Rejected:**
+
+- Regrouping, then showing each hidden run the new grouping splits — a save that
+  moves one run's edge still shows every run above it.
