@@ -39,6 +39,8 @@ interface NoteWindow extends Reserving {
     watched: Element[];
     /** Remembers the height once the rendered note stops resizing; null while unloaded. */
     keepOnceSettled: Debouncer<[], void> | null;
+    /** The spacers of its runs hidden when far, each watched with the render margin (ADR 0021). */
+    spacers: Set<HTMLElement>;
 }
 
 /**
@@ -72,6 +74,9 @@ export class NoteWindowManager {
     private readonly leaving = new Set<HTMLElement>();
     private readonly unloadOnceStill = debounce(() => this.unloadLeaving(), SCROLL_IDLE_MS, true);
     private readonly reserveOnceStill = debounce(() => this.reserve(), SCROLL_IDLE_MS, true);
+    private readonly hideFarRunsOnceStill = debounce(() => this.hideFarRuns(), SCROLL_IDLE_MS, true);
+    /** Drawn notes with runs to hide when far: long ones (ADR 0021). */
+    private readonly long = new Set<HTMLElement>();
     private readonly reservations: Reservations;
     /** Watches rendered notes: a Base filling or an image loading measures short until done. */
     private resizes: ResizeObserver | null = null;
@@ -116,6 +121,7 @@ export class NoteWindowManager {
 
         for (const [block, window] of this.windows) {
             this.observe(block);
+            for (const spacer of window.spacers) this.renderObserver!.observe(spacer);
             if (block.hasClass("is-pinned")) this.anchor.pinned(block);
             this.watch(window.watched);
         }
@@ -128,7 +134,10 @@ export class NoteWindowManager {
         this.renderObserver = new IntersectionObserver(
             (entries) => {
                 for (const entry of entries) {
-                    if (entry.isIntersecting) this.render(entry.target as HTMLElement);
+                    if (!entry.isIntersecting) continue;
+                    const target = entry.target as HTMLElement;
+                    if (this.windows.has(target)) this.render(target);
+                    else this.showRun(target);
                 }
             },
             { root: scrollRoot, rootMargin: `${Math.round(this.rootHeight * RENDER_VIEWPORTS)}px` }
@@ -164,9 +173,10 @@ export class NoteWindowManager {
         this.renderObserver?.disconnect();
         this.unloadObserver?.disconnect();
         this.observeMargins(this.scrollRoot);
-        for (const block of this.windows.keys()) {
+        for (const [block, window] of this.windows) {
             this.renderObserver!.observe(block);
             this.unloadObserver!.observe(block);
+            for (const spacer of window.spacers) this.renderObserver!.observe(spacer);
         }
     }
 
@@ -193,6 +203,7 @@ export class NoteWindowManager {
         this.anchor.onScroll();
         if (this.leaving.size > 0) this.unloadOnceStill();
         if (this.reservations.owed) this.reserveOnceStill();
+        if (this.long.size > 0) this.hideFarRunsOnceStill();
     }
 
     /** A Base in a note set its height: the note re-pins in this task (D-108). */
@@ -233,6 +244,7 @@ export class NoteWindowManager {
             hold: null,
             watched: [],
             keepOnceSettled: null,
+            spacers: new Set(),
         };
         this.windows.set(block, window);
         this.reservations.add(window, this.layout());
@@ -320,6 +332,7 @@ export class NoteWindowManager {
         if (!updated) return false;
         this.changes++;
         this.repin(block);
+        this.watchRuns(block, window);
         window.keepOnceSettled?.();
         if (window.unloadWanted) this.leave(block);
         window.unloadWanted = false;
@@ -332,6 +345,7 @@ export class NoteWindowManager {
         this.unobserve(block);
         this.leaving.delete(block);
         this.onScreen.delete(block);
+        this.long.delete(block);
         this.stopSettling(window);
         this.discard(window);
         this.windows.delete(block);
@@ -341,8 +355,10 @@ export class NoteWindowManager {
         this.detachObservers();
         this.unloadOnceStill.cancel();
         this.reserveOnceStill.cancel();
+        this.hideFarRunsOnceStill.cancel();
         this.leaving.clear();
         this.waiting.clear();
+        this.long.clear();
         this.scrollRoot = null;
         for (const window of this.windows.values()) {
             this.stopSettling(window);
@@ -473,7 +489,9 @@ export class NoteWindowManager {
     private expectLayout(): void {
         const layout = this.layout();
         if (!this.reservations.expectLayout(layout)) return;
-        for (const window of this.windows.values()) {
+        for (const [block, window] of this.windows) {
+            // Their spacers measured the old width; they hide again at the next rest.
+            this.showRuns(block, window);
             this.releaseHold(window);
             if (!window.component) this.reservations.expect(window, layout);
         }
@@ -505,11 +523,63 @@ export class NoteWindowManager {
     }
 
     /**
+     * Hides each run of a drawn note past the unload margin behind a spacer,
+     * watched to show it again on entering the render margin (ADR 0021).
+     */
+    private hideFarRuns(): void {
+        const root = this.scrollRoot;
+        if (!root) return;
+        const { top, bottom } = root.getBoundingClientRect();
+        const margin = this.rootHeight * UNLOAD_VIEWPORTS;
+        const { farRuns } = this.renderer;
+        for (const block of this.long) {
+            const window = this.windows.get(block);
+            // Unloaded since: drawn again, it is watched again.
+            if (!window?.component) this.long.delete(block);
+            if (!window?.component || window.rendering) continue;
+            for (const run of this.renderer.runsOf(window.component)) {
+                if (farRuns.hides(run[0]!)) continue;
+                const span = farRuns.span(run);
+                if (!span || (span.bottom > top - margin && span.top < bottom + margin)) continue;
+                // Shown, as its span says: it hides.
+                const spacer = farRuns.hide(run)!;
+                window.spacers.add(spacer);
+                this.renderObserver?.observe(spacer);
+            }
+        }
+    }
+
+    /** A note drawn with runs hides those far once the scroll is still, moved or not. */
+    private watchRuns(block: HTMLElement, window: NoteWindow): void {
+        if (!window.component || this.renderer.runsOf(window.component).length === 0) return;
+        this.long.add(block);
+        this.hideFarRunsOnceStill();
+    }
+
+    /** A hidden run's spacer entered the render margin. */
+    private showRun(spacer: HTMLElement): void {
+        this.renderer.farRuns.reveal(spacer);
+        this.renderObserver?.unobserve(spacer);
+        this.windowOf(spacer)?.spacers.delete(spacer);
+    }
+
+    private showRuns(block: HTMLElement, window: NoteWindow): void {
+        this.renderer.farRuns.revealAll(block);
+        this.unwatchSpacers(window);
+    }
+
+    private unwatchSpacers(window: NoteWindow): void {
+        for (const spacer of window.spacers) this.renderObserver?.unobserve(spacer);
+        window.spacers.clear();
+    }
+
+    /**
      * Held, the block cannot shrink: a dip shows only in what was rendered in
      * it. Settling starts once `footer` is drawn: the linked mentions read
      * other notes first, and a quiet spell while they do is not settled.
      */
     private watchSettling(block: HTMLElement, window: NoteWindow, footer: Promise<void>): void {
+        this.watchRuns(block, window);
         if (window.measured) {
             const hold = new HeightHold(block, window.height, () => {
                 // Let go while the note stays: the pin hid the drop until now.
@@ -628,6 +698,7 @@ export class NoteWindowManager {
     }
 
     private discard(window: NoteWindow): void {
+        this.unwatchSpacers(window);
         if (!window.component) return;
         this.renderer.discard(window.component);
         window.component = null;

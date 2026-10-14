@@ -5,6 +5,7 @@ import { NoteRenderer } from "../../src/render/note-renderer";
 import { CollapsibleManager } from "../../src/render/collapsible";
 import { CollapsibleStateStore } from "../../src/render/collapse-store";
 import { SearchHighlighter } from "../../src/render/search-highlights";
+import { FarRuns } from "../../src/render/far-runs";
 import { BaseMeasurements } from "../../src/render/bases/base-measurements";
 import { NoteBases } from "../../src/render/bases/note-bases";
 import { BacklinkIndex } from "../../src/notes/backlink-index";
@@ -68,6 +69,7 @@ describe("NoteRenderer, a note by section", () => {
         metadataCache: { getFileCache: () => unknown; getFirstLinkpathDest: () => null; on: () => object };
     };
     let collapsible: CollapsibleManager;
+    let farRuns: FarRuns;
     let highlighter: SearchHighlighter;
     let renderer: NoteRenderer;
     let block: HTMLElement;
@@ -140,7 +142,9 @@ describe("NoteRenderer, a note by section", () => {
             vault: { cachedRead: () => Promise.resolve(current.markdown), getFileByPath: () => file },
             metadataCache: { getFileCache: () => current.cache, getFirstLinkpathDest: () => null, on: () => ({}) },
         };
-        collapsible = new CollapsibleManager(new CollapsibleStateStore(asApp(storage())));
+        // Every element shown, a line tall: jsdom lays nothing out.
+        farRuns = new FarRuns(() => ({ top: 0, bottom: 20, marginTop: 0, marginBottom: 0 }));
+        collapsible = new CollapsibleManager(new CollapsibleStateStore(asApp(storage())), farRuns);
         // Chevrons answer through the stream's delegated listener.
         collapsible.delegate(new Component(), document.body);
         highlighter = new SearchHighlighter();
@@ -420,6 +424,63 @@ describe("NoteRenderer, a note by section", () => {
         changed[1] = `Day X.${FILLER}`;
         await save(changed);
         expect(highlighter.rangesIn(block)).toHaveLength(1);
+    });
+
+    describe("its runs, which the stream hides when far (ADR 0021)", () => {
+        const elementsOf = (runs: Element[][]) => runs.flat().map((el) => el.textContent);
+
+        it("are the runs a long note rendered in, each its elements, in order", async () => {
+            const render = renderParagraphs();
+            await open(days(400));
+
+            const runs = renderer.runsOf(component);
+
+            expect(runs).toHaveLength(render.mock.calls.length);
+            expect(elementsOf(runs)).toEqual(texts());
+        });
+
+        it("are a note's sections taken together up to a run's length, rendered by section", async () => {
+            renderer = makeRenderer(today);
+            const render = renderParagraphs();
+            await open(days(400));
+            expect(render).toHaveBeenCalledTimes(400);
+
+            const runs = renderer.runsOf(component);
+
+            expect(runs.length).toBeGreaterThan(1);
+            expect(runs.length).toBeLessThan(400);
+            expect(elementsOf(runs)).toEqual(texts());
+        });
+
+        it("are none in a note rendered whole", async () => {
+            await open(days(10));
+            expect(renderer.runsOf(component)).toEqual([]);
+        });
+
+        it("follow a save that updated the note in place", async () => {
+            renderer = makeRenderer(today);
+            await open(days(400));
+            const changed = days(400);
+            changed.splice(200, 1, `Day X.${FILLER}`, `Day Y.${FILLER}`);
+
+            expect(await save(changed)).toBe(true);
+
+            expect(elementsOf(renderer.runsOf(component))).toEqual(texts());
+            expect(texts()).toContain("Day Y. lorem");
+        });
+
+        it("are shown again before a save updates the note in place", async () => {
+            renderer = makeRenderer(today);
+            await open(days(400));
+            for (const run of renderer.runsOf(component)) farRuns.hide(run);
+            const changed = days(400);
+            changed[200] = `Day X.${FILLER}`;
+
+            expect(await save(changed)).toBe(true);
+
+            expect(content().querySelector(".is-far, .daily-note-far-run")).toBeNull();
+            expect(texts()[200]).toBe("Day X. lorem");
+        });
     });
 
     describe("on mobile, with Bases", () => {

@@ -54,6 +54,21 @@
     inherits: false;
 }
 
+@property --daily-note-far-height {
+    syntax: "*";
+    inherits: false;
+}
+
+@property --daily-note-far-margin-top {
+    syntax: "*";
+    inherits: false;
+}
+
+@property --daily-note-far-margin-bottom {
+    syntax: "*";
+    inherits: false;
+}
+
 .daily-notes-stream-container.is-scroll-shifted {
     transform: translateY(var(--daily-notes-scroll-shift));
 }
@@ -426,6 +441,18 @@
    specificity above every one of them: hidden must win wherever it lands. */
 .daily-note-content .is-hidden.is-hidden {
     display: none;
+}
+
+/* A run of a long note far from the screen: out of the layout, behind a spacer
+   holding its room and outer margins (ADR 0021). Repeated as .is-hidden is. */
+.daily-note-content .is-far.is-far {
+    display: none;
+}
+
+.daily-note-content .daily-note-far-run {
+    height: var(--daily-note-far-height);
+    margin-top: var(--daily-note-far-margin-top);
+    margin-bottom: var(--daily-note-far-margin-bottom);
 }
 
 .daily-note-content :is(ul, ol) {

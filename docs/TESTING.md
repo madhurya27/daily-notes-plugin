@@ -186,6 +186,9 @@ Checks:
   selection color. A long-press selects text in a note. **[ios]**
 - Chevrons on headers, list items and the properties row are tappable without
   zooming, and a tap on heading _text_ still selects. **[ios]**
+- Flick hard down a 10,000-line note and back: the screen never goes blank.
+  **[ios]** checks no spacer of a hidden run reaches the screen; only a capture
+  (`scripts/capture-iphone.swift`) shows a blank (ADR 0021).
 - A hard flick to the bottom loads the next batch without duplicates or a stall;
   repeated flicks keep loading. **[ios]**
 - Backgrounding and returning keeps position and keeps scrolling. **[ios]**

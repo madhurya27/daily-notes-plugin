@@ -1,5 +1,6 @@
 import { Component, TFile, setIcon } from "obsidian";
 import { CollapsibleStateStore } from "./collapse-store";
+import { FarRuns } from "./far-runs";
 
 /** Letters, their combining marks and digits in any script; ASCII text slugs as it always has. */
 function slugify(text: string): string {
@@ -50,7 +51,11 @@ const COLLAPSED_CHEVRON = '.collapse-indicator[aria-expanded="false"]';
 
 /** Adds collapse chevrons to headers and list items, persisting state per note. */
 export class CollapsibleManager {
-    constructor(private readonly store: CollapsibleStateStore) {}
+    constructor(
+        private readonly store: CollapsibleStateStore,
+        /** Runs the stream hid when far, which a section shows before it opens or closes (ADR 0021). */
+        readonly farRuns: FarRuns = new FarRuns()
+    ) {}
 
     /** Element → its toggle. Weak, so elements dropped by a re-render are collectable. */
     private readonly toggles = new WeakMap<HTMLElement, () => void>();
@@ -140,16 +145,17 @@ export class CollapsibleManager {
         return toggle;
     }
 
-    /** Whether a collapsed section hides `node`. */
+    /** Whether a collapsed section, or a run hidden when far, hides `node`. */
     folds(node: Node): boolean {
-        return this.foldsAround(node).length > 0;
+        return this.farRuns.hides(node) || this.foldsAround(node).length > 0;
     }
 
     /**
      * Expands every collapsed section hiding `node`, unsaved, as Obsidian's
-     * reading view does for a search match (D-024).
+     * reading view does for a search match (D-024), and shows its far run.
      */
     unfold(node: Node): void {
+        this.farRuns.reveal(node);
         for (const fold of this.foldsAround(node)) fold.open();
     }
 
@@ -266,6 +272,8 @@ export class CollapsibleManager {
     }
 
     private applyHeaderCollapse(header: HTMLElement, isCollapsed: boolean): void {
+        // A spacer measured the run shown: what the section hides or shows must be the run itself.
+        for (const el of this.sectionBody(header)) this.farRuns.reveal(el);
         // A nested collapsed heading keeps its content hidden: skip siblings
         // until a heading at that level or higher.
         let collapsedNestedLevel: number | null = null;

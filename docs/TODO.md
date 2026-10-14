@@ -4,11 +4,6 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] A glide through a drawn 10,000-line note shows a blank pane for up to 2.4
-      s, a sixth of its frames, on `main` too: WebKit holds the page's thread
-      (two frames in 2 s) with no script of ours or Obsidian's over 103 ms.
-      Recorded with `scripts/capture-iphone.swift`. Find the length it starts
-      at, then try `content-visibility` on sections or a box per run of them.
 - [ ] With no heights stored, a 10,000-line note among the few measured makes
       every unmeasured note reserve its 235,612 px (the 0.9 quantile, D-092): a
       jump past it lands at 1.6 million px until the next rest re-reserves.

@@ -4,6 +4,13 @@ import { NoteWindowManager, UNMEASURED_PANES } from "../../src/stream/note-windo
 import { SCROLL_IDLE_MS, ScrollAnchor } from "../../src/stream/scroll-anchor";
 import { NoteHeights } from "../../src/stream/note-heights";
 import { HOLD_LIMIT_MS, SETTLE_MS } from "../../src/stream/height-hold";
+import { FarRuns, type Box } from "../../src/render/far-runs";
+
+/** jsdom lays nothing out: a rendered element's box is read from its data attributes. */
+function boxFromData(el: Element): Box | null {
+    const { top, bottom } = (el as HTMLElement).dataset;
+    return top === undefined ? null : { top: Number(top), bottom: Number(bottom), marginTop: 0, marginBottom: 0 };
+}
 
 /**
  * The observers, by the rootMargin they were constructed with: the render one
@@ -109,6 +116,9 @@ function makeRenderer(
         }),
         /** A short note's saves render whole; a long one's may update in place (ADR 0019). */
         update: vi.fn(async (_block: HTMLElement, _file: TFile, _component: Component) => false),
+        /** A note rendered whole has no runs. */
+        runsOf: vi.fn((_component: Component): Element[][] => []),
+        farRuns: new FarRuns(boxFromData),
         discarded,
     };
 }
@@ -2290,5 +2300,206 @@ describe("NoteWindowManager.layoutChanges", () => {
         await still();
 
         expect(manager.layoutChanges).toBe(before + 1);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Runs of a long note hidden when far (ADR 0021)
+// ---------------------------------------------------------------------------
+
+describe("NoteWindowManager hides a long note's far runs", () => {
+    /**
+     * A long note drawn in four runs of one paragraph, at `tops`, each 500px
+     * tall, in a pane 800px tall at the top of the page: the unload margin
+     * reaches 3,200px past either edge.
+     */
+    async function renderedLong(tops = [0, 1000, 4500, 9000]) {
+        const renderer = makeRenderer({
+            render: (block) => {
+                const content = block.createDiv({ cls: "daily-note-content" });
+                for (const top of tops)
+                    content.createEl("p", { text: `at ${top}`, attr: { "data-top": top, "data-bottom": top + 500 } });
+            },
+        });
+        let block: HTMLElement;
+        const paragraphs = () => Array.from(block.querySelectorAll("p"));
+        renderer.runsOf.mockImplementation(() => paragraphs().map((p) => [p]));
+        const root = makeScrollRoot(800);
+        root.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
+        let layout = LAYOUT;
+        const manager = new NoteWindowManager(
+            renderer as never,
+            makeQueue(),
+            new NoteHeights(),
+            () => layout,
+            () => 500
+        );
+        manager.attach(root, document.createElement("div"), moreBelow);
+        /** The layout is read once per task: the width changes in the next one. */
+        const narrow = async () => {
+            await settle();
+            layout = "400:16px";
+            manager.onResize();
+        };
+        block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        const far = () =>
+            paragraphs()
+                .filter((p) => p.hasClass("is-far"))
+                .map((p) => p.textContent);
+        const spacers = () => Array.from(block.querySelectorAll<HTMLElement>(".daily-note-far-run"));
+        return { manager, renderer, block, far, spacers, paragraphs, narrow, root };
+    }
+
+    afterEach(() => document.body.empty());
+
+    it("hides the runs past the unload margin once the scroll is still", async () => {
+        const { manager, far } = await renderedLong();
+
+        manager.onScroll();
+        await still();
+
+        expect(far()).toEqual(["at 4500", "at 9000"]);
+    });
+
+    it("hides none while the scroll moves", async () => {
+        const { manager, far } = await renderedLong();
+
+        manager.onScroll();
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
+
+        expect(far()).toEqual([]);
+    });
+
+    it("hides runs above the pane too", async () => {
+        const { manager, far } = await renderedLong([-9000, -4500, -3000, 0]);
+
+        manager.onScroll();
+        await still();
+
+        expect(far()).toEqual(["at -9000", "at -4500"]);
+    });
+
+    it("hides a drawn note's far runs once the scroll is still, though it never moved", async () => {
+        const { far } = await renderedLong();
+
+        await still();
+
+        expect(far()).toEqual(["at 4500", "at 9000"]);
+    });
+
+    it("watches each spacer with the render margin, and shows its run as it enters", async () => {
+        const { manager, far, spacers } = await renderedLong();
+        manager.onScroll();
+        await still();
+        const [first] = spacers();
+        expect(observers.observe).toHaveBeenCalledWith(first);
+
+        fire(observers.render, first!, true);
+
+        expect(far()).toEqual(["at 9000"]);
+        expect(first!.isConnected).toBe(false);
+        expect(observers.unobserve).toHaveBeenCalledWith(first);
+    });
+
+    it("hides a run shown by other means again at the next still scroll", async () => {
+        const { manager, renderer, far, paragraphs } = await renderedLong();
+        manager.onScroll();
+        await still();
+
+        // A search step or a collapse showed it.
+        renderer.farRuns.reveal(paragraphs()[3]!);
+        manager.onScroll();
+        await still();
+
+        expect(far()).toEqual(["at 4500", "at 9000"]);
+    });
+
+    it("hides nothing in a note unloaded or refreshing when the scroll comes to rest", async () => {
+        const { manager, renderer, block, far } = await renderedLong();
+        let finish = () => {};
+        renderer.update.mockImplementation(() => new Promise<boolean>((resolve) => (finish = () => resolve(true))));
+
+        void manager.refresh(block);
+        manager.onScroll();
+        await still();
+        expect(far()).toEqual([]);
+
+        finish();
+        await settle();
+        fire(observers.unload, block, false);
+        manager.onScroll();
+        await still();
+        expect(block.childElementCount).toBe(0);
+    });
+
+    it("hides nothing before it is attached to a pane", async () => {
+        const renderer = makeRenderer({
+            render: (block) =>
+                void block
+                    .createDiv({ cls: "daily-note-content" })
+                    .createEl("p", { attr: { "data-top": 9000, "data-bottom": 9500 } }),
+        });
+        renderer.runsOf.mockImplementation(() => [[document.querySelector("p")!]]);
+        const manager = new NoteWindowManager(
+            renderer as never,
+            makeQueue(),
+            new NoteHeights(),
+            () => LAYOUT,
+            () => 500
+        );
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        manager.render(block);
+        await settle();
+        await still();
+
+        expect(block.querySelector(".is-far")).toBeNull();
+    });
+
+    it("watches its spacers again when attached anew, and when the pane's height changes", async () => {
+        const { manager, spacers, root } = await renderedLong();
+        manager.onScroll();
+        await still();
+        const watched = spacers();
+        expect(watched).toHaveLength(2);
+
+        observers.observe.mockClear();
+        manager.attach(root, document.createElement("div"), moreBelow);
+        for (const spacer of watched) expect(observers.observe).toHaveBeenCalledWith(spacer);
+
+        observers.observe.mockClear();
+        Object.defineProperty(root, "clientHeight", { value: 600, configurable: true });
+        manager.onResize();
+        for (const spacer of watched) expect(observers.observe).toHaveBeenCalledWith(spacer);
+    });
+
+    it("stops watching a note's spacers as it unloads", async () => {
+        const { manager, block, spacers } = await renderedLong();
+        manager.onScroll();
+        await still();
+        const watched = spacers();
+        expect(watched).toHaveLength(2);
+
+        fire(observers.unload, block, false);
+        await still();
+
+        for (const spacer of watched) expect(observers.unobserve).toHaveBeenCalledWith(spacer);
+    });
+
+    it("shows every run at a new width: their spacers measured the old one", async () => {
+        const { manager, far, spacers, narrow } = await renderedLong();
+        manager.onScroll();
+        await still();
+        const watched = spacers();
+        expect(watched).toHaveLength(2);
+
+        await narrow();
+
+        expect(far()).toEqual([]);
+        for (const spacer of watched) expect(observers.unobserve).toHaveBeenCalledWith(spacer);
     });
 });

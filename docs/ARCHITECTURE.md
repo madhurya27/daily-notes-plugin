@@ -53,7 +53,10 @@ opens, so a view's own handler always reads an index already updated.
 3. **Render.** `NoteWindowManager` (`note-window.ts`) renders blocks within a
    margin of the viewport and empties them well past it, keeping their height
    ([ADR 0006](adr/0006-unload-off-screen-notes.md)). Each rendered note owns a
-   child `Component`, discarded on unload.
+   child `Component`, discarded on unload. Within a drawn long note, it takes
+   the runs past the same margins out of the layout behind spacers
+   (`far-runs.ts`), and shows them again as they near
+   ([ADR 0021](adr/0021-hide-far-runs-of-long-notes.md)).
 4. **Change.** Vault and metadata events become `NoteStream` mutations: insert,
    remove, re-render, reconsider whether a note is hidden. Saves are debounced
    per path. An open search re-reads once the stream says its notes changed.

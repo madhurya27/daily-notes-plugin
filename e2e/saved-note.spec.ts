@@ -90,11 +90,17 @@ for (const [which, pathOf] of NOTES) {
             await expect(content(page).locator("h2").first()).toHaveAttribute("data-kept", "");
 
             // What differs only in markup: a whole render leaves a line break
-            // between blocks, and Obsidian marks a table's cells with their
-            // direction when the table is all it renders, as a section alone is.
+            // between blocks, Obsidian marks a table's cells with their
+            // direction when the table is all it renders, as a section alone is,
+            // and which runs are hidden when far depends on when it is read (ADR 0021).
             const drawn = () =>
                 content(page).evaluate((el) => {
                     const copy = el.cloneNode(true) as HTMLElement;
+                    for (const spacer of Array.from(copy.querySelectorAll(".daily-note-far-run"))) spacer.remove();
+                    for (const far of Array.from(copy.querySelectorAll(".is-far"))) {
+                        far.classList.remove("is-far");
+                        if (far.classList.length === 0) far.removeAttribute("class");
+                    }
                     for (const node of Array.from(copy.childNodes)) {
                         if (node instanceof Text && !node.data.trim()) node.remove();
                     }

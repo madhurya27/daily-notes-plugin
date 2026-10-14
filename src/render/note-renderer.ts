@@ -30,6 +30,7 @@ import { wrapTextBesideBlocks } from "./text-beside-blocks";
 import type { DailyNotesStreamSettings } from "../settings";
 import type { BacklinkIndex } from "../notes/backlink-index";
 import { LinkedMentionsFooter } from "./linked-mentions";
+import type { FarRuns } from "./far-runs";
 
 /** A run of sections rendered at once: about 10 ms at phone speed (ADR 0020). */
 const CHUNK_CHARS = 2000;
@@ -153,6 +154,8 @@ export class NoteRenderer {
     private readonly widths: NoteWidths;
     /** Long notes, by the component they were rendered into. */
     private readonly sectioned = new WeakMap<Component, SectionedNote>();
+    /** What each note rendered a section or a run at a time drew, by its component. */
+    private readonly drawn = new WeakMap<Component, RenderedSection[]>();
     /**
      * Notes saved while rendered, by path: they render by section from then
      * on. Until a save a note renders whole, which for a long one costs half.
@@ -233,6 +236,7 @@ export class NoteRenderer {
                     block.empty();
                     return null;
                 }
+                this.drawn.set(noteComponent, sections);
                 if (bySection) this.sectioned.set(noteComponent, { contentEl, frontmatter, sections });
             } else await this.renderWhole(contentEl, file, noteComponent, markdown.slice(frontmatter.length).trim());
             const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);
@@ -283,6 +287,8 @@ export class NoteRenderer {
             )
                 return false;
 
+            // Sections replaced among hidden ones would show beside a spacer still standing for them.
+            this.farRuns.revealAll(note.contentEl);
             const next = note.sections.slice(endBefore).find((section) => section.nodes.length > 0)?.nodes[0] ?? null;
             for (const section of removed) {
                 section.nodes.forEach((node) => node.remove());
@@ -303,6 +309,29 @@ export class NoteRenderer {
             console.error(`DailyNotesStream: Failed to update note ${file.path}:`, error);
             return false;
         }
+    }
+
+    /** The runs hidden when far, shared with collapsing (ADR 0021). */
+    get farRuns(): FarRuns {
+        return this.collapsible.farRuns;
+    }
+
+    /**
+     * A note's elements in runs of about one render slice each, in order, for
+     * the stream to hide when far (ADR 0021); none for a note rendered whole.
+     */
+    runsOf(noteComponent: Component): Element[][] {
+        const runs: Element[][] = [];
+        let length = Infinity;
+        for (const { source, nodes } of this.drawn.get(noteComponent) ?? []) {
+            if (length + source.length > CHUNK_CHARS) {
+                runs.push([]);
+                length = 0;
+            }
+            length += source.length;
+            runs[runs.length - 1]!.push(...nodes.filter((node): node is Element => node instanceof Element));
+        }
+        return runs.filter((run) => run.length > 0);
     }
 
     /** Gone from the vault: its read fails, and its block is about to go. */

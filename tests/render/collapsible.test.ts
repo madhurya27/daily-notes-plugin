@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } fr
 import { Component, TFile } from "obsidian";
 import { CollapsibleManager, LINKED_MENTIONS_SECTION_KEY, PROPERTIES_SECTION_KEY } from "../../src/render/collapsible";
 import type { CollapsibleStateStore } from "../../src/render/collapse-store";
+import { FarRuns } from "../../src/render/far-runs";
 import { fake } from "../stream-view-fixture";
 
 function makeStore(collapsedByDefault = false): CollapsibleStateStore {
@@ -679,5 +680,59 @@ describe("CollapsibleManager — refreshing after sections re-render in place", 
 
         clickChevron(kept);
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-errands#2", false);
+    });
+});
+
+describe("CollapsibleManager — runs hidden when far (ADR 0021)", () => {
+    let manager: CollapsibleManager;
+    let content: HTMLElement;
+    const p = (text: string) => Array.from(content.querySelectorAll("p")).find((el) => el.textContent === text)!;
+
+    beforeEach(() => {
+        // Every element shown, a line tall: jsdom lays nothing out.
+        manager = new CollapsibleManager(
+            makeStore(),
+            new FarRuns(() => ({ top: 0, bottom: 20, marginTop: 0, marginBottom: 0 }))
+        );
+        content = document.createElement("div");
+        content.innerHTML = "<h2>A</h2><p>1</p><p>2</p><h2>B</h2><p>3</p>";
+        document.body.append(content);
+        makeCollapsible(manager, content, "file.md");
+    });
+
+    afterEach(() => content.remove());
+
+    it("shows the runs in a section before collapsing it, and leaves the rest hidden", () => {
+        manager.farRuns.hide([p("1"), p("2")]);
+        manager.farRuns.hide([p("3")]);
+
+        clickChevron(content.querySelector("h2")!);
+
+        expect(p("1").hasClass("is-far") || p("2").hasClass("is-far")).toBe(false);
+        expect(p("1").hasClass("is-hidden") && p("2").hasClass("is-hidden")).toBe(true);
+        expect(content.querySelectorAll(".daily-note-far-run")).toHaveLength(1);
+        expect(p("3").hasClass("is-far")).toBe(true);
+    });
+
+    it("shows the runs in a section before opening it", () => {
+        clickChevron(content.querySelector("h2")!);
+        manager.farRuns.hide([p("1"), p("2")]);
+
+        clickChevron(content.querySelector("h2")!);
+
+        expect(content.querySelector(".is-far, .is-hidden, .daily-note-far-run")).toBeNull();
+    });
+
+    it("counts a far run as a fold search can open", () => {
+        manager.farRuns.hide([p("3")]);
+        const text = p("3").firstChild!;
+
+        expect(manager.folds(text)).toBe(true);
+        expect(manager.folds(p("1").firstChild!)).toBe(false);
+
+        manager.unfold(text);
+
+        expect(p("3").hasClass("is-far")).toBe(false);
+        expect(manager.folds(text)).toBe(false);
     });
 });
