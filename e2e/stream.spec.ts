@@ -917,6 +917,33 @@ test.describe("daily notes stream in real Obsidian", () => {
         await expect(container.locator(".daily-note-title").first()).toHaveText("2026-03-14");
     });
 
+    test("lets a note deleted before its render reads it go quietly", async ({ obsidian }) => {
+        const { page } = obsidian;
+        const container = await openStream(page);
+        const errors: string[] = [];
+        page.on("console", (message) => {
+            if (message.type() === "error") errors.push(message.text());
+        });
+
+        // The deletion lands where it races: after the render took the note, before its read.
+        await page.evaluate(async () => {
+            const vault = window.app.vault;
+            const read = vault.cachedRead.bind(vault);
+            vault.cachedRead = async (file: { path: string }) => {
+                if (file.path === "Notes/2026-03-20.md") {
+                    vault.cachedRead = read;
+                    await vault.delete(file);
+                }
+                return read(file);
+            };
+            await vault.create("Notes/2026-03-20.md", "## Later\n\nA newer day.\n");
+        });
+
+        await expect(container.locator(".daily-note-title").first()).toHaveText("2026-03-14");
+        await expect(container).not.toContainText("Error rendering note");
+        expect(errors.filter((text) => text.includes("DailyNotesStream"))).toEqual([]);
+    });
+
     test("ignores dated files that are not daily notes", async ({ obsidian }) => {
         const { page } = obsidian;
         const container = await openStream(page);

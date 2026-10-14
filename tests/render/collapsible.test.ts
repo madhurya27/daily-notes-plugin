@@ -649,3 +649,35 @@ describe("CollapsibleManager — stale sections", () => {
         expect(store.retainSections).not.toHaveBeenCalled();
     });
 });
+
+describe("CollapsibleManager — refreshing after sections re-render in place", () => {
+    it("gives a kept heading or list item no second chevron, and returns every key", () => {
+        const manager = new CollapsibleManager(makeStore());
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Plan</h2><ul><li>Errands<ul><li>Post office</li></ul></li></ul>";
+        manager.makeCollapsible(content, "file.md");
+        content.createEl("h2", { text: "Later" });
+
+        expect(manager.refreshCollapsible(content, "file.md")).toEqual(["plan", "later", "li-1-errands"]);
+        expect(content.querySelectorAll(".collapse-indicator")).toHaveLength(3);
+    });
+
+    // As a whole render would: the element takes the key, and that key's saved state.
+    it("re-keys a kept list item whose key moved, showing and saving that key's state", () => {
+        const store = makeStore();
+        vi.mocked(store.collapsedOr).mockImplementation((_path, key) => key === "li-1-errands#2");
+        const manager = new CollapsibleManager(store);
+        const content = document.createElement("div");
+        content.innerHTML = "<ul><li>Errands<ul><li>Post office</li></ul></li></ul>";
+        makeCollapsible(manager, content, "file.md");
+        const kept = content.querySelector("li")!;
+        content.insertAdjacentHTML("afterbegin", "<ul><li>Errands<ul><li>Bank</li></ul></li></ul>");
+
+        expect(manager.refreshCollapsible(content, "file.md")).toEqual(["li-1-errands", "li-1-errands#2"]);
+        expect(kept.hasClass("is-collapsed")).toBe(true);
+        expect(kept.querySelectorAll(":scope > .collapse-indicator")).toHaveLength(1);
+
+        clickChevron(kept);
+        expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-errands#2", false);
+    });
+});

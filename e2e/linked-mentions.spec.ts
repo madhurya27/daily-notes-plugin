@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, openStream, seededDate, STREAM } from "./obsidian";
+import { test, expect, openStream, seededDate, today, STREAM } from "./obsidian";
 
 const NEWEST = seededDate(0);
 
@@ -242,11 +242,11 @@ test.describe("linked mentions", () => {
 // Core creates today's note as the vault opens, after the day's links to it are written.
 test("lists the notes linking to a note written before it was", async ({ obsidian }) => {
     const { page } = obsidian;
-    const today = await page.evaluate(() => new Date().toLocaleDateString("en-CA"));
-    const path = `Notes/${today}.md`;
+    const date = await today(page);
+    const path = `Notes/${date}.md`;
     await remove(page, [path]);
     try {
-        await create(page, { "Plan.md": `Talk about [[${today}]].` });
+        await create(page, { "Plan.md": `Talk about [[${date}]].` });
         const container = await openStream(page);
         await create(page, { [path]: "Morning." });
 

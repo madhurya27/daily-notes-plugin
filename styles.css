@@ -44,6 +44,11 @@
     inherits: false;
 }
 
+@property --daily-note-placeholder-height {
+    syntax: "*";
+    inherits: false;
+}
+
 @property --daily-notes-scroll-shift {
     syntax: "*";
     inherits: false;

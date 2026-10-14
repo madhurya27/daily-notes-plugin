@@ -28,7 +28,10 @@ function makeApp(opts: { readResult?: string; fileCache?: unknown; leaves?: unkn
     };
     const openGlobalSearch = vi.fn();
     return {
-        vault: { cachedRead: vi.fn().mockResolvedValue(readResult) },
+        vault: {
+            cachedRead: vi.fn().mockResolvedValue(readResult),
+            getFileByPath: vi.fn((path: string): TFile | null => new TFile(path)),
+        },
         metadataCache: {
             getFileCache: vi.fn().mockReturnValue(fileCache),
             getFirstLinkpathDest: vi.fn().mockReturnValue(null),
@@ -321,6 +324,32 @@ describe("NoteRenderer.renderInto", () => {
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".daily-note-content")?.textContent).toBe("Error rendering note");
     });
+
+    it("leaves the block of a note deleted mid-read empty, reporting nothing", async () => {
+        app.vault.cachedRead = vi.fn().mockRejectedValue(new Error("ENOENT"));
+        app.vault.getFileByPath.mockReturnValue(null);
+        const error = vi
+            .spyOn(console, "error")
+            .mockClear()
+            .mockImplementation(() => {});
+        const view = new Component();
+        renderer = new NoteRenderer(
+            asApp(app),
+            view,
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter(),
+            new BaseMeasurements(),
+            new BacklinkIndex(() => ({}))
+        );
+        const file = new TFile("Notes/2025-01-01.md");
+        const block = renderer.createBlock(file);
+
+        expect(await renderer.renderInto(block, file)).toBeNull();
+        expect(block.childElementCount).toBe(0);
+        expect(view.children).toHaveLength(0);
+        expect(error).not.toHaveBeenCalled();
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -356,7 +385,7 @@ describe("NoteRenderer component lifetime", () => {
         );
         const file = new TFile("Notes/2025-01-01.md");
 
-        const { component: child } = await renderer.renderInto(renderer.createBlock(file), file);
+        const { component: child } = (await renderer.renderInto(renderer.createBlock(file), file))!;
 
         expect(owner.children).toContain(child);
         expect(child.loaded).toBe(true);
@@ -376,7 +405,7 @@ describe("NoteRenderer component lifetime", () => {
             new BacklinkIndex(() => ({}))
         );
         const file = new TFile("Notes/2025-01-01.md");
-        const { component: child } = await renderer.renderInto(renderer.createBlock(file), file);
+        const { component: child } = (await renderer.renderInto(renderer.createBlock(file), file))!;
 
         renderer.discard(child);
 
@@ -403,7 +432,7 @@ describe("NoteRenderer component lifetime", () => {
         const file = new TFile("Notes/2025-01-01.md");
         const block = renderer.createBlock(file);
 
-        const { component: child } = await renderer.renderInto(block, file);
+        const { component: child } = (await renderer.renderInto(block, file))!;
         expect(highlighter.rangesIn(block).map((r) => r.toString())).toEqual(["2025"]);
 
         renderer.discard(child);
@@ -426,7 +455,7 @@ describe("NoteRenderer component lifetime", () => {
         );
         const file = new TFile("Notes/2025-01-01.md");
 
-        const { component: child } = await renderer.renderInto(renderer.createBlock(file), file);
+        const { component: child } = (await renderer.renderInto(renderer.createBlock(file), file))!;
         renderer.discard(child);
 
         expect(owner.children).not.toContain(child);
@@ -473,7 +502,7 @@ describe("NoteRenderer linked mentions", () => {
         const { renderer, release } = linkedVault();
         const block = renderer.createBlock(DAY);
 
-        const { footer } = await renderer.renderInto(block, DAY);
+        const { footer } = (await renderer.renderInto(block, DAY))!;
         release();
         await footer;
 
@@ -486,7 +515,7 @@ describe("NoteRenderer linked mentions", () => {
         const { renderer, release } = linkedVault();
         const block = renderer.createBlock(DAY);
 
-        const { footer } = await renderer.renderInto(block, DAY);
+        const { footer } = (await renderer.renderInto(block, DAY))!;
         let filled = false;
         void footer.then(() => (filled = true));
         await Promise.resolve();

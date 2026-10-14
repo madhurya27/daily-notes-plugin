@@ -53,6 +53,43 @@ export function seededDate(daysBack: number): string {
     return new Date(NEWEST_DAY - daysBack * 86_400_000).toISOString().slice(0, 10);
 }
 
+/** Today as YYYY-MM-DD, by the app's clock. */
+export const today = (page: Page) => page.evaluate(() => new Date().toLocaleDateString("en-CA"));
+
+/** Today's daily note; core may have created it as the vault opened. */
+export const todayNote = async (page: Page) => `Notes/${await today(page)}.md`;
+
+/** Writes `text` to `path`, creating it when missing; returns what it held, null if nothing. */
+export async function writeNote(page: Page, path: string, text: string): Promise<string | null> {
+    return page.evaluate(
+        async ({ path, text }) => {
+            const { vault } = window.app;
+            const file = vault.getFileByPath(path);
+            if (!file) {
+                await vault.create(path, text);
+                return null;
+            }
+            const before = await vault.read(file);
+            await vault.modify(file, text);
+            return before;
+        },
+        { path, text }
+    );
+}
+
+/** Undoes `writeNote`: puts back what `path` held, or deletes it if it held nothing. */
+export async function restoreNote(page: Page, path: string, before: string | null): Promise<void> {
+    await page.evaluate(
+        async ({ path, before }) => {
+            const { vault } = window.app;
+            const file = vault.getFileByPath(path)!;
+            if (before === null) await vault.delete(file);
+            else await vault.modify(file, before);
+        },
+        { path, before }
+    );
+}
+
 /** Core daily-notes settings every fixture vault starts with. */
 export const DAILY_NOTES_CONFIG = { folder: "Notes", format: "YYYY-MM-DD" };
 

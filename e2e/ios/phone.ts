@@ -506,14 +506,17 @@ export class Phone {
      * `share` of the screen tall over `ms`: by default a hard flick.
      */
     async flick(direction: "up" | "down", strokes = 1, { share = 0.7, ms = 60 } = {}): Promise<void> {
-        const before = await this.scrollTop();
+        const before = await this.readerAt();
         for (let i = 0; i < strokes; i++) await this.stroke(direction, share, ms);
         await this.rest();
-        const after = await this.scrollTop();
-        const blocked = direction === "up" ? after <= before && !(await this.atEnd()) : after >= before && before > 0;
+        const after = await this.readerAt();
+        const down = after.note > before.note || (after.note === before.note && after.into > before.into);
+        const up = after.note < before.note || (after.note === before.note && after.into < before.into);
+        const atTop = before.note === 0 && before.into <= 0;
+        const blocked = direction === "up" ? !down && !(await this.atEnd()) : !up && !atTop;
         if (blocked)
             throw new Error(
-                `A flick ended no further than ${before}, at ${after}: the stream moved itself back, ` +
+                `A flick ended no further than ${before.into} px into note ${before.note}, at ${after.into} px into note ${after.note}: the stream moved itself back, ` +
                     "or something is in front of Obsidian, such as its Face ID lock."
             );
     }
@@ -771,6 +774,21 @@ export class Phone {
     /** Whether anything matches `selector`. */
     has(selector: string): Promise<boolean> {
         return this.run((sel: string) => !!document.querySelector(sel), selector);
+    }
+
+    /**
+     * The note at the pane's top, by its index in the stream, and how far
+     * into it the top is. Not the scroll: placeholders above re-reserved at
+     * rest move it by as much as they change (ADR 0014), the reader not at all.
+     */
+    private readerAt(): Promise<{ note: number; into: number }> {
+        return this.run((s: string) => {
+            const pane = document.querySelector(s)!.parentElement!;
+            const paneTop = pane.getBoundingClientRect().top;
+            const blocks = [...pane.querySelectorAll<HTMLElement>(".daily-note-block")];
+            const note = blocks.findIndex((block) => block.getBoundingClientRect().bottom > paneTop);
+            return { note, into: Math.round(paneTop - blocks[note]!.getBoundingClientRect().top) };
+        }, STREAM);
     }
 
     scrollTop(): Promise<number> {

@@ -66,7 +66,14 @@ through one promise queue, so none interleaves at an `await`
 
 - `note-renderer.ts` renders a note through Obsidian's `MarkdownRenderer` into
   `.markdown-rendered`, re-rendering on `metadataCache` "changed"
-  ([ADR 0003](adr/0003-metadata-cache-rerender.md)).
+  ([ADR 0003](adr/0003-metadata-cache-rerender.md)). A note saved since it
+  opened renders section by section (`note-sections.ts`), and a save re-renders
+  only the sections it changed
+  ([ADR 0019](adr/0019-re-render-only-changed-sections.md)). Any other from
+  6,000 characters renders as runs of sections, a shorter one whole; either
+  gives the thread back between them once a slice of time is spent
+  (`time-slice.ts`), and a note off the screen lets one waiting on it draw first
+  ([ADR 0020](adr/0020-render-long-notes-in-slices.md)).
 - Gestures on titles, links and chevrons are delegated: one listener per gesture
   on the stream container. The view is the hover parent Page preview hangs
   popovers on.

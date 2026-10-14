@@ -5,10 +5,16 @@ import type { WidthWatch } from "./note-widths";
  * Shrinks a display equation wider than the note until it fits, re-checked
  * when the note's width changes. It may not scroll sideways inside the stream
  * (ADR 0008), and clipped, its end would be lost. MathJax draws HTML, which
- * CSS cannot scale to fit, so this measures it.
+ * CSS cannot scale to fit, so this measures it. `within` narrows it to part of
+ * the note, a section re-rendered alone (ADR 0019).
  */
-export function fitWideEquations(contentEl: HTMLElement, noteComponent: Component, widths: WidthWatch): void {
-    const equations = Array.from(contentEl.querySelectorAll<HTMLElement>('mjx-container[display="true"] > mjx-math'));
+export function fitWideEquations(
+    contentEl: HTMLElement,
+    noteComponent: Component,
+    widths: WidthWatch,
+    within: ParentNode = contentEl
+): void {
+    const equations = Array.from(within.querySelectorAll<HTMLElement>('mjx-container[display="true"] > mjx-math'));
     if (equations.length === 0) return;
 
     const fit = () => {

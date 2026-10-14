@@ -35,6 +35,14 @@ interface Fold {
     hides(node: Node): boolean;
     /** Expands the section without saving it. */
     open(): void;
+    /** Collapses it again over content rendered since, without saving it. */
+    close(): void;
+}
+
+/** A section's chevron, which can take a new key and show that key's state. */
+interface Keyed {
+    section: CollapsibleSection;
+    show(collapsed: boolean): void;
 }
 
 /** Chevrons of collapsed sections carry this, so a query finds them. */
@@ -48,6 +56,8 @@ export class CollapsibleManager {
     private readonly toggles = new WeakMap<HTMLElement, () => void>();
     /** Chevron → its section. */
     private readonly sections = new WeakMap<Element, Fold>();
+    /** Collapsible element → its section, so a note re-rendered in place tells kept from new. */
+    private readonly keyed = new WeakMap<HTMLElement, Keyed>();
 
     /** One listener pair for the whole stream, so a re-rendered chevron needs none of its own. */
     delegate(component: Component, root: HTMLElement): void {
@@ -121,7 +131,12 @@ export class CollapsibleManager {
         };
 
         this.toggles.set(indicator, toggle);
-        this.sections.set(indicator, { hides: (node) => section.hides(node), open: () => set(false) });
+        this.keyed.set(host, { section, show: set });
+        this.sections.set(indicator, {
+            hides: (node) => section.hides(node),
+            open: () => set(false),
+            close: () => set(true),
+        });
         return toggle;
     }
 
@@ -147,12 +162,44 @@ export class CollapsibleManager {
 
     /** Adds a chevron to every header and nested list; returns their section keys. */
     makeCollapsible(contentEl: HTMLElement, filePath: string): string[] {
+        return this.collapse(contentEl, filePath);
+    }
+
+    /**
+     * After sections re-rendered in place (ADR 0019): chevrons for what is new,
+     * and each collapsed section closed again over it.
+     */
+    refreshCollapsible(contentEl: HTMLElement, filePath: string): string[] {
+        const keys = this.collapse(contentEl, filePath);
+        for (const chevron of Array.from(contentEl.querySelectorAll(COLLAPSED_CHEVRON))) {
+            this.sections.get(chevron)?.close();
+        }
+        return keys;
+    }
+
+    private collapse(contentEl: HTMLElement, filePath: string): string[] {
         // Shared across headers and lists so every key in a note is unique.
         const seenKeys = new Map<string, number>();
         return [
             ...this.processHeaders(contentEl, filePath, seenKeys),
             ...this.processLists(contentEl, filePath, seenKeys),
         ];
+    }
+
+    /**
+     * Whether `el` already has its chevron. One whose key moved — a same-text
+     * section added or removed before it — takes the key and its saved state,
+     * as a whole render would give it.
+     */
+    private kept(el: HTMLElement, key: string): boolean {
+        const keyed = this.keyed.get(el);
+        if (!keyed) return false;
+        const { section } = keyed;
+        if (section.sectionKey !== key) {
+            section.sectionKey = key;
+            keyed.show(this.store.collapsedOr(section.filePath, key, section.defaultCollapsed));
+        }
+        return true;
     }
 
     /** Drops saved sections `file` no longer has. The panels stay: a hidden one renders no key. */
@@ -180,9 +227,9 @@ export class CollapsibleManager {
         return headers
             .filter((header) => header.parentElement?.tagName !== "LI")
             .map((header) => {
-                header.addClass("is-collapsible");
-
                 const sectionKey = this.uniqueKey(slugify(header.getText()), seenKeys);
+                if (this.kept(header, sectionKey)) return sectionKey;
+                header.addClass("is-collapsible");
                 this.attachCollapseToggle(header, {
                     filePath,
                     sectionKey,
@@ -203,9 +250,9 @@ export class CollapsibleManager {
             .filter((li) => li.querySelector("ul, ol"))
             .map((li) => {
                 const depth = this.getListDepth(li);
-                li.addClass("is-collapsible");
-
                 const sectionKey = this.uniqueKey(`li-${depth}-${slugify(this.ownText(li))}`, seenKeys);
+                if (this.kept(li, sectionKey)) return sectionKey;
+                li.addClass("is-collapsible");
                 this.attachCollapseToggle(li, {
                     filePath,
                     sectionKey,

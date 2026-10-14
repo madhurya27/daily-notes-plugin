@@ -69,6 +69,11 @@ export class SearchHighlighter {
         component.register(() => this.forget(block));
     }
 
+    /** Finds the matches again in a tracked block whose content changed in place. */
+    refresh(block: HTMLElement): void {
+        if (this.ranges.has(block)) this.highlight(block);
+    }
+
     rangesIn(block: HTMLElement): readonly Range[] {
         return this.ranges.get(block) ?? [];
     }

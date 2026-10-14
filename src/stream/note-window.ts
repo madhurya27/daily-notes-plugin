@@ -56,6 +56,11 @@ export class NoteWindowManager {
     private changes = 0;
     private renderObserver: IntersectionObserver | null = null;
     private unloadObserver: IntersectionObserver | null = null;
+    private screenObserver: IntersectionObserver | null = null;
+    /** The blocks in the pane now, not only near it. */
+    private readonly onScreen = new Set<HTMLElement>();
+    /** Renders queued and not yet begun: a note on screen among them may go first. */
+    private readonly waiting = new Map<HTMLElement, NoteWindow>();
     /** A render or unload moves everything below it; above the pane, that is the reader's place. */
     private readonly anchor = new ScrollAnchor();
     private scrollRoot: HTMLElement | null = null;
@@ -95,6 +100,15 @@ export class NoteWindowManager {
         this.detachObservers();
         this.scrollRoot = scrollRoot;
         this.observeMargins(scrollRoot);
+        this.screenObserver = new IntersectionObserver(
+            (entries) => {
+                for (const { target, isIntersecting } of entries) {
+                    if (isIntersecting) this.onScreen.add(target as HTMLElement);
+                    else this.onScreen.delete(target as HTMLElement);
+                }
+            },
+            { root: scrollRoot }
+        );
         // Made before the anchor's, so it hears a report first: reports run in
         // that order, and the anchor must read each note re-pinned.
         this.resizes = new ResizeObserver((entries) => this.contentResized(entries.map(({ target }) => target)));
@@ -267,6 +281,7 @@ export class NoteWindowManager {
             this.reserveOnceStill();
             return;
         }
+        if (await this.updateInPlace(block, window, window.component)) return;
 
         this.measureInto(block, window);
         this.stopSettling(window);
@@ -275,7 +290,9 @@ export class NoteWindowManager {
         // Without a component meanwhile, a note coming into view would be drawn twice.
         window.rendering = true;
         try {
-            const { component, footer } = await this.renderer.renderInto(block, window.file);
+            const rendered = await this.renderer.renderInto(block, window.file);
+            if (!rendered) return;
+            const { component, footer } = rendered;
             window.component = component;
             this.watchSettling(block, window, footer);
             this.repin(block);
@@ -287,11 +304,34 @@ export class NoteWindowManager {
         }
     }
 
+    /**
+     * A note re-renders only what the save changed (ADR 0019), drawn
+     * meanwhile; false where it must render whole. An unload asked for
+     * meanwhile waits for the outcome.
+     */
+    private async updateInPlace(block: HTMLElement, window: NoteWindow, component: Component): Promise<boolean> {
+        window.rendering = true;
+        let updated: boolean;
+        try {
+            updated = await this.renderer.update(block, window.file, component);
+        } finally {
+            window.rendering = false;
+        }
+        if (!updated) return false;
+        this.changes++;
+        this.repin(block);
+        window.keepOnceSettled?.();
+        if (window.unloadWanted) this.leave(block);
+        window.unloadWanted = false;
+        return true;
+    }
+
     remove(block: HTMLElement): void {
         const window = this.windows.get(block);
         if (!window) return;
         this.unobserve(block);
         this.leaving.delete(block);
+        this.onScreen.delete(block);
         this.stopSettling(window);
         this.discard(window);
         this.windows.delete(block);
@@ -302,6 +342,7 @@ export class NoteWindowManager {
         this.unloadOnceStill.cancel();
         this.reserveOnceStill.cancel();
         this.leaving.clear();
+        this.waiting.clear();
         this.scrollRoot = null;
         for (const window of this.windows.values()) {
             this.stopSettling(window);
@@ -326,34 +367,55 @@ export class NoteWindowManager {
             return;
         }
         window.rendering = true;
+        this.waiting.set(block, window);
+        this.enqueue(() => this.renderWaiting(block));
+    }
 
-        this.enqueue(async () => {
-            try {
-                // It flew past before its turn came: rendering it would hold the
-                // queue — shared with every vault event — for nothing.
-                if (window.unloadWanted) return;
+    /** Renders `block` if it still waits: a note on screen may have gone ahead of its turn. */
+    private async renderWaiting(block: HTMLElement): Promise<void> {
+        const window = this.waiting.get(block);
+        if (!window) return;
+        this.waiting.delete(block);
+        try {
+            // It flew past before its turn came: rendering it would hold the
+            // queue — shared with every vault event — for nothing.
+            if (window.unloadWanted) return;
 
-                const { component, footer } = await this.renderer.renderInto(block, window.file);
-                // close() empties the container mid-flight, off the queue: the
-                // block that comes back from the await may be nobody's child.
-                if (!block.isConnected || !this.windows.has(block)) {
-                    this.renderer.discard(component);
-                    block.empty();
-                    return;
-                }
-                window.component = component;
-                block.removeClass("is-unloaded");
-                block.style.removeProperty("--daily-note-placeholder-height");
-                this.watchSettling(block, window, footer);
-                this.repin(block);
-
-                if (window.unloadWanted) this.leave(block);
-            } finally {
-                this.changes++;
-                window.rendering = false;
-                window.unloadWanted = false;
+            // Between a long note's slices, it stops once it has left, so the
+            // note the reader stopped on draws next, and a note on screen
+            // draws ahead of one only near it (ADR 0020).
+            const rendered = await this.renderer.renderInto(block, window.file, async () => {
+                if (!this.onScreen.has(block)) await this.renderWaitingOnScreen();
+                return !window.unloadWanted;
+            });
+            if (!rendered) return;
+            const { component, footer } = rendered;
+            // close() empties the container mid-flight, off the queue: the
+            // block that comes back from the await may be nobody's child.
+            if (!block.isConnected || !this.windows.has(block)) {
+                this.renderer.discard(component);
+                block.empty();
+                return;
             }
-        });
+            window.component = component;
+            block.removeClass("is-unloaded");
+            block.style.removeProperty("--daily-note-placeholder-height");
+            this.watchSettling(block, window, footer);
+            this.repin(block);
+
+            if (window.unloadWanted) this.leave(block);
+        } finally {
+            this.changes++;
+            window.rendering = false;
+            window.unloadWanted = false;
+        }
+    }
+
+    /** Still inside the queue's task: no other mutation runs meanwhile (ADR 0004). */
+    private async renderWaitingOnScreen(): Promise<void> {
+        for (const block of [...this.waiting.keys()]) {
+            if (this.onScreen.has(block)) await this.renderWaiting(block);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -380,8 +442,8 @@ export class NoteWindowManager {
     private unloadLeaving(): void {
         for (const block of this.leaving) {
             const window = this.windows.get(block);
-            // A refresh in flight has no component yet: it waits for the next still scroll.
-            if (!window?.component) continue;
+            // A refresh in flight waits for the next still scroll.
+            if (!window?.component || window.rendering) continue;
             this.unloadNow(block, window);
             this.leaving.delete(block);
         }
@@ -572,24 +634,29 @@ export class NoteWindowManager {
     }
 
     private observe(block: HTMLElement): void {
+        this.screenObserver?.observe(block);
         this.renderObserver?.observe(block);
         this.unloadObserver?.observe(block);
         this.anchor.observe(block);
     }
 
     private unobserve(block: HTMLElement): void {
+        this.screenObserver?.unobserve(block);
         this.renderObserver?.unobserve(block);
         this.unloadObserver?.unobserve(block);
         this.anchor.unobserve(block);
     }
 
     private detachObservers(): void {
+        this.screenObserver?.disconnect();
         this.renderObserver?.disconnect();
         this.unloadObserver?.disconnect();
         this.anchor.detach();
         this.resizes?.disconnect();
+        this.screenObserver = null;
         this.renderObserver = null;
         this.unloadObserver = null;
         this.resizes = null;
+        this.onScreen.clear();
     }
 }

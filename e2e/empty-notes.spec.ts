@@ -6,7 +6,10 @@ import {
     openStream,
     scrollThroughStream,
     seededDate,
+    today,
+    todayNote,
     writeDailyNotesConfig,
+    writeNote,
     DAILY_NOTES_CONFIG,
 } from "./obsidian";
 
@@ -25,24 +28,6 @@ const EMBEDDED_NOTE = "Embedded.md";
 const EMPTY_TEXT = "---\ntags: daily\n---\n# Sunday, March 15\n\n## Log\n- \n";
 /** Empty notes older than every other, together taller than the pane: the stream's whole end. */
 const OLD_EMPTY_NOTES = ["01", "02", "03", "04", "05", "06"].map((day) => `Notes/2020-01-${day}.md`);
-
-/** Today as YYYY-MM-DD, by the app's clock. */
-const today = (page: Page) => page.evaluate(() => new Date().toLocaleDateString("en-CA"));
-
-const todayNote = async (page: Page) => `Notes/${await today(page)}.md`;
-
-/** Writes `text` to `path`, creating it when missing. */
-async function write(page: Page, path: string, text: string) {
-    await page.evaluate(
-        async ({ path, text }) => {
-            const { vault } = window.app;
-            const file = vault.getFileByPath(path);
-            if (file) await vault.modify(file, text);
-            else await vault.create(path, text);
-        },
-        { path, text }
-    );
-}
 
 async function setShowLinkedMentions(page: Page, on: boolean) {
     await page.evaluate(async (on) => {
@@ -66,9 +51,9 @@ test.describe("empty daily notes", () => {
         await page.evaluate(async () => {
             await window.app.vault.createFolder("Templates").catch(() => {});
         });
-        await write(page, TEMPLATE_PATH, TEMPLATE);
-        await write(page, EMPTY_NOTE, EMPTY_TEXT);
-        await write(page, await todayNote(page), EMPTY_TEXT);
+        await writeNote(page, TEMPLATE_PATH, TEMPLATE);
+        await writeNote(page, EMPTY_NOTE, EMPTY_TEXT);
+        await writeNote(page, await todayNote(page), EMPTY_TEXT);
         writeDailyNotesConfig(vaultPath, { ...DAILY_NOTES_CONFIG, template: "Templates/Daily" });
         await expect
             .poll(() =>
@@ -122,7 +107,7 @@ test.describe("empty daily notes", () => {
         const shown = await titles(page);
         await expect(shown.nth(1)).toHaveText(seededDate(0));
 
-        await write(page, EMPTY_NOTE, `${EMPTY_TEXT}- Ran 5 km\n`);
+        await writeNote(page, EMPTY_NOTE, `${EMPTY_TEXT}- Ran 5 km\n`);
 
         await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
         await expect(shown.nth(2)).toHaveText(seededDate(0));
@@ -145,18 +130,18 @@ test.describe("empty daily notes", () => {
 
     test("hides the note again once it is emptied back to the template", async ({ obsidian }) => {
         const { page } = obsidian;
-        await write(page, EMPTY_NOTE, `${EMPTY_TEXT}- Ran 5 km\n`);
+        await writeNote(page, EMPTY_NOTE, `${EMPTY_TEXT}- Ran 5 km\n`);
         const shown = await titles(page);
         await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
 
-        await write(page, EMPTY_NOTE, EMPTY_TEXT);
+        await writeNote(page, EMPTY_NOTE, EMPTY_TEXT);
 
         await expect(shown.nth(1)).toHaveText(seededDate(0));
     });
 
     test("shows the note, with its linked mentions, when another note links to it", async ({ obsidian }) => {
         const { page } = obsidian;
-        await write(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
+        await writeNote(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
         await expect
             .poll(() => page.evaluate((path) => path in window.app.metadataCache.resolvedLinks, MENTIONING_NOTE))
             .toBe(true);
@@ -172,7 +157,7 @@ test.describe("empty daily notes", () => {
         const shown = await titles(page);
         await expect(shown.nth(1)).toHaveText(seededDate(0));
 
-        await write(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
+        await writeNote(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
 
         await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
         await expect(page.locator(`[data-source-path="${EMPTY_NOTE}"]`)).toContainText("Planned on");
@@ -180,18 +165,18 @@ test.describe("empty daily notes", () => {
 
     test("hides the note again once its last link is removed", async ({ obsidian }) => {
         const { page } = obsidian;
-        await write(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
+        await writeNote(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
         const shown = await titles(page);
         await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
 
-        await write(page, MENTIONING_NOTE, "Planned on another day.\n");
+        await writeNote(page, MENTIONING_NOTE, "Planned on another day.\n");
 
         await expect(shown.nth(1)).toHaveText(seededDate(0));
     });
 
     test("hides the note again once the note linking to it is deleted", async ({ obsidian }) => {
         const { page } = obsidian;
-        await write(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
+        await writeNote(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
         const shown = await titles(page);
         await expect(shown.nth(1)).toHaveText(EMPTY_DAY);
 
@@ -202,7 +187,7 @@ test.describe("empty daily notes", () => {
 
     test("leaves out a note with no text at all", async ({ obsidian }) => {
         const { page } = obsidian;
-        await write(page, EMPTY_NOTE, "");
+        await writeNote(page, EMPTY_NOTE, "");
 
         const shown = await titles(page);
 
@@ -213,7 +198,7 @@ test.describe("empty daily notes", () => {
     test("leaves the note out despite a link to it while linked mentions are off", async ({ obsidian }) => {
         const { page } = obsidian;
         await setShowLinkedMentions(page, false);
-        await write(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
+        await writeNote(page, MENTIONING_NOTE, `Planned on [[${EMPTY_DAY}]].\n`);
         await expect
             .poll(() => page.evaluate((path) => path in window.app.metadataCache.resolvedLinks, MENTIONING_NOTE))
             .toBe(true);
@@ -229,7 +214,7 @@ test.describe("empty daily notes", () => {
         await page.evaluate(async () => {
             await window.app.vault.createFolder("Empty").catch(() => {});
         });
-        await write(page, ONLY_EMPTY_NOTE, EMPTY_TEXT);
+        await writeNote(page, ONLY_EMPTY_NOTE, EMPTY_TEXT);
         const container = await openStream(page);
 
         writeDailyNotesConfig(vaultPath, {
@@ -244,7 +229,7 @@ test.describe("empty daily notes", () => {
 
     test("judges the notes again by a template newly set", async ({ obsidian }) => {
         const { page, vaultPath } = obsidian;
-        await write(page, OTHER_TEMPLATE_PATH, "## Plan\n- \n");
+        await writeNote(page, OTHER_TEMPLATE_PATH, "## Plan\n- \n");
         const shown = await titles(page);
         await expect(shown.nth(1)).toHaveText(seededDate(0));
 
@@ -316,8 +301,8 @@ test.describe("empty daily notes", () => {
             // Above the reader, far taller than its text: its estimate is short.
             const tall = `Notes/${seededDate(8)}.md`;
             const text = await page.evaluate((path) => window.app.vault.adapter.read(path), tall);
-            await write(page, EMBEDDED_NOTE, Array.from({ length: 80 }, (_, i) => `Line ${i}`).join("\n\n"));
-            await write(page, tall, `${text}\n![[Embedded]]\n`);
+            await writeNote(page, EMBEDDED_NOTE, Array.from({ length: 80 }, (_, i) => `Line ${i}`).join("\n\n"));
+            await writeNote(page, tall, `${text}\n![[Embedded]]\n`);
             try {
                 const pane = (await openStream(page)).locator("xpath=..");
                 // Its batch loads as the end comes into view.
@@ -329,7 +314,7 @@ test.describe("empty daily notes", () => {
                 await expect(block(page, EMPTY_NOTE)).toHaveCount(1);
                 await expect.poll(() => offsetOf(page, reading)).toBeCloseTo(0, 0);
             } finally {
-                await write(page, tall, text);
+                await writeNote(page, tall, text);
             }
         });
 
@@ -347,7 +332,7 @@ test.describe("empty daily notes", () => {
 
         /** Hides the empty notes at the stream's end with the pane scrolled to it: the pane ends at the stream's new end. */
         async function hideAtTheEnd(page: Page) {
-            for (const path of OLD_EMPTY_NOTES) await write(page, path, EMPTY_TEXT);
+            for (const path of OLD_EMPTY_NOTES) await writeNote(page, path, EMPTY_TEXT);
             await setHideEmptyNotes(page, false);
             const container = await openStream(page);
             await scrollThroughStream(container);

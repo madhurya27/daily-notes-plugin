@@ -1,6 +1,7 @@
 import {
     App,
     Component,
+    type CachedMetadata,
     Keymap,
     MarkdownRenderer,
     Menu,
@@ -18,7 +19,9 @@ import type { SearchHighlighter } from "./search-highlights";
 import { stackWideTables } from "./wide-tables";
 import { fitWideEquations } from "./wide-equations";
 import { fallBackToSmallThumbnail } from "./video-thumbnails";
-import { extractBases } from "./bases/bases-as-cards";
+import { extractBases, type BaseSource } from "./bases/bases-as-cards";
+import { changedSpan, noteChunks, noteSections } from "./note-sections";
+import { TimeSlice } from "./time-slice";
 import { NoteBases } from "./bases/note-bases";
 import { NoteWidths } from "./note-widths";
 import type { BaseMeasurements } from "./bases/base-measurements";
@@ -27,6 +30,20 @@ import { wrapTextBesideBlocks } from "./text-beside-blocks";
 import type { DailyNotesStreamSettings } from "../settings";
 import type { BacklinkIndex } from "../notes/backlink-index";
 import { LinkedMentionsFooter } from "./linked-mentions";
+
+/** A run of sections rendered at once: about 10 ms at phone speed (ADR 0020). */
+const CHUNK_CHARS = 2000;
+
+/** Shorter, a note renders whole, holding the thread no longer than a slice would (ADR 0020). */
+const SLICED_FROM_CHARS = 6000;
+
+/** How long a render holds the thread before letting input and painting in (ADR 0020). */
+const SLICE_MS = 25;
+
+/** A note's runs of sections; null where it renders whole, as a short one does. */
+function chunksOf(markdown: string, cache: CachedMetadata | null): string[] | null {
+    return markdown.length < SLICED_FROM_CHARS ? null : noteChunks(markdown, cache, CHUNK_CHARS);
+}
 
 /** The fallback, for an Obsidian that resolves no property type. */
 const PROPERTY_ICONS: Record<string, string> = {
@@ -99,6 +116,29 @@ function displayValue(value: unknown): string {
     return "";
 }
 
+/** One section of a note, rendered on its own (ADR 0019). */
+interface RenderedSection {
+    source: string;
+    /** What it rendered, flat among the note's other sections' nodes. */
+    nodes: ChildNode[];
+    /** Owns what the section registered; a child of the note's. */
+    component: Component;
+    bases: BaseSource[];
+}
+
+/** A note rendered section by section, which a save can re-render in part. */
+interface SectionedNote {
+    contentEl: HTMLElement;
+    /** Its text above the body: a change there renders the note whole. */
+    frontmatter: string;
+    sections: RenderedSection[];
+}
+
+/** The note's text up to its body: frontmatter, or nothing. */
+function frontmatterOf(markdown: string, cache: CachedMetadata | null): string {
+    return markdown.slice(0, cache?.frontmatterPosition?.end.offset ?? 0);
+}
+
 /** A rendered note: what frees it, and when its footer is drawn. */
 export interface RenderedNote {
     component: Component;
@@ -111,6 +151,13 @@ export class NoteRenderer {
     private readonly bases: NoteBases;
     private readonly mentions: LinkedMentionsFooter;
     private readonly widths: NoteWidths;
+    /** Long notes, by the component they were rendered into. */
+    private readonly sectioned = new WeakMap<Component, SectionedNote>();
+    /**
+     * Notes saved while rendered, by path: they render by section from then
+     * on. Until a save a note renders whole, which for a long one costs half.
+     */
+    private readonly saved = new Set<string>();
 
     constructor(
         private readonly app: App,
@@ -119,7 +166,9 @@ export class NoteRenderer {
         private readonly getSettings: () => DailyNotesStreamSettings,
         private readonly highlighter: SearchHighlighter,
         baseMeasurements: BaseMeasurements,
-        backlinks: BacklinkIndex
+        backlinks: BacklinkIndex,
+        /** Whether a note will likely be saved while on screen: today's (ADR 0019). */
+        private readonly expectsSaves: (file: TFile) => boolean = () => false
     ) {
         this.widths = new NoteWidths(component);
         this.bases = new NoteBases(app, baseMeasurements, this.widths);
@@ -144,8 +193,14 @@ export class NoteRenderer {
      * view: what MarkdownRenderer registers lives until that child is
      * discarded, and otherwise outlives the DOM it belongs to. The footer is
      * left drawing: the render queue must not wait on other notes' reads.
+     * Between slices it awaits `goOn`, and null where that said stop (ADR
+     * 0020) or the note was deleted meanwhile: its block is left empty.
      */
-    async renderInto(block: HTMLElement, file: TFile): Promise<RenderedNote> {
+    async renderInto(
+        block: HTMLElement,
+        file: TFile,
+        goOn: () => Promise<boolean> = () => Promise.resolve(true)
+    ): Promise<RenderedNote | null> {
         const noteComponent = new Component();
         noteComponent.load();
         this.component.addChild(noteComponent);
@@ -166,29 +221,28 @@ export class NoteRenderer {
         const contentEl = block.createDiv({ cls: "daily-note-content markdown-rendered" });
 
         try {
-            let markdown = await this.app.vault.cachedRead(file);
-
+            const markdown = await this.app.vault.cachedRead(file);
             const cache = this.app.metadataCache.getFileCache(file);
-            const frontmatterPos = cache?.frontmatterPosition;
-            if (frontmatterPos) {
-                markdown = markdown.slice(frontmatterPos.end.offset).trim();
-            }
-            // On mobile nothing in the stream may scroll (ADR 0008); desktop
-            // draws wide content as Obsidian does, scrolling in its own box.
-            const mobile = Platform.isMobile;
-            const { markdown: body, bases } = mobile ? extractBases(markdown) : { markdown, bases: [] };
-            await MarkdownRenderer.render(this.app, body, contentEl, file.path, noteComponent);
-            this.markUnresolvedLinks(contentEl);
-            if (mobile) {
-                await this.bases.render(contentEl, file, noteComponent, bases);
-                stackWideTables(contentEl, noteComponent, this.widths);
-                fitWideEquations(contentEl, noteComponent, this.widths);
-            }
-
-            wrapTextBesideBlocks(contentEl);
+            const frontmatter = frontmatterOf(markdown, cache);
+            const bySection = this.saved.has(file.path) || this.expectsSaves(file);
+            const sources = bySection ? noteSections(markdown, cache) : chunksOf(markdown, cache);
+            if (sources) {
+                const sections = await this.renderSections(contentEl, file, noteComponent, sources, goOn);
+                if (!sections) {
+                    this.discard(noteComponent);
+                    block.empty();
+                    return null;
+                }
+                if (bySection) this.sectioned.set(noteComponent, { contentEl, frontmatter, sections });
+            } else await this.renderWhole(contentEl, file, noteComponent, markdown.slice(frontmatter.length).trim());
             const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);
             this.collapsible.forgetRemovedSections(file, sectionKeys);
         } catch (error) {
+            if (this.isDeleted(file)) {
+                this.discard(noteComponent);
+                block.empty();
+                return null;
+            }
             console.error(`DailyNotesStream: Failed to render note ${file.path}:`, error);
             contentEl.setText("Error rendering note");
         }
@@ -196,6 +250,139 @@ export class NoteRenderer {
         const footer = this.mentions.render(block, file, noteComponent);
         this.highlighter.track(block, noteComponent);
         return { component: noteComponent, footer };
+    }
+
+    /**
+     * Re-renders only the sections of a note a save changed (ADR 0019). False
+     * where the note must render whole: it was rendered whole, its sections
+     * no longer stand alone, or its frontmatter or a Base changed. A failed
+     * update may leave it part-drawn, until that whole render.
+     */
+    async update(block: HTMLElement, file: TFile, noteComponent: Component): Promise<boolean> {
+        const note = this.sectioned.get(noteComponent);
+        if (!note) {
+            this.saved.add(file.path);
+            return false;
+        }
+        try {
+            const markdown = await this.app.vault.cachedRead(file);
+            const cache = this.app.metadataCache.getFileCache(file);
+            const sources = noteSections(markdown, cache);
+            if (!sources || frontmatterOf(markdown, cache) !== note.frontmatter) return false;
+
+            const { start, endBefore, endAfter } = changedSpan(
+                note.sections.map((section) => section.source),
+                sources
+            );
+            const removed = note.sections.slice(start, endBefore);
+            const added = sources.slice(start, endAfter);
+            // Bases render across the note, each into its slot in order.
+            if (
+                Platform.isMobile &&
+                [...removed.map((s) => s.source), ...added].some((s) => extractBases(s).bases.length)
+            )
+                return false;
+
+            const next = note.sections.slice(endBefore).find((section) => section.nodes.length > 0)?.nodes[0] ?? null;
+            for (const section of removed) {
+                section.nodes.forEach((node) => node.remove());
+                noteComponent.removeChild(section.component);
+            }
+            const rendered: RenderedSection[] = [];
+            for (const source of added) {
+                rendered.push(await this.renderSection(note.contentEl, next, source, file, noteComponent));
+            }
+            note.sections.splice(start, endBefore - start, ...rendered);
+
+            const sectionKeys = this.collapsible.refreshCollapsible(note.contentEl, file.path);
+            this.collapsible.forgetRemovedSections(file, sectionKeys);
+            this.highlighter.refresh(block);
+            return true;
+        } catch (error) {
+            if (this.isDeleted(file)) return false;
+            console.error(`DailyNotesStream: Failed to update note ${file.path}:`, error);
+            return false;
+        }
+    }
+
+    /** Gone from the vault: its read fails, and its block is about to go. */
+    private isDeleted(file: TFile): boolean {
+        return this.app.vault.getFileByPath(file.path) === null;
+    }
+
+    /** A note as one render, Obsidian's way. */
+    private async renderWhole(contentEl: HTMLElement, file: TFile, noteComponent: Component, markdown: string) {
+        // On mobile nothing in the stream may scroll (ADR 0008); desktop
+        // draws wide content as Obsidian does, scrolling in its own box.
+        const mobile = Platform.isMobile;
+        const { markdown: body, bases } = mobile ? extractBases(markdown) : { markdown, bases: [] };
+        await MarkdownRenderer.render(this.app, body, contentEl, file.path, noteComponent);
+        this.markUnresolvedLinks(contentEl);
+        if (mobile) {
+            await this.bases.render(contentEl, file, noteComponent, bases);
+            stackWideTables(contentEl, noteComponent, this.widths);
+            fitWideEquations(contentEl, noteComponent, this.widths);
+        }
+        wrapTextBesideBlocks(contentEl);
+    }
+
+    /**
+     * A note a section, or a run of them, at a time: a save can redraw part of
+     * it (ADR 0019), and no long note freezes the stream (ADR 0020). Null
+     * once `goOn` says stop; one taken out of the document is left
+     * part-drawn, for its discard.
+     */
+    private async renderSections(
+        contentEl: HTMLElement,
+        file: TFile,
+        noteComponent: Component,
+        sources: string[],
+        goOn: () => Promise<boolean>
+    ): Promise<RenderedSection[] | null> {
+        const slice = new TimeSlice(SLICE_MS);
+        const sections: RenderedSection[] = [];
+        for (const source of sources) {
+            if (await slice.yieldIfSpent()) {
+                if (!(await goOn())) return null;
+                if (!contentEl.isConnected) return sections;
+            }
+            sections.push(await this.renderSection(contentEl, null, source, file, noteComponent));
+        }
+        if (Platform.isMobile) {
+            await this.bases.render(
+                contentEl,
+                file,
+                noteComponent,
+                sections.flatMap((section) => section.bases)
+            );
+            stackWideTables(contentEl, noteComponent, this.widths);
+        }
+        return sections;
+    }
+
+    /**
+     * Renders one section before `next`, into a holder that then gives way to
+     * what it holds: the note's elements stay siblings, as a whole render
+     * leaves them, for collapsing and Obsidian's stylesheet.
+     */
+    private async renderSection(
+        contentEl: HTMLElement,
+        next: ChildNode | null,
+        source: string,
+        file: TFile,
+        noteComponent: Component
+    ): Promise<RenderedSection> {
+        const component = noteComponent.addChild(new Component());
+        const holder = contentEl.insertBefore(document.createElement("div"), next);
+        const mobile = Platform.isMobile;
+        const { markdown, bases } = mobile ? extractBases(source) : { markdown: source, bases: [] };
+        await MarkdownRenderer.render(this.app, markdown, holder, file.path, component);
+        this.markUnresolvedLinks(holder);
+        if (mobile) fitWideEquations(contentEl, component, this.widths, holder);
+        wrapTextBesideBlocks(holder);
+        const nodes = Array.from(holder.childNodes);
+        holder.replaceWith(...nodes);
+        return { source, nodes, component, bases };
     }
 
     /** A Base file changed: the copies of it drawn as cards redraw. */

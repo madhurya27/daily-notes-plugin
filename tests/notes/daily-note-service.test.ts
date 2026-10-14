@@ -483,6 +483,40 @@ describe("DailyNoteService", () => {
         });
     });
 
+    describe("instance: isToday", () => {
+        beforeEach(() => vi.useFakeTimers({ now: new Date(2025, 0, 5, 12) }));
+        afterEach(() => vi.useRealTimers());
+
+        /** Yesterday's, today's and one made ahead. */
+        async function svc(): Promise<DailyNoteService> {
+            __setMockNotes(["Notes/2025-01-04.md", "Notes/2025-01-05.md", "Notes/2025-01-10.md"]);
+            const svc = new DailyNoteService(__mockMarkdownFiles, __mockSettings);
+            await svc.initialize();
+            return svc;
+        }
+
+        it("is true for today's note only", async () => {
+            const service = await svc();
+            expect(service.isToday("Notes/2025-01-05.md")).toBe(true);
+            expect(service.isToday("Notes/2025-01-04.md")).toBe(false);
+            expect(service.isToday("Notes/2025-01-10.md")).toBe(false);
+            expect(service.isToday("Notes/Reading list.md")).toBe(false);
+        });
+
+        it("moves to the next day's note at midnight", async () => {
+            const service = await svc();
+            vi.setSystemTime(new Date(2025, 0, 6, 0, 30));
+            expect(service.isToday("Notes/2025-01-05.md")).toBe(false);
+        });
+
+        it("is false with no note before today", async () => {
+            __setMockNotes(["Notes/2025-01-10.md"]);
+            const service = new DailyNoteService(__mockMarkdownFiles, __mockSettings);
+            await service.initialize();
+            expect(service.isToday("Notes/2025-01-10.md")).toBe(false);
+        });
+    });
+
     describe("instance: indexForDate", () => {
         /** Three notes, newest first: 2025-01-10, 2025-01-05, 2025-01-01. */
         async function svcWithGaps(): Promise<DailyNoteService> {

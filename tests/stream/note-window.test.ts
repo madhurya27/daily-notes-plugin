@@ -6,12 +6,14 @@ import { NoteHeights } from "../../src/stream/note-heights";
 import { HOLD_LIMIT_MS, SETTLE_MS } from "../../src/stream/height-hold";
 
 /**
- * The two observers, by the rootMargin they were constructed with: the render
- * one reaches less far than the unload one, which is the hysteresis.
+ * The observers, by the rootMargin they were constructed with: the render one
+ * reaches less far than the unload one, which is the hysteresis. The screen
+ * one has none.
  */
 interface Observers {
     render: IntersectionObserverCallback;
     unload: IntersectionObserverCallback;
+    screen: IntersectionObserverCallback;
     observe: ReturnType<typeof vi.fn>;
     unobserve: ReturnType<typeof vi.fn>;
     disconnect: ReturnType<typeof vi.fn>;
@@ -25,6 +27,7 @@ function stubObservers(): void {
     observers = {
         render: () => {},
         unload: () => {},
+        screen: () => {},
         observe: vi.fn(),
         unobserve: vi.fn(),
         disconnect: vi.fn(),
@@ -34,10 +37,13 @@ function stubObservers(): void {
         "IntersectionObserver",
         // A regular function, so it can be called with `new`.
         vi.fn(function (cb: IntersectionObserverCallback, init?: IntersectionObserverInit) {
-            callbacks.push(cb);
-            observers.margins.push(init?.rootMargin ?? "");
-            observers.render = callbacks[0]!;
-            observers.unload = callbacks[1] ?? callbacks[0]!;
+            if (init?.rootMargin === undefined) observers.screen = cb;
+            else {
+                callbacks.push(cb);
+                observers.margins.push(init.rootMargin);
+                observers.render = callbacks[0]!;
+                observers.unload = callbacks[1] ?? callbacks[0]!;
+            }
             return {
                 observe: observers.observe,
                 unobserve: observers.unobserve,
@@ -87,14 +93,22 @@ function makeRenderer(
             block.dataset.sourcePath = file.path;
             return block;
         }),
-        renderInto: vi.fn(async (block: HTMLElement, _file: TFile) => {
-            await opts.render?.(block);
-            block.createDiv({ cls: "daily-note-content" });
-            return { component: new Component(), footer: opts.footer?.() ?? Promise.resolve() };
-        }),
+        renderInto: vi.fn(
+            async (
+                block: HTMLElement,
+                _file: TFile,
+                _goOn?: () => Promise<boolean>
+            ): Promise<{ component: Component; footer: Promise<void> } | null> => {
+                await opts.render?.(block);
+                block.createDiv({ cls: "daily-note-content" });
+                return { component: new Component(), footer: opts.footer?.() ?? Promise.resolve() };
+            }
+        ),
         discard: vi.fn((component: Component) => {
             discarded.push(component);
         }),
+        /** A short note's saves render whole; a long one's may update in place (ADR 0019). */
+        update: vi.fn(async (_block: HTMLElement, _file: TFile, _component: Component) => false),
         discarded,
     };
 }
@@ -198,11 +212,11 @@ describe("NoteWindowManager.add", () => {
         expect(renderer.renderInto).not.toHaveBeenCalled();
     });
 
-    it("observes the block with both observers", () => {
+    it("observes the block with all three observers", () => {
         const { manager } = makeManager();
         const block = manager.add(FILE);
         expect(observers.observe).toHaveBeenCalledWith(block);
-        expect(observers.observe).toHaveBeenCalledTimes(2);
+        expect(observers.observe).toHaveBeenCalledTimes(3);
     });
 });
 
@@ -1590,6 +1604,60 @@ describe("NoteWindowManager under a fast scroll", () => {
         expect(block.classList.contains("is-unloaded")).toBe(true);
     });
 
+    /** A long note's render, which asks between slices whether it is still wanted (ADR 0020). */
+    function makeSlicedRenderer() {
+        const renderer = makeRenderer();
+        renderer.renderInto = vi.fn(async (block: HTMLElement, _file: TFile, goOn = () => Promise.resolve(true)) => {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            if (!(await goOn())) {
+                block.empty();
+                return null;
+            }
+            block.createDiv({ cls: "daily-note-content" });
+            return { component: new Component(), footer: Promise.resolve() };
+        });
+        return renderer;
+    }
+
+    // A glide over a long note left it drawing for a second after it had
+    // passed, holding up the note the glide stopped on.
+    it("stops drawing a note that left mid-render, leaving it unloaded", async () => {
+        const renderer = makeSlicedRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        await vi.advanceTimersByTimeAsync(1); // into the render
+        fire(observers.unload, block, false);
+        await settleSlow();
+
+        expect(block.classList.contains("is-unloaded")).toBe(true);
+        expect(block.querySelector(".daily-note-content")).toBeNull();
+        expect(placeholderHeight(block)).toBe(UNMEASURED);
+
+        fire(observers.render, block, true);
+        await settleSlow();
+        expect(renderer.renderInto).toHaveBeenCalledTimes(2);
+        expect(block.querySelector(".daily-note-content")).not.toBeNull();
+    });
+
+    it("draws on a note that came back into view before its next slice", async () => {
+        const renderer = makeSlicedRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        await vi.advanceTimersByTimeAsync(1);
+        fire(observers.unload, block, false);
+        fire(observers.render, block, true);
+        await settleSlow();
+
+        expect(block.querySelector(".daily-note-content")).not.toBeNull();
+        expect(block.classList.contains("is-unloaded")).toBe(false);
+    });
+
     // The observers only report a change, so a block left blank in the window
     // gets no second event: it would stay empty until the reader scrolls again.
     it("keeps a block that came back into view while its render was in flight", async () => {
@@ -1628,6 +1696,114 @@ describe("NoteWindowManager under a fast scroll", () => {
 
         expect(block.classList.contains("is-unloaded")).toBe(false);
         expect(block.querySelector(".daily-note-content")).not.toBeNull();
+    });
+});
+
+describe("NoteWindowManager draws the notes on screen first", () => {
+    const SLICES = 3;
+    /** Every slice drawn, in order, named by its note's path. */
+    let drawn: string[];
+
+    /** A long note draws `SLICES` slices, asking between them whether to go on; any other, one. */
+    function makeLongNoteRenderer(longPath: string) {
+        const renderer = makeRenderer();
+        renderer.renderInto = vi.fn(async (block: HTMLElement, file: TFile, goOn = () => Promise.resolve(true)) => {
+            const slices = file.path === longPath ? SLICES : 1;
+            for (let i = 0; i < slices; i++) {
+                if (i > 0 && !(await goOn())) {
+                    block.empty();
+                    return null;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 10));
+                drawn.push(file.path);
+            }
+            block.createDiv({ cls: "daily-note-content" });
+            return { component: new Component(), footer: Promise.resolve() };
+        });
+        return renderer;
+    }
+
+    const LONG = new TFile("Notes/2025-01-01.md");
+    const SHORT = new TFile("Notes/2025-01-02.md");
+
+    function setUp() {
+        drawn = [];
+        const renderer = makeLongNoteRenderer(LONG.path);
+        const { manager } = makeManager(renderer);
+        const long = manager.add(LONG);
+        const short = manager.add(SHORT);
+        document.body.append(long, short);
+        onTestFinished(() => manager.detach());
+        return { renderer, long, short };
+    }
+
+    const drawAll = () => vi.advanceTimersByTimeAsync(100);
+
+    // A glide to the top over a long note left it in the render margin, and
+    // the newest note waited ~0.3 s on an iPhone for it to draw to its end.
+    it("draws a note that came on screen between a nearby long note's slices, then the rest of it", async () => {
+        const { renderer, long, short } = setUp();
+        fire(observers.render, long, true);
+        await vi.advanceTimersByTimeAsync(5); // into its first slice
+        fire(observers.render, short, true);
+        fire(observers.screen, short, true);
+        await drawAll();
+
+        expect(drawn).toEqual([LONG.path, SHORT.path, LONG.path, LONG.path]);
+        expect(renderer.renderInto).toHaveBeenCalledTimes(2);
+        expect(isRendered(long)).toBe(true);
+        expect(isRendered(short)).toBe(true);
+    });
+
+    it("keeps drawing a long note on screen itself", async () => {
+        const { long, short } = setUp();
+        fire(observers.render, long, true);
+        fire(observers.screen, long, true);
+        await vi.advanceTimersByTimeAsync(5);
+        fire(observers.render, short, true);
+        fire(observers.screen, short, true);
+        await drawAll();
+
+        expect(drawn).toEqual([LONG.path, LONG.path, LONG.path, SHORT.path]);
+    });
+
+    it("waits its turn for a note only near the screen", async () => {
+        const { long, short } = setUp();
+        fire(observers.render, long, true);
+        await vi.advanceTimersByTimeAsync(5);
+        fire(observers.render, short, true);
+        await drawAll();
+
+        expect(drawn).toEqual([LONG.path, LONG.path, LONG.path, SHORT.path]);
+    });
+
+    it("waits its turn for a note that left the screen before the next slice", async () => {
+        const { long, short } = setUp();
+        fire(observers.render, long, true);
+        await vi.advanceTimersByTimeAsync(5);
+        fire(observers.render, short, true);
+        fire(observers.screen, short, true);
+        fire(observers.screen, short, false);
+        await drawAll();
+
+        expect(drawn).toEqual([LONG.path, LONG.path, LONG.path, SHORT.path]);
+    });
+
+    it("forgets the notes on screen once removed", async () => {
+        const { manager } = makeManager(makeLongNoteRenderer(LONG.path));
+        drawn = [];
+        const long = manager.add(LONG);
+        const short = manager.add(SHORT);
+        document.body.append(long, short);
+        fire(observers.render, long, true);
+        await vi.advanceTimersByTimeAsync(5);
+        fire(observers.render, short, true);
+        fire(observers.screen, short, true);
+        manager.remove(short);
+        await drawAll();
+
+        expect(drawn).toEqual([LONG.path, LONG.path, LONG.path, SHORT.path]);
+        manager.detach();
     });
 });
 
@@ -1673,6 +1849,20 @@ describe("NoteWindowManager.refresh", () => {
         expect(block.querySelectorAll(".daily-note-content")).toHaveLength(1);
     });
 
+    it("leaves the block of a note deleted mid-refresh empty", async () => {
+        const renderer = makeRenderer();
+        const { manager } = makeManager(renderer);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+
+        renderer.renderInto.mockResolvedValueOnce(null);
+        await manager.refresh(block);
+
+        expect(block.childElementCount).toBe(0);
+    });
+
     it("unloads a note that left view mid-refresh, and draws it again on its return", async () => {
         const renderer = makeRenderer();
         const { manager } = makeManager(renderer);
@@ -1697,6 +1887,88 @@ describe("NoteWindowManager.refresh", () => {
         fire(observers.render, block, true);
         await settle();
         expect(isRendered(block)).toBe(true);
+    });
+
+    describe("a long note updated in place", () => {
+        const pinned = (block: HTMLElement) => block.style.getPropertyValue("--daily-note-pinned-height");
+
+        it("re-renders none of it where the renderer updated it", async () => {
+            const renderer = makeRenderer();
+            const { manager } = makeManager(renderer);
+            const block = manager.add(FILE);
+            document.body.appendChild(block);
+            fire(observers.render, block, true);
+            await settle();
+            renderer.update.mockResolvedValueOnce(true);
+
+            await manager.refresh(block);
+
+            expect(renderer.update).toHaveBeenCalledWith(block, FILE, expect.any(Component));
+            expect(renderer.renderInto).toHaveBeenCalledOnce();
+            expect(renderer.discard).not.toHaveBeenCalled();
+        });
+
+        it("takes its new height through the pin", async () => {
+            let height = 640;
+            const renderer = makeRenderer();
+            const { manager } = makeManager(renderer, () => parseFloat(pinned(block)) || height);
+            const block = manager.add(FILE);
+            document.body.appendChild(block);
+            fire(observers.render, block, true);
+            await settle();
+            renderer.update.mockImplementationOnce(async () => {
+                height = 700;
+                return true;
+            });
+
+            await manager.refresh(block);
+
+            expect(pinned(block)).toBe("700px");
+        });
+
+        it("leaves on the next still scroll once it updated, if it left view meanwhile", async () => {
+            const renderer = makeRenderer();
+            const { manager } = makeManager(renderer);
+            const block = manager.add(FILE);
+            document.body.appendChild(block);
+            fire(observers.render, block, true);
+            await settle();
+            renderer.update.mockImplementationOnce(async () => {
+                fire(observers.unload, block, false);
+                return true;
+            });
+
+            await manager.refresh(block);
+            expect(isRendered(block)).toBe(true);
+
+            manager.onScroll();
+            await still();
+            expect(isRendered(block)).toBe(false);
+        });
+
+        it("stays drawn while it updates, and leaves on the next still scroll after", async () => {
+            const renderer = makeRenderer();
+            const { manager } = makeManager(renderer);
+            const block = manager.add(FILE);
+            document.body.appendChild(block);
+            fire(observers.render, block, true);
+            await settle();
+            renderer.update.mockImplementationOnce(async () => {
+                await new Promise((resolve) => setTimeout(resolve, SCROLL_IDLE_MS * 2));
+                return true;
+            });
+
+            fire(observers.unload, block, false);
+            manager.onScroll();
+            const refreshed = manager.refresh(block);
+            await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS * 2);
+            await refreshed;
+            expect(isRendered(block)).toBe(true);
+
+            manager.onScroll();
+            await still();
+            expect(isRendered(block)).toBe(false);
+        });
     });
 
     // An unloaded note renders from the current file on re-entry anyway.
@@ -1752,7 +2024,7 @@ describe("NoteWindowManager teardown", () => {
         expect(renderer.discard).not.toHaveBeenCalled();
     });
 
-    it("detach disconnects both observers and frees every rendered note", async () => {
+    it("detach disconnects all three observers and frees every rendered note", async () => {
         const renderer = makeRenderer();
         const { manager } = makeManager(renderer);
         const first = manager.add(FILE);
@@ -1764,7 +2036,7 @@ describe("NoteWindowManager teardown", () => {
 
         manager.detach();
 
-        expect(observers.disconnect).toHaveBeenCalledTimes(2);
+        expect(observers.disconnect).toHaveBeenCalledTimes(3);
         expect(renderer.discard).toHaveBeenCalledTimes(2);
     });
 
@@ -1792,7 +2064,7 @@ describe("NoteWindowManager teardown", () => {
     it("re-attaching replaces the observers rather than stacking them", () => {
         const { manager } = makeManager();
         manager.attach(document.createElement("div"), document.createElement("div"), moreBelow);
-        expect(observers.disconnect).toHaveBeenCalledTimes(2);
+        expect(observers.disconnect).toHaveBeenCalledTimes(3);
         expect(observers.margins).toHaveLength(4);
     });
 });

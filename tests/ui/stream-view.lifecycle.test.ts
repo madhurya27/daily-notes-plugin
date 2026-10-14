@@ -116,6 +116,21 @@ describe("DailyNotesStreamView — view API", () => {
     });
 });
 
+describe("DailyNotesStreamView — today's note", () => {
+    // Today's is the note written in: rendered by section, its saves redraw in part (ADR 0019).
+    it("asks the service whether a note it renders is today's", async () => {
+        const plugin = makePlugin();
+        const service = makeService();
+        const view = new DailyNotesStreamView(new WorkspaceLeaf(asApp(makeApp())), plugin, service);
+        const file = new TFile("Notes/2025-01-01.md");
+        const renderer = view["renderer"];
+
+        await renderer.renderInto(renderer.createBlock(file), file);
+
+        expect(service.isToday).toHaveBeenCalledWith("Notes/2025-01-01.md");
+    });
+});
+
 describe("DailyNotesStreamView — onResize", () => {
     // Obsidian calls onResize when the pane is dragged or the device turns.
     it("passes the resize on to the window", async () => {

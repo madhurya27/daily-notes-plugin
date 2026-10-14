@@ -35,3 +35,143 @@ for (const [action, opened] of [
         await phone.escape(opened);
         await expect.poll(() => phone.has(opened)).toBe(false);
     });
+
+/** A day's entries, `lines` long: headings, prose, lists, tasks, code and a table. */
+function longNote(lines: number): string {
+    const entry = (n: number) => [
+        `## Entry ${n}`,
+        "",
+        `Walked to the river and back, entry ${n}. The light was flat and grey, the kind that makes everything look closer.`,
+        "",
+        "- coffee with **Sam**, talked about the move",
+        "    - the boxes, again",
+        "- [ ] call the landlord",
+        "",
+        "```js",
+        `const total = ${n};`,
+        "```",
+        "",
+        "| Meal | What |",
+        "| --- | --- |",
+        "| Lunch | soup |",
+        "",
+    ];
+    return Array.from({ length: Math.ceil(lines / 16) }, (_, n) => entry(n))
+        .flat()
+        .slice(0, lines)
+        .join("\n");
+}
+
+/**
+ * Notes as `[days back, lines]`, and whether the reader has scrolled past them
+ * before, so their heights are known (ADR 0020).
+ */
+const CASES = [
+    {
+        // The glide up passed a 10,000-line note, which drew to its end a
+        // second after it had gone by, while the top of the stream stayed
+        // blank. Measured: 750–1,170 ms; none once it gives up.
+        name: "a tap on the title over long notes draws the newest at once",
+        notes: [
+            [0, 5000],
+            [2, 10000],
+            [3, 1000],
+        ],
+        measured: true,
+        within: 400,
+    },
+    {
+        // Under a short newest note, a long one never measured ends the glide
+        // in the render margin, and drew to its end first. Measured: 333–341
+        // ms; 44–49 once a note on screen goes ahead of it.
+        name: "a tap on the title draws a short newest note before a long one near it",
+        notes: [
+            [0, 30],
+            [1, 10000],
+            [3, 1000],
+        ],
+        measured: false,
+        within: 200,
+    },
+] as const;
+
+for (const { name, notes, measured, within } of CASES)
+    test(name, async ({ phone }) => {
+        const paths = await phone.run(
+            (back: number[]) =>
+                back.map((d) => `Journal/${new Date(Date.now() - d * 86_400_000).toLocaleDateString("en-CA")}.md`),
+            notes.map(([back]) => back)
+        );
+        try {
+            for (const [i, [, lines]] of notes.entries())
+                await phone.runAsync(
+                    async (path: string, text: string) => {
+                        const { vault, metadataCache } = window.app;
+                        const file = vault.getFileByPath(path);
+                        await new Promise<void>((indexed) => {
+                            const ref = metadataCache.on("changed", (changed: { path: string }) => {
+                                if (changed.path !== path) return;
+                                metadataCache.offref(ref);
+                                indexed();
+                            });
+                            void (file ? vault.modify(file, text) : vault.create(path, text));
+                        });
+                    },
+                    paths[i]!,
+                    longNote(lines)
+                );
+            if (!measured) await phone.forgetHeights();
+            await phone.openStream();
+            // Each drawn once, so its height is known, as for a reader who has scrolled past them.
+            if (measured) for (const path of paths) await phone.jumpTo(path.slice(8, 18));
+            const fourth = await phone.run(
+                () => document.querySelectorAll<HTMLElement>(".daily-note-block")[3]!.dataset.sourcePath!
+            );
+            await phone.placeAt(`.daily-note-block[data-source-path="${fourth}"]`, 0);
+            // Far past it, the newest note unloads once the scroll is still: the tap has it draw again.
+            await expect
+                .poll(() =>
+                    phone.run(
+                        (path: string) =>
+                            document
+                                .querySelector(`.daily-note-block[data-source-path="${path}"]`)!
+                                .classList.contains("is-unloaded"),
+                        paths[0]!
+                    )
+                )
+                .toBe(true);
+            await phone.run(() => {
+                const w = window as unknown as { atTop?: number; drawnAtTop?: number };
+                delete w.atTop;
+                delete w.drawnAtTop;
+                const pane = document.querySelector(".daily-notes-stream-container")!.parentElement!;
+                const watch = () => {
+                    const now = performance.now();
+                    if (pane.scrollTop <= 0) w.atTop ??= now;
+                    const r = pane.getBoundingClientRect();
+                    const el = document.elementFromPoint(r.left + r.width / 2, r.top + 150);
+                    if (w.atTop !== undefined && el?.closest(".daily-note-content")) w.drawnAtTop = now;
+                    else requestAnimationFrame(watch);
+                };
+                requestAnimationFrame(watch);
+            });
+
+            await phone.tap(`${HEADER} .view-header-title`);
+            // The driver hands back undefined as null.
+            await expect
+                .poll(() => phone.run(() => (window as unknown as { drawnAtTop?: number }).drawnAtTop ?? 0))
+                .toBeGreaterThan(0);
+
+            const waited = await phone.run(() => {
+                const w = window as unknown as { atTop: number; drawnAtTop: number };
+                return w.drawnAtTop - w.atTop;
+            });
+            expect(waited).toBeLessThan(within);
+        } finally {
+            for (const path of paths)
+                await phone.runAsync(async (path: string) => {
+                    const file = window.app.vault.getFileByPath(path);
+                    if (file) await window.app.vault.delete(file);
+                }, path);
+        }
+    });

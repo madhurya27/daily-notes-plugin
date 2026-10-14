@@ -176,6 +176,13 @@ export class DailyNoteService {
         return index < this.sorted.length ? index : -1;
     }
 
+    /** Whether the note at `path` is today's: the one written in, so saved while on screen. */
+    isToday(path: string): boolean {
+        const today = moment();
+        const note = this.sorted[this.indexForDate(today)];
+        return !!note && note.file.path === path && note.date.isSame(today, "day");
+    }
+
     /** The index of the note at `path`; -1 when absent. */
     indexOf(path: string): number {
         return this.sorted.findIndex((note) => note.file.path === path);

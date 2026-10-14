@@ -105,6 +105,19 @@ describe("fitWideEquations", () => {
         expect(widths.watching(content)).toBe(0);
     });
 
+    it("fits only the equations within the part of the note it is given", () => {
+        const section = content.createDiv();
+        const outside = equation(800);
+        const inside = equation(800);
+        section.append(inside.parentElement!);
+
+        fitWideEquations(content, component, widths, section);
+
+        expect(zoom(inside)).toBe("0.5");
+        expect(zoom(outside)).toBe("");
+        expect(widths.watching(content)).toBe(1);
+    });
+
     it("watches nothing in a note without an equation", () => {
         fitWideEquations(content, component, widths);
 

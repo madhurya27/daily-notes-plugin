@@ -32,6 +32,21 @@ describe("SearchHighlighter", () => {
         expect(highlighted("daily-notes-search-match")).toEqual(["km", "KM"]);
     });
 
+    it("finds matches again in a tracked block changed in place, and none in an untracked one", () => {
+        const { block, component } = renderedBlock("<p>Ran 5 km.</p>");
+        const untracked = renderedBlock("<p>Ran 9 km.</p>").block;
+        highlighter.setQuery("km");
+        highlighter.track(block, component);
+        block.createEl("p", { text: "Then 2 km more." });
+
+        highlighter.refresh(block);
+        highlighter.refresh(untracked);
+
+        expect(highlighter.rangesIn(block)).toHaveLength(2);
+        expect(highlighter.rangesIn(untracked)).toHaveLength(0);
+        expect(highlighted("daily-notes-search-match")).toEqual(["km", "km"]);
+    });
+
     // Stream search matches a note's own source; another note's excerpt is not a match in it.
     it("highlights nothing in a note's linked mentions", () => {
         const { block, component } = renderedBlock(

@@ -4,6 +4,15 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] A glide through a drawn 10,000-line note shows a blank pane for up to 2.4
+      s, a sixth of its frames, on `main` too: WebKit holds the page's thread
+      (two frames in 2 s) with no script of ours or Obsidian's over 103 ms.
+      Recorded with `scripts/capture-iphone.swift`. Find the length it starts
+      at, then try `content-visibility` on sections or a box per run of them.
+- [ ] With no heights stored, a 10,000-line note among the few measured makes
+      every unmeasured note reserve its 235,612 px (the 0.9 quantile, D-092): a
+      jump past it lands at 1.6 million px until the next rest re-reserves.
+      Gliding up through those placeholders blanks single frames, up to 0.3 s.
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.
@@ -15,6 +24,17 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
           the README
     - [ ] Once listed, lead the README's Install with **Settings → Community
           plugins → Browse**; keep the manual download as the alternative
+- [ ] Maybe: draw only the part of a note within the render margin, the rest as
+      the reader nears it. The window picks which notes draw, but each draws
+      whole: a long note with its top on screen draws to its end, hundreds of
+      screens below, while a note waiting on screen waits (ADR 0020). Needs
+      collapsing to close what draws later under a collapsed heading, space held
+      for the undrawn rest, and a search jump to draw its part first. Only if
+      that wait shows up on the phone.
+- [ ] Key a collapsed section by the heading it sits under too
+      (`day-35/li-1-errands`): repeats are numbered by position, so deleting the
+      first hands its saved state to the next. Before `1.0.0`, no store
+      migration: saved states reopen once.
 
 ## Features
 
