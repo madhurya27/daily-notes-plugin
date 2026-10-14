@@ -38,11 +38,6 @@ export class LayoutTable<V> {
         this.changed(layout);
     }
 
-    /** `layout`'s values, without counting as a use of it. */
-    values(layout: string): V[] {
-        return [...(this.layouts.get(layout)?.values() ?? [])];
-    }
-
     /** `layout`'s keys and values, without counting as a use of it. */
     entries(layout: string): [key: string, value: V][] {
         return [...(this.layouts.get(layout) ?? [])];

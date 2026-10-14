@@ -31,7 +31,7 @@ export class Reservations {
     constructor(
         private readonly heights: NoteHeights,
         /** What a note not measured at a layout reserves there (D-092). */
-        private readonly estimate: (layout: string) => number | undefined
+        private readonly estimate: (layout: string, path: string) => number | undefined
     ) {
         this.reservedFrom = this.key();
     }
@@ -47,7 +47,7 @@ export class Reservations {
      */
     expect(note: Reserving, layout: string): void {
         const remembered = this.heights.heightOf(layout, note.file.path);
-        note.height = remembered ?? this.estimate(layout) ?? note.height;
+        note.height = remembered ?? this.estimate(layout, note.file.path) ?? note.height;
         note.measured = remembered !== undefined;
     }
 

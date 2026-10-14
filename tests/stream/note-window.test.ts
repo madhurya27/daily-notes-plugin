@@ -277,9 +277,18 @@ describe("NoteWindowManager remembered heights", () => {
         expect(placeholderHeight(manager.add(FILE))).toBe("710px");
     });
 
+    // Capped at its size, a small note still reserves the panes a note never measured does (D-135).
+    it("caps a note's estimate at its size, never below what an unmeasured note reserves", () => {
+        const heights = new NoteHeights(undefined, (path) => ({ mtime: 1, size: path === "long.md" ? 500_000 : 10 }));
+        heights.keep(LAYOUT, "long.md", 235_612);
+        const { manager } = makeManager(undefined, undefined, undefined, heights);
+
+        expect(placeholderHeight(manager.add(FILE))).toBe(UNMEASURED);
+    });
+
     describe("with an estimate given", () => {
         function makeEstimating(heights: NoteHeights) {
-            const estimate = vi.fn((_layout: string): number | undefined => 950);
+            const estimate = vi.fn((_layout: string, _path: string): number | undefined => 950);
             const manager = new NoteWindowManager(
                 makeRenderer() as never,
                 makeQueue(),
@@ -297,7 +306,7 @@ describe("NoteWindowManager remembered heights", () => {
             const { manager, estimate } = makeEstimating(heights);
 
             expect(placeholderHeight(manager.add(FILE))).toBe("950px");
-            expect(estimate).toHaveBeenCalledWith(LAYOUT);
+            expect(estimate).toHaveBeenCalledWith(LAYOUT, FILE.path);
             estimate.mockReturnValueOnce(undefined);
             expect(placeholderHeight(manager.add(new TFile("b.md")))).toBe(UNMEASURED);
 

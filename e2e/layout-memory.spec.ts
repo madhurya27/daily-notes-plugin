@@ -13,7 +13,7 @@ test("reserves a note never measured at what the vault's notes measured, erring 
                 (block) => notes.heightOf(layout, block.dataset.sourcePath) === undefined
             );
             return {
-                estimate: notes.estimate(layout) as number | undefined,
+                estimate: unmeasured && (notes.estimate(layout, unmeasured.dataset.sourcePath) as number | undefined),
                 placeholder: unmeasured?.style.getPropertyValue("--daily-note-placeholder-height"),
             };
         });

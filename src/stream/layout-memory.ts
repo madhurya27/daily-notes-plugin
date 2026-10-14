@@ -16,8 +16,10 @@ export const SAVE_DELAY_MS = 1000;
  * One per plugin; every view shares it.
  */
 export class LayoutMemory {
-    private readonly mtimeOf = (path: string) => this.app.vault.getFileByPath(path)?.stat.mtime;
-    readonly notes = new NoteHeights(() => this.saveSoon(), this.mtimeOf);
+    readonly notes = new NoteHeights(
+        () => this.saveSoon(),
+        (path) => this.app.vault.getFileByPath(path)?.stat
+    );
     readonly bases = new BaseMeasurements(() => this.saveSoon());
     private readonly saveSoon = debounce(() => this.save(), SAVE_DELAY_MS);
     private readonly saveLogged = saveLoggingOnce("layout memory");

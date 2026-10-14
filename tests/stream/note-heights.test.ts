@@ -28,19 +28,19 @@ describe("NoteHeights", () => {
     // Erring tall: a glide up past notes taller than reserved runs out of scroll short of the top (D-092).
     it("estimates a layout's unmeasured note at the 0.9 quantile of its measured ones", () => {
         const heights = new NoteHeights();
-        expect(heights.estimate("600:16px")).toBeUndefined();
+        expect(heights.estimate("600:16px", "new.md")).toBeUndefined();
 
         for (let i = 1; i <= 11; i++) heights.keep("600:16px", `n${i}.md`, i * 100);
-        expect(heights.estimate("600:16px")).toBe(1000);
+        expect(heights.estimate("600:16px", "new.md")).toBe(1000);
 
         // Every placeholder of a batch asks: the quantile is sorted once per change.
         const sort = vi.spyOn(Array.prototype, "sort");
-        expect(heights.estimate("600:16px")).toBe(1000);
+        expect(heights.estimate("600:16px", "new.md")).toBe(1000);
         expect(sort).not.toHaveBeenCalled();
         sort.mockRestore();
 
         heights.keep("600:16px", "n12.md", 5000);
-        expect(heights.estimate("600:16px")).toBe(1100);
+        expect(heights.estimate("600:16px", "new.md")).toBe(1100);
     });
 
     // With few measured, the 0.9 quantile is the tallest: one 10,000-line note
@@ -48,13 +48,60 @@ describe("NoteHeights", () => {
     it("never estimates at the one tallest note alone", () => {
         const heights = new NoteHeights();
         heights.keep("600:16px", "long.md", 235_612);
-        expect(heights.estimate("600:16px")).toBe(235_612);
+        expect(heights.estimate("600:16px", "new.md")).toBe(235_612);
 
         for (const [i, height] of [700, 600, 900].entries()) heights.keep("600:16px", `n${i}.md`, height);
-        expect(heights.estimate("600:16px")).toBe(900);
+        expect(heights.estimate("600:16px", "new.md")).toBe(900);
 
         for (let i = 3; i < 9; i++) heights.keep("600:16px", `n${i}.md`, 800);
-        expect(heights.estimate("600:16px")).toBe(900);
+        expect(heights.estimate("600:16px", "new.md")).toBe(900);
+    });
+
+    // One long note among few measured made the quantile its height for every
+    // placeholder: 235,612px apiece, a glide flying through empty space (D-135).
+    describe("with each note's size", () => {
+        const sizes = new Map([
+            ["long.md", 500_000],
+            ["longer.md", 400_000],
+            ["short.md", 1_000],
+            ["tiny.md", 7],
+            ["base.md", 100],
+            ["empty.md", 0],
+        ]);
+        const statOf = (path: string) => {
+            const size = sizes.get(path);
+            return size === undefined ? undefined : { mtime: 1, size };
+        };
+
+        it("caps a note's estimate at its size, at the densest rate measured", () => {
+            const heights = new NoteHeights(undefined, statOf);
+            heights.keep("a", "long.md", 235_612);
+
+            expect(heights.estimate("a", "short.md")).toBeCloseTo(471.224);
+            expect(heights.estimate("a", "unsized.md")).toBe(235_612);
+        });
+
+        // A note's title and frame are no bytes: by size alone, a short note comes out shorter than it draws.
+        it("never caps below the floor given", () => {
+            const heights = new NoteHeights(undefined, statOf);
+            heights.keep("a", "long.md", 235_612);
+            expect(heights.estimate("a", "tiny.md", 1_700)).toBe(1_700);
+
+            for (let i = 0; i < 10; i++) heights.keep("a", `n${i}.md`, 900);
+            expect(heights.estimate("a", "tiny.md", 1_700)).toBe(900);
+        });
+
+        // A Base renders tall from a few bytes: the cap errs tall, as D-092 wants.
+        it("rates by the densest note, so a note never comes out shorter than any measured would at its size", () => {
+            const heights = new NoteHeights(undefined, statOf);
+            heights.keep("a", "long.md", 235_612);
+            heights.keep("a", "longer.md", 200_000);
+            heights.keep("a", "base.md", 600);
+            // No bytes to rate: left out, not an endless rate.
+            heights.keep("a", "empty.md", 150);
+
+            expect(heights.estimate("a", "short.md")).toBe(6_000);
+        });
     });
 
     // Just turned, the notes on screen are measured at the new width within moments: no guess from the old one.
@@ -62,7 +109,7 @@ describe("NoteHeights", () => {
         const heights = new NoteHeights();
         heights.keep("400:16px", "a.md", 900);
 
-        expect(heights.estimate("380:16px")).toBeUndefined();
+        expect(heights.estimate("380:16px", "new.md")).toBeUndefined();
     });
 
     it("forgets a deleted note, and notes no longer in the vault", () => {
@@ -76,7 +123,7 @@ describe("NoteHeights", () => {
         heights.retainOnly(new Set(["z.md"]));
         expect(heights.heightOf("a", "y.md")).toBeUndefined();
         expect(heights.heightOf("b", "z.md")).toBe(3);
-        expect(heights.estimate("a")).toBeUndefined();
+        expect(heights.estimate("a", "new.md")).toBeUndefined();
     });
 
     it("says when it changed, and only then", () => {
@@ -143,18 +190,23 @@ describe("NoteHeights", () => {
 
         expect(restored.heightOf("a", "x.md")).toBe(1);
         expect(restored.heightOf("b", "y.md")).toBeUndefined();
-        expect(restored.estimate("a")).toBe(1);
+        expect(restored.estimate("a", "new.md")).toBe(1);
     });
 
     // Edited on another device, or while the plugin was off: re-estimated from its text, not held at its old height.
     describe("with each note's mtime", () => {
+        const statOf = (mtimes: Map<string, number>) => (path: string) => {
+            const mtime = mtimes.get(path);
+            return mtime === undefined ? undefined : { mtime, size: 1 };
+        };
+
         function setup() {
             const mtimes = new Map([
                 ["x.md", 1],
                 ["y.md", 1],
                 ["gone.md", 1],
             ]);
-            const heights = new NoteHeights(undefined, (path) => mtimes.get(path));
+            const heights = new NoteHeights(undefined, statOf(mtimes));
             heights.keep("a", "x.md", 100);
             heights.keep("b", "x.md", 200);
             heights.keep("a", "y.md", 300);
@@ -176,7 +228,7 @@ describe("NoteHeights", () => {
 
         it("keeps when each note was measured through a save", () => {
             const { mtimes, heights } = setup();
-            const restored = new NoteHeights(undefined, (path) => mtimes.get(path));
+            const restored = new NoteHeights(undefined, statOf(mtimes));
             restored.restore(JSON.parse(JSON.stringify(heights.toJSON())));
             mtimes.set("x.md", 2);
 

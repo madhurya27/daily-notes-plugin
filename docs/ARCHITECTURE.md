@@ -107,7 +107,8 @@ in, an image loads. Three mechanisms keep the reader's place.
   sessions, so placeholders start at the right size
   ([ADR 0010](adr/0010-layout-memory.md)); an edit forgets a note's
   ([ADR 0017](adr/0017-forget-heights-of-edited-notes.md)). A note not measured
-  at the layout reserves the 0.9 quantile of the heights measured there (D-092).
+  at the layout reserves the 0.9 quantile of the heights measured there (D-092),
+  capped at its size at the densest rate measured (D-135).
 - `HeightHold` holds a note at its earlier height while it refills; a Base holds
   itself at the tallest it laid out at until it settles (D-095).
 - `NoteWindowManager` pins each rendered note's height and changes it only in

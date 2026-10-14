@@ -2173,6 +2173,8 @@ Geekbench 6), the oldest iOS 26 runs on, and near the quicker mid-range Androids
 
 ## D-132 — The estimate is never the tallest note alone (2026-10-13)
 
+Superseded in part by D-135: a note measured alone no longer sets the estimate.
+
 **Decision:** D-092's 0.9 quantile is taken below the tallest note measured at
 the layout, unless it is the only one.
 
@@ -2218,3 +2220,25 @@ ms task per save to a 5,000–10,000-line note, wherever the edit.
 
 - Regrouping, then showing each hidden run the new grouping splits — a save that
   moves one run's edge still shows every run above it.
+
+## D-135 — A note's estimate is capped at its size, at the densest rate measured (2026-10-14)
+
+**Decision:** a note never measured at the layout reserves the lesser of D-092's
+quantile and its file's bytes × the most pixels per byte any note measured
+there, the latter never below what a note reserves before anything is measured
+(two panes).
+
+**Why:** D-132 still let the first note measured set every estimate. Heights
+forgotten, a jump to a 10,000-line note had each note below reserve its
+234,000px; a glide down outran the drawing through that empty space, and sprang
+back as the notes drew short. Too tall is not safe below the reader. The densest
+rate errs tall, as a Base, tall from few bytes, loosens the cap; the floor keeps
+a note of a few bytes, all title and frame, from coming out short.
+
+**Rejected:**
+
+- No estimate until ten notes are measured — two long notes among them, and the
+  quantile is long again.
+- The median rate — a note denser than it, as any Base is, comes out short.
+- The shortest note measured as the floor — measured alone, the long note is the
+  shortest.

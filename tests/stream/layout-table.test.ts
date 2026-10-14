@@ -12,8 +12,8 @@ describe("LayoutTable", () => {
 
         expect(values.get("600:16px", "a.md")).toBe(320);
         expect(values.get("400:16px", "a.md")).toBeUndefined();
-        expect(values.values("600:16px")).toEqual([320]);
-        expect(values.values("400:16px")).toEqual([]);
+        expect(values.entries("600:16px")).toEqual([["a.md", 320]]);
+        expect(values.entries("400:16px")).toEqual([]);
     });
 
     // Every pane width and font size is a layout of its own.
@@ -22,7 +22,7 @@ describe("LayoutTable", () => {
         values.set("a", "x.md", 1);
         values.set("b", "x.md", 2);
         values.get("a", "x.md");
-        values.values("b");
+        values.entries("b");
         values.set("c", "x.md", 3);
 
         expect(values.get("b", "x.md")).toBeUndefined();

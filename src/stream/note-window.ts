@@ -95,7 +95,8 @@ export class NoteWindowManager {
         /** jsdom lays nothing out, so measurement is the one seam tests replace. */
         private readonly measure: (el: HTMLElement) => number = (el) => el.getBoundingClientRect().height,
         /** What a note not measured at a layout reserves there: by default, what the vault's notes measured (D-092). */
-        estimate: (layout: string) => number | undefined = (layout) => heights.estimate(layout)
+        estimate: (layout: string, path: string) => number | undefined = (layout, path) =>
+            heights.estimate(layout, path, this.unmeasured())
     ) {
         this.reservations = new Reservations(heights, estimate);
     }
