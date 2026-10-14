@@ -7,6 +7,10 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] Measure a save to a long note on the iPhone: one updated in place shows
       every hidden run first (ADR 0021), and one redrawn whole draws from its
       top under a reader at its end (ADR 0022).
+- [ ] Opening the stream with heights forgotten, the anchor shifts it
+      2,252–2,298 px at the top, once, as the long note below the newest starts
+      drawing: in every iPhone capture, on `main` before ADR 0022 too. Whether a
+      reader sees it is unchecked.
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.
