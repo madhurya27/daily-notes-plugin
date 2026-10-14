@@ -148,7 +148,7 @@ export const DRAWING_FROM_END = "is-drawing-from-end";
 /** A note rendered section by section, which a save can re-render in part. */
 interface SectionedNote {
     contentEl: HTMLElement;
-    /** Its text above the body: a change there renders the note whole. */
+    /** Its text above the body: a change there draws the properties again. */
     frontmatter: string;
     sections: RenderedSection[];
 }
@@ -280,7 +280,8 @@ export class NoteRenderer {
     /**
      * Re-renders only the sections of a note a save changed (ADR 0019). False
      * where the note must render whole: it was rendered whole, its sections
-     * no longer stand alone, or its frontmatter or a Base changed. A failed
+     * no longer stand alone, a Base changed, or on mobile its frontmatter
+     * changed beside a Base. A failed
      * update may leave it part-drawn, until that whole render.
      */
     async update(block: HTMLElement, file: TFile, noteComponent: Component): Promise<boolean> {
@@ -293,7 +294,16 @@ export class NoteRenderer {
             const markdown = await this.app.vault.cachedRead(file);
             const cache = this.app.metadataCache.getFileCache(file);
             const sources = noteSections(markdown, cache);
-            if (!sources || frontmatterOf(markdown, cache) !== note.frontmatter) return false;
+            if (!sources) return false;
+            const frontmatter = frontmatterOf(markdown, cache);
+            const frontmatterChanged = frontmatter !== note.frontmatter;
+            // A Base's formulas may read the note's properties: it draws again with them.
+            if (
+                frontmatterChanged &&
+                Platform.isMobile &&
+                [...note.sections.map((s) => s.source), ...sources].some((s) => extractBases(s).bases.length)
+            )
+                return false;
 
             const { start, endBefore, endAfter } = changedSpan(
                 note.sections.map((section) => section.source),
@@ -320,6 +330,10 @@ export class NoteRenderer {
                 rendered.push(await this.renderSection(note.contentEl, next, source, file, noteComponent));
             }
             note.sections.splice(start, endBefore - start, ...rendered);
+            if (frontmatterChanged) {
+                this.redrawProperties(block, note.contentEl, file);
+                note.frontmatter = frontmatter;
+            }
 
             const sectionKeys = this.collapsible.refreshCollapsible(note.contentEl, file.path);
             this.collapsible.forgetRemovedSections(file, sectionKeys);
@@ -469,6 +483,14 @@ export class NoteRenderer {
             href: "#",
         });
         this.titles.set(dateLink, file);
+    }
+
+    /** The properties box, drawn again from the cache above the note's content. */
+    private redrawProperties(block: HTMLElement, contentEl: HTMLElement, file: TFile): void {
+        block.querySelector(":scope > .metadata-container")?.remove();
+        this.renderProperties(block, file);
+        const properties = block.querySelector(":scope > .metadata-container");
+        if (properties) contentEl.before(properties);
     }
 
     private renderProperties(container: HTMLElement, file: TFile): void {

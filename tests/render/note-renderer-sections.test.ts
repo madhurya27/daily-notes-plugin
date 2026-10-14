@@ -31,7 +31,14 @@ function note(sections: string[], frontmatter = "") {
     });
     const cache = {
         sections: cached,
-        ...(frontmatter ? { frontmatterPosition: { end: { offset: frontmatter.length } } } : {}),
+        ...(frontmatter
+            ? {
+                  frontmatterPosition: { end: { offset: frontmatter.length } },
+                  frontmatter: Object.fromEntries(
+                      [...frontmatter.matchAll(/^(\w+): (.*)$/gm)].map((m): [string, string] => [m[1]!, m[2]!])
+                  ),
+              }
+            : {}),
     };
     return { markdown, cache };
 }
@@ -74,6 +81,7 @@ describe("NoteRenderer, a note by section", () => {
     let renderer: NoteRenderer;
     let block: HTMLElement;
     let component: Component;
+    let showProperties: boolean;
 
     const content = () => block.querySelector<HTMLElement>(".daily-note-content")!;
     const texts = () => Array.from(content().children, (el) => el.textContent);
@@ -113,7 +121,7 @@ describe("NoteRenderer, a note by section", () => {
             new Component(),
             collapsible,
             () => ({
-                showProperties: false,
+                showProperties,
                 propertiesCollapsed: false,
                 showLinkedMentions: false,
                 linkedMentionsCollapsed: false,
@@ -138,6 +146,7 @@ describe("NoteRenderer, a note by section", () => {
     }
 
     beforeEach(() => {
+        showProperties = false;
         app = {
             vault: { cachedRead: () => Promise.resolve(current.markdown), getFileByPath: () => file },
             metadataCache: { getFileCache: () => current.cache, getFirstLinkpathDest: () => null, on: () => ({}) },
@@ -428,9 +437,46 @@ describe("NoteRenderer, a note by section", () => {
         expect(render).not.toHaveBeenCalled();
     });
 
-    it("renders whole once the frontmatter changed: properties show it", async () => {
-        await openSaved(days(), "---\nmood: ok\n---\n");
-        expect(await save(days(), "---\nmood: low\n---\n")).toBe(false);
+    describe("once the frontmatter changed", () => {
+        const properties = () => block.querySelector(".metadata-container");
+        const values = () => Array.from(block.querySelectorAll(".metadata-property-value"), (el) => el.textContent);
+
+        beforeEach(() => (showProperties = true));
+
+        it("redraws only the properties, keeping the sections' elements", async () => {
+            await openSaved(days(), "---\nmood: ok\n---\n");
+            const kept = Array.from(content().children);
+            const render = renderParagraphs();
+
+            expect(await save(days(), "---\nmood: low\n---\n")).toBe(true);
+
+            expect(render).not.toHaveBeenCalled();
+            expect(values()).toEqual(["low"]);
+            expect(block.querySelectorAll(".metadata-container")).toHaveLength(1);
+            expect(Array.from(content().children)).toEqual(kept);
+        });
+
+        it("draws properties added to a note that had none above its content", async () => {
+            await openSaved(days());
+            expect(await save(days(), "---\nmood: low\n---\n")).toBe(true);
+            expect(values()).toEqual(["low"]);
+            expect(properties()!.nextElementSibling).toBe(content());
+        });
+
+        it("takes the properties away with the frontmatter", async () => {
+            await openSaved(days(), "---\nmood: ok\n---\n");
+            expect(await save(days())).toBe(true);
+            expect(properties()).toBeNull();
+        });
+
+        it("re-renders the sections a save changed with it", async () => {
+            await openSaved(days(), "---\nmood: ok\n---\n");
+            const changed = days();
+            changed[4] = `Day X.${FILLER}`;
+            expect(await save(changed, "---\nmood: low\n---\n")).toBe(true);
+            expect(texts()[4]).toBe("Day X. lorem");
+            expect(values()).toEqual(["low"]);
+        });
     });
 
     it("renders whole once a section depends on another", async () => {
@@ -594,6 +640,18 @@ describe("NoteRenderer, a note by section", () => {
             withBase[3] = BASE;
             await openSaved(withBase);
             expect(await save(days())).toBe(false);
+        });
+
+        it("renders whole when the frontmatter changed, which a Base's formulas may read", async () => {
+            const withBase = days();
+            withBase[3] = BASE;
+            await openSaved(withBase, "---\nmood: ok\n---\n");
+            expect(await save(withBase, "---\nmood: low\n---\n")).toBe(false);
+        });
+
+        it("redraws only the properties when the frontmatter changed in a note with no Base", async () => {
+            await openSaved(days(), "---\nmood: ok\n---\n");
+            expect(await save(days(), "---\nmood: low\n---\n")).toBe(true);
         });
 
         it("re-renders a section beside a Base that stayed", async () => {

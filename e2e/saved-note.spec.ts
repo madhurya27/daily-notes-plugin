@@ -123,6 +123,22 @@ for (const [which, pathOf] of NOTES) {
             await expect.poll(drawn).toBe(inPlace);
         });
 
+        test("draws the properties a save added above its text, the text kept", async ({ obsidian }) => {
+            const { page } = obsidian;
+            await openStream(page);
+            await save(page, (text) => text.replace("entry 3.", "entry 3, edited."));
+            await expect(content(page)).toContainText("entry 3, edited.");
+            await content(page).evaluate((el) => el.querySelector("h2")!.setAttribute("data-kept", ""));
+
+            await save(page, (text) => `---\nmood: tired\n---\n${text}`);
+
+            const properties = page.locator(`.daily-note-block[data-source-path="${NOTE}"] .metadata-container`);
+            await expect(properties).toContainText("tired");
+            await expect(properties).toHaveCount(1);
+            expect(await properties.evaluate((el) => el.nextElementSibling!.matches(".daily-note-content"))).toBe(true);
+            await expect(content(page).locator("h2").first()).toHaveAttribute("data-kept", "");
+        });
+
         test("keeps a collapsed section collapsed over what a save drew in it", async ({ obsidian }) => {
             const { page } = obsidian;
             await openStream(page);

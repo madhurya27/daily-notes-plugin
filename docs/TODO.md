@@ -4,9 +4,6 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] A save that changes a long note's frontmatter redraws it whole: the text
-      under a reader at its end moves 125 px for good, after 10 blank frames at
-      5,000 lines, 18 at 10,000.
 - [ ] Every save to a long note with hidden runs freezes the iPhone once,
       wherever the edit: 140 ms at 5,000 lines, 360–590 ms at 10,000 (ADR 0021).
 - [ ] Opening the stream with heights forgotten, the anchor shifts it

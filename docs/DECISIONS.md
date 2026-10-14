@@ -2187,3 +2187,19 @@ more notes measured, nothing changes.
   two notes measured the median is half the outlier.
 - A cap in panes — a vault of long notes would come out short everywhere, what
   D-092 rejected the upper quartile for.
+
+## D-133 — A frontmatter change draws only the properties again (2026-10-14)
+
+**Decision:** a save that changes a note's frontmatter redraws its properties
+box and updates its body in place (ADR 0019); on mobile, a note holding a Base
+still renders whole.
+
+**Why:** rendered whole, a long note lost the elements the anchor holds the
+reader by: on the iPhone, a reader at a 5,000-line note's end saw 10 blank
+frames and the text moved 125 px for good. No section's render reads the
+frontmatter; a Base's formulas may, through `this`.
+
+**Rejected:**
+
+- Anchoring a whole render by the reader's distance from the note's end — wrong
+  for an edit below the reader, and the blank frames stay.

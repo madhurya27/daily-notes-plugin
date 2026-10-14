@@ -21,8 +21,8 @@ and swaps their nodes in place; the block stays pinned until
 key moved takes the new key and its saved state.
 
 The note renders whole instead when its sections cannot stand alone (footnotes,
-inline footnotes, reference links), or when a save changed its frontmatter or,
-on mobile, a section holding a Base.
+inline footnotes, reference links), or when a save changed, on mobile, a section
+holding a Base. A frontmatter change draws the properties again (D-133).
 
 ## Consequences
 
