@@ -12,8 +12,11 @@ test("reserves a note never measured at what the vault's notes measured, erring 
             const unmeasured = [...column.querySelectorAll<HTMLElement>(".daily-note-block.is-unloaded")].find(
                 (block) => notes.heightOf(layout, block.dataset.sourcePath) === undefined
             );
+            // Never capped below two panes, what a note reserves before anything is measured (D-135).
+            const floor = 2 * column.parentElement!.clientHeight;
             return {
-                estimate: unmeasured && (notes.estimate(layout, unmeasured.dataset.sourcePath) as number | undefined),
+                estimate:
+                    unmeasured && (notes.estimate(layout, unmeasured.dataset.sourcePath, floor) as number | undefined),
                 placeholder: unmeasured?.style.getPropertyValue("--daily-note-placeholder-height"),
             };
         });
