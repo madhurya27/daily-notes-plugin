@@ -455,7 +455,6 @@ export class NoteWindowManager {
         if (!root) return "from-start";
         return note.top + note.bottom < root.top + root.bottom ? "from-end" : "from-start";
     }
-
     /** Still inside the queue's task: no other mutation runs meanwhile (ADR 0004). */
     private async renderWaitingOnScreen(): Promise<void> {
         for (const block of [...this.waiting.keys()]) {
@@ -571,12 +570,14 @@ export class NoteWindowManager {
         const { top, bottom } = root.getBoundingClientRect();
         const margin = this.rootHeight * UNLOAD_VIEWPORTS;
         const { farRuns } = this.renderer;
-        for (const run of runs) {
-            if (farRuns.hides(run[0]!)) continue;
-            const span = farRuns.span(run);
-            if (!span || (span.bottom > top - margin && span.top < bottom + margin)) continue;
-            // Shown, as its span says: it hides.
-            const spacer = farRuns.hide(run)!;
+        // Every run measured before any hides: a hide between two reads lays the note out again.
+        const far = runs.flatMap((run) => {
+            if (farRuns.hides(run[0]!)) return [];
+            const box = farRuns.measure(run);
+            return box && (box.bottom <= top - margin || box.top >= bottom + margin) ? [{ run, box }] : [];
+        });
+        for (const { run, box } of far) {
+            const spacer = farRuns.hide(run, box)!;
             window.spacers.add(spacer);
             this.renderObserver?.observe(spacer);
         }

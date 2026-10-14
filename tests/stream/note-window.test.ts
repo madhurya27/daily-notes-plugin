@@ -2462,6 +2462,25 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         expect(far()).toEqual(["at 4500", "at 9000"]);
     });
 
+    // A hide between two reads lays the whole note out again: a 10,000-line
+    // note's landing took 1.5 s on a laptop.
+    it("measures every run before hiding any", async () => {
+        const { manager, renderer, far, narrow } = await renderedLong();
+        await narrow();
+        expect(far()).toEqual([]);
+        const steps: string[] = [];
+        const farRuns = renderer.farRuns as unknown as { box: (el: Element) => Box | null };
+        farRuns.box = (el) => (steps.push("read"), boxFromData(el));
+        const hide = renderer.farRuns.hide.bind(renderer.farRuns);
+        vi.spyOn(renderer.farRuns, "hide").mockImplementation((...args) => (steps.push("hide"), hide(...args)));
+
+        manager.onScroll();
+        await still();
+
+        expect(far()).toEqual(["at 4500", "at 9000"]);
+        expect(steps.lastIndexOf("read")).toBeLessThan(steps.indexOf("hide"));
+    });
+
     it("hides a note's far runs as it lands, while the scroll moves", async () => {
         const { far } = await renderedLong();
 

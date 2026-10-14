@@ -36,18 +36,18 @@ export class FarRuns {
     /**
      * Hides `elements`, consecutive siblings, behind one spacer; null where
      * none is shown. The spacer carries the outer margins of the first and
-     * last shown, so they collapse with the neighbours as before.
+     * last shown, so they collapse with the neighbours as before. A caller
+     * hiding several measures each first: a hide between two reads lays the
+     * note out again.
      */
-    hide(elements: Element[]): HTMLElement | null {
-        const shown = this.shown(elements);
-        if (!shown) return null;
-        const [first, last] = shown;
+    hide(elements: Element[], box: Box | null = this.measure(elements)): HTMLElement | null {
+        if (!box) return null;
 
         const spacer = document.createElement("div");
         spacer.addClass(SPACER);
-        spacer.style.setProperty("--daily-note-far-height", `${last.bottom - first.top}px`);
-        spacer.style.setProperty("--daily-note-far-margin-top", `${first.marginTop}px`);
-        spacer.style.setProperty("--daily-note-far-margin-bottom", `${last.marginBottom}px`);
+        spacer.style.setProperty("--daily-note-far-height", `${box.bottom - box.top}px`);
+        spacer.style.setProperty("--daily-note-far-margin-top", `${box.marginTop}px`);
+        spacer.style.setProperty("--daily-note-far-margin-bottom", `${box.marginBottom}px`);
         elements[0]!.before(spacer);
 
         const run: Run = { spacer, elements };
@@ -59,15 +59,15 @@ export class FarRuns {
         return spacer;
     }
 
-    /** Where `elements` lie, from the first shown to the last; null where none is. */
-    span(elements: Element[]): { top: number; bottom: number } | null {
-        const shown = this.shown(elements);
-        return shown && { top: shown[0].top, bottom: shown[1].bottom };
-    }
-
-    private shown(elements: Element[]): [Box, Box] | null {
+    /**
+     * Where `elements` lie, from the first shown to the last, with the outer
+     * margins of those two; null where none is shown.
+     */
+    measure(elements: Element[]): Box | null {
         const boxes = elements.map((el) => this.box(el)).filter((box): box is Box => box !== null);
-        return boxes.length ? [boxes[0]!, boxes[boxes.length - 1]!] : null;
+        if (boxes.length === 0) return null;
+        const [first, last] = [boxes[0]!, boxes[boxes.length - 1]!];
+        return { top: first.top, bottom: last.bottom, marginTop: first.marginTop, marginBottom: last.marginBottom };
     }
 
     /** Whether a hidden run holds `node`. */

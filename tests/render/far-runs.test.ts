@@ -67,14 +67,14 @@ describe("FarRuns", () => {
         expect(note.querySelector(".daily-note-far-run, .is-far")).toBeNull();
     });
 
-    it("spans a run from its first shown element's top to its last one's bottom", () => {
+    it("measures a run from its first shown element's top to its last one's bottom", () => {
         const note = content(`
             <p class="is-hidden">gone</p>
             <p data-top="10" data-bottom="50">one</p>
             <p data-top="60" data-bottom="90">two</p>`);
 
-        expect(runs.span(children(note))).toEqual({ top: 10, bottom: 90 });
-        expect(runs.span([children(note)[0]!])).toBeNull();
+        expect(runs.measure(children(note))).toMatchObject({ top: 10, bottom: 90 });
+        expect(runs.measure([children(note)[0]!])).toBeNull();
     });
 
     it("reads boxes from the layout by default, and none from an element not laid out", () => {
@@ -84,7 +84,7 @@ describe("FarRuns", () => {
         shown!.getBoundingClientRect = () => ({ top: 10, bottom: 40 }) as DOMRect;
         const layout = new FarRuns();
 
-        expect(layout.span([unlaid!])).toBeNull();
+        expect(layout.measure([unlaid!])).toBeNull();
         const spacer = layout.hide([shown!, unlaid!])!;
 
         expect(prop(spacer, "--daily-note-far-height")).toBe("30px");
