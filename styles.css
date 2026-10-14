@@ -84,6 +84,19 @@
     overflow: clip;
 }
 
+/* A note drawing from its end, as the reader comes up into it: what is drawn
+   sits at the bottom of the height it reserves, where the reader is, and its
+   title waits above the rest of it, unseen until it lands. */
+.daily-note-block.is-unloaded.is-drawing-from-end {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.daily-note-block.is-drawing-from-end > :not(.daily-note-content) {
+    visibility: hidden;
+}
+
 /* A rendered note at the height the stream last took for it: what renders
    inside moves nothing until NoteWindowManager re-pins it, telling the scroll
    anchor in the same task (ADR 0013). */

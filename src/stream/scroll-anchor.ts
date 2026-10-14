@@ -1,5 +1,6 @@
 import { Platform, debounce } from "obsidian";
 import { BASE_SLOT_CLASS } from "../render/bases/bases-as-cards";
+import { NOTE_CONTENT_CLASS } from "../render/note-renderer";
 import { blockAt } from "./stream-blocks";
 
 /** How long the scroll is still before the stream counts it stopped (D-032). */
@@ -123,6 +124,14 @@ export class ScrollAnchor {
      * mid-glide iOS paints a resize before reporting it (ADR 0013).
      */
     resized(): void {
+        if (this.scrollRoot) this.hold();
+    }
+
+    /**
+     * What is drawn at the pane's top is about to move inside its block, which
+     * neither scrolled nor resized since the place was last read: read it now.
+     */
+    readPlace(): void {
         if (this.scrollRoot) this.hold();
     }
 
@@ -290,8 +299,9 @@ export class ScrollAnchor {
         const drawn = document
             .elementsFromPoint(pane.left + pane.width / 2, pane.top + 1)
             .find((el) => el !== stream && stream.contains(el));
-        const crossing = drawn ?? blockAt(stream, pane.top);
-        if (!crossing) return;
+        const hit = drawn ?? blockAt(stream, pane.top);
+        if (!hit) return;
+        const crossing = this.belowGap(hit, pane.top);
 
         this.place = this.placeOf(stream, crossing);
         this.watchBase();
@@ -302,6 +312,16 @@ export class ScrollAnchor {
         }
         const starting = this.startingIn(pane, stream, crossing);
         this.reflowPlace = starting === crossing ? this.place : this.placeOf(stream, starting);
+    }
+
+    /**
+     * The text below the pane's top where it falls in a gap in a note's
+     * content: the content's own top rises as a note drawn from its end grows
+     * above it (ADR 0022), its text's does not.
+     */
+    private belowGap(el: Element, paneTop: number): Element {
+        if (!el.hasClass(NOTE_CONTENT_CLASS)) return el;
+        return Array.from(el.children).find((child) => child.getBoundingClientRect().bottom > paneTop) ?? el;
     }
 
     /** From `el`'s block down to it, each where it is drawn, stopping at anything held or a Base. */

@@ -1,5 +1,5 @@
 import { Component, TFile, debounce, type Debouncer } from "obsidian";
-import type { NoteRenderer } from "../render/note-renderer";
+import { DRAWING_FROM_END, type DrawOrder, type NoteRenderer } from "../render/note-renderer";
 import type { NoteHeights } from "./note-heights";
 import { SCROLL_IDLE_MS, ScrollAnchor } from "./scroll-anchor";
 import { HeightHold, SETTLE_MS } from "./height-hold";
@@ -308,6 +308,7 @@ export class NoteWindowManager {
             window.component = component;
             this.watchSettling(block, window, footer);
             this.repin(block);
+            this.watchRuns(block, window);
             if (window.unloadWanted) this.leave(block);
         } finally {
             this.changes++;
@@ -400,17 +401,34 @@ export class NoteWindowManager {
             // Between a long note's slices, it stops once it has left, so the
             // note the reader stopped on draws next, and a note on screen
             // draws ahead of one only near it (ADR 0020).
-            const rendered = await this.renderer.renderInto(block, window.file, async () => {
-                if (!this.onScreen.has(block)) await this.renderWaitingOnScreen();
-                return !window.unloadWanted;
-            });
-            if (!rendered) return;
+            const rendered = await this.renderer.renderInto(
+                block,
+                window.file,
+                async (note) => {
+                    // Drawn from its end, it grows at its top: its topmost run may grow yet.
+                    if (block.hasClass(DRAWING_FROM_END))
+                        this.hideFarRunsOf(window, this.renderer.runsOf(note).slice(1));
+                    if (!this.onScreen.has(block)) await this.renderWaitingOnScreen();
+                    return !window.unloadWanted;
+                },
+                this.orderFor(block)
+            );
+            // Read over what it drew: nothing scrolled or resized while it did.
+            if (rendered && block.hasClass(DRAWING_FROM_END)) this.anchor.readPlace();
+            // Drawn or given up, it lays out from its start again in this task.
+            block.removeClass(DRAWING_FROM_END);
+            if (!rendered) {
+                // Emptied, with any run it hid between slices.
+                this.unwatchSpacers(window);
+                return;
+            }
             const { component, footer } = rendered;
             // close() empties the container mid-flight, off the queue: the
             // block that comes back from the await may be nobody's child.
             if (!block.isConnected || !this.windows.has(block)) {
                 this.renderer.discard(component);
                 block.empty();
+                this.unwatchSpacers(window);
                 return;
             }
             window.component = component;
@@ -418,6 +436,7 @@ export class NoteWindowManager {
             block.style.removeProperty("--daily-note-placeholder-height");
             this.watchSettling(block, window, footer);
             this.repin(block);
+            this.watchRuns(block, window);
 
             if (window.unloadWanted) this.leave(block);
         } finally {
@@ -425,6 +444,14 @@ export class NoteWindowManager {
             window.rendering = false;
             window.unloadWanted = false;
         }
+    }
+
+    /** From its end where the reader comes up into it: its middle is above the pane's. */
+    private orderFor(block: HTMLElement): DrawOrder {
+        const root = this.scrollRoot?.getBoundingClientRect();
+        const note = block.getBoundingClientRect();
+        if (!root) return "from-start";
+        return note.top + note.bottom < root.top + root.bottom ? "from-end" : "from-start";
     }
 
     /** Still inside the queue's task: no other mutation runs meanwhile (ADR 0004). */
@@ -527,32 +554,42 @@ export class NoteWindowManager {
      * watched to show it again on entering the render margin (ADR 0021).
      */
     private hideFarRuns(): void {
-        const root = this.scrollRoot;
-        if (!root) return;
-        const { top, bottom } = root.getBoundingClientRect();
-        const margin = this.rootHeight * UNLOAD_VIEWPORTS;
-        const { farRuns } = this.renderer;
         for (const block of this.long) {
             const window = this.windows.get(block);
             // Unloaded since: drawn again, it is watched again.
             if (!window?.component) this.long.delete(block);
             if (!window?.component || window.rendering) continue;
-            for (const run of this.renderer.runsOf(window.component)) {
-                if (farRuns.hides(run[0]!)) continue;
-                const span = farRuns.span(run);
-                if (!span || (span.bottom > top - margin && span.top < bottom + margin)) continue;
-                // Shown, as its span says: it hides.
-                const spacer = farRuns.hide(run)!;
-                window.spacers.add(spacer);
-                this.renderObserver?.observe(spacer);
-            }
+            this.hideFarRunsOf(window, this.renderer.runsOf(window.component));
         }
     }
 
-    /** A note drawn with runs hides those far once the scroll is still, moved or not. */
+    private hideFarRunsOf(window: NoteWindow, runs: Element[][]): void {
+        const root = this.scrollRoot;
+        if (!root) return;
+        const { top, bottom } = root.getBoundingClientRect();
+        const margin = this.rootHeight * UNLOAD_VIEWPORTS;
+        const { farRuns } = this.renderer;
+        for (const run of runs) {
+            if (farRuns.hides(run[0]!)) continue;
+            const span = farRuns.span(run);
+            if (!span || (span.bottom > top - margin && span.top < bottom + margin)) continue;
+            // Shown, as its span says: it hides.
+            const spacer = farRuns.hide(run)!;
+            window.spacers.add(spacer);
+            this.renderObserver?.observe(spacer);
+        }
+    }
+
+    /**
+     * A note drawn with runs hides those far as it lands, mid-glide too: the
+     * glide would carry them all in the layout. Re-pinned first, so the anchor
+     * has put the reader back: far is measured from there. Runs shown later
+     * hide once the scroll is still.
+     */
     private watchRuns(block: HTMLElement, window: NoteWindow): void {
         if (!window.component || this.renderer.runsOf(window.component).length === 0) return;
         this.long.add(block);
+        this.hideFarRunsOf(window, this.renderer.runsOf(window.component));
         this.hideFarRunsOnceStill();
     }
 
@@ -579,7 +616,6 @@ export class NoteWindowManager {
      * other notes first, and a quiet spell while they do is not settled.
      */
     private watchSettling(block: HTMLElement, window: NoteWindow, footer: Promise<void>): void {
-        this.watchRuns(block, window);
         if (window.measured) {
             const hold = new HeightHold(block, window.height, () => {
                 // Let go while the note stays: the pin hid the drop until now.

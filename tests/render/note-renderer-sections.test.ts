@@ -205,6 +205,66 @@ describe("NoteRenderer, a note by section", () => {
         expect(texts()).toEqual(days(400).map((d) => d.slice(0, 12)));
     });
 
+    describe("from its end, as the reader comes up into it", () => {
+        async function openFromEnd(sections: string[]) {
+            current = note(sections);
+            block = renderer.createBlock(file);
+            document.body.append(block);
+            ({ component } = (await renderer.renderInto(block, file, undefined, "from-end"))!);
+        }
+
+        it("draws a long note's last chunk first, every section in order", async () => {
+            const render = renderParagraphs();
+            await openFromEnd(days(400));
+            expect(render.mock.calls[0]![1]).toContain("Day 399.");
+            expect(render.mock.calls.at(-1)![1]).toContain("Day 0.");
+            expect(texts()).toEqual(days(400).map((d) => d.slice(0, 12)));
+        });
+
+        it("draws today's note from its last section too, in order", async () => {
+            renderer = makeRenderer(today);
+            const render = renderParagraphs();
+            await openFromEnd(days(20));
+            expect(render.mock.calls[0]![1]).toContain("Day 19.");
+            expect(texts()).toEqual(days(20).map((d) => d.slice(0, 12)));
+        });
+
+        it("keeps its sections in order, for a save to update in place", async () => {
+            renderer = makeRenderer(today);
+            await openFromEnd(days(20));
+            const changed = days(20);
+            changed[4] = `Day X.${FILLER}`;
+            expect(await save(changed)).toBe(true);
+            expect(texts()[4]).toBe("Day X. lorem");
+        });
+
+        it("marks its block while it draws, for the stream to lay it out from its bottom", async () => {
+            const marked: boolean[] = [];
+            renderParagraphs().mockImplementation(async (_app, markdown, el) => {
+                marked.push(block.hasClass("is-drawing-from-end"));
+                el.createEl("p", { text: markdown.slice(0, 12) });
+            });
+            await openFromEnd(days(400));
+            expect(marked.length).toBeGreaterThan(1);
+            expect(marked.every(Boolean)).toBe(true);
+            // The stream lays it out from its top again in the task it lands in.
+            expect(block.hasClass("is-drawing-from-end")).toBe(true);
+        });
+
+        // Drawn in one call, it has no end to draw first.
+        it("leaves a note it renders whole unmarked", async () => {
+            await openFromEnd(days(200));
+            expect(block.hasClass("is-drawing-from-end")).toBe(false);
+        });
+
+        it("keeps its runs in order, for the stream to hide when far", async () => {
+            await openFromEnd(days(400));
+            const runs = renderer.runsOf(component);
+            expect(runs.length).toBeGreaterThan(1);
+            expect(runs.flat().map((el) => el.textContent)).toEqual(texts());
+        });
+    });
+
     it("gives the thread back between chunks once a slice of time is spent", async () => {
         const yielded = slowClock();
         await open(days(400));
@@ -450,6 +510,28 @@ describe("NoteRenderer, a note by section", () => {
             expect(runs.length).toBeGreaterThan(1);
             expect(runs.length).toBeLessThan(400);
             expect(elementsOf(runs)).toEqual(texts());
+        });
+
+        // Drawn from its end, the stream hides runs between slices: one hidden
+        // then must be a run still once the note is drawn.
+        it("hold as a note drawn from its end grows at its top, all but the topmost", async () => {
+            renderer = makeRenderer(today);
+            renderParagraphs();
+            slowClock();
+            current = note(days(400));
+            block = renderer.createBlock(file);
+            document.body.append(block);
+            const seen: string[][] = [];
+            const goOn = async (drawing: Component) => {
+                for (const run of renderer.runsOf(drawing).slice(1)) seen.push(run.map((el) => el.textContent!));
+                return true;
+            };
+
+            ({ component } = (await renderer.renderInto(block, file, goOn, "from-end"))!);
+
+            const final = renderer.runsOf(component).map((run) => run.map((el) => el.textContent!));
+            expect(seen.length).toBeGreaterThan(0);
+            for (const run of seen) expect(final).toContainEqual(run);
         });
 
         it("are none in a note rendered whole", async () => {

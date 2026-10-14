@@ -250,6 +250,63 @@ describe("ScrollAnchor", () => {
         expect(() => anchor.resized()).not.toThrow();
     });
 
+    // Drawn from its end, a note's text appears under the reader with nothing
+    // scrolled or resized; landing, the rest of it comes in above.
+    it("holds text drawn in a block since the place was read, once told to read it", () => {
+        const { content, blocks, add } = watch([400, 1000, 400], 900);
+        const note = blocks[1]!;
+        const undrawn = add(note, 500);
+        const text = add(note, 500);
+
+        anchor.readPlace();
+        undrawn.remove();
+        note.prepend(add(note, 50_000));
+        anchor.resized();
+
+        expect(shift(content)).toBe(-49_500);
+        expect(text.getBoundingClientRect().top).toBe(0);
+    });
+
+    // Drawn from its end, a note's content grows above the reader: its top
+    // rises with every slice, while the text under the reader stays put.
+    it("holds the text below a gap in a note's content, not the content itself", () => {
+        const { pane, content, blocks } = watch([400, 1000, 400], 900);
+        const note = blocks[1]!;
+        const body = note.createDiv({ cls: "daily-note-content" });
+        const text = body.createDiv();
+        let bodyTop = -500;
+        body.getBoundingClientRect = () => ({ top: bodyTop, bottom: 500, height: 500 - bodyTop }) as DOMRect;
+        text.getBoundingClientRect = () => ({ top: 100, bottom: 400, height: 300 }) as DOMRect;
+        vi.mocked(document.elementsFromPoint).mockReturnValue([body, note, content, pane]);
+
+        anchor.readPlace();
+        bodyTop = -20_000;
+        anchor.resized();
+
+        expect(shift(content)).toBe(0);
+    });
+
+    it("holds a note's content where no text lies below the pane's top in it", () => {
+        const { pane, content, blocks } = watch([400, 1000, 400], 900);
+        const note = blocks[1]!;
+        const body = note.createDiv({ cls: "daily-note-content" });
+        const text = body.createDiv();
+        let bodyTop = -500;
+        body.getBoundingClientRect = () => ({ top: bodyTop, bottom: 500, height: 500 - bodyTop }) as DOMRect;
+        text.getBoundingClientRect = () => ({ top: -500, bottom: -100, height: 400 }) as DOMRect;
+        vi.mocked(document.elementsFromPoint).mockReturnValue([body, note, content, pane]);
+
+        anchor.readPlace();
+        bodyTop = -600;
+        anchor.resized();
+
+        expect(shift(content)).toBe(100);
+    });
+
+    it("has no place to read before it is attached", () => {
+        expect(() => anchor.readPlace()).not.toThrow();
+    });
+
     // A phone turned on its side hides the status bar: the pane moves up, and
     // everything in it with the pane.
     it("owes nothing for the pane itself moving", () => {

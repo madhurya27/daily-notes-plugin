@@ -4,9 +4,9 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] Gliding up through notes not drawn yet blanks the screen in short runs: 38
-      in twelve flicks up the iPhone's E2E vault, heights forgotten, mostly
-      under 0.17 s, once 0.58 s. Seen on `main` too.
+- [ ] Measure a save to a long note on the iPhone: one updated in place shows
+      every hidden run first (ADR 0021), and one redrawn whole draws from its
+      top under a reader at its end (ADR 0022).
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.

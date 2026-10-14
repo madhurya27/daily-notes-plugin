@@ -5,6 +5,7 @@ import { SCROLL_IDLE_MS, ScrollAnchor } from "../../src/stream/scroll-anchor";
 import { NoteHeights } from "../../src/stream/note-heights";
 import { HOLD_LIMIT_MS, SETTLE_MS } from "../../src/stream/height-hold";
 import { FarRuns, type Box } from "../../src/render/far-runs";
+import type { DrawOrder } from "../../src/render/note-renderer";
 
 /** jsdom lays nothing out: a rendered element's box is read from its data attributes. */
 function boxFromData(el: Element): Box | null {
@@ -104,8 +105,11 @@ function makeRenderer(
             async (
                 block: HTMLElement,
                 _file: TFile,
-                _goOn?: () => Promise<boolean>
+                _goOn?: (note: Component) => Promise<boolean>,
+                order?: DrawOrder
             ): Promise<{ component: Component; footer: Promise<void> } | null> => {
+                // As a long note drawn in slices: one drawn whole is never marked.
+                if (order === "from-end") block.addClass("is-drawing-from-end");
                 await opts.render?.(block);
                 block.createDiv({ cls: "daily-note-content" });
                 return { component: new Component(), footer: opts.footer?.() ?? Promise.resolve() };
@@ -1142,6 +1146,99 @@ describe("NoteWindowManager render", () => {
         expect(renderer.discard).toHaveBeenCalledTimes(1);
         expect(block.classList.contains("is-unloaded")).toBe(true);
     });
+
+    describe("in the order the reader meets it", () => {
+        /** An 800px pane at the page's top, and a block reserving from `top` to `bottom`. */
+        function placed(top: number, bottom: number) {
+            const root = makeScrollRoot(800);
+            root.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
+            const { manager, renderer } = makeManager(makeRenderer(), () => 500, root);
+            const block = manager.add(FILE);
+            block.getBoundingClientRect = () => ({ top, bottom }) as DOMRect;
+            document.body.appendChild(block);
+            return { manager, renderer, block };
+        }
+
+        const orderOf = (renderer: ReturnType<typeof makeRenderer>) => renderer.renderInto.mock.calls[0]![3];
+
+        it("draws a note the reader comes up into from its end", async () => {
+            const { renderer, block } = placed(-9000, 300);
+            fire(observers.render, block, true);
+            await settle();
+            expect(orderOf(renderer)).toBe("from-end");
+        });
+
+        it("draws a note the reader comes down into from its start", async () => {
+            const { renderer, block } = placed(500, 9800);
+            fire(observers.render, block, true);
+            await settle();
+            expect(orderOf(renderer)).toBe("from-start");
+        });
+
+        it("lays a note drawn from its end out from its top again as it lands", async () => {
+            const { block } = placed(-9000, 300);
+
+            fire(observers.render, block, true);
+            await settle();
+
+            expect(block.hasClass("is-unloaded")).toBe(false);
+            expect(block.hasClass("is-drawing-from-end")).toBe(false);
+        });
+
+        it("has the anchor read nothing for a note drawn whole, though met from below", async () => {
+            const readPlace = vi.spyOn(ScrollAnchor.prototype, "readPlace");
+            onTestFinished(() => readPlace.mockRestore());
+            const { renderer, block } = placed(-9000, 300);
+            renderer.renderInto.mockImplementationOnce(async (drawing: HTMLElement) => {
+                drawing.createDiv({ cls: "daily-note-content" });
+                return { component: new Component(), footer: Promise.resolve() };
+            });
+
+            fire(observers.render, block, true);
+            await settle();
+
+            expect(readPlace).not.toHaveBeenCalled();
+        });
+
+        // Nothing scrolled or resized while it drew: the place was last read over an empty block.
+        it("has the anchor read its place over what it drew, before it lands", async () => {
+            const readPlace = vi.spyOn(ScrollAnchor.prototype, "readPlace");
+            onTestFinished(() => readPlace.mockRestore());
+            const { block } = placed(-9000, 300);
+            const drawing: boolean[] = [];
+            readPlace.mockImplementation(() => void drawing.push(block.hasClass("is-drawing-from-end")));
+
+            fire(observers.render, block, true);
+            await settle();
+
+            expect(drawing).toEqual([true]);
+        });
+
+        it("has the anchor read nothing for a note drawn from its start", async () => {
+            const readPlace = vi.spyOn(ScrollAnchor.prototype, "readPlace");
+            onTestFinished(() => readPlace.mockRestore());
+            const { block } = placed(500, 9800);
+
+            fire(observers.render, block, true);
+            await settle();
+
+            expect(readPlace).not.toHaveBeenCalled();
+        });
+
+        it("unmarks a note given up mid-draw", async () => {
+            const { renderer, block } = placed(-9000, 300);
+            renderer.renderInto.mockImplementationOnce(async (drawing: HTMLElement) => {
+                drawing.addClass("is-drawing-from-end");
+                return null;
+            });
+
+            fire(observers.render, block, true);
+            await settle();
+
+            expect(block.hasClass("is-drawing-from-end")).toBe(false);
+            expect(block.hasClass("is-unloaded")).toBe(true);
+        });
+    });
 });
 
 /**
@@ -1620,7 +1717,7 @@ describe("NoteWindowManager under a fast scroll", () => {
         const renderer = makeRenderer();
         renderer.renderInto = vi.fn(async (block: HTMLElement, _file: TFile, goOn = () => Promise.resolve(true)) => {
             await new Promise((resolve) => setTimeout(resolve, 10));
-            if (!(await goOn())) {
+            if (!(await goOn(new Component()))) {
                 block.empty();
                 return null;
             }
@@ -1721,7 +1818,7 @@ describe("NoteWindowManager draws the notes on screen first", () => {
         renderer.renderInto = vi.fn(async (block: HTMLElement, file: TFile, goOn = () => Promise.resolve(true)) => {
             const slices = file.path === longPath ? SLICES : 1;
             for (let i = 0; i < slices; i++) {
-                if (i > 0 && !(await goOn())) {
+                if (i > 0 && !(await goOn(new Component()))) {
                     block.empty();
                     return null;
                 }
@@ -2365,13 +2462,95 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         expect(far()).toEqual(["at 4500", "at 9000"]);
     });
 
-    it("hides none while the scroll moves", async () => {
-        const { manager, far } = await renderedLong();
+    it("hides a note's far runs as it lands, while the scroll moves", async () => {
+        const { far } = await renderedLong();
+
+        expect(far()).toEqual(["at 4500", "at 9000"]);
+    });
+
+    // Measured before, its runs are placed for a scroll the anchor is about to correct.
+    it("hides a landing note's far runs only once it is re-pinned", async () => {
+        const hide = FarRuns.prototype.hide;
+        const pinned: boolean[] = [];
+        const spy = vi.spyOn(FarRuns.prototype, "hide").mockImplementation(function (this: FarRuns, run) {
+            pinned.push(run[0]!.closest(".daily-note-block")!.hasClass("is-pinned"));
+            return hide.call(this, run);
+        });
+        onTestFinished(() => spy.mockRestore());
+
+        await renderedLong();
+
+        expect(pinned).toEqual([true, true]);
+    });
+
+    // Drawn from its end, a note grows at its top: each run drawn far above
+    // the reader leaves the layout between slices, but the topmost may grow yet.
+    it("hides the far runs of a note drawing from its end between slices, all but the topmost", async () => {
+        const renderer = makeRenderer();
+        const paragraphs = () => Array.from(document.querySelectorAll("p"));
+        renderer.runsOf.mockImplementation(() => paragraphs().map((p) => [p]));
+        let farMidDraw: string[] = [];
+        renderer.renderInto.mockImplementationOnce(async (block, _file, goOn) => {
+            block.addClass("is-drawing-from-end");
+            const content = block.createDiv({ cls: "daily-note-content" });
+            for (const top of [-12000, -8000, -4500, 0])
+                content.createEl("p", { text: `at ${top}`, attr: { "data-top": top, "data-bottom": top + 500 } });
+            const component = new Component();
+            await goOn!(component);
+            farMidDraw = paragraphs()
+                .filter((p) => p.hasClass("is-far"))
+                .map((p) => p.textContent!);
+            return { component, footer: Promise.resolve() };
+        });
+        const root = makeScrollRoot(800);
+        root.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
+        const { manager } = makeManager(renderer, () => 500, root);
+        const block = manager.add(FILE);
+        block.getBoundingClientRect = () => ({ top: -12000, bottom: 500 }) as DOMRect;
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        await settle();
+
+        expect(farMidDraw).toEqual(["at -8000", "at -4500"]);
+    });
+
+    it("stops watching the spacers of a note given up mid-draw", async () => {
+        const renderer = makeRenderer();
+        renderer.runsOf.mockImplementation(() => Array.from(document.querySelectorAll("p"), (p) => [p]));
+        let spacers: HTMLElement[] = [];
+        renderer.renderInto.mockImplementationOnce(async (block, _file, goOn) => {
+            block.addClass("is-drawing-from-end");
+            const content = block.createDiv({ cls: "daily-note-content" });
+            for (const top of [-12000, -8000, 0])
+                content.createEl("p", { attr: { "data-top": top, "data-bottom": top + 500 } });
+            await goOn!(new Component());
+            spacers = Array.from(block.querySelectorAll<HTMLElement>(".daily-note-far-run"));
+            block.empty();
+            return null;
+        });
+        const root = makeScrollRoot(800);
+        root.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
+        const { manager } = makeManager(renderer, () => 500, root);
+        const block = manager.add(FILE);
+        block.getBoundingClientRect = () => ({ top: -12000, bottom: 500 }) as DOMRect;
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        await settle();
+
+        expect(spacers).toHaveLength(1);
+        expect(observers.unobserve).toHaveBeenCalledWith(spacers[0]);
+    });
+
+    it("hides a run shown while the scroll moves only once it is still", async () => {
+        const { manager, renderer, far, paragraphs } = await renderedLong();
+        renderer.farRuns.reveal(paragraphs()[3]!);
 
         manager.onScroll();
         await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
 
-        expect(far()).toEqual([]);
+        expect(far()).toEqual(["at 4500"]);
     });
 
     it("hides runs above the pane too", async () => {
@@ -2381,14 +2560,6 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         await still();
 
         expect(far()).toEqual(["at -9000", "at -4500"]);
-    });
-
-    it("hides a drawn note's far runs once the scroll is still, though it never moved", async () => {
-        const { far } = await renderedLong();
-
-        await still();
-
-        expect(far()).toEqual(["at 4500", "at 9000"]);
     });
 
     it("watches each spacer with the render margin, and shows its run as it enters", async () => {
@@ -2424,6 +2595,8 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         renderer.update.mockImplementation(() => new Promise<boolean>((resolve) => (finish = () => resolve(true))));
 
         void manager.refresh(block);
+        // An update shows every run first.
+        renderer.farRuns.revealAll(block);
         manager.onScroll();
         await still();
         expect(far()).toEqual([]);

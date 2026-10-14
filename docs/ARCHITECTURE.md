@@ -56,7 +56,9 @@ opens, so a view's own handler always reads an index already updated.
    child `Component`, discarded on unload. Within a drawn long note, it takes
    the runs past the same margins out of the layout behind spacers
    (`far-runs.ts`), and shows them again as they near
-   ([ADR 0021](adr/0021-hide-far-runs-of-long-notes.md)).
+   ([ADR 0021](adr/0021-hide-far-runs-of-long-notes.md)). A long note the reader
+   comes up into draws from its end
+   ([ADR 0022](adr/0022-draw-long-notes-from-the-end-met.md)).
 4. **Change.** Vault and metadata events become `NoteStream` mutations: insert,
    remove, re-render, reconsider whether a note is hidden. Saves are debounced
    per path. An open search re-reads once the stream says its notes changed.

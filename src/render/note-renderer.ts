@@ -127,6 +127,24 @@ interface RenderedSection {
     bases: BaseSource[];
 }
 
+/** Where a section drawn before `sections` goes: before the first node they rendered. */
+function firstNodeOf(sections: RenderedSection[]): ChildNode | null {
+    return sections.find((section) => section.nodes.length > 0)?.nodes[0] ?? null;
+}
+
+/** What a note's rendered Markdown is drawn into, below its title and properties. */
+export const NOTE_CONTENT_CLASS = "daily-note-content";
+
+/** A note drawn in slices draws from its end first where the reader comes up into it. */
+export type DrawOrder = "from-start" | "from-end";
+
+/**
+ * Marks a block drawing in slices from its end, for styles.css to lay it out
+ * from its bottom; the stream unmarks it as it lands. One drawn whole has no
+ * end to draw first.
+ */
+export const DRAWING_FROM_END = "is-drawing-from-end";
+
 /** A note rendered section by section, which a save can re-render in part. */
 interface SectionedNote {
     contentEl: HTMLElement;
@@ -197,12 +215,15 @@ export class NoteRenderer {
      * discarded, and otherwise outlives the DOM it belongs to. The footer is
      * left drawing: the render queue must not wait on other notes' reads.
      * Between slices it awaits `goOn`, and null where that said stop (ADR
-     * 0020) or the note was deleted meanwhile: its block is left empty.
+     * 0020) or the note was deleted meanwhile: its block is left empty. A note
+     * drawn in slices draws from its end first where the reader comes up into
+     * it.
      */
     async renderInto(
         block: HTMLElement,
         file: TFile,
-        goOn: () => Promise<boolean> = () => Promise.resolve(true)
+        goOn: (note: Component) => Promise<boolean> = () => Promise.resolve(true),
+        order: DrawOrder = "from-start"
     ): Promise<RenderedNote | null> {
         const noteComponent = new Component();
         noteComponent.load();
@@ -221,7 +242,7 @@ export class NoteRenderer {
         // "markdown-rendered" is how Obsidian scopes its whole reading-view
         // stylesheet — list indent included. Without it a rendered note falls
         // back to the browser's defaults.
-        const contentEl = block.createDiv({ cls: "daily-note-content markdown-rendered" });
+        const contentEl = block.createDiv({ cls: `${NOTE_CONTENT_CLASS} markdown-rendered` });
 
         try {
             const markdown = await this.app.vault.cachedRead(file);
@@ -230,13 +251,13 @@ export class NoteRenderer {
             const bySection = this.saved.has(file.path) || this.expectsSaves(file);
             const sources = bySection ? noteSections(markdown, cache) : chunksOf(markdown, cache);
             if (sources) {
-                const sections = await this.renderSections(contentEl, file, noteComponent, sources, goOn);
+                if (order === "from-end") block.addClass(DRAWING_FROM_END);
+                const sections = await this.renderSections(contentEl, file, noteComponent, sources, goOn, order);
                 if (!sections) {
                     this.discard(noteComponent);
                     block.empty();
                     return null;
                 }
-                this.drawn.set(noteComponent, sections);
                 if (bySection) this.sectioned.set(noteComponent, { contentEl, frontmatter, sections });
             } else await this.renderWhole(contentEl, file, noteComponent, markdown.slice(frontmatter.length).trim());
             const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);
@@ -289,7 +310,7 @@ export class NoteRenderer {
 
             // Sections replaced among hidden ones would show beside a spacer still standing for them.
             this.farRuns.revealAll(note.contentEl);
-            const next = note.sections.slice(endBefore).find((section) => section.nodes.length > 0)?.nodes[0] ?? null;
+            const next = firstNodeOf(note.sections.slice(endBefore));
             for (const section of removed) {
                 section.nodes.forEach((node) => node.remove());
                 noteComponent.removeChild(section.component);
@@ -323,13 +344,14 @@ export class NoteRenderer {
     runsOf(noteComponent: Component): Element[][] {
         const runs: Element[][] = [];
         let length = Infinity;
-        for (const { source, nodes } of this.drawn.get(noteComponent) ?? []) {
+        // From its end: a note drawn from there grows at its top, and only its topmost run changes.
+        for (const { source, nodes } of [...(this.drawn.get(noteComponent) ?? [])].reverse()) {
             if (length + source.length > CHUNK_CHARS) {
-                runs.push([]);
+                runs.unshift([]);
                 length = 0;
             }
             length += source.length;
-            runs[runs.length - 1]!.push(...nodes.filter((node): node is Element => node instanceof Element));
+            runs[0]!.unshift(...nodes.filter((node): node is Element => node instanceof Element));
         }
         return runs.filter((run) => run.length > 0);
     }
@@ -366,16 +388,24 @@ export class NoteRenderer {
         file: TFile,
         noteComponent: Component,
         sources: string[],
-        goOn: () => Promise<boolean>
+        goOn: (note: Component) => Promise<boolean>,
+        order: DrawOrder
     ): Promise<RenderedSection[] | null> {
         const slice = new TimeSlice(SLICE_MS);
+        const fromEnd = order === "from-end";
         const sections: RenderedSection[] = [];
-        for (const source of sources) {
+        // Its runs as drawn so far, for the stream to hide between slices.
+        this.drawn.set(noteComponent, sections);
+        for (const source of fromEnd ? [...sources].reverse() : sources) {
             if (await slice.yieldIfSpent()) {
-                if (!(await goOn())) return null;
+                if (!(await goOn(noteComponent))) return null;
                 if (!contentEl.isConnected) return sections;
             }
-            sections.push(await this.renderSection(contentEl, null, source, file, noteComponent));
+            if (!fromEnd) sections.push(await this.renderSection(contentEl, null, source, file, noteComponent));
+            else
+                sections.unshift(
+                    await this.renderSection(contentEl, firstNodeOf(sections), source, file, noteComponent)
+                );
         }
         if (Platform.isMobile) {
             await this.bases.render(

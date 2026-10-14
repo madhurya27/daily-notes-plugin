@@ -189,6 +189,9 @@ Checks:
 - Flick hard down a 10,000-line note and back: the screen never goes blank.
   **[ios]** checks no spacer of a hidden run reaches the screen; only a capture
   (`scripts/capture-iphone.swift`) shows a blank (ADR 0021).
+- Jump to a day below a long note not seen yet, then flick up into it: its end
+  shows at once, under no title, and what shows stays put as the note finishes.
+  **[e2e]**; the screen staying filled only a capture shows (ADR 0022).
 - A hard flick to the bottom loads the next batch without duplicates or a stall;
   repeated flicks keep loading. **[ios]**
 - Backgrounding and returning keeps position and keeps scrolling. **[ios]**
