@@ -43,6 +43,20 @@ describe("NoteHeights", () => {
         expect(heights.estimate("600:16px")).toBe(1100);
     });
 
+    // With few measured, the 0.9 quantile is the tallest: one 10,000-line note
+    // would have every placeholder reserve its 235,612px.
+    it("never estimates at the one tallest note alone", () => {
+        const heights = new NoteHeights();
+        heights.keep("600:16px", "long.md", 235_612);
+        expect(heights.estimate("600:16px")).toBe(235_612);
+
+        for (const [i, height] of [700, 600, 900].entries()) heights.keep("600:16px", `n${i}.md`, height);
+        expect(heights.estimate("600:16px")).toBe(900);
+
+        for (let i = 3; i < 9; i++) heights.keep("600:16px", `n${i}.md`, 800);
+        expect(heights.estimate("600:16px")).toBe(900);
+    });
+
     // Just turned, the notes on screen are measured at the new width within moments: no guess from the old one.
     it("estimates nothing at a width that measured nothing, whatever others did", () => {
         const heights = new NoteHeights();

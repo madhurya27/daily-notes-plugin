@@ -4,10 +4,9 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] With no heights stored, a 10,000-line note among the few measured makes
-      every unmeasured note reserve its 235,612 px (the 0.9 quantile, D-092): a
-      jump past it lands at 1.6 million px until the next rest re-reserves.
-      Gliding up through those placeholders blanks single frames, up to 0.3 s.
+- [ ] Gliding up through notes not drawn yet blanks the screen in short runs: 38
+      in twelve flicks up the iPhone's E2E vault, heights forgotten, mostly
+      under 0.17 s, once 0.58 s. Seen on `main` too.
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.

@@ -71,13 +71,15 @@ export class NoteHeights {
     /**
      * A note not measured at `layout`: the 0.9 quantile of what it measured,
      * erring tall, as a glide up past notes taller than reserved runs out of
-     * scroll short of the top (D-092). Nothing where it measured nothing.
+     * scroll short of the top (D-092), but never the tallest alone (D-132).
+     * Nothing where it measured nothing.
      */
     estimate(layout: string): number | undefined {
         const known = this.tails.get(layout);
         if (known !== undefined) return known;
         const sorted = this.table.values(layout).sort((a, b) => a - b);
-        const tail = sorted[Math.floor(sorted.length * 0.9)];
+        const belowTallest = Math.min(Math.floor(sorted.length * 0.9), sorted.length - 2);
+        const tail = sorted[Math.max(belowTallest, 0)];
         if (tail !== undefined) this.tails.set(layout, tail);
         return tail;
     }

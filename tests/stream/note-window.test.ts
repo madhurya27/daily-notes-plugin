@@ -269,7 +269,8 @@ describe("NoteWindowManager remembered heights", () => {
             heights.keep(LAYOUT, path, px);
         const { manager } = makeManager(undefined, undefined, undefined, heights);
 
-        expect(placeholderHeight(manager.add(FILE))).toBe("9000px");
+        // The 0.9 quantile, but not the tallest alone (D-132).
+        expect(placeholderHeight(manager.add(FILE))).toBe("710px");
     });
 
     describe("with an estimate given", () => {

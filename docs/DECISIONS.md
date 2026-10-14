@@ -2170,3 +2170,20 @@ Geekbench 6), the oldest iOS 26 runs on, and near the quicker mid-range Androids
 - An A15 iPhone's ~13 ms, or 16 with margin — misses the older iPhones and every
   mid-range Android.
 - A mid-range Android's ~29 ms — no device here to keep the number honest.
+
+## D-132 — The estimate is never the tallest note alone (2026-10-13)
+
+**Decision:** D-092's 0.9 quantile is taken below the tallest note measured at
+the layout, unless it is the only one.
+
+**Why:** under 20 notes measured, `floor(0.9 n)` is the tallest or next to it. A
+10,000-line note among the first measured had every unmeasured note reserve its
+235,612px: a jump past it landed 1.6 million px down until the next rest. With
+more notes measured, nothing changes.
+
+**Rejected:**
+
+- A cap at a multiple of the median — a constant fitted to no vault, and with
+  two notes measured the median is half the outlier.
+- A cap in panes — a vault of long notes would come out short everywhere, what
+  D-092 rejected the upper quartile for.
