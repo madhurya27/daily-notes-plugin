@@ -9,21 +9,9 @@ const STREAM = ".daily-notes-stream-container";
 // for a frame; the next shows the run (ADR 0023).
 test("flicks down a long note and back show no hidden run's spacer two frames running", async ({ phone }) => {
     test.setTimeout(300_000);
-    const path = await phone.run(() => `Journal/${new Date(Date.now() - 86_400_000).toLocaleDateString("en-CA")}.md`);
-    const original = await phone.runAsync(async (p: string) => {
-        const file = window.app.vault.getFileByPath(p);
-        return file ? window.app.vault.read(file) : null;
-    }, path);
+    const path = await phone.journalPath(1);
+    const original = await phone.writeNote(path, longNote(5000));
     try {
-        await phone.runAsync(
-            async (p: string, text: string) => {
-                const { vault } = window.app;
-                const file = vault.getFileByPath(p);
-                await (file ? vault.modify(file, text) : vault.create(p, text));
-            },
-            path,
-            longNote(5000)
-        );
         await phone.openStream();
         await phone.jumpTo(path.slice(8, 18));
         await expect
@@ -64,15 +52,6 @@ test("flicks down a long note and back show no hidden run's spacer two frames ru
         expect(frames).toBeGreaterThan(100);
         expect(spacerFrames, "frames with a spacer on screen since the last").toBe(0);
     } finally {
-        await phone.runAsync(
-            async (p: string, text: string | null) => {
-                const file = window.app.vault.getFileByPath(p);
-                if (!file) return;
-                if (text === null) await window.app.vault.delete(file);
-                else await window.app.vault.modify(file, text);
-            },
-            path,
-            original
-        );
+        await phone.restoreNote(path, original);
     }
 });

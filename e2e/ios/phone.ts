@@ -245,6 +245,50 @@ export class Phone {
             .toBe(true);
     }
 
+    /** The path of the daily note `days` back from today, as the test vault names it. */
+    journalPath(days: number): Promise<string> {
+        return this.run(
+            (days: number) => `Journal/${new Date(Date.now() - days * 86_400_000).toLocaleDateString("en-CA")}.md`,
+            days
+        );
+    }
+
+    /** Writes `text` to the note at `path`, once indexed; returns what it held, null where it was new. */
+    writeNote(path: string, text: string): Promise<string | null> {
+        return this.runAsync(
+            async (path: string, text: string) => {
+                const { vault, metadataCache } = window.app;
+                const file = vault.getFileByPath(path);
+                const original: string | null = file ? await vault.read(file) : null;
+                await new Promise<void>((indexed) => {
+                    const ref = metadataCache.on("changed", (changed: { path: string }) => {
+                        if (changed.path !== path) return;
+                        metadataCache.offref(ref);
+                        indexed();
+                    });
+                    void (file ? vault.modify(file, text) : vault.create(path, text));
+                });
+                return original;
+            },
+            path,
+            text
+        );
+    }
+
+    /** Puts back what `writeNote` returned: the note's text, or no note. */
+    async restoreNote(path: string, original: string | null): Promise<void> {
+        await this.runAsync(
+            async (path: string, original: string | null) => {
+                const file = window.app.vault.getFileByPath(path);
+                if (!file) return;
+                if (original === null) await window.app.vault.delete(file);
+                else await window.app.vault.modify(file, original);
+            },
+            path,
+            original
+        );
+    }
+
     /** Closes the stream and forgets every note's measured height: an open stream lays out by estimates. */
     async forgetHeights(): Promise<void> {
         await this.run(() => {

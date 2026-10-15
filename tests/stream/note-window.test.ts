@@ -1270,6 +1270,42 @@ describe("NoteWindowManager render", () => {
             expect(orderOf(renderer)).toBe("from-end");
         });
 
+        // A jump lands on the note's start: drawn from its end, it landed with
+        // the scroll held on its end's text, 130–286 px past its title.
+        it("draws a note a jump readies from its start, wherever it is", async () => {
+            const { manager, renderer, block } = placed(-9000, 300);
+            manager.render(block);
+            await settle();
+            expect(orderOf(renderer)).toBe("from-start");
+        });
+
+        it("draws a note from its start where a jump readies it while it waits to be drawn as met", async () => {
+            const { manager, renderer, block } = placed(-9000, 300);
+            fire(observers.render, block, true);
+            manager.render(block);
+            await settle();
+            expect(orderOf(renderer)).toBe("from-start");
+        });
+
+        it("draws a note from its start where it comes into view while a jump's render of it waits", async () => {
+            const { manager, renderer, block } = placed(-9000, 300);
+            manager.render(block);
+            fire(observers.render, block, true);
+            await settle();
+            expect(orderOf(renderer)).toBe("from-start");
+        });
+
+        it("draws a note the reader comes back up into from its end, after a jump drew it", async () => {
+            const { manager, renderer, block } = placed(-9000, 300);
+            manager.render(block);
+            await settle();
+            fire(observers.unload, block, false);
+            await still();
+            fire(observers.render, block, true);
+            await settle();
+            expect(renderer.renderInto.mock.calls[1]![3]).toBe("from-end");
+        });
+
         it("draws a note the reader comes down into from its start", async () => {
             const { renderer, block } = placed(500, 9800);
             fire(observers.render, block, true);

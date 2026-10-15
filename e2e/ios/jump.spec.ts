@@ -1,4 +1,5 @@
 import { test, expect, type Phone } from "./phone";
+import { longNote } from "../long-note";
 
 // The notes above a jump's target were never drawn: each renders as a flick
 // up reaches it, while iOS owns the scroll (ADR 0013).
@@ -155,4 +156,21 @@ test("the jump list opens with the keyboard down, and a tap on the query raises 
     await expect.poll(() => phone.keyboardShown()).toBe(true);
     await phone.escape(".prompt input.prompt-input");
     await expect.poll(() => phone.has(".prompt")).toBe(false);
+});
+
+// A jump lands on its note's start (ADR 0022). Drawn from its end, as a note
+// above the pane is met, the newest landed 130–286 px past its title in 4 of 5.
+test("a jump up to a long note lands on its title", async ({ phone }) => {
+    const path = await phone.journalPath(0);
+    const original = await phone.writeNote(path, longNote(10000));
+    try {
+        await phone.openStream();
+        await phone.jumpTo("2026-09-12");
+
+        await phone.jumpTo(path.slice(8, 18));
+
+        expect(await phone.newestOffset()).toBe(0);
+    } finally {
+        await phone.restoreNote(path, original);
+    }
 });

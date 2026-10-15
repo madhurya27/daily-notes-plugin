@@ -31,6 +31,8 @@ interface NoteWindow extends Reserving {
     component: Component | null;
     /** Guards against a second render arriving during the first one's await. */
     rendering: boolean;
+    /** From its start, where a jump lands; null draws it in the order the reader meets it. */
+    order: DrawOrder | null;
     /**
      * The block left while its render was queued or in flight. An observer
      * reports changes, so this is the only unload it will get until it comes
@@ -145,7 +147,7 @@ export class NoteWindowManager {
                 for (const entry of entries) {
                     if (!entry.isIntersecting) continue;
                     const target = entry.target as HTMLElement;
-                    if (this.windows.has(target)) this.render(target);
+                    if (this.windows.has(target)) this.queue(target, null);
                     else this.runs.show(target);
                 }
             },
@@ -265,6 +267,7 @@ export class NoteWindowManager {
             file,
             component: null,
             rendering: false,
+            order: null,
             unloadWanted: false,
             height: this.unmeasured(),
             measured: false,
@@ -389,11 +392,19 @@ export class NoteWindowManager {
     }
 
     /**
-     * Queues a render of `block` unless it holds content, which it shows if
-     * hidden, or is rendering. The observer calls it on entry; a caller that
-     * needs the content now calls it and drains the queue.
+     * Draws `block` for a jump, which lands on its start: drawn from there
+     * (ADR 0022). A caller that needs the content now drains the queue.
      */
     render(block: HTMLElement): void {
+        this.queue(block, "from-start");
+    }
+
+    /**
+     * Queues a render of `block` in `order`, or as the reader meets it, unless
+     * it holds content, which it shows if hidden, or is rendering. The
+     * observer queues it on entry.
+     */
+    private queue(block: HTMLElement, order: DrawOrder | null): void {
         const window = this.windows.get(block);
         if (!window) return;
         if (window.component) {
@@ -405,8 +416,11 @@ export class NoteWindowManager {
             // asked for would leave it blank, and an observer reports changes,
             // so no second event would ever come to fill it.
             window.unloadWanted = false;
+            // A jump's render draws from where it lands, if not yet begun.
+            if (order) window.order = order;
             return;
         }
+        window.order = order;
         window.rendering = true;
         this.waiting.set(block, window);
         this.enqueue(() => this.renderWaiting(block));
@@ -435,7 +449,7 @@ export class NoteWindowManager {
                     if (!this.onScreen.has(block)) await this.renderWaitingOnScreen();
                     return !window.unloadWanted;
                 },
-                this.orderFor(block)
+                window.order ?? this.orderFor(block)
             );
             // Read over what it drew: nothing scrolled or resized while it did.
             if (rendered && block.hasClass(DRAWING_FROM_END)) this.anchor.readPlace(block);
@@ -479,9 +493,9 @@ export class NoteWindowManager {
 
     /** From its end where the reader comes up into it: its middle is above the pane's. */
     private orderFor(block: HTMLElement): DrawOrder {
-        const root = this.scrollRoot?.getBoundingClientRect();
+        // Met only while attached: a detach drops every render waiting.
+        const root = this.scrollRoot!.getBoundingClientRect();
         const note = block.getBoundingClientRect();
-        if (!root) return "from-start";
         return note.top + note.bottom < root.top + root.bottom ? "from-end" : "from-start";
     }
     /** Still inside the queue's task: no other mutation runs meanwhile (ADR 0004). */

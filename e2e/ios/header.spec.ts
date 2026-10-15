@@ -62,39 +62,20 @@ function longNote(lines: number): string {
         .join("\n");
 }
 
-/** Writes each of `notes`, `[days back, lines]`, as a long note, once indexed; returns their paths. */
-async function writeNotes(phone: Phone, notes: readonly (readonly [number, number])[]): Promise<string[]> {
-    const paths = await phone.run(
-        (back: number[]) =>
-            back.map((d) => `Journal/${new Date(Date.now() - d * 86_400_000).toLocaleDateString("en-CA")}.md`),
-        notes.map(([back]) => back)
-    );
-    for (const [i, [, lines]] of notes.entries())
-        await phone.runAsync(
-            async (path: string, text: string) => {
-                const { vault, metadataCache } = window.app;
-                const file = vault.getFileByPath(path);
-                await new Promise<void>((indexed) => {
-                    const ref = metadataCache.on("changed", (changed: { path: string }) => {
-                        if (changed.path !== path) return;
-                        metadataCache.offref(ref);
-                        indexed();
-                    });
-                    void (file ? vault.modify(file, text) : vault.create(path, text));
-                });
-            },
-            paths[i]!,
-            longNote(lines)
-        );
-    return paths;
+/** Writes each of `notes`, `[days back, lines]`, as a long note; returns what to restore. */
+async function writeNotes(phone: Phone, notes: readonly (readonly [number, number])[]): Promise<Written[]> {
+    const written: Written[] = [];
+    for (const [back, lines] of notes) {
+        const path = await phone.journalPath(back);
+        written.push({ path, original: await phone.writeNote(path, longNote(lines)) });
+    }
+    return written;
 }
 
-async function deleteNotes(phone: Phone, paths: string[]): Promise<void> {
-    for (const path of paths)
-        await phone.runAsync(async (path: string) => {
-            const file = window.app.vault.getFileByPath(path);
-            if (file) await window.app.vault.delete(file);
-        }, path);
+type Written = { path: string; original: string | null };
+
+async function restoreNotes(phone: Phone, written: Written[]): Promise<void> {
+    for (const { path, original } of written) await phone.restoreNote(path, original);
 }
 
 /**
@@ -132,12 +113,12 @@ const CASES = [
 
 for (const { name, notes, measured, within } of CASES)
     test(name, async ({ phone }) => {
-        const paths = await writeNotes(phone, notes);
+        const written = await writeNotes(phone, notes);
         try {
             if (!measured) await phone.forgetHeights();
             await phone.openStream();
             // Each drawn once, so its height is known, as for a reader who has scrolled past them.
-            if (measured) for (const path of paths) await phone.jumpTo(path.slice(8, 18));
+            if (measured) for (const { path } of written) await phone.jumpTo(path.slice(8, 18));
             const fourth = await phone.run(
                 () => document.querySelectorAll<HTMLElement>(".daily-note-block")[3]!.dataset.sourcePath!
             );
@@ -150,7 +131,7 @@ for (const { name, notes, measured, within } of CASES)
                             document
                                 .querySelector(`.daily-note-block[data-source-path="${path}"]`)!
                                 .classList.contains("is-unloaded"),
-                        paths[0]!
+                        written[0]!.path
                     )
                 )
                 .toBe(true);
@@ -182,7 +163,7 @@ for (const { name, notes, measured, within } of CASES)
             });
             expect(waited).toBeLessThan(within);
         } finally {
-            await deleteNotes(phone, paths);
+            await restoreNotes(phone, written);
         }
     });
 
@@ -192,7 +173,7 @@ for (const { name, notes, measured, within } of CASES)
 test("a tap on the title from inside a long newest note glides to its title", async ({ phone }) => {
     await phone.openStream();
     const top = await phone.newestOffset();
-    const paths = await writeNotes(phone, [[0, 10000]]);
+    const written = await writeNotes(phone, [[0, 10000]]);
     try {
         await phone.flick("up", 3);
 
@@ -202,6 +183,6 @@ test("a tap on the title from inside a long newest note glides to its title", as
         expect(await phone.scrollTop()).toBe(0);
         expect(await phone.newestOffset()).toBe(top);
     } finally {
-        await deleteNotes(phone, paths);
+        await restoreNotes(phone, written);
     }
 });
