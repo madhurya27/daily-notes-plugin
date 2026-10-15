@@ -4,6 +4,11 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] A fast glide on the iPhone outruns the drawing of notes past a 10,000-line
+      note: 13 frames in one glide blank over placeholders not drawn yet, or
+      past the stream's end before more load. Drawing further ahead mid-glide
+      might close it. The other blanks, over drawn text, Obsidian's reading view
+      shows too (up to 185 ms).
 - [ ] Opening the stream with heights forgotten, the anchor shifts it
       2,252–2,298 px at the top, once, as the long note below the newest starts
       drawing: in every iPhone capture, on `main` before ADR 0022 too. Whether a

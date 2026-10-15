@@ -340,6 +340,8 @@ export class NoteStream {
         this.window.render(block);
         await this.layout.drain();
         await basesLoaded(block);
+        // Still far off, it may have hidden meanwhile (ADR 0023): the caller reads it shown.
+        this.window.render(block);
         return block;
     }
 

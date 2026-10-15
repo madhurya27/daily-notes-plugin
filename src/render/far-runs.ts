@@ -29,6 +29,8 @@ interface Run {
 export class FarRuns {
     /** Each hidden element, and each spacer, to its run. */
     private readonly runs = new WeakMap<Element, Run>();
+    /** Hears each run shown again, by whatever showed it: it is watched again (ADR 0023). */
+    onShown: (run: Element[]) => void = () => {};
 
     /** jsdom lays nothing out, so measurement is the one seam tests replace. */
     constructor(private readonly box: (el: Element) => Box | null = boxOf) {}
@@ -85,6 +87,7 @@ export class FarRuns {
             el.removeClass("is-far");
             this.runs.delete(el);
         }
+        this.onShown(run.elements);
     }
 
     /** The spacers in `root`, top to bottom. */

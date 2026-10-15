@@ -50,14 +50,15 @@ opens, so a view's own handler always reads an index already updated.
    view; `NoteStream` appends the next batch of 10 as empty blocks, placed and
    indexed by path in `stream-blocks.ts`. The service counts how many it has
    loaded, its `streamLength` (D-118).
-3. **Render.** `NoteWindowManager` (`note-window.ts`) renders blocks within a
-   margin of the viewport and empties them well past it, keeping their height
-   ([ADR 0006](adr/0006-unload-off-screen-notes.md)). Each rendered note owns a
-   child `Component`, discarded on unload. Within a drawn long note, it takes
-   the runs past the same margins out of the layout behind spacers
-   (`far-runs.ts`), and shows them again as they near
-   ([ADR 0021](adr/0021-hide-far-runs-of-long-notes.md)). A long note the reader
-   comes up into draws from its end
+3. **Render.** `NoteWindowManager` (`note-window.ts`) works in three margins, in
+   panes: it renders blocks within 1.5, hides what passes 4, and empties what
+   passes 12 once the scroll is still, keeping every height
+   ([ADR 0006](adr/0006-unload-off-screen-notes.md),
+   [ADR 0023](adr/0023-hide-far-content-as-it-leaves.md)). A hidden note keeps
+   its content out of the layout inside its pin; a long note's runs hide behind
+   spacers (`far-runs.ts`, [ADR 0021](adr/0021-hide-far-runs-of-long-notes.md)).
+   Both show again as they near. Each rendered note owns a child `Component`,
+   discarded on unload. A long note the reader comes up into draws from its end
    ([ADR 0022](adr/0022-draw-long-notes-from-the-end-met.md)).
 4. **Change.** Vault and metadata events become `NoteStream` mutations: insert,
    remove, re-render, reconsider whether a note is hidden. Saves are debounced

@@ -41,7 +41,8 @@ export class NoteWidths implements WidthWatch {
     private refit(entries: ResizeObserverEntry[]): void {
         for (const { target } of entries) {
             const watched = this.watched.get(target);
-            if (!watched || target.clientWidth === watched.width) continue;
+            // Laid out at nothing, hidden far off (ADR 0023): no width to fit, and back at its own, none changed.
+            if (!watched || target.clientWidth === 0 || target.clientWidth === watched.width) continue;
             watched.width = target.clientWidth;
             for (const refit of watched.refits) refit(watched.width);
         }

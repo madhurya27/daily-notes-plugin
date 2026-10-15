@@ -1239,6 +1239,27 @@ describe("what a search moves through", () => {
         expect(handed).toBe(true);
     });
 
+    // Still far off, a note may hide while it waits (ADR 0023): the caller reads it shown.
+    it("shows the note again once its Bases fill in, as it hands it back", async () => {
+        const base = loadingBase(notes[3]!);
+        let filled = false;
+        const filledAtRender: boolean[] = [];
+        const drawBase = noteWindow.render.getMockImplementation()!;
+        noteWindow.render.mockImplementation((block: HTMLElement) => {
+            filledAtRender.push(filled);
+            drawBase(block);
+        });
+
+        const ready = stream.ready(notes[3]!);
+        await vi.advanceTimersByTimeAsync(FRAME_MS);
+        filled = true;
+        base.removeClass("is-loading");
+        await vi.advanceTimersByTimeAsync(FRAME_MS);
+        await ready;
+
+        expect(filledAtRender).toEqual([false, true]);
+    });
+
     it("centers an element and keeps it there while the stream renders", async () => {
         const el = document.createElement("span");
         el.scrollIntoView = vi.fn();

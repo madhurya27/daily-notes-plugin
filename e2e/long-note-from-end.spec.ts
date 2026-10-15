@@ -9,6 +9,7 @@ import {
     seededDate,
     withoutScrollAnchoring,
     writeNote,
+    unloadFar,
 } from "./obsidian";
 import { longNote } from "./long-note";
 
@@ -111,17 +112,19 @@ function comeUpInto(pane: Locator, glide = 0): Promise<{ frames: Frame[]; throug
     );
 }
 
-/** Below the note, far enough that it is unloaded, and at rest. */
+/** Below the note, far enough that it is out of the layout, emptied, and at rest. */
 async function goBelow(page: Page, pane: Locator, note: Locator) {
     await expect
         .poll(
             async () => {
                 await pane.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
-                return note.getAttribute("class");
+                return /is-far|is-unloaded/.test((await note.getAttribute("class"))!);
             },
             { timeout: 30_000 }
         )
-        .toContain("is-unloaded");
+        .toBe(true);
+    // One never drawn is emptied already.
+    if ((await note.getAttribute("class"))!.includes("is-far")) await unloadFar(note);
     await page.waitForTimeout(500);
 }
 

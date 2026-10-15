@@ -79,6 +79,21 @@ describe("NoteWidths", () => {
         expect(refit).not.toHaveBeenCalled();
     });
 
+    // Hidden far from the screen, a note lays out at nothing (ADR 0023): no width to fit.
+    it("refits nothing while a note lays out at nothing, nor once it is back at its width", () => {
+        let width = 400;
+        const content = noteContent(() => width);
+        const refit = vi.fn();
+        widths.watch(content, loaded(), refit);
+
+        width = 0;
+        observer().report(content);
+        width = 400;
+        observer().report(content);
+
+        expect(refit).not.toHaveBeenCalled();
+    });
+
     it("watches every note through one observer, refitting only the note that changed", () => {
         let wide = 400;
         const [first, second] = [noteContent(() => wide), noteContent(() => 400)];

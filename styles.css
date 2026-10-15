@@ -105,6 +105,11 @@
     overflow-y: clip;
 }
 
+/* A drawn note far from the screen: out of the layout inside its pin (ADR 0023). */
+.daily-note-block.is-far > * {
+    display: none;
+}
+
 /* A note or Base held at an earlier height while it refills
    (src/stream/height-hold.ts). */
 .daily-note-block,

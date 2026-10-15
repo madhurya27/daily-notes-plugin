@@ -15,11 +15,12 @@ function boxFromData(el: Element): Box | null {
 
 /**
  * The observers, by the rootMargin they were constructed with: the render one
- * reaches less far than the unload one, which is the hysteresis. The screen
- * one has none.
+ * reaches less far than the hide one, which is the hysteresis, and the unload
+ * one furthest. The screen one has none.
  */
 interface Observers {
     render: IntersectionObserverCallback;
+    hide: IntersectionObserverCallback;
     unload: IntersectionObserverCallback;
     screen: IntersectionObserverCallback;
     observe: ReturnType<typeof vi.fn>;
@@ -34,6 +35,7 @@ function stubObservers(): void {
     const callbacks: IntersectionObserverCallback[] = [];
     observers = {
         render: () => {},
+        hide: () => {},
         unload: () => {},
         screen: () => {},
         observe: vi.fn(),
@@ -50,7 +52,8 @@ function stubObservers(): void {
                 callbacks.push(cb);
                 observers.margins.push(init.rootMargin);
                 observers.render = callbacks[0]!;
-                observers.unload = callbacks[1] ?? callbacks[0]!;
+                observers.hide = callbacks[1] ?? callbacks[0]!;
+                observers.unload = callbacks[2] ?? callbacks[0]!;
             }
             return {
                 observe: observers.observe,
@@ -226,11 +229,11 @@ describe("NoteWindowManager.add", () => {
         expect(renderer.renderInto).not.toHaveBeenCalled();
     });
 
-    it("observes the block with all three observers", () => {
+    it("observes the block with all four observers", () => {
         const { manager } = makeManager();
         const block = manager.add(FILE);
         expect(observers.observe).toHaveBeenCalledWith(block);
-        expect(observers.observe).toHaveBeenCalledTimes(3);
+        expect(observers.observe).toHaveBeenCalledTimes(4);
     });
 });
 
@@ -983,6 +986,21 @@ describe("NoteWindowManager after the pane's width changes", () => {
     });
 
     // Dragging a split resizes on every frame: thousands of blocks are not rewritten each time.
+    // Its pin measured the old width; emptied, it reserves as unloaded notes do.
+    it("empties a note hidden at the old width", async () => {
+        const { manager, narrow } = makeResizable();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        fire(observers.hide, block, false);
+
+        await narrow();
+
+        expect(block.hasClass("is-far")).toBe(false);
+        expect(block.hasClass("is-unloaded")).toBe(true);
+    });
+
     it("rereads no heights when the width did not change", async () => {
         const { manager, heights } = makeResizable();
         const block = manager.add(FILE);
@@ -1003,31 +1021,32 @@ describe("NoteWindowManager after the pane's width changes", () => {
 // ---------------------------------------------------------------------------
 
 describe("NoteWindowManager margins", () => {
-    const marginsPx = () => observers.margins.slice(-2).map((m) => parseInt(m, 10));
+    const marginsPx = () => observers.margins.slice(-3).map((m) => parseInt(m, 10));
 
-    it("unloads further out than it renders, so a block on the edge cannot thrash", () => {
+    it("hides further out than it renders, so a block on the edge cannot thrash, and unloads further still", () => {
         makeManager();
-        const [render, unload] = marginsPx();
-        expect(render).toBeLessThan(unload!);
+        const [render, hide, unload] = marginsPx();
+        expect(render).toBeLessThan(hide!);
+        expect(hide).toBeLessThan(unload!);
     });
 
     // A margin in pixels means a different number of screenfuls on a phone
     // than on a tall monitor; what matters is how far ahead of the reader it is.
     it("measures both margins in viewports", () => {
         makeManager(makeRenderer(), () => 500, makeScrollRoot(1000));
-        expect(marginsPx()).toEqual([1500, 4000]);
+        expect(marginsPx()).toEqual([1500, 4000, 12000]);
     });
 
     it("scales with a shorter scroll root", () => {
         makeManager(makeRenderer(), () => 500, makeScrollRoot(600));
-        expect(marginsPx()).toEqual([900, 2400]);
+        expect(marginsPx()).toEqual([900, 2400, 7200]);
     });
 
     // A pane dragged to nothing, or a root not laid out yet, would otherwise
     // render and unload the same block on every scroll.
     it("holds a floor under a scroll root with no height", () => {
         makeManager(makeRenderer(), () => 500, makeScrollRoot(0));
-        expect(marginsPx()).toEqual([600, 1600]);
+        expect(marginsPx()).toEqual([600, 1600, 4800]);
     });
 
     it("recomputes the margins when the pane is resized", () => {
@@ -1037,7 +1056,7 @@ describe("NoteWindowManager margins", () => {
         Object.defineProperty(root, "clientHeight", { value: 1600, configurable: true });
         manager.onResize();
 
-        expect(marginsPx()).toEqual([2400, 6400]);
+        expect(marginsPx()).toEqual([2400, 6400, 19200]);
     });
 
     // Turning a phone changes the height too (D-055).
@@ -1644,6 +1663,192 @@ describe("NoteWindowManager while scrolling", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Hiding a far note
+// ---------------------------------------------------------------------------
+
+/**
+ * Past the hide margin a note leaves the layout at once, mid-glide too: WebKit
+ * stalls in proportion to what is laid out (ADR 0023). It keeps its content
+ * and its pin, so its height is unchanged; emptying it waits for a still
+ * scroll past the unload margin (D-032).
+ */
+describe("NoteWindowManager hides a far note", () => {
+    const pinned = (block: HTMLElement) => block.style.getPropertyValue("--daily-note-pinned-height");
+    const isHidden = (block: HTMLElement) => block.hasClass("is-far");
+    /** A block lays out at its pin; without one, a hidden note's content takes no room. */
+    const laidOut = (block: HTMLElement) => parseFloat(pinned(block)) || (isHidden(block) ? 0 : 640);
+
+    async function rendered(measure: (el: HTMLElement) => number = laidOut) {
+        const renderer = makeRenderer();
+        const { manager } = makeManager(renderer, measure);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        return { manager, renderer, block };
+    }
+
+    afterEach(() => document.body.empty());
+
+    it("hides a note past the hide margin at once, without waiting for the scroll to stop", async () => {
+        const { block } = await rendered();
+
+        fire(observers.hide, block, false);
+
+        expect(isHidden(block)).toBe(true);
+        expect(isRendered(block)).toBe(true);
+    });
+
+    it("keeps its content, its component and its pin", async () => {
+        const { renderer, block } = await rendered();
+
+        fire(observers.hide, block, false);
+        await still();
+
+        expect(block.querySelector(".daily-note-content")).not.toBeNull();
+        expect(renderer.discard).not.toHaveBeenCalled();
+        expect(pinned(block)).toBe("640px");
+    });
+
+    it("tells the anchor nothing: its height did not change", async () => {
+        const { block } = await rendered();
+        const resized = vi.spyOn(ScrollAnchor.prototype, "resized");
+        resized.mockClear();
+
+        fire(observers.hide, block, false);
+        resize(block);
+
+        expect(resized).not.toHaveBeenCalled();
+        expect(pinned(block)).toBe("640px");
+    });
+
+    it("shows it again within the render margin, drawing nothing anew", async () => {
+        const { renderer, block } = await rendered();
+
+        fire(observers.hide, block, false);
+        fire(observers.render, block, true);
+        await settle();
+
+        expect(isHidden(block)).toBe(false);
+        expect(renderer.renderInto).toHaveBeenCalledTimes(1);
+    });
+
+    // A jump or search step asks for a note's content outright.
+    it("shows it when asked to render it", async () => {
+        const { manager, renderer, block } = await rendered();
+
+        fire(observers.hide, block, false);
+        manager.render(block);
+        await settle();
+
+        expect(isHidden(block)).toBe(false);
+        expect(renderer.renderInto).toHaveBeenCalledTimes(1);
+    });
+
+    it("empties a hidden note past the unload margin once the scroll is still", async () => {
+        const { renderer, block } = await rendered();
+
+        fire(observers.hide, block, false);
+        fire(observers.unload, block, false);
+        await still();
+
+        expect(isRendered(block)).toBe(false);
+        expect(isHidden(block)).toBe(false);
+        expect(renderer.discard).toHaveBeenCalledTimes(1);
+        expect(placeholderHeight(block)).toBe("640px");
+    });
+
+    it("leaves a note shown while it stays inside the hide margin", async () => {
+        const { block } = await rendered();
+        fire(observers.hide, block, true);
+        expect(isHidden(block)).toBe(false);
+    });
+
+    it("does nothing to an unloaded note past the hide margin", () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+
+        fire(observers.hide, block, false);
+
+        expect(isHidden(block)).toBe(false);
+        expect(placeholderHeight(block)).toBe(UNMEASURED);
+    });
+
+    it("ignores blocks it does not own", () => {
+        const { manager } = makeManager();
+        const stranger = document.createElement("div");
+
+        fire(observers.hide, stranger, false);
+        fire(observers.unload, stranger, false);
+        manager.render(stranger);
+
+        expect(isHidden(stranger)).toBe(false);
+    });
+
+    // Unpinned, its height is its content's: hiding that would collapse it.
+    it("hides nothing in a note laid out at nothing", async () => {
+        const { block } = await rendered(() => 0);
+
+        fire(observers.hide, block, false);
+
+        expect(isHidden(block)).toBe(false);
+    });
+
+    it("re-estimates a hidden note edited meanwhile, emptied at the height it was hidden at", async () => {
+        const { manager, renderer, block } = await rendered();
+        fire(observers.hide, block, false);
+
+        await manager.refresh(block);
+
+        expect(isRendered(block)).toBe(false);
+        expect(isHidden(block)).toBe(false);
+        expect(renderer.renderInto).toHaveBeenCalledTimes(1);
+        expect(renderer.discard).toHaveBeenCalledTimes(1);
+        expect(placeholderHeight(block)).toBe("640px");
+    });
+
+    describe("that flew past mid-render", () => {
+        function makeSlowRenderer() {
+            const renderer = makeRenderer();
+            renderer.renderInto = vi.fn(async (block: HTMLElement) => {
+                await new Promise((resolve) => setTimeout(resolve, 10));
+                block.createDiv({ cls: "daily-note-content" });
+                return { component: new Component(), footer: Promise.resolve() };
+            });
+            return renderer;
+        }
+
+        async function landing(...passed: ("hide" | "unload")[]) {
+            const renderer = makeSlowRenderer();
+            const { manager } = makeManager(renderer, laidOut);
+            const block = manager.add(FILE);
+            document.body.appendChild(block);
+            fire(observers.render, block, true);
+            await vi.advanceTimersByTimeAsync(1); // into the render
+            for (const observer of passed) fire(observers[observer], block, false);
+            await vi.advanceTimersByTimeAsync(50);
+            return { renderer, block };
+        }
+
+        it("hides it as it lands, and keeps it", async () => {
+            const { renderer, block } = await landing("hide");
+            expect(isHidden(block)).toBe(true);
+
+            await still();
+            expect(renderer.discard).not.toHaveBeenCalled();
+        });
+
+        it("empties it once the scroll is still where it passed the unload margin too", async () => {
+            const { renderer, block } = await landing("hide", "unload");
+
+            await still();
+            expect(renderer.discard).toHaveBeenCalledTimes(1);
+            expect(isRendered(block)).toBe(false);
+        });
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Fast scrolling
 // ---------------------------------------------------------------------------
 
@@ -1674,7 +1879,7 @@ describe("NoteWindowManager under a fast scroll", () => {
         document.body.appendChild(block);
 
         fire(observers.render, block, true);
-        fire(observers.unload, block, false);
+        fire(observers.hide, block, false);
         await settleSlow();
 
         expect(block.classList.contains("is-unloaded")).toBe(true);
@@ -1694,7 +1899,7 @@ describe("NoteWindowManager under a fast scroll", () => {
         fire(observers.render, first, true);
         fire(observers.render, second, true);
         // Both blow past while the first one is still rendering.
-        fire(observers.unload, second, false);
+        fire(observers.hide, second, false);
         await settleSlow();
 
         expect(renderer.renderInto).toHaveBeenCalledTimes(1);
@@ -1711,6 +1916,7 @@ describe("NoteWindowManager under a fast scroll", () => {
 
         fire(observers.render, block, true);
         await vi.advanceTimersByTimeAsync(1); // into the render
+        fire(observers.hide, block, false);
         fire(observers.unload, block, false);
         await settleSlow();
         expect(renderer.discard).not.toHaveBeenCalled();
@@ -1746,7 +1952,7 @@ describe("NoteWindowManager under a fast scroll", () => {
 
         fire(observers.render, block, true);
         await vi.advanceTimersByTimeAsync(1); // into the render
-        fire(observers.unload, block, false);
+        fire(observers.hide, block, false);
         await settleSlow();
 
         expect(block.classList.contains("is-unloaded")).toBe(true);
@@ -1767,7 +1973,7 @@ describe("NoteWindowManager under a fast scroll", () => {
 
         fire(observers.render, block, true);
         await vi.advanceTimersByTimeAsync(1);
-        fire(observers.unload, block, false);
+        fire(observers.hide, block, false);
         fire(observers.render, block, true);
         await settleSlow();
 
@@ -1785,7 +1991,7 @@ describe("NoteWindowManager under a fast scroll", () => {
 
         fire(observers.render, block, true);
         await vi.advanceTimersByTimeAsync(1); // into the render
-        fire(observers.unload, block, false);
+        fire(observers.hide, block, false);
         fire(observers.render, block, true);
         await settleSlow();
 
@@ -1795,7 +2001,7 @@ describe("NoteWindowManager under a fast scroll", () => {
 
     it("ignores an unload for a block it does not own", () => {
         makeManager();
-        expect(() => fire(observers.unload, document.createElement("div"), false)).not.toThrow();
+        expect(() => fire(observers.hide, document.createElement("div"), false)).not.toThrow();
     });
 
     it("renders normally again once the block comes back", async () => {
@@ -1805,7 +2011,7 @@ describe("NoteWindowManager under a fast scroll", () => {
         document.body.appendChild(block);
 
         fire(observers.render, block, true);
-        fire(observers.unload, block, false);
+        fire(observers.hide, block, false);
         await settleSlow();
 
         fire(observers.render, block, true);
@@ -2141,7 +2347,7 @@ describe("NoteWindowManager teardown", () => {
         expect(renderer.discard).not.toHaveBeenCalled();
     });
 
-    it("detach disconnects all three observers and frees every rendered note", async () => {
+    it("detach disconnects all four observers and frees every rendered note", async () => {
         const renderer = makeRenderer();
         const { manager } = makeManager(renderer);
         const first = manager.add(FILE);
@@ -2153,7 +2359,7 @@ describe("NoteWindowManager teardown", () => {
 
         manager.detach();
 
-        expect(observers.disconnect).toHaveBeenCalledTimes(3);
+        expect(observers.disconnect).toHaveBeenCalledTimes(4);
         expect(renderer.discard).toHaveBeenCalledTimes(2);
     });
 
@@ -2181,8 +2387,8 @@ describe("NoteWindowManager teardown", () => {
     it("re-attaching replaces the observers rather than stacking them", () => {
         const { manager } = makeManager();
         manager.attach(document.createElement("div"), document.createElement("div"), moreBelow);
-        expect(observers.disconnect).toHaveBeenCalledTimes(3);
-        expect(observers.margins).toHaveLength(4);
+        expect(observers.disconnect).toHaveBeenCalledTimes(4);
+        expect(observers.margins).toHaveLength(6);
     });
 });
 
@@ -2417,10 +2623,10 @@ describe("NoteWindowManager.layoutChanges", () => {
 describe("NoteWindowManager hides a long note's far runs", () => {
     /**
      * A long note drawn in four runs of one paragraph, at `tops`, each 500px
-     * tall, in a pane 800px tall at the top of the page: the unload margin
+     * tall, in a pane 800px tall at the top of the page: the hide margin
      * reaches 3,200px past either edge.
      */
-    async function renderedLong(tops = [0, 1000, 4500, 9000]) {
+    async function renderedLong(tops = [0, 1000, 4500, 9000], runsOf = (ps: HTMLElement[]) => ps.map((p) => [p])) {
         const renderer = makeRenderer({
             render: (block) => {
                 const content = block.createDiv({ cls: "daily-note-content" });
@@ -2430,7 +2636,7 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         });
         let block: HTMLElement;
         const paragraphs = () => Array.from(block.querySelectorAll("p"));
-        renderer.runsOf.mockImplementation(() => paragraphs().map((p) => [p]));
+        renderer.runsOf.mockImplementation(() => runsOf(paragraphs()));
         const root = makeScrollRoot(800);
         root.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
         let layout = LAYOUT;
@@ -2460,59 +2666,166 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         return { manager, renderer, block, far, spacers, paragraphs, narrow, root };
     }
 
+    /** The hide observer's report on each paragraph, where its data says it lies; a fold's or a hidden note's lies nowhere. */
+    function report(...ps: HTMLElement[]): void {
+        observers.hide(
+            ps.map((p) => {
+                const top = Number(p.dataset.top ?? 0);
+                const bottom = Number(p.dataset.bottom ?? 0);
+                // Laid out at nothing, Chromium reports an empty box in empty root bounds.
+                const nowhere = bottom <= top;
+                return {
+                    target: p,
+                    isIntersecting: !nowhere && bottom > -3200 && top < 4000,
+                    boundingClientRect: { top, bottom, width: nowhere ? 0 : 600, height: bottom - top },
+                    rootBounds: nowhere ? { top: 0, bottom: 0 } : { top: -3200, bottom: 4000 },
+                } as unknown as IntersectionObserverEntry;
+            }),
+            {} as IntersectionObserver
+        );
+    }
+
     afterEach(() => document.body.empty());
 
-    it("hides the runs past the unload margin once the scroll is still", async () => {
-        const { manager, far } = await renderedLong();
+    it("watches the first and last element of each run as the note lands", async () => {
+        const { paragraphs } = await renderedLong([0, 1000, 1500, 2000], (ps) => [[ps[0]!, ps[1]!, ps[2]!], [ps[3]!]]);
+        const [first, middle, last, alone] = paragraphs();
 
-        manager.onScroll();
-        await still();
+        for (const el of [first, last, alone]) expect(observers.observe).toHaveBeenCalledWith(el);
+        expect(observers.observe).not.toHaveBeenCalledWith(middle);
+    });
+
+    it("hides a run as its first element is reported past the hide margin below, mid-glide", async () => {
+        const { far, paragraphs } = await renderedLong();
+
+        report(...paragraphs());
 
         expect(far()).toEqual(["at 4500", "at 9000"]);
     });
 
-    // A hide between two reads lays the whole note out again: a 10,000-line
-    // note's landing took 1.5 s on a laptop.
-    it("measures every run before hiding any", async () => {
-        const { manager, renderer, far, narrow } = await renderedLong();
-        await narrow();
+    it("hides a run as its last element is reported past the hide margin above", async () => {
+        const { far, paragraphs } = await renderedLong([-9000, -4500, -3000, 0]);
+
+        report(...paragraphs());
+
+        expect(far()).toEqual(["at -9000", "at -4500"]);
+    });
+
+    // Its first element may still be on screen.
+    it("leaves a run whose last element alone is past the margin below", async () => {
+        const { far, paragraphs } = await renderedLong([0, 1000, 4500, 9000], (ps) => [
+            [ps[0]!],
+            [ps[1]!, ps[2]!, ps[3]!],
+        ]);
+        const [, , , last] = paragraphs();
+
+        report(last!);
+
         expect(far()).toEqual([]);
+    });
+
+    // A collapse hid it, or the note it is in is hidden: it is not where it lies.
+    it("hides nothing for an element laid out at nothing", async () => {
+        const { far, paragraphs } = await renderedLong();
+        const [, , below] = paragraphs();
+        below!.dataset.top = "0";
+        below!.dataset.bottom = "0";
+
+        report(below!);
+
+        expect(far()).toEqual([]);
+    });
+
+    // A hide between two reads lays the whole note out again.
+    it("measures every run reported before hiding any", async () => {
+        const { renderer, far, paragraphs } = await renderedLong();
         const steps: string[] = [];
         const farRuns = renderer.farRuns as unknown as { box: (el: Element) => Box | null };
         farRuns.box = (el) => (steps.push("read"), boxFromData(el));
         const hide = renderer.farRuns.hide.bind(renderer.farRuns);
         vi.spyOn(renderer.farRuns, "hide").mockImplementation((...args) => (steps.push("hide"), hide(...args)));
 
-        manager.onScroll();
-        await still();
+        report(...paragraphs());
 
         expect(far()).toEqual(["at 4500", "at 9000"]);
         expect(steps.lastIndexOf("read")).toBeLessThan(steps.indexOf("hide"));
     });
 
-    it("hides a note's far runs as it lands, while the scroll moves", async () => {
-        const { far } = await renderedLong();
+    it("stops watching a run as it hides, and watches its spacer with the render margin", async () => {
+        const { spacers, paragraphs } = await renderedLong();
+        const [, , below] = paragraphs();
 
-        expect(far()).toEqual(["at 4500", "at 9000"]);
+        report(below!);
+
+        expect(observers.unobserve).toHaveBeenCalledWith(below);
+        expect(observers.observe).toHaveBeenCalledWith(spacers()[0]);
+    });
+
+    it("shows a run as its spacer enters the render margin, and watches it again", async () => {
+        const { far, spacers, paragraphs } = await renderedLong();
+        const [, , below] = paragraphs();
+        report(below!);
+        const [spacer] = spacers();
+        observers.observe.mockClear();
+
+        fire(observers.render, spacer!, true);
+
+        expect(far()).toEqual([]);
+        expect(spacer!.isConnected).toBe(false);
+        expect(observers.unobserve).toHaveBeenCalledWith(spacer);
+        expect(observers.observe).toHaveBeenCalledWith(below);
+    });
+
+    // Watched again, the observer's first report hides it once more.
+    it("watches a run shown by other means again: a search step, a collapse", async () => {
+        const { renderer, far, paragraphs } = await renderedLong();
+        const [, , below] = paragraphs();
+        report(below!);
+        observers.observe.mockClear();
+
+        renderer.farRuns.reveal(below!);
+        report(below!);
+
+        expect(observers.observe).toHaveBeenCalledWith(below);
+        expect(far()).toEqual(["at 4500"]);
+    });
+
+    it("ignores a run shown in a note it no longer draws", async () => {
+        const { renderer, block, paragraphs } = await renderedLong();
+        const [, , below] = paragraphs();
+        report(below!);
+        fire(observers.unload, block, false);
+        await still();
+        observers.observe.mockClear();
+
+        renderer.farRuns.reveal(below!);
+
+        expect(observers.observe).not.toHaveBeenCalled();
+    });
+
+    it("hides nothing for an element it does not watch", async () => {
+        const { far } = await renderedLong();
+        const stranger = document.createElement("p");
+        stranger.dataset.top = "9000";
+        stranger.dataset.bottom = "9500";
+
+        report(stranger);
+
+        expect(far()).toEqual([]);
     });
 
     // Measured before, its runs are placed for a scroll the anchor is about to correct.
-    it("hides a landing note's far runs only once it is re-pinned", async () => {
-        const hide = FarRuns.prototype.hide;
-        const pinned: boolean[] = [];
-        const spy = vi.spyOn(FarRuns.prototype, "hide").mockImplementation(function (this: FarRuns, run) {
-            pinned.push(run[0]!.closest(".daily-note-block")!.hasClass("is-pinned"));
-            return hide.call(this, run);
+    it("watches a landing note's runs only once it is re-pinned", async () => {
+        const pinnedAtWatch: boolean[] = [];
+        observers.observe.mockImplementation((el: Element) => {
+            if (el.tagName === "P") pinnedAtWatch.push(el.closest(".daily-note-block")!.hasClass("is-pinned"));
         });
-        onTestFinished(() => spy.mockRestore());
 
         await renderedLong();
 
-        expect(pinned).toEqual([true, true]);
+        expect(pinnedAtWatch).toEqual([true, true, true, true]);
     });
 
-    // Drawn from its end, a note grows at its top: each run drawn far above
-    // the reader leaves the layout between slices, but the topmost may grow yet.
     it("hides the far runs of a note drawing from its end between slices, all but the topmost", async () => {
         const renderer = makeRenderer();
         const paragraphs = () => Array.from(document.querySelectorAll("p"));
@@ -2542,6 +2855,56 @@ describe("NoteWindowManager hides a long note's far runs", () => {
 
         expect(farMidDraw).toEqual(["at -8000", "at -4500"]);
     });
+    /** A note drawn from its end in two slices, the second adding nothing; `between` runs before each slice is handed back. */
+    async function drawnFromEnd(between: (manager: NoteWindowManager) => void = () => {}) {
+        const renderer = makeRenderer();
+        const paragraphs = () => Array.from(document.querySelectorAll("p"));
+        renderer.runsOf.mockImplementation(() => paragraphs().map((p) => [p]));
+        const hidden: number[] = [];
+        let manager: NoteWindowManager;
+        renderer.renderInto.mockImplementationOnce(async (block, _file, goOn) => {
+            block.addClass("is-drawing-from-end");
+            const content = block.createDiv({ cls: "daily-note-content" });
+            for (const top of [-12000, -8000, 0])
+                content.createEl("p", { attr: { "data-top": top, "data-bottom": top + 500 } });
+            const component = new Component();
+            for (let slice = 0; slice < 2; slice++) {
+                between(manager);
+                await goOn!(component);
+                hidden.push(block.querySelectorAll(".daily-note-far-run").length);
+            }
+            return { component, footer: Promise.resolve() };
+        });
+        const root = makeScrollRoot(800);
+        root.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
+        ({ manager } = makeManager(renderer, () => 500, root));
+        const block = manager.add(FILE);
+        block.getBoundingClientRect = () => ({ top: -12000, bottom: 500 }) as DOMRect;
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        return hidden;
+    }
+
+    it("hides each far run of a note drawing from its end once, across slices", async () => {
+        expect(await drawnFromEnd()).toEqual([1, 1]);
+    });
+
+    it("hides nothing between slices once the view has closed", async () => {
+        expect(await drawnFromEnd((manager) => manager.detach())).toEqual([0, 0]);
+    });
+
+    // Folded whole, it takes no room: there is nothing to stand in for.
+    it("hides nothing of a run reported far with nothing in it shown", async () => {
+        const { renderer, far, spacers, paragraphs } = await renderedLong();
+        const [, , below] = paragraphs();
+        vi.spyOn(renderer.farRuns, "measure").mockReturnValue(null);
+
+        report(below!);
+
+        expect(far()).toEqual([]);
+        expect(spacers()).toEqual([]);
+    });
 
     it("stops watching the spacers of a note given up mid-draw", async () => {
         const renderer = makeRenderer();
@@ -2570,73 +2933,6 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         expect(spacers).toHaveLength(1);
         expect(observers.unobserve).toHaveBeenCalledWith(spacers[0]);
     });
-
-    it("hides a run shown while the scroll moves only once it is still", async () => {
-        const { manager, renderer, far, paragraphs } = await renderedLong();
-        renderer.farRuns.reveal(paragraphs()[3]!);
-
-        manager.onScroll();
-        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
-
-        expect(far()).toEqual(["at 4500"]);
-    });
-
-    it("hides runs above the pane too", async () => {
-        const { manager, far } = await renderedLong([-9000, -4500, -3000, 0]);
-
-        manager.onScroll();
-        await still();
-
-        expect(far()).toEqual(["at -9000", "at -4500"]);
-    });
-
-    it("watches each spacer with the render margin, and shows its run as it enters", async () => {
-        const { manager, far, spacers } = await renderedLong();
-        manager.onScroll();
-        await still();
-        const [first] = spacers();
-        expect(observers.observe).toHaveBeenCalledWith(first);
-
-        fire(observers.render, first!, true);
-
-        expect(far()).toEqual(["at 9000"]);
-        expect(first!.isConnected).toBe(false);
-        expect(observers.unobserve).toHaveBeenCalledWith(first);
-    });
-
-    it("hides a run shown by other means again at the next still scroll", async () => {
-        const { manager, renderer, far, paragraphs } = await renderedLong();
-        manager.onScroll();
-        await still();
-
-        // A search step or a collapse showed it.
-        renderer.farRuns.reveal(paragraphs()[3]!);
-        manager.onScroll();
-        await still();
-
-        expect(far()).toEqual(["at 4500", "at 9000"]);
-    });
-
-    it("hides nothing in a note unloaded or refreshing when the scroll comes to rest", async () => {
-        const { manager, renderer, block, far } = await renderedLong();
-        let finish = () => {};
-        renderer.update.mockImplementation(() => new Promise<boolean>((resolve) => (finish = () => resolve(true))));
-
-        void manager.refresh(block);
-        // An update shows every run first.
-        renderer.farRuns.revealAll(block);
-        manager.onScroll();
-        await still();
-        expect(far()).toEqual([]);
-
-        finish();
-        await settle();
-        fire(observers.unload, block, false);
-        manager.onScroll();
-        await still();
-        expect(block.childElementCount).toBe(0);
-    });
-
     it("hides nothing before it is attached to a pane", async () => {
         const renderer = makeRenderer({
             render: (block) =>
@@ -2661,41 +2957,38 @@ describe("NoteWindowManager hides a long note's far runs", () => {
 
         expect(block.querySelector(".is-far")).toBeNull();
     });
-
-    it("watches its spacers again when attached anew, and when the pane's height changes", async () => {
-        const { manager, spacers, root } = await renderedLong();
-        manager.onScroll();
-        await still();
+    it("watches its runs and spacers again when attached anew, and when the pane's height changes", async () => {
+        const { manager, spacers, paragraphs, root } = await renderedLong();
+        report(...paragraphs());
         const watched = spacers();
+        const [near] = paragraphs();
         expect(watched).toHaveLength(2);
 
         observers.observe.mockClear();
         manager.attach(root, document.createElement("div"), moreBelow);
-        for (const spacer of watched) expect(observers.observe).toHaveBeenCalledWith(spacer);
+        for (const el of [...watched, near]) expect(observers.observe).toHaveBeenCalledWith(el);
 
         observers.observe.mockClear();
         Object.defineProperty(root, "clientHeight", { value: 600, configurable: true });
         manager.onResize();
-        for (const spacer of watched) expect(observers.observe).toHaveBeenCalledWith(spacer);
+        for (const el of [...watched, near]) expect(observers.observe).toHaveBeenCalledWith(el);
     });
 
-    it("stops watching a note's spacers as it unloads", async () => {
-        const { manager, block, spacers } = await renderedLong();
-        manager.onScroll();
-        await still();
+    it("stops watching a note's runs and spacers as it unloads", async () => {
+        const { block, spacers, paragraphs } = await renderedLong();
+        const [near, , below] = paragraphs();
+        report(below!);
         const watched = spacers();
-        expect(watched).toHaveLength(2);
 
         fire(observers.unload, block, false);
         await still();
 
-        for (const spacer of watched) expect(observers.unobserve).toHaveBeenCalledWith(spacer);
+        for (const el of [...watched, near]) expect(observers.unobserve).toHaveBeenCalledWith(el);
     });
 
     it("stops watching the spacers a save updating the note in place took away", async () => {
-        const { manager, renderer, block, spacers } = await renderedLong();
-        manager.onScroll();
-        await still();
+        const { manager, renderer, block, spacers, paragraphs } = await renderedLong();
+        report(...paragraphs());
         const [shown, kept] = spacers();
         renderer.update.mockImplementation(async () => {
             renderer.farRuns.reveal(shown!);
@@ -2711,16 +3004,34 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         expect(unwatched).not.toContain(kept);
     });
 
-    it("shows every run at a new width: their spacers measured the old one", async () => {
-        const { manager, far, spacers, narrow } = await renderedLong();
-        manager.onScroll();
-        await still();
+    // A save may draw the runs anew: those it drew are watched, those it took away no more.
+    it("watches the runs a save updating the note in place drew", async () => {
+        const { manager, renderer, block, paragraphs } = await renderedLong();
+        const [gone] = paragraphs();
+        renderer.update.mockImplementation(async () => {
+            gone!.replaceWith(document.createElement("p"));
+            return true;
+        });
+        observers.observe.mockClear();
+        observers.unobserve.mockClear();
+
+        await manager.refresh(block);
+
+        expect(observers.unobserve).toHaveBeenCalledWith(gone);
+        expect(observers.observe).toHaveBeenCalledWith(paragraphs()[0]);
+    });
+
+    it("shows every run at a new width, watching each again: their spacers measured the old one", async () => {
+        const { far, spacers, paragraphs, narrow } = await renderedLong();
+        report(...paragraphs());
         const watched = spacers();
         expect(watched).toHaveLength(2);
+        observers.observe.mockClear();
 
         await narrow();
 
         expect(far()).toEqual([]);
         for (const spacer of watched) expect(observers.unobserve).toHaveBeenCalledWith(spacer);
+        for (const p of paragraphs().slice(2)) expect(observers.observe).toHaveBeenCalledWith(p);
     });
 });

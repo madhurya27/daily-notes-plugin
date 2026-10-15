@@ -704,6 +704,31 @@ export async function scrollThroughStream(container: Locator) {
 }
 
 /**
+ * Empties a note scrolled out of the layout, as passing the unload margin
+ * would once the scroll is still (ADR 0023): no seeded vault is twelve panes
+ * tall around it.
+ */
+export async function unloadFar(note: Locator) {
+    await expect(note).toHaveClass(/is-far/);
+    // Still drawing, it only marks the unload: asked again past the still wait until it takes.
+    await expect
+        .poll(
+            () =>
+                note.evaluate((el) => {
+                    const block = el as HTMLElement;
+                    const view = window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0]!
+                        .view as unknown as {
+                        stream: { window: { unload(block: HTMLElement): void } };
+                    };
+                    if (!block.classList.contains("is-unloaded")) view.stream.window.unload(block);
+                    return block.classList.contains("is-unloaded");
+                }),
+            { intervals: [1000] }
+        )
+        .toBe(true);
+}
+
+/**
  * Runs `body` with Obsidian's text size at `px`, then back to the default.
  * Since 1.14 the size is per device, in localStorage; the vault's
  * `baseFontSize` is read only while that is unset.

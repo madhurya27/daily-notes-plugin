@@ -517,6 +517,9 @@ ms instead of 52 (10-year vault, 5,000 other notes).
 
 ## D-032 — Unloading waits for the scroll to stop (2026-09-23)
 
+Superseded in part by [ADR 0023](adr/0023-hide-far-content-as-it-leaves.md):
+hiding no longer waits; emptying still does.
+
 **Decision:** a rendered block that leaves the unload margin waits until the
 scroll has been still for `SCROLL_IDLE_MS` (300 ms); one that comes back first
 stays rendered.

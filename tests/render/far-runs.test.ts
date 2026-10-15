@@ -128,6 +128,20 @@ describe("FarRuns", () => {
         expect(note.querySelector(".daily-note-far-run, .is-far")).toBeNull();
     });
 
+    // Shown by a scroll, a collapse, a search step or a save, it is watched again (ADR 0023).
+    it("tells who listens which run it showed, once per run", () => {
+        const note = content(`<p data-top="0" data-bottom="10">one</p><p data-top="10" data-bottom="20">two</p>`);
+        const [one, two] = children(note);
+        const shown: Element[][] = [];
+        runs.onShown = (run) => shown.push(run);
+        const spacer = runs.hide([one!, two!])!;
+
+        runs.reveal(two!);
+        runs.reveal(spacer);
+
+        expect(shown).toEqual([[one, two]]);
+    });
+
     it("reveals nothing for a node no run holds", () => {
         const note = content(`<p data-top="0" data-bottom="10">one</p><p data-top="10" data-bottom="20">two</p>`);
         const [one, two] = children(note);

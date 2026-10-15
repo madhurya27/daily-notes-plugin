@@ -469,6 +469,53 @@ test.describe("daily notes stream in real Obsidian", () => {
             expect(await scroller.evaluate((el) => el.scrollTop)).toBe(before);
         });
 
+        /** Scrolls the top note's bottom five panes above the pane, through a glide of small steps. */
+        async function glidePastTop(scroller: import("@playwright/test").Locator) {
+            return scroller.evaluate(async (el) => {
+                const top = el.querySelector<HTMLElement>(".daily-note-block")!;
+                const target = top.offsetTop + top.offsetHeight + 5 * el.clientHeight;
+                let hiddenMidGlide = false;
+                while (el.scrollTop < target - 1) {
+                    el.scrollBy(0, Math.min(200, target - el.scrollTop));
+                    await new Promise((resolve) => setTimeout(resolve, 16));
+                    hiddenMidGlide ||= top.classList.contains("is-far");
+                }
+                return hiddenMidGlide;
+            });
+        }
+
+        // WebKit stalls in proportion to what is laid out, so a far note leaves
+        // the layout as it goes, mid-glide too (ADR 0023).
+        test("takes a note a few panes above out of the layout mid-glide, keeping its height", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const container = await openStream(page);
+            const top = container.locator(".daily-note-block").first();
+            await expect(top.locator(".daily-note-content")).toBeVisible();
+            const renderedHeight = (await top.boundingBox())!.height;
+
+            expect(await glidePastTop(container.locator("xpath=.."))).toBe(true);
+
+            await expect(top.locator(".daily-note-content")).toBeHidden();
+            await expect(top).not.toHaveClass(/is-unloaded/);
+            expect((await top.boundingBox())!.height).toBeCloseTo(renderedHeight, 0);
+        });
+
+        test("shows a hidden note again as it comes back, drawing nothing anew", async ({ obsidian }) => {
+            const { page } = obsidian;
+            const container = await openStream(page);
+            const top = container.locator(".daily-note-block").first();
+            const content = top.locator(".daily-note-content");
+            await expect(content).toBeVisible();
+            await content.evaluate((el) => (el.dataset.probe = "drawn once"));
+
+            await glidePastTop(container.locator("xpath=.."));
+            await expect(top).toHaveClass(/is-far/);
+            await top.scrollIntoViewIfNeeded();
+
+            await expect(content).toBeVisible();
+            await expect(content).toHaveAttribute("data-probe", "drawn once");
+        });
+
         test("renders the note again when it comes back into view", async ({ obsidian }) => {
             const { page } = obsidian;
             const container = await openStream(page);

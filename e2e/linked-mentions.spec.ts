@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, openStream, seededDate, today, STREAM } from "./obsidian";
+import { test, expect, openStream, seededDate, today, STREAM, unloadFar } from "./obsidian";
 
 const NEWEST = seededDate(0);
 
@@ -209,10 +209,11 @@ test.describe("linked mentions", () => {
             .toBe(true);
         const height = (await newest.boundingBox())!.height;
 
-        for (let i = 1; !(await newest.getAttribute("class"))!.includes("is-unloaded"); i++) {
+        for (let i = 1; !(await newest.getAttribute("class"))!.includes("is-far"); i++) {
             await blocks.nth(i).evaluate((el) => el.scrollIntoView({ block: "start" }));
             await page.waitForTimeout(400);
         }
+        await unloadFar(newest);
 
         // Reads of the linking notes now outlast the settle wait, as a slow disk's would.
         const heights = await page.evaluate(async () => {

@@ -1,6 +1,8 @@
 # 0021. A long note's far runs leave the layout
 
-- **Status:** Accepted
+- **Status:** Accepted; superseded in part by
+  [0023](0023-hide-far-content-as-it-leaves.md): runs hide as they leave, not
+  once the scroll is still
 - **Date:** 2026-10-13
 
 ## Context

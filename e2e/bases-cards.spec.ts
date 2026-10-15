@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, atTextSize, openStream, LAYOUT_VIEWPORT } from "./obsidian";
+import { test, expect, atTextSize, openStream, LAYOUT_VIEWPORT, unloadFar } from "./obsidian";
 
 /** Newer than every seeded note, so it opens the stream. */
 const NOTE = "Notes/2026-03-15.md";
@@ -249,7 +249,7 @@ test.describe("Bases on mobile", () => {
         await page.waitForTimeout(500);
 
         await container.locator(".daily-note-block").nth(6).scrollIntoViewIfNeeded();
-        await expect(top).toHaveClass(/is-unloaded/);
+        await unloadFar(top);
         const height = (await top.boundingBox())!.height;
 
         // Read after every change to the note: layout is forced, so no frame
