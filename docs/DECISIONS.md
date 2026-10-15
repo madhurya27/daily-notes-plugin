@@ -2295,3 +2295,17 @@ stacks. A note with no table yet gets one as it is typed.
 - Watching only notes with a table or a Dataview block — a table typed into
   today's note would scroll sideways.
 - One observer for the stream — the same work per mutation, a few objects fewer.
+
+## D-139 — A far run stays watched at both edges (2026-10-15)
+
+**Decision:** `FarRunWatch` watches the first and last element of every run
+shown.
+
+**Why:** measured on an iPhone 16 Pro, flicking past a 10,000-line note both
+ways: at most 10 edges are watched at once. One edge a run saves four targets,
+with no frame time to gain.
+
+**Rejected:**
+
+- The next run's first element standing for a run's end — a run shown while the
+  next stays hidden (a search step, a save) has no end watched.
