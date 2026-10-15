@@ -899,16 +899,6 @@ describe("ScrollAnchor", () => {
             expect(pane.scrollTop).toBe(1200);
         });
 
-        it("reports each rendered element of a note, whose change a held note hides", () => {
-            const { blocks } = watch([[400, 400]], 0);
-
-            anchor.observeContent(blocks[0]!.children[0]!);
-            expect(observer().targets.has(blocks[0]!.children[0]!)).toBe(true);
-
-            anchor.unobserveContent(blocks[0]!.children[0]!);
-            expect(observer().targets.has(blocks[0]!.children[0]!)).toBe(false);
-        });
-
         it("has nothing to hold in a pane holding no notes", () => {
             const { pane, content } = makePane([]);
             anchor.attach(pane, content, moreBelow);

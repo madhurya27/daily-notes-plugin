@@ -110,15 +110,6 @@ export class ScrollAnchor {
         if (this.pins.delete(block)) this.observer?.observe(block);
     }
 
-    /** What a note rendered: a held note hides a change inside it. */
-    observeContent(el: Element): void {
-        this.observer?.observe(el);
-    }
-
-    unobserveContent(el: Element): void {
-        this.observer?.unobserve(el);
-    }
-
     /**
      * A block resized in this task. Owed now, drawn in the frame it changed:
      * mid-glide iOS paints a resize before reporting it (ADR 0013).

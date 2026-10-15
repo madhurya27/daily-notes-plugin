@@ -2280,3 +2280,18 @@ parameter to two constructors to drop one getter.
 
 - One state enum per window — it would list every combination of the three.
 - `StreamView` making `FarRuns` — longer constructors for one getter less.
+
+## D-138 — Every rendered note on mobile watches for tables drawn later (2026-10-15)
+
+**Decision:** `stackWideTables` gives each rendered note on mobile its own
+MutationObserver, table or not.
+
+**Why:** tables arrive after the render in three ways: Dataview's, embeds
+loading, and sections a save draws in place (ADR 0019), which nothing else
+stacks. A note with no table yet gets one as it is typed.
+
+**Rejected:**
+
+- Watching only notes with a table or a Dataview block — a table typed into
+  today's note would scroll sideways.
+- One observer for the stream — the same work per mutation, a few objects fewer.

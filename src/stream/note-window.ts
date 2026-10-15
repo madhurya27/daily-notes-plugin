@@ -121,9 +121,12 @@ export class NoteWindowManager {
             },
             { root: scrollRoot }
         );
-        // Made before the anchor's, so it hears a report first: reports run in
-        // that order, and the anchor must read each note re-pinned.
-        this.resizes = new ResizeObserver((entries) => this.contentResized(entries.map(({ target }) => target)));
+        // The anchor's too: a pinned note hides a change inside it from a
+        // watch on the note, and told after the re-pin, the anchor reads the note grown.
+        this.resizes = new ResizeObserver((entries) => {
+            const { heard, told } = this.contentResized(entries.map(({ target }) => target));
+            if (heard && !told) this.anchor.resized();
+        });
         this.anchor.attach(scrollRoot, stream, loadedToEnd);
 
         for (const [block, window] of this.windows) {
@@ -636,10 +639,7 @@ export class NoteWindowManager {
     }
 
     private watch(rendered: Element[]): void {
-        for (const el of rendered) {
-            this.resizes?.observe(el);
-            this.anchor.observeContent(el);
-        }
+        for (const el of rendered) this.resizes?.observe(el);
     }
 
     /** Emptied or refilled next: its hold goes, and the pin keeps the height meanwhile. */
@@ -649,10 +649,7 @@ export class NoteWindowManager {
         hold?.release();
         window.keepOnceSettled?.cancel();
         window.keepOnceSettled = null;
-        for (const el of window.watched) {
-            this.resizes?.unobserve(el);
-            this.anchor.unobserveContent(el);
-        }
+        for (const el of window.watched) this.resizes?.unobserve(el);
         window.watched = [];
     }
 
@@ -667,14 +664,23 @@ export class NoteWindowManager {
         return block ? this.windows.get(block) : undefined;
     }
 
-    /** Re-pins each rendered note something in resized. */
-    private contentResized(targets: (EventTarget | null)[]): void {
+    /**
+     * Re-pins each rendered note something in resized. `heard`: one was in
+     * the layout; `told`: re-pinning one told the anchor.
+     */
+    private contentResized(targets: (EventTarget | null)[]): { heard: boolean; told: boolean } {
+        let heard = false;
+        let told = false;
         for (const block of new Set(targets.map((target) => this.blockOf(target)))) {
             const window = block ? this.windows.get(block) : undefined;
             if (!block || !window) continue;
-            if (window.component) this.repin(block);
+            if (window.component && !block.hasClass(FAR)) {
+                heard = true;
+                told = this.repin(block) || told;
+            }
             window.keepOnceSettled?.();
         }
+        return { heard, told };
     }
 
     private blockOf(target: EventTarget | null): HTMLElement | null {
@@ -686,11 +692,11 @@ export class NoteWindowManager {
      * same task if that changed. Nothing rendering inside a pinned block moves
      * the stream: mid-glide iOS paints a resize before reporting it, and the
      * shift would land a frame late (ADR 0013). A block laid out at nothing,
-     * in a hidden tab, stays unpinned.
+     * in a hidden tab, stays unpinned. True if it told the anchor.
      */
-    private repin(block: HTMLElement): void {
+    private repin(block: HTMLElement): boolean {
         // Hidden, its content lays out at nothing: the pin holds.
-        if (block.hasClass(FAR)) return;
+        if (block.hasClass(FAR)) return false;
         const before = block.style.getPropertyValue("--daily-note-pinned-height");
         block.style.removeProperty("--daily-note-pinned-height");
         const height = this.measure(block);
@@ -698,7 +704,9 @@ export class NoteWindowManager {
         block.toggleClass("is-pinned", height > 0);
         if (height > 0) this.anchor.pinned(block);
         else this.anchor.unpinned(block);
-        if (block.style.getPropertyValue("--daily-note-pinned-height") !== before) this.anchor.resized();
+        const changed = block.style.getPropertyValue("--daily-note-pinned-height") !== before;
+        if (changed) this.anchor.resized();
+        return changed;
     }
 
     private unpin(block: HTMLElement): void {

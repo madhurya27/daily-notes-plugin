@@ -68,14 +68,18 @@ function stubObservers(): void {
 let resizeCallbacks: ResizeObserverCallback[];
 /** What the last ResizeObserver constructed was told to watch. */
 let lastResizeObserve: ReturnType<typeof vi.fn>;
+/** What each ResizeObserver constructed was told to watch, in order. */
+let resizeObserves: ReturnType<typeof vi.fn>[];
 
 function stubResizeObservers(): void {
     resizeCallbacks = [];
+    resizeObserves = [];
     vi.stubGlobal(
         "ResizeObserver",
         vi.fn(function (cb: ResizeObserverCallback) {
             resizeCallbacks.push(cb);
             lastResizeObserve = vi.fn();
+            resizeObserves.push(lastResizeObserve);
             return { observe: lastResizeObserve, unobserve: vi.fn(), disconnect: vi.fn() };
         })
     );
@@ -1316,18 +1320,40 @@ describe("NoteWindowManager pins a rendered note", () => {
         expect(told).toHaveBeenCalledOnce();
     });
 
-    // Reports run in the order the observers were made. Read first, the place
-    // fell where the grown note was still clipped, in the note below it.
-    it("hears a resize before the scroll anchor, which reads the note re-pinned", async () => {
-        // No native anchoring, as on iOS: the anchor attaches and observes too.
-        vi.stubGlobal("CSS", { supports: () => false });
+    // Told first, the anchor read the place where the grown note was still
+    // clipped, in the note below it.
+    it("tells the anchor of a resize inside it once it is re-pinned", async () => {
         let height = 640;
         const { block } = await rendered(natural(() => height));
+        const seen: string[] = [];
+        told.mockImplementation(() => void seen.push(pinned(block)));
         height = 900;
 
-        resizeCallbacks[0]!([{ target: block.lastElementChild } as ResizeObserverEntry], {} as ResizeObserver);
+        resize(block.lastElementChild as HTMLElement);
 
-        expect(pinned(block)).toBe("900px");
+        expect(seen).toEqual(["900px"]);
+    });
+
+    // Its pin hides a change inside it from a watch on the note.
+    it("tells the anchor of a resize inside it that its pin holds", async () => {
+        const { block } = await rendered(natural(() => 640));
+        told.mockClear();
+
+        resize(block.lastElementChild as HTMLElement);
+
+        expect(pinned(block)).toBe("640px");
+        expect(told).toHaveBeenCalledOnce();
+    });
+
+    it("watches what it rendered with one ResizeObserver, the anchor's included", async () => {
+        // No native anchoring, as on iOS: the anchor attaches its own observer.
+        vi.stubGlobal("CSS", { supports: () => false });
+        const { block } = await rendered(natural(() => 640));
+
+        const watching = resizeObserves.filter((observe) =>
+            observe.mock.calls.some(([el]) => el === block.lastElementChild)
+        );
+        expect(watching).toHaveLength(1);
     });
 
     // A height a Base set by its hold: told at once, not by a report a frame late.
@@ -1342,15 +1368,6 @@ describe("NoteWindowManager pins a rendered note", () => {
 
         expect(pinned(block)).toBe("900px");
         expect(told).toHaveBeenCalledOnce();
-    });
-
-    it("tells the anchor nothing when its height did not change", async () => {
-        const { block } = await rendered(natural(() => 640));
-        told.mockClear();
-
-        resize(block.lastElementChild as HTMLElement);
-
-        expect(told).not.toHaveBeenCalled();
     });
 
     // A hold is a min-height, which the pin hides: its let-go shows only once re-pinned.
@@ -2476,24 +2493,18 @@ describe("NoteWindowManager scroll anchoring", () => {
         handOver.mockRestore();
     });
 
-    // Held at its height, a note hides a change inside it from a watch on it.
-    it("has the anchor watch what a note rendered while it is rendered", async () => {
-        const observeContent = vi.spyOn(ScrollAnchor.prototype, "observeContent");
-        const unobserveContent = vi.spyOn(ScrollAnchor.prototype, "unobserveContent");
+    it("stops watching what a note rendered once it unloads", async () => {
         const { manager } = makeManager();
         const block = manager.add(FILE);
         document.body.appendChild(block);
         fire(observers.render, block, true);
         await settle();
         const rendered = block.firstElementChild;
-
-        expect(observeContent).toHaveBeenCalledWith(rendered);
+        expect(resizeObserver.observe).toHaveBeenCalledWith(rendered);
 
         fire(observers.unload, block, false);
         await still();
-        expect(unobserveContent).toHaveBeenCalledWith(rendered);
-        observeContent.mockRestore();
-        unobserveContent.mockRestore();
+        expect(resizeObserver.unobserve).toHaveBeenCalledWith(rendered);
         document.body.empty();
     });
 
