@@ -31,18 +31,10 @@ export interface CollapsibleSection {
     hides(node: Node): boolean;
 }
 
-/** A collapsed section, as search sees it. */
+/** A section with its chevron: search opens it, a re-render closes it again or gives it a new key. */
 interface Fold {
-    hides(node: Node): boolean;
-    /** Expands the section without saving it. */
-    open(): void;
-    /** Collapses it again over content rendered since, without saving it. */
-    close(): void;
-}
-
-/** A section's chevron, which can take a new key and show that key's state. */
-interface Keyed {
     section: CollapsibleSection;
+    /** Shows the section collapsed or not, without saving it. */
     show(collapsed: boolean): void;
 }
 
@@ -65,7 +57,7 @@ export class CollapsibleManager {
     /** Chevron → its section. */
     private readonly sections = new WeakMap<Element, Fold>();
     /** Collapsible element → its section, so a note re-rendered in place tells kept from new. */
-    private readonly keyed = new WeakMap<HTMLElement, Keyed>();
+    private readonly keyed = new WeakMap<HTMLElement, Fold>();
 
     /** One listener pair for the whole stream, so a re-rendered chevron needs none of its own. */
     delegate(component: Component, root: HTMLElement): void {
@@ -139,12 +131,9 @@ export class CollapsibleManager {
         };
 
         this.toggles.set(indicator, toggle);
-        this.keyed.set(host, { section, show: set });
-        this.sections.set(indicator, {
-            hides: (node) => section.hides(node),
-            open: () => set(false),
-            close: () => set(true),
-        });
+        const fold = { section, show: set };
+        this.keyed.set(host, fold);
+        this.sections.set(indicator, fold);
         return toggle;
     }
 
@@ -159,34 +148,18 @@ export class CollapsibleManager {
      */
     unfold(node: Node): void {
         this.farRuns.reveal(node);
-        for (const fold of this.foldsAround(node)) fold.open();
+        for (const fold of this.foldsAround(node)) fold.show(false);
     }
 
     private foldsAround(node: Node): Fold[] {
         const root = node.getRootNode() as ParentNode;
         return Array.from(root.querySelectorAll(COLLAPSED_CHEVRON))
             .map((chevron) => this.sections.get(chevron))
-            .filter((fold): fold is Fold => fold !== undefined && fold.hides(node));
+            .filter((fold): fold is Fold => fold !== undefined && fold.section.hides(node));
     }
 
     /** Adds a chevron to every header and nested list; returns their section keys. */
     makeCollapsible(contentEl: HTMLElement, filePath: string): string[] {
-        return this.collapse(contentEl, filePath);
-    }
-
-    /**
-     * After sections re-rendered in place (ADR 0019): chevrons for what is new,
-     * and each collapsed section closed again over it.
-     */
-    refreshCollapsible(contentEl: HTMLElement, filePath: string): string[] {
-        const keys = this.collapse(contentEl, filePath);
-        for (const chevron of Array.from(contentEl.querySelectorAll(COLLAPSED_CHEVRON))) {
-            this.sections.get(chevron)?.close();
-        }
-        return keys;
-    }
-
-    private collapse(contentEl: HTMLElement, filePath: string): string[] {
         const above = this.headingsAbove(contentEl);
         // Shared across headers and lists so every key in a note is unique.
         const seenKeys = new Map<string, number>();
@@ -195,6 +168,18 @@ export class CollapsibleManager {
             return this.uniqueKey(heading === undefined ? slug : `${heading}/${slug}`, seenKeys);
         };
         return [...this.processHeaders(contentEl, filePath, keyFor), ...this.processLists(contentEl, filePath, keyFor)];
+    }
+
+    /**
+     * After sections re-rendered in place (ADR 0019): chevrons for what is new,
+     * and each collapsed section closed again over it.
+     */
+    refreshCollapsible(contentEl: HTMLElement, filePath: string): string[] {
+        const keys = this.makeCollapsible(contentEl, filePath);
+        for (const chevron of Array.from(contentEl.querySelectorAll(COLLAPSED_CHEVRON))) {
+            this.sections.get(chevron)?.show(true);
+        }
+        return keys;
     }
 
     /**
@@ -222,12 +207,12 @@ export class CollapsibleManager {
      * as a whole render would give it.
      */
     private kept(el: HTMLElement, key: string): boolean {
-        const keyed = this.keyed.get(el);
-        if (!keyed) return false;
-        const { section } = keyed;
+        const fold = this.keyed.get(el);
+        if (!fold) return false;
+        const { section } = fold;
         if (section.sectionKey !== key) {
             section.sectionKey = key;
-            keyed.show(this.store.collapsedOr(section.filePath, key, section.defaultCollapsed));
+            fold.show(this.store.collapsedOr(section.filePath, key, section.defaultCollapsed));
         }
         return true;
     }

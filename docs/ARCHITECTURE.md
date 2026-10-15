@@ -56,9 +56,10 @@ opens, so a view's own handler always reads an index already updated.
    ([ADR 0006](adr/0006-unload-off-screen-notes.md),
    [ADR 0023](adr/0023-hide-far-content-as-it-leaves.md)). A hidden note keeps
    its content out of the layout inside its pin; a long note's runs hide behind
-   spacers (`far-runs.ts`, [ADR 0021](adr/0021-hide-far-runs-of-long-notes.md)).
-   Both show again as they near. Each rendered note owns a child `Component`,
-   discarded on unload. A long note the reader comes up into draws from its end
+   spacers (`far-runs.ts`, [ADR 0021](adr/0021-hide-far-runs-of-long-notes.md)),
+   watched by `far-run-watch.ts`. Both show again as they near. Each rendered
+   note owns a child `Component`, discarded on unload. A long note the reader
+   comes up into draws from its end
    ([ADR 0022](adr/0022-draw-long-notes-from-the-end-met.md)).
 4. **Change.** Vault and metadata events become `NoteStream` mutations: insert,
    remove, re-render, reconsider whether a note is hidden. Saves are debounced

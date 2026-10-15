@@ -20,7 +20,7 @@ import { stackWideTables } from "./wide-tables";
 import { fitWideEquations } from "./wide-equations";
 import { fallBackToSmallThumbnail } from "./video-thumbnails";
 import { extractBases, type BaseSource } from "./bases/bases-as-cards";
-import { changedSpan, noteChunks, noteSections } from "./note-sections";
+import { changedSpan, noteChunks, noteSections, type ChangedSpan } from "./note-sections";
 import { TimeSlice } from "./time-slice";
 import { NoteBases } from "./bases/note-bases";
 import { NoteWidths } from "./note-widths";
@@ -170,12 +170,27 @@ export type DrawOrder = "from-start" | "from-end";
  */
 export const DRAWING_FROM_END = "is-drawing-from-end";
 
-/** A note rendered section by section, which a save can re-render in part. */
-interface SectionedNote {
+/** A note rendered a section, or a run of them, at a time. */
+interface DrawnNote {
     contentEl: HTMLElement;
-    /** Its text above the body: a change there draws the properties again. */
-    frontmatter: string;
+    /** As drawn so far, for the stream to hide between slices. */
     sections: RenderedSection[];
+    /** The section each run starts at, fixed once it is drawn: a save changes no run it left alone. */
+    runStarts: WeakSet<RenderedSection> | null;
+    /**
+     * Its text above the body, a change to which draws the properties again;
+     * null where it rendered in runs, and a save renders it whole.
+     */
+    frontmatter: string | null;
+}
+
+/** On mobile a Base draws as cards (ADR 0008), into a slot its source leaves. */
+function withoutBases(source: string): { markdown: string; bases: BaseSource[] } {
+    return Platform.isMobile ? extractBases(source) : { markdown: source, bases: [] };
+}
+
+function hasBases(source: string): boolean {
+    return extractBases(source).bases.length > 0;
 }
 
 /** The note's text up to its body: frontmatter, or nothing. */
@@ -195,12 +210,8 @@ export class NoteRenderer {
     private readonly bases: NoteBases;
     private readonly mentions: LinkedMentionsFooter;
     private readonly widths: NoteWidths;
-    /** Long notes, by the component they were rendered into. */
-    private readonly sectioned = new WeakMap<Component, SectionedNote>();
-    /** What each note rendered a section or a run at a time drew, by its component. */
-    private readonly drawn = new WeakMap<Component, RenderedSection[]>();
-    /** The section each run starts at, fixed once a note is drawn: a save changes no run it left alone. */
-    private readonly runStarts = new WeakMap<Component, WeakSet<RenderedSection>>();
+    /** Notes drawn a section or a run at a time, by the component they were rendered into. */
+    private readonly drawn = new WeakMap<Component, DrawnNote>();
     /**
      * Notes saved while rendered, by path: they render by section from then
      * on. Until a save a note renders whole, which for a long one costs half.
@@ -261,8 +272,7 @@ export class NoteRenderer {
             this.renderHeader(block, file);
             this.renderProperties(block, file);
         } catch (error) {
-            this.discard(noteComponent);
-            block.empty();
+            this.abandon(block, noteComponent);
             throw error;
         }
 
@@ -279,22 +289,17 @@ export class NoteRenderer {
             const sources = bySection ? noteSections(markdown, cache) : chunksOf(markdown, cache);
             if (sources) {
                 if (order === "from-end") block.addClass(DRAWING_FROM_END);
-                const sections = await this.renderSections(contentEl, file, noteComponent, sources, goOn, order);
-                if (!sections) {
-                    this.discard(noteComponent);
-                    block.empty();
-                    return null;
-                }
-                if (bySection) this.sectioned.set(noteComponent, { contentEl, frontmatter, sections });
+                const note: DrawnNote = { contentEl, sections: [], runStarts: null, frontmatter: null };
+                this.drawn.set(noteComponent, note);
+                if (!(await this.renderSections(note, file, noteComponent, sources, goOn, order)))
+                    return this.abandon(block, noteComponent);
+                // One that failed to draw renders whole on a save.
+                if (bySection) note.frontmatter = frontmatter;
             } else await this.renderWhole(contentEl, file, noteComponent, markdown.slice(frontmatter.length).trim());
             const sectionKeys = this.collapsible.makeCollapsible(contentEl, file.path);
             this.collapsible.forgetRemovedSections(file, sectionKeys);
         } catch (error) {
-            if (this.isDeleted(file)) {
-                this.discard(noteComponent);
-                block.empty();
-                return null;
-            }
+            if (this.isDeleted(file)) return this.abandon(block, noteComponent);
             console.error(`DailyNotesStream: Failed to render note ${file.path}:`, error);
             contentEl.setText("Error rendering note");
         }
@@ -312,8 +317,8 @@ export class NoteRenderer {
      * update may leave it part-drawn, until that whole render.
      */
     async update(block: HTMLElement, file: TFile, noteComponent: Component): Promise<boolean> {
-        const note = this.sectioned.get(noteComponent);
-        if (!note) {
+        const note = this.drawn.get(noteComponent);
+        if (note?.frontmatter == null) {
             this.saved.add(file.path);
             return false;
         }
@@ -324,45 +329,16 @@ export class NoteRenderer {
             if (!sources) return false;
             const frontmatter = frontmatterOf(markdown, cache);
             const frontmatterChanged = frontmatter !== note.frontmatter;
-            // A Base's formulas may read the note's properties: it draws again with them.
-            if (
-                frontmatterChanged &&
-                Platform.isMobile &&
-                [...note.sections.map((s) => s.source), ...sources].some((s) => extractBases(s).bases.length)
-            )
-                return false;
+            const before = note.sections.map((section) => section.source);
+            const span = changedSpan(before, sources);
+            // Bases render across the note, each into its slot in order, and
+            // a Base's formulas may read the note's properties: it draws again with them.
+            const redrawn = frontmatterChanged
+                ? [...before, ...sources]
+                : [...before.slice(span.start, span.endBefore), ...sources.slice(span.start, span.endAfter)];
+            if (Platform.isMobile && redrawn.some(hasBases)) return false;
 
-            const { start, endBefore, endAfter } = changedSpan(
-                note.sections.map((section) => section.source),
-                sources
-            );
-            const removed = note.sections.slice(start, endBefore);
-            const added = sources.slice(start, endAfter);
-            // Bases render across the note, each into its slot in order.
-            if (
-                Platform.isMobile &&
-                [...removed.map((s) => s.source), ...added].some((s) => extractBases(s).bases.length)
-            )
-                return false;
-
-            // Sections replaced among hidden ones would show beside a spacer
-            // still standing for them: the runs they and their neighbours are in show.
-            for (const section of note.sections.slice(Math.max(0, start - 1), endBefore + 1))
-                for (const node of section.nodes) this.farRuns.reveal(node);
-            const next = firstNodeOf(note.sections.slice(endBefore));
-            for (const section of removed) {
-                section.nodes.forEach((node) => node.remove());
-                noteComponent.removeChild(section.component);
-            }
-            const rendered: RenderedSection[] = [];
-            for (const source of added) {
-                rendered.push(await this.renderSection(note.contentEl, next, source, file, noteComponent));
-            }
-            note.sections.splice(start, endBefore - start, ...rendered);
-            const starts = this.runStarts.get(noteComponent);
-            // A run that lost the section it started at starts at what took its place.
-            const heir = note.sections[start];
-            if (starts && heir && removed.some((section) => starts.has(section))) starts.add(heir);
+            await this.replaceSections(note, span, sources, file, noteComponent);
             if (frontmatterChanged) {
                 this.redrawProperties(block, note.contentEl, file);
                 note.frontmatter = frontmatter;
@@ -379,6 +355,35 @@ export class NoteRenderer {
         }
     }
 
+    /** Sections `span` of `note` drawn again from `sources`, in place. */
+    private async replaceSections(
+        note: DrawnNote,
+        { start, endBefore, endAfter }: ChangedSpan,
+        sources: string[],
+        file: TFile,
+        noteComponent: Component
+    ): Promise<void> {
+        // Sections replaced among hidden ones would show beside a spacer
+        // still standing for them: the runs they and their neighbours are in show.
+        for (const section of note.sections.slice(Math.max(0, start - 1), endBefore + 1))
+            for (const node of section.nodes) this.farRuns.reveal(node);
+        const removed = note.sections.slice(start, endBefore);
+        const next = firstNodeOf(note.sections.slice(endBefore));
+        for (const section of removed) {
+            section.nodes.forEach((node) => node.remove());
+            noteComponent.removeChild(section.component);
+        }
+        const rendered: RenderedSection[] = [];
+        for (const source of sources.slice(start, endAfter)) {
+            rendered.push(await this.renderSection(note.contentEl, next, source, file, noteComponent));
+        }
+        note.sections.splice(start, endBefore - start, ...rendered);
+        const starts = note.runStarts;
+        // A run that lost the section it started at starts at what took its place.
+        const heir = note.sections[start];
+        if (starts && heir && removed.some((section) => starts.has(section))) starts.add(heir);
+    }
+
     /** The runs hidden when far, shared with collapsing (ADR 0021). */
     get farRuns(): FarRuns {
         return this.collapsible.farRuns;
@@ -389,11 +394,19 @@ export class NoteRenderer {
      * the stream to hide when far (ADR 0021); none for a note rendered whole.
      */
     runsOf(noteComponent: Component): Element[][] {
-        const sections = this.drawn.get(noteComponent) ?? [];
-        const starts = this.runStarts.get(noteComponent);
-        return (starts ? groupByStarts(sections, starts) : groupByLength(sections))
+        const note = this.drawn.get(noteComponent);
+        if (!note) return [];
+        const { sections, runStarts } = note;
+        return (runStarts ? groupByStarts(sections, runStarts) : groupByLength(sections))
             .map((run) => run.flatMap((section) => section.nodes.filter((node) => node instanceof Element)))
             .filter((run) => run.length > 0);
+    }
+
+    /** Leaves `block` empty, freeing what its note registered. */
+    private abandon(block: HTMLElement, noteComponent: Component): null {
+        this.discard(noteComponent);
+        block.empty();
+        return null;
     }
 
     /** Gone from the vault: its read fails, and its block is about to go. */
@@ -405,16 +418,24 @@ export class NoteRenderer {
     private async renderWhole(contentEl: HTMLElement, file: TFile, noteComponent: Component, markdown: string) {
         // On mobile nothing in the stream may scroll (ADR 0008); desktop
         // draws wide content as Obsidian does, scrolling in its own box.
-        const mobile = Platform.isMobile;
-        const { markdown: body, bases } = mobile ? extractBases(markdown) : { markdown, bases: [] };
+        const { markdown: body, bases } = withoutBases(markdown);
         await MarkdownRenderer.render(this.app, body, contentEl, file.path, noteComponent);
         this.markUnresolvedLinks(contentEl);
-        if (mobile) {
-            await this.bases.render(contentEl, file, noteComponent, bases);
-            stackWideTables(contentEl, noteComponent, this.widths);
-            fitWideEquations(contentEl, noteComponent, this.widths);
-        }
+        await this.finishNote(contentEl, file, noteComponent, bases);
+        if (Platform.isMobile) fitWideEquations(contentEl, noteComponent, this.widths);
         wrapTextBesideBlocks(contentEl);
+    }
+
+    /** Once the whole note is drawn: its Bases as cards, and its tables stacked, on mobile. */
+    private async finishNote(
+        contentEl: HTMLElement,
+        file: TFile,
+        noteComponent: Component,
+        bases: BaseSource[]
+    ): Promise<void> {
+        if (!Platform.isMobile) return;
+        await this.bases.render(contentEl, file, noteComponent, bases);
+        stackWideTables(contentEl, noteComponent, this.widths);
     }
 
     /**
@@ -424,22 +445,20 @@ export class NoteRenderer {
      * part-drawn, for its discard.
      */
     private async renderSections(
-        contentEl: HTMLElement,
+        note: DrawnNote,
         file: TFile,
         noteComponent: Component,
         sources: string[],
         goOn: (note: Component) => Promise<boolean>,
         order: DrawOrder
-    ): Promise<RenderedSection[] | null> {
+    ): Promise<boolean> {
         const slice = new TimeSlice(SLICE_MS);
         const fromEnd = order === "from-end";
-        const sections: RenderedSection[] = [];
-        // Its runs as drawn so far, for the stream to hide between slices.
-        this.drawn.set(noteComponent, sections);
+        const { contentEl, sections } = note;
         for (const source of fromEnd ? [...sources].reverse() : sources) {
             if (await slice.yieldIfSpent()) {
-                if (!(await goOn(noteComponent))) return null;
-                if (!contentEl.isConnected) return sections;
+                if (!(await goOn(noteComponent))) return false;
+                if (!contentEl.isConnected) return true;
             }
             if (!fromEnd) sections.push(await this.renderSection(contentEl, null, source, file, noteComponent));
             else
@@ -447,17 +466,14 @@ export class NoteRenderer {
                     await this.renderSection(contentEl, firstNodeOf(sections), source, file, noteComponent)
                 );
         }
-        this.runStarts.set(noteComponent, new WeakSet(groupByLength(sections).map((run) => run[0]!)));
-        if (Platform.isMobile) {
-            await this.bases.render(
-                contentEl,
-                file,
-                noteComponent,
-                sections.flatMap((section) => section.bases)
-            );
-            stackWideTables(contentEl, noteComponent, this.widths);
-        }
-        return sections;
+        note.runStarts = new WeakSet(groupByLength(sections).map((run) => run[0]!));
+        await this.finishNote(
+            contentEl,
+            file,
+            noteComponent,
+            sections.flatMap((section) => section.bases)
+        );
+        return true;
     }
 
     /**
@@ -474,11 +490,10 @@ export class NoteRenderer {
     ): Promise<RenderedSection> {
         const component = noteComponent.addChild(new Component());
         const holder = contentEl.insertBefore(document.createElement("div"), next);
-        const mobile = Platform.isMobile;
-        const { markdown, bases } = mobile ? extractBases(source) : { markdown: source, bases: [] };
+        const { markdown, bases } = withoutBases(source);
         await MarkdownRenderer.render(this.app, markdown, holder, file.path, component);
         this.markUnresolvedLinks(holder);
-        if (mobile) fitWideEquations(contentEl, component, this.widths, holder);
+        if (Platform.isMobile) fitWideEquations(contentEl, component, this.widths, holder);
         wrapTextBesideBlocks(holder);
         const nodes = Array.from(holder.childNodes);
         holder.replaceWith(...nodes);

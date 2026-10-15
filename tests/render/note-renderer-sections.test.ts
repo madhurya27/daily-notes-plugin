@@ -418,6 +418,18 @@ describe("NoteRenderer, a note by section", () => {
         expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed to update"), expect.any(Error));
     });
 
+    it("leaves a note it failed to render by section to a whole render on its save", async () => {
+        renderer = makeRenderer(today);
+        const render = vi.spyOn(MarkdownRenderer, "render").mockRejectedValue(new Error("broken plugin"));
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        await open(days());
+        render.mockClear();
+        const changed = days();
+        changed[4] = `Day X.${FILLER}`;
+        expect(await save(changed)).toBe(false);
+        expect(render).not.toHaveBeenCalled();
+    });
+
     it("leaves a note deleted mid-update to its removal, reporting nothing", async () => {
         await openSaved(days());
         app.vault.cachedRead = () => Promise.reject(new Error("ENOENT"));

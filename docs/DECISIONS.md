@@ -2264,3 +2264,19 @@ directly under it; renamed back within a day, they fold again (D-027).
   beneath it.
 - Migrating saved keys — unpublished before `1.0.0`; a section saved under a
   heading reopens once.
+
+## D-137 — A note window's flags stay apart, and `FarRuns` stays the collapser's (2026-10-14)
+
+**Decision:** `NoteWindow` keeps `component`, `rendering`, `unloadWanted`,
+`is-far` and the `leaving` set as separate fields; `CollapsibleManager` makes
+`FarRuns`, and the renderer and the window reach it through the renderer.
+
+**Why:** the flags are three axes that combine — what is drawn, whether it is
+out of the layout, whether an unload waits — so a note updating in place can be
+hidden and leaving at once. Threading `FarRuns` from `StreamView` would add a
+parameter to two constructors to drop one getter.
+
+**Rejected:**
+
+- One state enum per window — it would list every combination of the three.
+- `StreamView` making `FarRuns` — longer constructors for one getter less.
