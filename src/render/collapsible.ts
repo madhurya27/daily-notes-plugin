@@ -46,6 +46,9 @@ interface Keyed {
     show(collapsed: boolean): void;
 }
 
+/** A section's key: its slug under the heading above it, numbered if repeated. */
+type KeyFor = (el: Element, slug: string) => string;
+
 /** Chevrons of collapsed sections carry this, so a query finds them. */
 const COLLAPSED_CHEVRON = '.collapse-indicator[aria-expanded="false"]';
 
@@ -184,12 +187,33 @@ export class CollapsibleManager {
     }
 
     private collapse(contentEl: HTMLElement, filePath: string): string[] {
+        const above = this.headingsAbove(contentEl);
         // Shared across headers and lists so every key in a note is unique.
         const seenKeys = new Map<string, number>();
-        return [
-            ...this.processHeaders(contentEl, filePath, seenKeys),
-            ...this.processLists(contentEl, filePath, seenKeys),
-        ];
+        const keyFor: KeyFor = (el, slug) => {
+            const heading = above.get(el);
+            return this.uniqueKey(heading === undefined ? slug : `${heading}/${slug}`, seenKeys);
+        };
+        return [...this.processHeaders(contentEl, filePath, keyFor), ...this.processLists(contentEl, filePath, keyFor)];
+    }
+
+    /**
+     * Each heading and list item → the slug of the heading it sits under, so a
+     * repeat is numbered only among its heading's: deleting one under another
+     * heading hands on no saved state. "/" is in no slug.
+     */
+    private headingsAbove(contentEl: HTMLElement): Map<Element, string> {
+        const above = new Map<Element, string>();
+        const open: { level: number; slug: string }[] = [];
+        for (const el of Array.from(contentEl.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6, li"))) {
+            const level = this.headingLevel(el);
+            if (level !== null && el.parentElement?.tagName === "LI") continue;
+            while (level !== null && open.length > 0 && open[open.length - 1]!.level >= level) open.pop();
+            const nearest = open[open.length - 1];
+            if (nearest) above.set(el, nearest.slug);
+            if (level !== null) open.push({ level, slug: slugify(el.getText()) });
+        }
+        return above;
     }
 
     /**
@@ -228,12 +252,12 @@ export class CollapsibleManager {
         return occurrence === 1 ? key : `${key}#${occurrence}`;
     }
 
-    private processHeaders(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): string[] {
+    private processHeaders(contentEl: HTMLElement, filePath: string, keyFor: KeyFor): string[] {
         const headers = Array.from(contentEl.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"));
         return headers
             .filter((header) => header.parentElement?.tagName !== "LI")
             .map((header) => {
-                const sectionKey = this.uniqueKey(slugify(header.getText()), seenKeys);
+                const sectionKey = keyFor(header, slugify(header.getText()));
                 if (this.kept(header, sectionKey)) return sectionKey;
                 header.addClass("is-collapsible");
                 this.attachCollapseToggle(header, {
@@ -250,13 +274,13 @@ export class CollapsibleManager {
             });
     }
 
-    private processLists(contentEl: HTMLElement, filePath: string, seenKeys: Map<string, number>): string[] {
+    private processLists(contentEl: HTMLElement, filePath: string, keyFor: KeyFor): string[] {
         const listItems = Array.from(contentEl.querySelectorAll<HTMLElement>("li"));
         return listItems
             .filter((li) => li.querySelector("ul, ol"))
             .map((li) => {
                 const depth = this.getListDepth(li);
-                const sectionKey = this.uniqueKey(`li-${depth}-${slugify(this.ownText(li))}`, seenKeys);
+                const sectionKey = keyFor(li, `li-${depth}-${slugify(this.ownText(li))}`);
                 if (this.kept(li, sectionKey)) return sectionKey;
                 li.addClass("is-collapsible");
                 this.attachCollapseToggle(li, {

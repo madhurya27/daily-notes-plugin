@@ -26,10 +26,6 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       collapsing to close what draws later under a collapsed heading, space held
       for the undrawn rest, and a search jump to draw its part first. Only if
       that wait shows up on the phone.
-- [ ] Key a collapsed section by the heading it sits under too
-      (`day-35/li-1-errands`): repeats are numbered by position, so deleting the
-      first hands its saved state to the next. Before `1.0.0`, no store
-      migration: saved states reopen once.
 
 ## Features
 

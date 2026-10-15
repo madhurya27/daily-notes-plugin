@@ -15,7 +15,8 @@ export function isOldCollapseKey(name: string): boolean {
 
 /**
  * Collapse state, one per plugin, read once and saved whole on each change.
- * Keys: slugified text for headers, `li-{depth}-{own text}` for list items.
+ * Keys: slugified text for headers, `li-{depth}-{own text}` for list items,
+ * each under the heading above it (D-136).
  */
 export class CollapsibleStateStore {
     private readonly files: Map<string, Sections>;

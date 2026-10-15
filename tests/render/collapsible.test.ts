@@ -181,7 +181,57 @@ describe("CollapsibleManager — duplicate section keys", () => {
         clickChevron(content.querySelector("li") as HTMLElement);
 
         expect(store.setCollapsed).toHaveBeenNthCalledWith(1, "file.md", "task", true);
-        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "li-1-task", true);
+        expect(store.setCollapsed).toHaveBeenNthCalledWith(2, "file.md", "task/li-1-task", true);
+    });
+});
+
+describe("CollapsibleManager — keys by the heading above", () => {
+    const keysOf = (html: string) => {
+        const content = document.createElement("div");
+        content.innerHTML = html;
+        return new CollapsibleManager(makeStore()).makeCollapsible(content, "file.md");
+    };
+    const list = (text: string) => `<ul><li>${text}<ul><li>a</li></ul></li></ul>`;
+
+    it("keys a list item by the heading it sits under", () => {
+        expect(keysOf(`<h2>Day 35</h2>${list("Errands")}`)).toEqual(["day-35", "day-35/li-1-errands"]);
+    });
+
+    // Deleting the first would otherwise hand its saved state to the second.
+    it("numbers a repeated list item only under the same heading", () => {
+        expect(keysOf(`<h2>Mon</h2>${list("Errands")}<h2>Tue</h2>${list("Errands")}`)).toEqual([
+            "mon",
+            "tue",
+            "mon/li-1-errands",
+            "tue/li-1-errands",
+        ]);
+    });
+
+    it("keys a heading by the heading it sits under, and a top-level one bare", () => {
+        expect(keysOf("<h1>Morning</h1><h2>Notes</h2><h1>Evening</h1><h2>Notes</h2>")).toEqual([
+            "morning",
+            "morning/notes",
+            "evening",
+            "evening/notes",
+        ]);
+    });
+
+    it("keys a list item by the nearest heading above, at any level", () => {
+        expect(keysOf(`<h1>Day</h1><h3>Errands</h3>${list("Shop")}<h2>Later</h2>${list("Call")}`)).toEqual([
+            "day",
+            "day/errands",
+            "day/later",
+            "errands/li-1-shop",
+            "later/li-1-call",
+        ]);
+    });
+
+    it("finds the heading above a list wrapped in a block of its own", () => {
+        expect(keysOf(`<h2>Plan</h2><div>${list("Errands")}</div>`)).toEqual(["plan", "plan/li-1-errands"]);
+    });
+
+    it("keys a list item above every heading bare", () => {
+        expect(keysOf(`${list("Errands")}<h2>Plan</h2>`)).toEqual(["plan", "li-1-errands"]);
     });
 });
 
@@ -632,7 +682,7 @@ describe("CollapsibleManager — stale sections", () => {
         const content = document.createElement("div");
         content.innerHTML = "<h2>Notes</h2><h2>Notes</h2><ul><li>Task<ul><li>a</li></ul></li></ul>";
 
-        expect(manager.makeCollapsible(content, "file.md")).toEqual(["notes", "notes#2", "li-1-task"]);
+        expect(manager.makeCollapsible(content, "file.md")).toEqual(["notes", "notes#2", "notes/li-1-task"]);
     });
 
     it("forgets the sections a settled note no longer has, keeping the properties panel's and the footer's", () => {
@@ -659,7 +709,7 @@ describe("CollapsibleManager — refreshing after sections re-render in place", 
         manager.makeCollapsible(content, "file.md");
         content.createEl("h2", { text: "Later" });
 
-        expect(manager.refreshCollapsible(content, "file.md")).toEqual(["plan", "later", "li-1-errands"]);
+        expect(manager.refreshCollapsible(content, "file.md")).toEqual(["plan", "later", "plan/li-1-errands"]);
         expect(content.querySelectorAll(".collapse-indicator")).toHaveLength(3);
     });
 
@@ -680,6 +730,22 @@ describe("CollapsibleManager — refreshing after sections re-render in place", 
 
         clickChevron(kept);
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-errands#2", false);
+    });
+
+    // D-136: the key names the heading above, so a renamed heading reopens what sits under it.
+    it("opens a kept list item under a renamed heading, whose key has no saved state", () => {
+        const store = makeStore();
+        vi.mocked(store.collapsedOr).mockImplementation((_path, key) => key === "errands/li-1-shopping");
+        const manager = new CollapsibleManager(store);
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Errands</h2><ul><li>Shopping<ul><li>Milk</li></ul></li></ul>";
+        makeCollapsible(manager, content, "file.md");
+        const kept = content.querySelector("li")!;
+        content.querySelector("h2")!.replaceWith(Object.assign(document.createElement("h2"), { textContent: "To do" }));
+
+        expect(kept.hasClass("is-collapsed")).toBe(true);
+        expect(manager.refreshCollapsible(content, "file.md")).toEqual(["to-do", "to-do/li-1-shopping"]);
+        expect(kept.hasClass("is-collapsed")).toBe(false);
     });
 });
 

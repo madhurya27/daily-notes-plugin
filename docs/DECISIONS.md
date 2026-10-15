@@ -2242,3 +2242,22 @@ a note of a few bytes, all title and frame, from coming out short.
 - The median rate — a note denser than it, as any Base is, comes out short.
 - The shortest note measured as the floor — measured alone, the long note is the
   shortest.
+
+## D-136 — A section's collapse key names the heading above it (2026-10-14)
+
+**Decision:** a heading or nested list item is keyed as `{heading}/{own key}`,
+`{heading}` the slug of the nearest heading above that outranks it (`h1` over
+`h2`), or of any level for a list item; one above every heading keeps the bare
+key. Repeats are numbered among the same full key.
+
+**Why:** repeats were numbered across the note, so deleting the first `Errands`
+handed its saved state to the next, under another heading. Only repeats beside
+each other now shift. The cost: renaming a heading reopens the sections folded
+directly under it; renamed back within a day, they fold again (D-027).
+
+**Rejected:**
+
+- The full heading path — renaming a top heading would reopen every section
+  beneath it.
+- Migrating saved keys — unpublished before `1.0.0`; a section saved under a
+  heading reopens once.
