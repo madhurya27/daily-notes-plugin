@@ -7,6 +7,8 @@ export default defineConfig({
         include: ["tests/**/*.test.ts"],
         environment: "jsdom",
         setupFiles: ["tests/setup.ts"],
+        // A run stops at its first failure; --bail=0 runs on. Stryker sets its own (D-141).
+        bail: 1,
         coverage: {
             provider: "v8",
             include: ["src/**/*.ts"],

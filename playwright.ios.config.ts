@@ -8,6 +8,8 @@ export default defineConfig({
     testDir: "e2e/ios",
     globalSetup: "./e2e/ios/global-setup.ts",
     workers: 1,
+    // A run stops at its first failure; --max-failures=0 runs on, for a full report.
+    maxFailures: 1,
     // A session starts WebDriverAgent on the phone; flicks wait out their glide.
     timeout: 180_000,
     expect: { timeout: 15_000 },

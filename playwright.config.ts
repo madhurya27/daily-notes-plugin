@@ -11,6 +11,8 @@ export default defineConfig<MobileLayoutOptions>({
     globalSetup: "./e2e/global-setup.ts",
     // One Obsidian instance and vault per worker; more starves them of CPU.
     workers: 4,
+    // A run stops at its first failure; --max-failures=0 runs on, for a full report.
+    maxFailures: 1,
     fullyParallel: true,
     timeout: 60_000,
     expect: { timeout: 15_000 },
