@@ -116,6 +116,17 @@ describe("stackWideTables", () => {
         expect(el.querySelector("td")!.dataset.column).toBe("Day");
     });
 
+    it("passes over text drawn beside a later table", async () => {
+        stackWideTables(content, component, widths);
+        const el = table(["Day"], [["1"]]);
+        setWidth(el, "offsetWidth", () => 600);
+
+        content.append("3 results", el);
+        await Promise.resolve();
+
+        expect(el.classList.contains("is-stacked")).toBe(true);
+    });
+
     // Dataview fills its table over several renders: a header first, rows later.
     it("re-checks a table as its rows arrive", async () => {
         const el = content.appendChild(table(["Day"], []));

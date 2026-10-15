@@ -48,6 +48,14 @@ describe("templatePattern", () => {
         }
     );
 
+    it.each(["<%- tp.file.cursor() %>", "<% tp.file.cursor() -%>", "<%_ tp.file.cursor() _%>"])(
+        "reads %s, its whitespace controlled, as nothing too",
+        (cursor) => {
+            expect(matches("Notes:", `Notes: ${cursor}`)).toBe(true);
+            expect(matches("Notes: Called Mara", `Notes: ${cursor}`)).toBe(false);
+        }
+    );
+
     it("reads tp.file.cursor() as the marker Templater writes back, until it jumps there", () => {
         const template = "## Notes\n- <% tp.file.cursor() %>\n";
 
@@ -74,6 +82,19 @@ describe("templatePattern", () => {
         expect(matches("A\n\n2026-10-11\nwritten", template)).toBe(false);
     });
 
+    it("reads a template of a placeholder alone as any one line", () => {
+        expect(matches("2026-10-15", "{{date}}")).toBe(true);
+        expect(matches("2026-10-15\nwritten", "{{date}}")).toBe(false);
+    });
+
+    it("still wants the text after a placeholder", () => {
+        expect(matches("A", "A\n{{date}}\nB")).toBe(false);
+    });
+
+    it("reads an indented placeholder filled with nothing as a blank line", () => {
+        expect(matches("A\n\nB", "A\n  {{date}}\nB")).toBe(true);
+    });
+
     it("still wants blank lines the template keeps between text", () => {
         expect(matches("A\nB", "A\n\nB")).toBe(false);
     });
@@ -83,6 +104,10 @@ describe("templatePattern", () => {
         ["<%- drops the one newline before it", "A\n\n<%- x %>\nB", "A\n\nB"],
         ["_%> drops all whitespace after it", "A\n<%* x _%>\n\n  B", "A\nB"],
         ["<%_ drops all whitespace before it", "A\n\n\n<%_ x %>B", "AB"],
+        ["-%> drops a newline only right after it", "A <%* x -%>B\nC", "A B\nC"],
+        ["<%- drops a newline only right before it", "A\nB <%- x %>", "A\nB"],
+        ["_%> drops whitespace only right after it", "A<%* x _%>B C", "AB C"],
+        ["<%_ drops whitespace only right before it", "A B\n<%_ x %>C", "A BC"],
     ])("follows Templater's whitespace control: %s", (_, template, filled) => {
         expect(matches(filled, template)).toBe(true);
         expect(matches(`${filled}\nwritten`, template)).toBe(false);
@@ -93,8 +118,9 @@ describe("templatePattern", () => {
         expect(matches("## Log  \n- ", "## Log\n-")).toBe(true);
     });
 
-    it("ignores Windows line endings", () => {
+    it("ignores Windows and classic Mac line endings", () => {
         expect(matches("## Log\r\n- \r\n", "## Log\n- \n")).toBe(true);
+        expect(matches("## Log\r- \r", "## Log\n- \n")).toBe(true);
     });
 
     it("takes the template's text literally, regex characters included", () => {

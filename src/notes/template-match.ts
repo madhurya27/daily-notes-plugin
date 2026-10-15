@@ -50,7 +50,7 @@ export function templatePattern(template: string | null): RegExp {
         parts.push(
             ...literalParts(trimEnd(trimStart(normalized.slice(literalFrom, match.index), trimAfter), trimBefore))
         );
-        parts.push({ kind: "placeholder", source: CURSOR.test(block) ? CURSOR_LEFT : ON_ONE_LINE });
+        parts.push({ isText: false, source: CURSOR.test(block) ? CURSOR_LEFT : ON_ONE_LINE });
         trimAfter = /[-_]%>$/.test(block) ? (block.at(-3) as Trim) : undefined;
         literalFrom = match.index + block.length;
     }
@@ -58,9 +58,9 @@ export function templatePattern(template: string | null): RegExp {
     return new RegExp(`^${joinParts(parts)}$`);
 }
 
-/** A piece of the pattern: template text, the whitespace after it, or a placeholder. */
+/** A piece of the pattern: template text, or the whitespace after it or a placeholder. */
 interface Part {
-    kind: "text" | "gap" | "placeholder";
+    isText: boolean;
     source: string;
 }
 
@@ -68,33 +68,23 @@ interface Part {
 function literalParts(literal: string): Part[] {
     const [, text = "", gap = ""] = /^([\s\S]*?)(\s*)$/.exec(literal)!;
     const parts: Part[] = [];
-    if (text) parts.push({ kind: "text", source: escapeRegExp(text) });
+    if (text) parts.push({ isText: true, source: escapeRegExp(text) });
     // Filled in with nothing, a placeholder leaves the space before it trailing, and trimmed.
-    if (gap) parts.push({ kind: "gap", source: escapeRegExp(gap).replace(/[ \t]+$/, "[ \\t]*") });
+    parts.push({ isText: false, source: escapeRegExp(gap).replace(/[ \t]+$/, "[ \\t]*") });
     return parts;
 }
 
 /**
  * The parts in order. Past the last text, placeholders filled in with
  * nothing leave the note ending in whitespace, which `normalize` trims: each
- * gap there may be missing, with all that follows it.
+ * part there may be missing, with all that follows it.
  */
 function joinParts(parts: Part[]): string {
     let tail = parts.length;
-    while (tail > 0 && parts[tail - 1]!.kind !== "text") tail--;
-    let source = parts
-        .slice(0, tail)
-        .map((part) => part.source)
-        .join("");
-    let open = 0;
-    for (const part of parts.slice(tail)) {
-        if (part.kind === "gap") {
-            source += "(?:";
-            open++;
-        }
-        source += part.source;
-    }
-    return source + ")?".repeat(open);
+    while (tail > 0 && !parts[tail - 1]!.isText) tail--;
+    const text = parts.slice(0, tail).map((part) => part.source);
+    const rest = parts.slice(tail).map((part) => `(?:${part.source}`);
+    return text.join("") + rest.join("") + ")?".repeat(rest.length);
 }
 
 /** Whether `text` holds nothing but what `pattern`'s template put there. */

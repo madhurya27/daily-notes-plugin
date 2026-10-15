@@ -133,9 +133,12 @@ describe("LinkedMentionsFooter", () => {
 
         await render();
 
-        expect(mentionsEl(block)!.querySelector(".daily-note-mentions-title")!.textContent).toBe("Linked mentions");
-        expect(mentionsEl(block)!.querySelector(".daily-note-mentions-count")!.textContent).toBe("2");
-        const groups = Array.from(block.querySelectorAll<HTMLElement>(".daily-note-mention"));
+        const heading = mentionsEl(block)!.querySelector(":scope > .daily-note-mentions-heading")!;
+        expect(heading.querySelector(".daily-note-mentions-title")!.textContent).toBe("Linked mentions");
+        expect(heading.querySelector(".daily-note-mentions-count")!.textContent).toBe("2");
+        const groups = Array.from(
+            block.querySelectorAll<HTMLElement>(".daily-note-mentions-content > .daily-note-mention")
+        );
         expect(groups.map((group) => group.dataset.linkSource)).toEqual(["a.md", "b.md"]);
     });
 
@@ -163,6 +166,29 @@ describe("LinkedMentionsFooter", () => {
             "a.md",
             footer.note
         );
+    });
+
+    it("renders only the excerpt around the link, not the whole note", async () => {
+        const render = vi.spyOn(MarkdownRenderer, "render");
+        const text = "Before.\n\nMet [[2025-01-01]] again";
+        const source = linkingNote(text);
+        source.cache.sections = [
+            { type: "paragraph", position: at(0, 7) },
+            { type: "paragraph", position: at(9, text.length) },
+        ];
+
+        await makeFooter(makeVault({ "a.md": source })).render();
+
+        expect(render.mock.calls.map(([, markdown]) => markdown)).toEqual(["Met [[2025-01-01]] again"]);
+    });
+
+    it("toggles from its heading row, as the properties panel does", async () => {
+        const { block, render } = makeFooter(makeVault({ "a.md": linkingNote("A [[2025-01-01]]") }));
+        await render();
+
+        mentionsEl(block)!.querySelector<HTMLElement>(".daily-note-mentions-title")!.click();
+
+        expect(mentionsEl(block)!.hasClass("is-collapsed")).toBe(true);
     });
 
     it("renders a property linking here as its line", async () => {
@@ -313,7 +339,7 @@ describe("LinkedMentionsFooter", () => {
 
     it("keeps only the newest of two redraws that overlap", async () => {
         const vault = makeVault({ "a.md": linkingNote("A [[2025-01-01]]") });
-        const { block, render } = makeFooter(vault);
+        const { block, decorate, render } = makeFooter(vault);
         await render();
         const pending: (() => void)[] = [];
         vault.read.mockImplementation(
@@ -329,6 +355,8 @@ describe("LinkedMentionsFooter", () => {
 
         await vi.waitFor(() => expect(block.querySelectorAll(".daily-note-mention")).toHaveLength(3));
         expect(block.querySelectorAll(".daily-note-mentions")).toHaveLength(1);
+        // The first draw, the newest redraw: the one it overtook decorates nothing.
+        expect(decorate).toHaveBeenCalledTimes(2);
     });
 
     it("stops listening for the cache once its note unloads", async () => {
@@ -366,5 +394,36 @@ describe("LinkedMentionsFooter", () => {
 
             expect(block.querySelector("td")?.dataset.column).toBe("Pace");
         });
+
+        it("shrinks a wide equation in an excerpt to fit", async () => {
+            let math: HTMLElement | null = null;
+            vi.spyOn(MarkdownRenderer, "render").mockImplementation((_app, _md, el) => {
+                const container = el.createEl("mjx-container" as "div", { attr: { display: "true" } });
+                Object.defineProperty(container, "clientWidth", { value: 400 });
+                math = container.createEl("mjx-math" as "div");
+                Object.defineProperty(math, "offsetWidth", { value: 800 });
+                return Promise.resolve();
+            });
+            const { render } = makeFooter(makeVault({ "a.md": linkingNote("A [[2025-01-01]]") }));
+
+            await render();
+
+            expect(math!.style.getPropertyValue("--daily-note-equation-zoom")).toBe("0.5");
+        });
+    });
+
+    // A desktop table scrolls sideways, as Obsidian's do (ADR 0008).
+    it("leaves an excerpt's table to Obsidian on desktop", async () => {
+        vi.spyOn(MarkdownRenderer, "render").mockImplementation((_app, _md, el) => {
+            const table = el.createEl("table");
+            table.createEl("thead").createEl("tr").createEl("th", { text: "Pace" });
+            table.createEl("tbody").createEl("tr").createEl("td", { text: "5:12" });
+            return Promise.resolve();
+        });
+        const { block, render } = makeFooter(makeVault({ "a.md": linkingNote("A [[2025-01-01]]") }));
+
+        await render();
+
+        expect(block.querySelector("td")?.dataset.column).toBeUndefined();
     });
 });

@@ -119,6 +119,21 @@ describe("EmptyNotes", () => {
         expect(vaultOf({}).notes.templatePath()).toBe("Templates/Daily");
     });
 
+    it("names no template path when the settings name none", () => {
+        __setMockSettings({ format: "YYYY-MM-DD", folder: "" });
+
+        expect(vaultOf({}).notes.templatePath()).toBe("");
+    });
+
+    it("reads a note as big as the template and a kilobyte", async () => {
+        const vault = vaultOf({ "Templates/Daily.md": TEMPLATE, "a.md": TEMPLATE + " ".repeat(1024) });
+        const a = vault.fileAt("a.md");
+
+        await vault.notes.refresh([a]);
+
+        expect(vault.read).toHaveBeenCalledWith(a);
+    });
+
     it("shows a note it could not read, and reads it again next time", async () => {
         const vault = vaultOf({ "Templates/Daily.md": TEMPLATE, "a.md": TEMPLATE, "b.md": TEMPLATE });
         const [a, b] = [vault.fileAt("a.md"), vault.fileAt("b.md")];
@@ -143,7 +158,10 @@ describe("EmptyNotes", () => {
         vault.read.mockRejectedValueOnce(new Error("ENOENT"));
         await vault.notes.refresh([a]);
         expect(vault.notes.isEmpty(a)).toBe(false);
-        expect(errors).toHaveBeenCalledOnce();
+        expect(errors).toHaveBeenCalledExactlyOnceWith(
+            "DailyNotesStream: Failed to read the daily-notes template; hiding no notes",
+            expect.any(Error)
+        );
 
         await vault.notes.refresh([a]);
         expect(vault.notes.isEmpty(a)).toBe(true);
@@ -173,6 +191,8 @@ describe("EmptyNotes", () => {
         const renamed = vault.fileAt("a.md");
         renamed.path = "b.md";
         expect(vault.notes.isEmpty(renamed)).toBe(true);
+
+        expect(vault.notes.isEmpty(new TFile("a.md"))).toBe(false);
 
         vault.notes.forget("b.md");
         expect(vault.notes.isEmpty(renamed)).toBe(false);
@@ -365,18 +385,68 @@ describe("EmptyNotes across sessions", () => {
 
     it("vouches for no note after a check that could not read one", async () => {
         const vault = vaultOf({ ...TEXTS });
-        vault.read.mockImplementationOnce(vault.read.getMockImplementation()!);
+        const read = vault.read.getMockImplementation()!;
+        vault.read.mockImplementationOnce(read).mockImplementationOnce(read);
+        vault.read.mockRejectedValueOnce(new Error("ENOENT"));
+
+        await vault.notes.checkAll([vault.fileAt("empty.md"), vault.fileAt("written.md")]);
+        vault.notes.flush();
+
+        expect(vault.store.save).not.toHaveBeenCalled();
+    });
+
+    it("vouches for no note after a check that could not read the template", async () => {
+        const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+        const vault = vaultOf({ ...TEXTS });
         vault.read.mockRejectedValueOnce(new Error("ENOENT"));
 
         await vault.notes.checkAll([vault.fileAt("empty.md")]);
         vault.notes.flush();
 
         expect(vault.store.save).not.toHaveBeenCalled();
+        errors.mockRestore();
+    });
+
+    it("trusts a note last changed the moment the last check began", async () => {
+        const { next, files } = await afterASession();
+        next.fileAt("written.md").stat.mtime = 1_000;
+
+        await next.notes.checkAll(files());
+
+        expect(notesRead(next)).toEqual([]);
+    });
+
+    it("saves nothing for a re-check that read nothing new", async () => {
+        const { next, files } = await afterASession();
+        await next.notes.checkAll(files());
+        next.notes.flush();
+        next.store.save.mockClear();
+
+        await next.notes.refresh(files());
+        vi.advanceTimersByTime(1_000);
+
+        expect(next.store.save).not.toHaveBeenCalled();
+    });
+
+    it("saves what it knows once the template it was checked under can no longer be read", async () => {
+        const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+        const vault = vaultOf({ ...TEXTS });
+        await vault.notes.checkAll([vault.fileAt("empty.md")]);
+        write(vault, "Templates/Daily.md", TEMPLATE);
+        vault.read.mockRejectedValueOnce(new Error("ENOENT"));
+        await vault.notes.refresh([vault.fileAt("empty.md")]);
+
+        vault.notes.flush();
+
+        expect(vault.store.save).toHaveBeenCalledOnce();
+        expect(errors).toHaveBeenCalledOnce();
+        errors.mockRestore();
     });
 
     it("saves a verdict one note's re-check changed, a second after", async () => {
         const { next, files } = await afterASession();
         await next.notes.checkAll(files());
+        next.notes.flush();
         next.store.save.mockClear();
 
         const written = next.fileAt("empty.md");
@@ -427,6 +497,19 @@ describe("EmptyNotes across sessions", () => {
         expect(notesRead(vault).sort()).toEqual(["empty.md", "written.md"]);
     });
 
+    it.each([
+        ["another version", { version: 0 }],
+        ["no time it was checked at", { checkedAt: "9999" }],
+    ])("reads every note over a check under the same template saved with %s", async (_, change) => {
+        const { first, next, files } = await afterASession();
+        next.store.load.mockReturnValue({ ...(first.store.save.mock.calls[0]![0] as object), ...change });
+        const notes = new EmptyNotes({ read: next.read, resolve: next.resolve }, next.store, __mockSettings);
+
+        await notes.checkAll(files());
+
+        expect(notesRead(next).sort()).toEqual(["empty.md", "written.md"]);
+    });
+
     it("logs a refused save once, and keeps working", async () => {
         const errors = vi.spyOn(console, "error").mockImplementation(() => {});
         const vault = vaultOf({ ...TEXTS });
@@ -439,7 +522,10 @@ describe("EmptyNotes across sessions", () => {
         await vault.notes.checkAll([vault.fileAt("written.md")]);
         vault.notes.flush();
 
-        expect(errors).toHaveBeenCalledOnce();
+        expect(errors).toHaveBeenCalledExactlyOnceWith(
+            "DailyNotesStream: Failed to save which notes are empty",
+            expect.any(Error)
+        );
         expect(vault.notes.isEmpty(vault.fileAt("empty.md"))).toBe(true);
         errors.mockRestore();
     });

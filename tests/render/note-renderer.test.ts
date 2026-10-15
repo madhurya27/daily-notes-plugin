@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, onTestFinished, vi } from "vitest";
 import { BaseMeasurements } from "../../src/render/bases/base-measurements";
 import { SearchHighlighter } from "../../src/render/search-highlights";
 import { youtubeThumbnail } from "../../src/render/video-thumbnails";
@@ -323,6 +323,10 @@ describe("NoteRenderer.renderInto", () => {
         vi.spyOn(console, "error").mockImplementation(() => {});
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
         expect(el.querySelector(".daily-note-content")?.textContent).toBe("Error rendering note");
+        expect(console.error).toHaveBeenCalledWith(
+            "DailyNotesStream: Failed to render note Notes/2025-01-01.md:",
+            expect.any(Error)
+        );
     });
 
     it("leaves the block of a note deleted mid-read empty, reporting nothing", async () => {
@@ -491,7 +495,7 @@ describe("NoteRenderer linked mentions", () => {
             new BaseMeasurements(),
             new BacklinkIndex(() => ({ [SOURCE.path]: { [DAY.path]: 1 } }))
         );
-        return { renderer, release: () => release() };
+        return { app, renderer, release: () => release() };
     }
 
     function at(start: number, end: number) {
@@ -508,6 +512,23 @@ describe("NoteRenderer linked mentions", () => {
 
         expect(block.lastElementChild!.hasClass("daily-note-mentions")).toBe(true);
         expect(block.querySelector(".daily-note-mention")?.getAttribute("data-link-source")).toBe(SOURCE.path);
+    });
+
+    it("fades a link in a linked mention to a note not yet created", async () => {
+        const { app, renderer, release } = linkedVault();
+        const render = vi.spyOn(MarkdownRenderer, "render").mockImplementation(async (_app, markdown, el) => {
+            if (markdown.includes("2025-01-01"))
+                el.createEl("a", { cls: "internal-link" }).setAttribute("data-href", "Someday");
+        });
+        onTestFinished(() => render.mockRestore());
+        app.metadataCache.getFirstLinkpathDest = vi.fn((path: string) => (path === "Someday" ? null : DAY));
+        const block = renderer.createBlock(DAY);
+
+        const { footer } = (await renderer.renderInto(block, DAY))!;
+        release();
+        await footer;
+
+        expect(block.querySelector(".daily-note-mention-excerpt .internal-link")?.hasClass("is-unresolved")).toBe(true);
     });
 
     // The queue that renders notes also applies vault events: it must not wait on another note's read.
@@ -614,7 +635,7 @@ describe("NoteRenderer title click", () => {
         const el = mount(renderer, await renderNote(renderer, file));
         (el.querySelector(".daily-note-title") as HTMLElement).click();
         await new Promise((resolve) => setTimeout(resolve, 0));
-        expect(consoleSpy).toHaveBeenCalled();
+        expect(consoleSpy).toHaveBeenCalledWith("DailyNotesStream: Failed to open file", expect.any(Error));
         consoleSpy.mockRestore();
     });
 });
@@ -898,7 +919,7 @@ describe("NoteRenderer internal links", () => {
         link.click();
         await new Promise((resolve) => setTimeout(resolve, 0));
 
-        expect(consoleSpy).toHaveBeenCalled();
+        expect(consoleSpy).toHaveBeenCalledWith("DailyNotesStream: Failed to open link", expect.any(Error));
         consoleSpy.mockRestore();
     });
 
@@ -1073,6 +1094,58 @@ describe("NoteRenderer tables", () => {
         const el = await renderTable();
 
         expect(el.querySelector("td")?.dataset.column).toBe("Pace");
+    });
+});
+
+describe("NoteRenderer equations", () => {
+    beforeEach(() => {
+        vi.stubGlobal(
+            "ResizeObserver",
+            class {
+                observe() {}
+                disconnect() {}
+            }
+        );
+        return () => {
+            Platform.isMobile = false;
+            vi.unstubAllGlobals();
+        };
+    });
+
+    /** A note holding one display equation twice as wide as the 400px note, rendered; its math. */
+    async function renderEquation(): Promise<HTMLElement> {
+        vi.spyOn(MarkdownRenderer, "render").mockImplementationOnce((_app, _md, el) => {
+            const container = el.createEl("mjx-container" as "div", { attr: { display: "true" } });
+            Object.defineProperty(container, "clientWidth", { value: 400 });
+            Object.defineProperty(container.createEl("mjx-math" as "div"), "offsetWidth", { value: 800 });
+            return Promise.resolve();
+        });
+        const renderer = new NoteRenderer(
+            asApp(makeApp()),
+            new Component(),
+            makeCollapsible(),
+            makeSettings(),
+            new SearchHighlighter(),
+            new BaseMeasurements(),
+            new BacklinkIndex(() => ({}))
+        );
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+        return el.querySelector<HTMLElement>("mjx-math")!;
+    }
+
+    it("shrinks a wide equation to fit on mobile", async () => {
+        Platform.isMobile = true;
+
+        const math = await renderEquation();
+
+        expect(math.style.getPropertyValue("--daily-note-equation-zoom")).toBe("0.5");
+    });
+
+    // Desktop draws it as Obsidian does, scrolling in its own box.
+    it("leaves a wide equation to Obsidian on desktop", async () => {
+        const math = await renderEquation();
+
+        expect(math.style.getPropertyValue("--daily-note-equation-zoom")).toBe("");
     });
 });
 
@@ -1294,6 +1367,16 @@ describe("NoteRenderer renderProperties", () => {
         expect(el.querySelector(".metadata-container")).not.toBeNull();
     });
 
+    // Obsidian's stylesheet styles the panel by its own class names.
+    it("draws each property in Obsidian's own rows, key beside value", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { mood: "happy" } } });
+        const el = await renderWithProperties(app);
+        const row = el.querySelector(".metadata-content > .metadata-properties > .metadata-property");
+        expect(row?.querySelector(":scope > .metadata-property-key > .metadata-property-key-input")?.textContent).toBe(
+            "mood"
+        );
+    });
+
     it("renders list values as Obsidian's pills, one per item", async () => {
         const app = makeApp({ fileCache: { frontmatter: { aliases: ["work", "daily"] } } });
         const renderer = new NoteRenderer(
@@ -1340,7 +1423,7 @@ describe("NoteRenderer renderProperties", () => {
     });
 
     it("marks only the tag pills that are no tag name invalid", async () => {
-        const tags = ["work", "1a", "a/b", "-a_b", "é日本", "💡", "a，b", "123", "a b", "a.b", "a!", "a…", "a⸗b"];
+        const tags = ["work", "1a", "a1", "a/b", "-a_b", "é日本", "💡", "a，b", "123", "a b", "a.b", "a!", "a…", "a⸗b"];
         const app = makeApp({ fileCache: { frontmatter: { tags } } });
         const el = await renderWithProperties(app);
         const invalid = [...el.querySelectorAll(".multi-select-pill.is-invalid")].map((p) => p.textContent);
@@ -1348,11 +1431,18 @@ describe("NoteRenderer renderProperties", () => {
     });
 
     it("drops a tag's leading # from its pill, but marks it invalid", async () => {
-        const app = makeApp({ fileCache: { frontmatter: { tags: ["#work"] } } });
+        const app = makeApp({ fileCache: { frontmatter: { tags: ["#work", "a#b"] } } });
         const el = await renderWithProperties(app);
-        const pill = el.querySelector<HTMLElement>(".multi-select-pill")!;
-        expect(pill.textContent).toBe("work");
-        expect(pill.hasClass("is-invalid")).toBe(true);
+        const pills = [...el.querySelectorAll<HTMLElement>(".multi-select-pill")];
+        expect(pills.map((p) => p.textContent)).toEqual(["work", "a#b"]);
+        expect(pills[0]!.hasClass("is-invalid")).toBe(true);
+    });
+
+    it("draws a tags value that is a number as text", async () => {
+        const app = makeApp({ fileCache: { frontmatter: { tags: 2025 } } });
+        const el = await renderWithProperties(app);
+        expect(el.querySelector(".multi-select-pill")).toBeNull();
+        expect(el.querySelector(".metadata-property-value-text")?.textContent).toBe("2025");
     });
 
     it("draws a 'tag' key as text, as Obsidian no longer reads it as tags", async () => {
@@ -1679,6 +1769,22 @@ describe("NoteRenderer — delegated listeners", () => {
         const img = thumbnail.querySelector("img")!;
 
         img.dispatchEvent(new Event("error"));
+
+        expect(img.getAttribute("src")).toBe("https://i.ytimg.com/vi/aqz-KE-bpKQ/hqdefault.jpg");
+        root.remove();
+    });
+
+    // YouTube answers a missing large one with a 120px placeholder, which loads.
+    it("falls a video's placeholder large thumbnail back to the small one as it loads", async () => {
+        const { root } = await render(makeApp(), true);
+        const thumbnail = youtubeThumbnail(
+            document.createElement("iframe"),
+            "https://www.youtube.com/embed/aqz-KE-bpKQ"
+        )!;
+        root.querySelector(".daily-note-content")!.appendChild(thumbnail);
+        const img = thumbnail.querySelector("img")!;
+
+        img.dispatchEvent(new Event("load"));
 
         expect(img.getAttribute("src")).toBe("https://i.ytimg.com/vi/aqz-KE-bpKQ/hqdefault.jpg");
         root.remove();

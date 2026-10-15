@@ -10,10 +10,15 @@ class FakeResizeObserver {
         FakeResizeObserver.instances.push(this);
     }
     observe(target: Element) {
-        this.targets.add(target);
+        this.targets.add(FakeResizeObserver.element(target));
     }
     unobserve(target: Element) {
-        this.targets.delete(target);
+        this.targets.delete(FakeResizeObserver.element(target));
+    }
+    /** As the real one, anything but an element throws. */
+    private static element(target: unknown): Element {
+        if (!(target instanceof Element)) throw new TypeError("parameter 1 is not of type 'Element'");
+        return target;
     }
     disconnect() {
         this.disconnected = true;
@@ -48,7 +53,7 @@ function makePane(layout: (number | number[])[]) {
     let paneHeight = 600;
     /** Where the pane sits in the window: a phone turned hides its status bar. */
     let paneTop = 0;
-    pane.getBoundingClientRect = () => ({ top: paneTop, bottom: paneTop + paneHeight }) as DOMRect;
+    pane.getBoundingClientRect = () => ({ top: paneTop, bottom: paneTop + paneHeight, left: 0, width: 400 }) as DOMRect;
     const movePane = (top: number) => (paneTop = top);
     let width = 400;
     Object.defineProperty(pane, "clientWidth", { configurable: true, get: () => width });
@@ -289,7 +294,7 @@ describe("ScrollAnchor", () => {
     // A far run shown again takes its spacer out: the content's top, risen
     // since with every slice, says nothing of where the reader is.
     it("holds the note, not its content, once what it held at the pane's top is gone", () => {
-        const { pane, content, blocks } = watch([400, 1000, 400], 900);
+        const { pane, content, blocks, resize } = watch([400, 1000, 400], 900);
         const note = blocks[1]!;
         const body = note.createDiv({ cls: "daily-note-content" });
         const spacer = body.createDiv({ cls: "daily-note-far-run" });
@@ -301,6 +306,35 @@ describe("ScrollAnchor", () => {
         anchor.readPlace();
         spacer.remove();
         bodyTop = -12_500;
+        resize(blocks[0]!, 500);
+        anchor.resized();
+
+        expect(shift(content)).toBe(-100);
+    });
+
+    it("holds the text starting at the pane's top, not the text ending there", () => {
+        const { pane, content, blocks } = watch([400, 1000, 400], 900);
+        const note = blocks[1]!;
+        const body = note.createDiv({ cls: "daily-note-content" });
+        const ended = body.createDiv();
+        const text = body.createDiv();
+        ended.getBoundingClientRect = () => ({ top: -100, bottom: 0, height: 100 }) as DOMRect;
+        let textTop = 0;
+        text.getBoundingClientRect = () => ({ top: textTop, bottom: textTop + 300, height: 300 }) as DOMRect;
+        vi.mocked(document.elementsFromPoint).mockReturnValue([body, note, content, pane]);
+
+        anchor.readPlace();
+        textTop = 50;
+        anchor.resized();
+
+        expect(shift(content)).toBe(-50);
+    });
+
+    // An unloaded note takes what the pane's top crossed with it.
+    it("holds nothing once the block at the pane's top is gone", () => {
+        const { content, blocks } = watch([400, 400, 400], 900);
+
+        blocks[2]!.remove();
         anchor.resized();
 
         expect(shift(content)).toBe(0);
@@ -385,6 +419,7 @@ describe("ScrollAnchor", () => {
         observer().resized(blocks[0]!);
 
         anchor.placed();
+        expect(vi.getTimerCount()).toBe(0);
         vi.advanceTimersByTime(SCROLL_IDLE_MS);
 
         expect(shift(content)).toBe(0);
@@ -392,7 +427,8 @@ describe("ScrollAnchor", () => {
     });
 
     it("holds the place again for a change after it was set", () => {
-        const { content, blocks, resize } = watch([400, 400, 400], 900);
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 0);
+        pane.scrollTop = 900;
         anchor.placed();
 
         resize(blocks[0]!, 500);
@@ -497,6 +533,18 @@ describe("ScrollAnchor", () => {
             expect(shift(content)).toBe(0);
         });
 
+        it("ends a reflow that moved nothing once the scroll is still", () => {
+            const { content, blocks, resize, turn } = watch([[400, 400, 400], 400], 500);
+
+            turn();
+            observer().resized(blocks[0]!);
+            vi.advanceTimersByTime(SCROLL_IDLE_MS);
+            resize(blocks[0]!.children[1]!, 1000);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(0);
+        });
+
         it("holds the block below text crossing the pane's top, not a span inside that text", () => {
             const { pane, content, blocks, resize, add, turn } = watch([[400, 400, 400], 400], 0);
             const text = blocks[0]!.children[1] as HTMLElement;
@@ -511,6 +559,21 @@ describe("ScrollAnchor", () => {
 
             expect(shift(content)).toBe(100);
             expect(blocks[0]!.children[2]!.getBoundingClientRect().top).toBe(300);
+        });
+
+        it("holds the block below text crossing the pane's top, not an inline block inside that text", () => {
+            const { pane, content, blocks, resize, add, turn } = watch([[400, 400, 400], 400], 0);
+            const text = blocks[0]!.children[1] as HTMLElement;
+            add(text, 200).style.display = "inline-block";
+            const after = add(text, 200);
+            pane.scrollTop = 500;
+            anchor.onScroll();
+
+            turn();
+            resize(after, 100);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(100);
         });
 
         it("climbs past what sits beside the text crossing the pane's top, as cards in a row", () => {
@@ -546,6 +609,16 @@ describe("ScrollAnchor", () => {
 
             turn();
             resize(blocks[0]!.children[1]!, 1300);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(0);
+        });
+
+        it("holds the text crossing the pane's top when what follows starts at the pane's bottom", () => {
+            const { content, blocks, resize, turn } = watch([[400, 700, 400]], 500);
+
+            turn();
+            resize(blocks[0]!.children[1]!, 800);
             observer().resized(blocks[0]!);
 
             expect(shift(content)).toBe(0);
@@ -667,10 +740,11 @@ describe("ScrollAnchor", () => {
             base.empty();
             base.dataset.height = "0";
             observer().resized(blocks[0]!);
-            draw(...Array<number>(4).fill(100));
+            const redrawn = draw(...Array<number>(4).fill(100));
             observer().resized(blocks[0]!);
 
             expect(base.getBoundingClientRect().top).toBe(-200);
+            expect(observer().targets).toContain(redrawn);
         });
 
         it("keeps the pane's top in a Base, not the heading starting below it, as the width changes", () => {
@@ -690,6 +764,23 @@ describe("ScrollAnchor", () => {
 
             expect(shift(content)).toBe(570);
             expect(base.getBoundingClientRect().top).toBe(-380);
+        });
+
+        it("holds a Base starting in the pane by its top as the width changes, not how far through it", () => {
+            const { pane, content, blocks, addBase, turn, resize } = makePane([[400, 400], 400]);
+            const drawn = addBase(blocks[0]!).draw(...Array<number>(10).fill(100));
+            anchor.attach(pane, content, moreBelow);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 500;
+            anchor.onScroll();
+
+            turn();
+            for (const card of Array.from(drawn.children)) resize(card, 40);
+            resize(blocks[0]!.children[1]!, 500);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(-100);
         });
 
         // Held open at the cards' height, the Base shows the table at its top
@@ -764,6 +855,23 @@ describe("ScrollAnchor", () => {
 
             draw(400);
             pane.scrollTop = pane.scrollHeight - pane.clientHeight;
+            observer().resized(blocks[0]!);
+
+            expect(base.getBoundingClientRect().top).toBe(-200);
+        });
+
+        it("counts a scroll clamped to within a pixel of the stream's end as no scroll of the reader's", () => {
+            const { pane, content, blocks, addBase } = makePane([[400], 201]);
+            const { base, draw } = addBase(blocks[0]!);
+            draw(...Array<number>(10).fill(100));
+            anchor.attach(pane, content, moreBelow);
+            for (const block of blocks) anchor.observe(block);
+            observer().resized(...blocks);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            draw(400);
+            pane.scrollTop = pane.scrollHeight - pane.clientHeight - 1;
             observer().resized(blocks[0]!);
 
             expect(base.getBoundingClientRect().top).toBe(-200);
@@ -845,6 +953,7 @@ describe("ScrollAnchor", () => {
 
             anchor.onScroll();
 
+            expect(document.elementsFromPoint).toHaveBeenLastCalledWith(200, 1);
             expect(reads.filter((read) => read.mock.calls.length > 0)).toHaveLength(2);
         });
 
@@ -865,7 +974,7 @@ describe("ScrollAnchor", () => {
         // Between two notes, or before the stream has laid out.
         it("finds the note under the pane's top when nothing of it is drawn there", () => {
             const { pane, content, blocks, resize } = watch([400, 400, 400], 0);
-            vi.mocked(document.elementsFromPoint).mockReturnValue([]);
+            vi.mocked(document.elementsFromPoint).mockReturnValue([content, pane]);
             pane.scrollTop = 900;
             anchor.onScroll();
 
@@ -873,6 +982,18 @@ describe("ScrollAnchor", () => {
             observer().resized(blocks[0]!);
 
             expect(shift(content)).toBe(-100);
+        });
+
+        it("holds the note found under the pane's top, not the text inside it", () => {
+            const { pane, content, blocks, resize } = watch([400, 400, [50, 200, 150]], 0);
+            vi.mocked(document.elementsFromPoint).mockReturnValue([content, pane]);
+            pane.scrollTop = 900;
+            anchor.onScroll();
+
+            resize(blocks[2]!.children[0]!, 150);
+            observer().resized(blocks[2]!);
+
+            expect(shift(content)).toBe(0);
         });
 
         it("holds nothing with the pane's top past every note", () => {
@@ -948,7 +1069,9 @@ describe("ScrollAnchor", () => {
 
         pane.scrollTop = -120;
         anchor.onScroll();
-        expect(pane.scrollTop).toBe(-120);
+        pane.scrollTop = -60;
+        anchor.onScroll();
+        expect(pane.scrollTop).toBe(-60);
         expect(shift(content)).toBe(-900);
 
         pane.scrollTop = 0;
@@ -1003,6 +1126,58 @@ describe("ScrollAnchor", () => {
         expect(shift(content)).toBe(-900);
         vi.advanceTimersByTime(SCROLL_IDLE_MS);
         expect(pane.scrollTop).toBe(960);
+    });
+
+    // A finger lifting between a frame's draw and its scroll event.
+    it("holds a bounce through a finger's frame at the top, lifted as the bounce goes on", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+        pane.scrollTop = -120;
+        anchor.onScroll();
+
+        anchor.fingerDown();
+        pane.scrollTop = 0;
+        anchor.onScroll();
+        pane.scrollTop = -90;
+        anchor.fingerUp();
+        pane.scrollTop = 0;
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(900);
+        expect(shift(content)).toBe(0);
+    });
+
+    it("leaves the hand-over to the rest once a finger lifts from a bounce at the top", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+        pane.scrollTop = -120;
+        anchor.onScroll();
+
+        anchor.fingerDown();
+        pane.scrollTop = 0;
+        anchor.onScroll();
+        anchor.fingerUp();
+        pane.scrollTop = 20;
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(20);
+        expect(shift(content)).toBe(-900);
+    });
+
+    it("takes a scroll that reaches the top and turns back for no bounce", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+
+        pane.scrollTop = 0;
+        anchor.onScroll();
+        pane.scrollTop = 20;
+        anchor.onScroll();
+
+        expect(pane.scrollTop).toBe(20);
+        expect(shift(content)).toBe(-900);
     });
 
     it("forgets a finger on detach", () => {
@@ -1154,6 +1329,29 @@ describe("ScrollAnchor", () => {
         expect(content.getBoundingClientRect().bottom).toBe(640);
     });
 
+    it("holds the place read where a glide stopped", () => {
+        const { pane, content, blocks, resize } = watchToEnd([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 700);
+        observer().resized(blocks[0]!);
+        expect(glideDown(pane, 20, 1700)).not.toBeNull();
+
+        resize(blocks[1]!, 500);
+        observer().resized(blocks[1]!);
+
+        expect(shift(content)).toBe(-100);
+    });
+
+    // Drawn lower than its scroll, the stream's end is further off.
+    it("leaves a glide down to the hand-over when notes above shrank, every note loaded", () => {
+        const { pane, content, blocks, resize } = watchToEnd([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 100);
+        observer().resized(blocks[0]!);
+
+        expect(glideDown(pane, 200, 1100)).toBeNull();
+
+        expect(shift(content)).toBe(300);
+    });
+
     // A phone turned upright clamps the scroll at the stream's end: no glide,
     // and a write there threw the reader 10,388 px from their place.
     it("leaves a scroll at the stream's end that moved nothing to the hand-over, every note loaded", () => {
@@ -1239,6 +1437,22 @@ describe("ScrollAnchor", () => {
         expect(shift(content)).toBe(0);
     });
 
+    it("keeps heading for the top through a scroll owing nothing on the way", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        anchor.headForTop();
+        pane.scrollTop = 500;
+        anchor.onScroll();
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+
+        pane.scrollTop = 0;
+        anchor.onScroll();
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(pane.scrollTop).toBe(0);
+        expect(shift(content)).toBe(0);
+    });
+
     it("hands over as usual when the reader stops the scroll short of the top", () => {
         const { pane, blocks, resize } = watch([400, 400, 400], 900);
         anchor.headForTop();
@@ -1305,6 +1519,15 @@ describe("ScrollAnchor", () => {
         expect(writes).not.toHaveBeenCalled();
     });
 
+    it("draws nothing for a move of nothing", () => {
+        const { content } = watch([400, 400, 400], 900);
+
+        anchor.anticipate(0);
+
+        expect(content.hasClass("is-scroll-shifted")).toBe(false);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
     it("sets no timer for a scroll with nothing owed", () => {
         watch([400, 400, 400], 900);
 
@@ -1368,6 +1591,30 @@ describe("ScrollAnchor", () => {
         expect([...observer().targets]).toEqual([blocks[1]]);
     });
 
+    it("pins no block it does not watch", () => {
+        const { blocks } = watch([400, 400], 0);
+        anchor.unobserve(blocks[0]!);
+
+        anchor.pinned(blocks[0]!);
+        anchor.unpinned(blocks[0]!);
+
+        expect([...observer().targets]).toEqual([blocks[1]]);
+    });
+
+    it("forgets what it watched and pinned on detach", () => {
+        const { pane, content, blocks } = watch([400, 400], 0);
+        anchor.pinned(blocks[0]!);
+        anchor.detach();
+        anchor.attach(pane, content, moreBelow);
+        const again = FakeResizeObserver.instances[1]!;
+
+        anchor.unpinned(blocks[0]!);
+        anchor.pinned(blocks[1]!);
+        anchor.unpinned(blocks[1]!);
+
+        expect([...again.targets]).toEqual([]);
+    });
+
     it("ignores a pin before it is attached", () => {
         const block = document.createElement("div");
         expect(() => {
@@ -1394,6 +1641,19 @@ describe("ScrollAnchor", () => {
         expect(pane.scrollTop).toBe(900);
         vi.advanceTimersByTime(SCROLL_IDLE_MS);
         expect(pane.scrollTop).toBe(1800);
+    });
+
+    it("reads no place held before it was attached again", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        anchor.detach();
+        resize(blocks[0]!, 1300);
+
+        anchor.attach(pane, content, moreBelow);
+        const again = FakeResizeObserver.instances[1]!;
+        for (const block of blocks) anchor.observe(block);
+        again.resized(...blocks);
+
+        expect(shift(content)).toBe(0);
     });
 
     it("drops the old watch when attached again", () => {

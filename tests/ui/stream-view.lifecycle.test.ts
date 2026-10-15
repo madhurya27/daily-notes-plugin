@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { DailyNotesStreamView } from "../../src/ui/stream-view";
 import { BASE_RESIZED } from "../../src/render/bases/note-bases";
-import { Platform, TFile, WorkspaceLeaf } from "../mocks/obsidian";
+import { ItemView, Platform, TFile, WorkspaceLeaf } from "../mocks/obsidian";
 import {
     asApp,
     flushPromises,
@@ -304,6 +304,68 @@ describe("DailyNotesStreamView — onOpen", () => {
         await opened;
 
         expect(view["stream"]["scroll"].attach).not.toHaveBeenCalled();
+    });
+});
+
+describe("DailyNotesStreamView — wiring", () => {
+    it("draws the notes into a container of their own", async () => {
+        const { view } = await makeViewSetup();
+
+        const container = view.contentEl.querySelector(":scope > .daily-notes-stream-container");
+
+        expect(container).not.toBeNull();
+        expect(view["collapsible"].delegate).toHaveBeenCalledWith(view, container);
+        expect(view["renderer"].delegate).toHaveBeenCalledWith(view, container);
+    });
+
+    it("follows Obsidian's readable line length, as it is set and as it changes", async () => {
+        const app = makeApp();
+        Object.assign(app.vault, { config: { readableLineLength: true } });
+        const { view } = await makeViewSetup(app);
+        expect(view.contentEl.hasClass("is-readable-line-width")).toBe(true);
+
+        Object.assign(app.vault, { config: { readableLineLength: false } });
+        const cssChange = app.workspace.on.mock.calls.find(([name]) => name === "css-change")![1];
+        cssChange();
+
+        expect(view.contentEl.hasClass("is-readable-line-width")).toBe(false);
+    });
+
+    it("names its jump action", async () => {
+        const { view } = await makeViewSetup();
+
+        expect(view.actions.find((a) => a.icon === "calendar-1")?.title).toBe("Jump to date");
+    });
+
+    // A wheel or a touch listener that may cancel holds the scroll until it returns.
+    it("listens to the wheel and to fingers without holding the scroll", async () => {
+        const { view } = makeStubbedView();
+        const listen = vi.spyOn(view, "registerDomEvent");
+
+        await view.onOpen();
+
+        for (const type of ["wheel", "touchstart", "touchend", "touchcancel"])
+            expect(listen).toHaveBeenCalledWith(view.contentEl, type, expect.any(Function), { passive: true });
+    });
+
+    it("hands the rest of a history entry's state to Obsidian", async () => {
+        const { view } = await makeViewSetup();
+        const handOn = vi.spyOn(ItemView.prototype, "setEphemeralState");
+        const state = { place: null, scroll: 3 };
+
+        view.setEphemeralState(state);
+
+        expect(handOn).toHaveBeenCalledWith(state);
+        handOn.mockRestore();
+    });
+
+    it("closes the stream as the view closes", async () => {
+        const { view } = await makeViewSetup();
+        const close = vi.spyOn(view["stream"], "close");
+
+        await view.onClose();
+
+        expect(close).toHaveBeenCalledOnce();
     });
 });
 

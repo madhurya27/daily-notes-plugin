@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { fallBackToSmallThumbnail, youtubeThumbnail } from "../../src/render/video-thumbnails";
 
 const ID = "aqz-KE-bpKQ";
@@ -45,7 +45,20 @@ describe("youtubeThumbnail", () => {
         const link = thumbnail(`https://www.youtube.com/embed/${ID}`);
 
         expect(link.querySelector("img")?.getAttribute("src")).toBe(`https://i.ytimg.com/vi/${ID}/maxresdefault.jpg`);
+        expect(link.querySelector("img")?.alt).toBe("");
         expect(link.querySelector(".daily-note-video-play")).not.toBeNull();
+    });
+
+    // YouTube's own button: red, a white triangle, hidden from a screen reader as the link names the video.
+    it("draws YouTube's play button", () => {
+        const play = thumbnail(`https://www.youtube.com/embed/${ID}`).querySelector(".daily-note-video-play")!;
+        const [button, triangle] = Array.from(play.children);
+
+        expect(play.getAttribute("viewBox")).toBe("0 0 68 48");
+        expect(play.getAttribute("aria-hidden")).toBe("true");
+        expect(button!.getAttribute("fill")).toBe("#f00");
+        expect(triangle!.getAttribute("d")).toBe("M45 24 27 14v20z");
+        expect(triangle!.getAttribute("fill")).toBe("#fff");
     });
 
     it("is named by the embed's title, or as a YouTube video", () => {
@@ -70,6 +83,15 @@ describe("youtubeThumbnail", () => {
         expect(link.style.getPropertyValue("--daily-note-video-width")).toBe("");
         expect(link.style.getPropertyValue("--daily-note-video-ratio")).toBe("");
     });
+
+    it.each([{ width: "560" }, { width: "0", height: "315" }, { width: "560", height: "0" }])(
+        "sets no size when the embed gives only part of one: %o",
+        (size) => {
+            const link = thumbnail(`https://www.youtube.com/embed/${ID}`, size);
+
+            expect(link.style.getPropertyValue("--daily-note-video-width")).toBe("");
+        }
+    );
 
     it.each([
         "https://player.vimeo.com/video/76979871",
@@ -124,10 +146,13 @@ describe("fallBackToSmallThumbnail", () => {
     it("falls back once, not again when the fallback fails", () => {
         const img = image();
         fallBackToSmallThumbnail(event("error", img));
+        const set = vi.spyOn(HTMLImageElement.prototype, "src", "set");
 
         fallBackToSmallThumbnail(event("error", img));
         loaded(img, 120);
 
+        expect(set).not.toHaveBeenCalled();
+        set.mockRestore();
         expect(img.getAttribute("src")).toBe(HQ);
     });
 

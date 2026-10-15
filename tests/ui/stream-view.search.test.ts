@@ -93,6 +93,19 @@ describe("DailyNotesStreamView — search", () => {
         expect(press({ key: "S", metaKey: true, shiftKey: true })).toBe(false);
     });
 
+    it("opens on any of the bindings the search has", () => {
+        app.hotkeyManager = {
+            getHotkeys: () => [
+                { modifiers: ["Mod", "Shift"], key: "S" },
+                { modifiers: ["Mod"], key: "F" },
+            ],
+            getDefaultHotkeys: () => undefined,
+        };
+        writeHotkeys();
+
+        expect(press({ key: "f", metaKey: true })).toBe(false);
+    });
+
     it("opens from the header, where a phone has no hotkey", () => {
         view.actions.find((a) => a.title === "Search")!.callback(new MouseEvent("click"));
 
@@ -124,6 +137,19 @@ describe("DailyNotesStreamView — search", () => {
         } finally {
             SOURCES["Notes/2025-01-02.md"] = "nothing";
         }
+    });
+
+    it("recounts once the stream's notes stop changing for a while", async () => {
+        const refresh = vi.spyOn(view["search"], "refresh");
+
+        notesChanged();
+        await vi.advanceTimersByTimeAsync(400);
+        notesChanged();
+        await vi.advanceTimersByTimeAsync(400);
+        expect(refresh).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(100);
+        expect(refresh).toHaveBeenCalledOnce();
     });
 
     it("re-reads nothing for a change outside the daily notes", async () => {

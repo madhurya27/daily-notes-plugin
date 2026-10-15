@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, onTestFinished, vi, type MockInstance } from "vitest";
 import { Component, TFile } from "obsidian";
 import { CollapsibleManager, LINKED_MENTIONS_SECTION_KEY, PROPERTIES_SECTION_KEY } from "../../src/render/collapsible";
 import type { CollapsibleStateStore } from "../../src/render/collapse-store";
@@ -111,6 +111,27 @@ describe("CollapsibleManager — keyboard and ARIA", () => {
         indicator.dispatchEvent(event);
 
         expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("stops a key it toggles on at the stream root", () => {
+        const outer = document.createElement("div");
+        const content = outer.appendChild(document.createElement("div"));
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        makeCollapsible(manager, content, "file.md");
+        const onOuterKey = vi.fn();
+        outer.addEventListener("keydown", onOuterKey);
+
+        press(chevron(content.querySelector("h2") as HTMLElement), "Enter");
+
+        expect(onOuterKey).not.toHaveBeenCalled();
+    });
+
+    it("draws each chevron as Obsidian's", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<h2>Section</h2><p>Body</p>";
+        makeCollapsible(manager, content, "file.md");
+
+        expect(chevron(content.querySelector("h2") as HTMLElement).dataset.icon).toBe("chevron-right");
     });
 
     it("gives list-item chevrons the same treatment", () => {
@@ -228,6 +249,14 @@ describe("CollapsibleManager — keys by the heading above", () => {
 
     it("finds the heading above a list wrapped in a block of its own", () => {
         expect(keysOf(`<h2>Plan</h2><div>${list("Errands")}</div>`)).toEqual(["plan", "plan/li-1-errands"]);
+    });
+
+    // A heading inside a list item is no section of its own (Obsidian's reading view folds none there).
+    it("keys a list item by the heading above the list, past one inside an item", () => {
+        expect(keysOf(`<h2>Plan</h2><ul><li><h3>Aside</h3></li><li>Errands<ul><li>a</li></ul></li></ul>`)).toEqual([
+            "plan",
+            "plan/li-1-errands",
+        ]);
     });
 
     it("keys a list item above every heading bare", () => {
@@ -522,6 +551,33 @@ describe("CollapsibleManager — lists", () => {
         expect(store.setCollapsed).toHaveBeenCalledWith("file.md", "li-1-beta", true);
     });
 
+    it("counts an ordered list in a list item's depth", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<ol><li>Item<ol><li>Sub</li></ol></li></ol>";
+
+        expect(manager.makeCollapsible(content, "file.md")).toEqual(["li-1-item"]);
+    });
+
+    it("keys a list item by all of its own text, formatting and all", () => {
+        const content = document.createElement("div");
+        content.innerHTML = "<ul><li><strong>Bold</strong> item<ul><li>Sub</li></ul></li></ul>";
+
+        expect(manager.makeCollapsible(content, "file.md")).toEqual(["li-1-bold-item"]);
+    });
+
+    it("starts a list item with no saved state expanded", () => {
+        const fresh = fake<CollapsibleStateStore>({
+            collapsedOr: vi.fn((_path: string, _key: string, fallback: boolean) => fallback),
+            setCollapsed: vi.fn(),
+        });
+        const content = document.createElement("div");
+        content.innerHTML = "<ul><li>Item<ul><li>Sub</li></ul></li></ul>";
+
+        new CollapsibleManager(fresh).makeCollapsible(content, "file.md");
+
+        expect(content.querySelector("li")!.classList.contains("is-collapsed")).toBe(false);
+    });
+
     it("handles ol (ordered list) as nested container", () => {
         const content = document.createElement("div");
         content.innerHTML = "<ol><li>Item<ol><li>Sub</li></ol></li></ol>";
@@ -649,6 +705,15 @@ describe("CollapsibleManager — unfolding for search", () => {
         expect(store.setCollapsed).not.toHaveBeenCalled();
     });
 
+    it("leaves a section unfolded for search open as the note's sections refresh", () => {
+        const top = content.querySelector("h2") as HTMLElement;
+        manager.unfold(text("a"));
+
+        manager.refreshCollapsible(content, "file.md");
+
+        expect(top.classList.contains("is-collapsed")).toBe(false);
+    });
+
     it("collapses an unfolded section on the next click, and says so", () => {
         const top = content.querySelector("h2") as HTMLElement;
         manager.unfold(text("a"));
@@ -694,6 +759,15 @@ describe("CollapsibleManager — stale sections", () => {
         );
     });
 
+    it("forgets the sections of a note written a day ago to the millisecond", () => {
+        const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000_000_000);
+        onTestFinished(() => now.mockRestore());
+
+        manager.forgetRemovedSections(noteWritten(24), ["notes"]);
+
+        expect(store.retainSections).toHaveBeenCalled();
+    });
+
     it("forgets nothing of a note written in the last day: a heading may be mid-edit", () => {
         manager.forgetRemovedSections(noteWritten(23), ["notes"]);
 
@@ -702,6 +776,14 @@ describe("CollapsibleManager — stale sections", () => {
 });
 
 describe("CollapsibleManager — refreshing after sections re-render in place", () => {
+    it("passes over a collapsed chevron it did not draw", () => {
+        const manager = new CollapsibleManager(makeStore());
+        const content = document.createElement("div");
+        content.innerHTML = '<h2>Plan</h2><span class="collapse-indicator" aria-expanded="false"></span>';
+
+        expect(() => manager.refreshCollapsible(content, "file.md")).not.toThrow();
+    });
+
     it("gives a kept heading or list item no second chevron, and returns every key", () => {
         const manager = new CollapsibleManager(makeStore());
         const content = document.createElement("div");

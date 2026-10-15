@@ -2337,7 +2337,8 @@ test change: after one, rerun only the source file it covers,
 `--force --mutate <file>`. A full run, a bare `--force`, only after a change to
 Stryker, vitest or the Stryker config, which can change every result. Bail is
 off: with it, mutants that fail tests at once were reported as survived, a
-different few each run.
+different few each run. A survivor the JSON report marks `static` may be false:
+one in `note-window.ts` failed its test when applied by hand.
 
 **Why:** 100% line coverage says what ran, not what was checked: the first run
 left 657 of 5,477 mutants alive (87.9%). A full run takes ~13 minutes on 8

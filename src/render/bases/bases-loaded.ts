@@ -17,8 +17,9 @@ export function basesLoaded(note: HTMLElement): Promise<void> {
         const loading = () => note.querySelector(LOADING) !== null;
         let frame = 0;
         const check = () => {
+            // One frame for every mutation in it, a Base making many.
             cancelAnimationFrame(frame);
-            if (!loading()) frame = requestAnimationFrame(() => loading() || done());
+            frame = requestAnimationFrame(() => loading() || done());
         };
         const observer = new MutationObserver(check);
         const limit = window.setTimeout(done, BASES_LOAD_LIMIT_MS);
@@ -28,7 +29,7 @@ export function basesLoaded(note: HTMLElement): Promise<void> {
             cancelAnimationFrame(frame);
             resolve();
         }
-        observer.observe(note, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
+        observer.observe(note, { subtree: true, childList: true, attributeFilter: ["class"] });
         check();
     });
 }

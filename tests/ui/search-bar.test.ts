@@ -45,6 +45,11 @@ describe("SearchBar", () => {
         expect(button("Previous").dataset.icon).toBe("arrow-up");
         expect(button("Next").dataset.icon).toBe("arrow-down");
         expect(button("Exit search").dataset.icon).toBe("x");
+        expect(input.closest(".document-search-container > .document-search")).not.toBeNull();
+        expect(button("Next").matches(".document-search-buttons > .clickable-icon.document-search-button")).toBe(true);
+        expect(button("Exit search").matches(".document-search > .clickable-icon.document-search-close-button")).toBe(
+            true
+        );
     });
 
     it("starts closed", () => {
@@ -72,6 +77,17 @@ describe("SearchBar", () => {
         vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
 
         expect(actions.search.mock.calls).toEqual([["milk"]]);
+    });
+
+    it("waits for typing to pause, not for its first key", () => {
+        type("m");
+        vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS - 1);
+        type("mi");
+        vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS - 1);
+        expect(actions.search).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(1);
+        expect(actions.search.mock.calls).toEqual([["mi"]]);
     });
 
     it("searches what was typed before Enter steps to the next match", () => {
@@ -127,6 +143,12 @@ describe("SearchBar", () => {
 
         bar.close();
         vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+
+        expect(actions.search).not.toHaveBeenCalled();
+    });
+
+    it("searches nothing as it opens with no query", () => {
+        bar.open();
 
         expect(actions.search).not.toHaveBeenCalled();
     });

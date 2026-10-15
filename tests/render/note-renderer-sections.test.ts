@@ -206,9 +206,18 @@ describe("NoteRenderer, a note by section", () => {
         expect(render.mock.calls.length).toBeGreaterThan(1);
     });
 
+    it("renders a note of exactly 6,000 characters a chunk at a time", async () => {
+        const sections = ["a".repeat(2999), "b".repeat(2999)];
+        expect(note(sections).markdown).toHaveLength(6000);
+        await open(sections);
+        expect(renderer.runsOf(component)).not.toEqual([]);
+    });
+
     it("renders a long note whole a chunk at a time, every section in order", async () => {
         const render = renderParagraphs();
         await open(days(400));
+        expect(render.mock.calls[0]![1]).toMatch(/^Day 0\./);
+        expect(block.hasClass("is-drawing-from-end")).toBe(false);
         expect(render.mock.calls.length).toBeGreaterThan(1);
         expect(render.mock.calls.length).toBeLessThan(400);
         expect(texts()).toEqual(days(400).map((d) => d.slice(0, 12)));
@@ -408,6 +417,36 @@ describe("NoteRenderer, a note by section", () => {
         expect(freed).toHaveBeenCalledOnce();
     });
 
+    it("leaves a long note drawn in chunks to a whole render on its first save", async () => {
+        await open(days(400));
+        const changed = days(400);
+        changed[4] = `Day X.${FILLER}`;
+        expect(await save(changed)).toBe(false);
+    });
+
+    it("forgets the sections a save took away", async () => {
+        await openSaved(days());
+        const forget = vi.spyOn(collapsible, "forgetRemovedSections");
+
+        expect(await save(days(9))).toBe(true);
+
+        expect(forget).toHaveBeenCalledWith(file, expect.any(Array));
+    });
+
+    // A section rendering nothing, as a comment, has no node to stand before.
+    it("puts a changed section before the next that drew something", async () => {
+        vi.spyOn(MarkdownRenderer, "render").mockImplementation(async (_app, markdown, el) => {
+            if (!markdown.startsWith("Day 5.")) el.createEl("p", { text: markdown.slice(0, 12) });
+        });
+        await openSaved(days());
+        const changed = days();
+        changed[4] = `Day X.${FILLER}`;
+
+        expect(await save(changed)).toBe(true);
+
+        expect(texts()[4]).toBe("Day X. lorem");
+    });
+
     it("leaves a note it failed to update to a whole render", async () => {
         await openSaved(days());
         vi.spyOn(MarkdownRenderer, "render").mockRejectedValue(new Error("broken plugin"));
@@ -479,6 +518,18 @@ describe("NoteRenderer, a note by section", () => {
             await openSaved(days(), "---\nmood: ok\n---\n");
             expect(await save(days())).toBe(true);
             expect(properties()).toBeNull();
+            expect(block.textContent).not.toContain("null");
+        });
+
+        it("keeps the properties as they are when the frontmatter did not change", async () => {
+            await openSaved(days(), "---\nmood: ok\n---\n");
+            const drawn = properties();
+            const changed = days();
+            changed[4] = `Day X.${FILLER}`;
+
+            expect(await save(changed, "---\nmood: ok\n---\n")).toBe(true);
+
+            expect(properties()).toBe(drawn);
         });
 
         it("re-renders the sections a save changed with it", async () => {
@@ -493,9 +544,11 @@ describe("NoteRenderer, a note by section", () => {
 
     it("renders whole once a section depends on another", async () => {
         await openSaved(days());
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
         const changed = days();
         changed[2] = "A fact.^[Source]";
         expect(await save(changed)).toBe(false);
+        expect(error).not.toHaveBeenCalled();
     });
 
     it("updates in place when a kept heading's collapse key moved", async () => {
@@ -519,6 +572,32 @@ describe("NoteRenderer, a note by section", () => {
         const noon = Array.from(content().querySelectorAll("h3")).find((h) => h.textContent === "Noon")!;
         expect(noon.querySelector(".collapse-indicator")).not.toBeNull();
         expect(noon.hasClass("is-hidden")).toBe(true);
+    });
+
+    it("wraps text beside a block in each section", async () => {
+        renderer = makeRenderer(today);
+        vi.spyOn(MarkdownRenderer, "render").mockImplementation(async (_app, _markdown, el) => {
+            el.innerHTML = "<ul><li>Standing pancake<ul><li>Head to floor</li></ul></li></ul>";
+        });
+
+        await open(days(2));
+
+        expect(content().querySelectorAll(".daily-note-text-run")).toHaveLength(2);
+    });
+
+    it("leaves a wide equation to Obsidian on desktop", async () => {
+        renderer = makeRenderer(today);
+        let math: HTMLElement | null = null;
+        vi.spyOn(MarkdownRenderer, "render").mockImplementation(async (_app, _markdown, el) => {
+            const container = el.createEl("mjx-container" as "div", { attr: { display: "true" } });
+            Object.defineProperty(container, "clientWidth", { value: 400 });
+            math = container.createEl("mjx-math" as "div");
+            Object.defineProperty(math, "offsetWidth", { value: 800 });
+        });
+
+        await open(days(1));
+
+        expect(math!.style.getPropertyValue("--daily-note-equation-zoom")).toBe("");
     });
 
     it("marks a new section's unresolved links", async () => {
@@ -592,9 +671,68 @@ describe("NoteRenderer, a note by section", () => {
             for (const run of seen) expect(final).toContainEqual(run);
         });
 
+        it("take sections up to exactly a run's length together", async () => {
+            renderer = makeRenderer(today);
+            const sections = Array.from({ length: 40 }, (_, i) => `Day ${i}.`.padEnd(100, " lorem"));
+            await open(sections);
+
+            expect(renderer.runsOf(component).map((run) => run.length)).toEqual([20, 20]);
+        });
+
+        it("hold only elements, and no run left with none", async () => {
+            renderer = makeRenderer(today);
+            vi.spyOn(MarkdownRenderer, "render").mockImplementation(async (_app, markdown, el) => {
+                if (/^Day \d\d?\./.test(markdown)) el.append(markdown.slice(0, 12));
+                else el.createEl("p", { text: markdown.slice(0, 12) });
+            });
+            await open(days(400));
+
+            const runs = renderer.runsOf(component);
+
+            expect(runs.every((run) => run.length > 0 && run.every((node) => node instanceof Element))).toBe(true);
+            expect(runs.flat()).toHaveLength(300);
+        });
+
         it("are none in a note rendered whole", async () => {
             await open(days(10));
             expect(renderer.runsOf(component)).toEqual([]);
+        });
+
+        it("keep a run's start where a save replaced the sections it started with", async () => {
+            renderer = makeRenderer(today);
+            await open(days(400));
+            const before = renderer.runsOf(component).map((run) => run.length);
+            const third = renderer.runsOf(component)[2]![0]!.textContent!;
+            const at = days(400).findIndex((d) => d.startsWith(third));
+            const changed = days(400);
+            changed.splice(at, 2, `Day X.${FILLER}`, `Day Y.${FILLER}`);
+
+            expect(await save(changed)).toBe(true);
+
+            const runs = renderer.runsOf(component);
+            expect(runs.map((run) => run.length)).toEqual(before);
+            expect(runs[2]![0]!.textContent).toBe("Day X. lorem");
+        });
+
+        it("lose the last run once a save took its sections away", async () => {
+            renderer = makeRenderer(today);
+            await open(days(400));
+            const runs = renderer.runsOf(component);
+            const kept = days(400).slice(0, 400 - runs.at(-1)!.length);
+
+            expect(await save(kept)).toBe(true);
+
+            expect(renderer.runsOf(component)).toHaveLength(runs.length - 1);
+        });
+
+        it("take in a section a save put before the first", async () => {
+            renderer = makeRenderer(today);
+            await open(days(400));
+            const changed = [`Day N.${FILLER}`, ...days(400)];
+
+            expect(await save(changed)).toBe(true);
+
+            expect(elementsOf(renderer.runsOf(component))).toEqual(texts());
         });
 
         it("follow a save that updated the note in place", async () => {
@@ -705,6 +843,33 @@ describe("NoteRenderer, a note by section", () => {
         });
 
         const BASE = "```base\nviews:\n  - type: table\n```";
+
+        it("draws the Bases of a note drawn by section", async () => {
+            const draw = vi.mocked(NoteBases.prototype.render);
+            const withBase = days();
+            withBase[3] = BASE;
+            renderer = makeRenderer(today);
+
+            await open(withBase);
+
+            expect(draw.mock.calls.at(-1)![3].filter(Boolean)).toHaveLength(1);
+        });
+
+        it("shrinks a wide equation in a section to fit", async () => {
+            renderer = makeRenderer(today);
+            let math: HTMLElement | null = null;
+            vi.spyOn(MarkdownRenderer, "render").mockImplementation(async (_app, markdown, el) => {
+                if (!markdown.startsWith("Day 3.")) return void el.createEl("p", { text: markdown.slice(0, 12) });
+                const container = el.createEl("mjx-container" as "div", { attr: { display: "true" } });
+                Object.defineProperty(container, "clientWidth", { value: 400 });
+                math = container.createEl("mjx-math" as "div");
+                Object.defineProperty(math, "offsetWidth", { value: 800 });
+            });
+
+            await open(days());
+
+            expect(math!.style.getPropertyValue("--daily-note-equation-zoom")).toBe("0.5");
+        });
 
         it("renders whole when a changed section holds a Base", async () => {
             await openSaved(days());

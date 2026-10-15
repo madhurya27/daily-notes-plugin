@@ -240,6 +240,33 @@ describe("CollapsibleStateStore", () => {
         ["no list of files", { version: 1, files: "bad" }],
         ["a malformed note", { version: 1, files: [["file.md", "bad"]] }],
         ["a non-boolean state", { version: 1, files: [["file.md", [["intro", "yes"]]]] }],
+        ["a note that is no pair", { version: 1, files: [["file.md", [["intro", true]]], "file.md"] }],
+        [
+            "a note under no path",
+            {
+                version: 1,
+                files: [
+                    ["file.md", [["intro", true]]],
+                    [1, []],
+                ],
+            },
+        ],
+        ["a state that is no pair", { version: 1, files: [["file.md", [["intro", true], "outro"]]] }],
+        [
+            "a state under no key",
+            {
+                version: 1,
+                files: [
+                    [
+                        "file.md",
+                        [
+                            ["intro", true],
+                            [1, true],
+                        ],
+                    ],
+                ],
+            },
+        ],
     ])("starts empty from %s stored", (_, value) => {
         app.saveLocalStorage(COLLAPSE_STATE_KEY, value);
 
@@ -261,8 +288,25 @@ describe("CollapsibleStateStore", () => {
         expect(() => store.clearForFile("file.md")).not.toThrow();
         expect(() => store.migrate("file.md", "moved.md")).not.toThrow();
 
-        expect(error).toHaveBeenCalledOnce();
+        expect(error).toHaveBeenCalledExactlyOnceWith(
+            "DailyNotesStream: Failed to save collapse state",
+            expect.any(DOMException)
+        );
         error.mockRestore();
+    });
+
+    it("saves a migration and a clear for the next session", () => {
+        store.setCollapsed("file.md", "intro", true);
+        store.setCollapsed("other.md", "intro", true);
+
+        store.migrate("file.md", "moved.md");
+        const migrated = new CollapsibleStateStore(asApp(app));
+        store.clearForFile("other.md");
+        const cleared = new CollapsibleStateStore(asApp(app));
+
+        expect(migrated.isCollapsed("moved.md", "intro")).toBe(true);
+        expect(migrated.isCollapsed("file.md", "intro")).toBe(false);
+        expect(cleared.isCollapsed("other.md", "intro")).toBe(false);
     });
 
     it("multiple files maintain independent state", () => {

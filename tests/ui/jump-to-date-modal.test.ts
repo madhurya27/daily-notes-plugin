@@ -48,6 +48,21 @@ describe("JumpToDateModal", () => {
         expect(listed()).toEqual(["02-01-2025", "01-01-2025"]);
     });
 
+    it("asks for a date, showing today's as this vault names it", async () => {
+        await open("DD-MM-YYYY", ["01-01-2025"]);
+
+        expect(modal.inputEl.placeholder).toBe(`Jump to a date, e.g. ${moment().format("DD-MM-YYYY")}`);
+        expect(modal.emptyStateText).toBe("No daily note, and no date to jump to.");
+    });
+
+    it("narrows on a query in any case, the spaces around it aside", async () => {
+        await open("MMM D, YYYY", ["Jan 1, 2025", "Feb 3, 2025"]);
+
+        modal.type(" JAN ");
+
+        expect(listed()).toEqual(["Jan 1, 2025"]);
+    });
+
     // The reader may reach for ISO whatever their filenames look like.
     it("narrows on an ISO query in a vault that names nothing that way", async () => {
         await open("DD-MM-YYYY", ["01-01-2025", "03-02-2025"]);
@@ -103,6 +118,31 @@ describe("JumpToDateModal", () => {
             modal.type("05-01-2025");
 
             expect(listed()).toEqual(["05-01-2025 has no noteJump to the nearest older note"]);
+            expect(modal.resultContainerEl.querySelector(".daily-notes-jump-fallback")?.textContent).toBe(
+                "Jump to the nearest older note"
+            );
+        });
+
+        it("says nothing more of a date that has its note", async () => {
+            await open("DD-MM-YYYY", ["01-01-2025"]);
+
+            expect(modal.resultContainerEl.querySelector(".daily-notes-jump-fallback")).toBeNull();
+        });
+
+        it("reads a date typed with spaces around it", async () => {
+            await open("DD-MM-YYYY", ["01-01-2025"]);
+
+            modal.type(" 05-01-2025 ");
+
+            expect(listed()).toEqual(["05-01-2025 has no noteJump to the nearest older note"]);
+        });
+
+        it("reads no ISO date with more after it", async () => {
+            await open("DD-MM-YYYY", ["01-01-2025"]);
+
+            modal.type("2025-01-05x");
+
+            expect(listed()).toEqual([]);
         });
 
         it("reads the query in ISO too", async () => {
@@ -144,6 +184,7 @@ describe("JumpToDateModal", () => {
             expect(calendarIcon()!.getAttribute("data-icon")).toBe("calendar");
             expect(picker()!.parentElement).toBe(calendarIcon());
             expect(picker()!.getAttribute("aria-label")).toBe("Pick a date");
+            expect(picker()!.hasClass("daily-notes-jump-picker")).toBe(true);
         });
 
         it("asks for the wheel on a click, where the platform can show it", async () => {

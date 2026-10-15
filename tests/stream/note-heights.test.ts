@@ -45,6 +45,13 @@ describe("NoteHeights", () => {
 
     // With few measured, the 0.9 quantile is the tallest: one 10,000-line note
     // would have every placeholder reserve its 235,612px.
+    it("estimates at the 0.9 quantile of a layout with many measured notes", () => {
+        const heights = new NoteHeights();
+        for (let i = 1; i <= 30; i++) heights.keep("600:16px", `n${i}.md`, i * 100);
+
+        expect(heights.estimate("600:16px", "new.md")).toBe(2800);
+    });
+
     it("never estimates at the one tallest note alone", () => {
         const heights = new NoteHeights();
         heights.keep("600:16px", "long.md", 235_612);
@@ -105,6 +112,25 @@ describe("NoteHeights", () => {
     });
 
     // Just turned, the notes on screen are measured at the new width within moments: no guess from the old one.
+    it("caps no estimate where no note measured had bytes to rate", () => {
+        const heights = new NoteHeights(undefined, (path) => ({ mtime: 1, size: path === "new.md" ? 10 : 0 }));
+        heights.keep("600:16px", "blank.md", 300);
+
+        expect(heights.estimate("600:16px", "new.md")).toBe(300);
+    });
+
+    it("learns its estimates again from what it comes back from", () => {
+        const heights = new NoteHeights();
+        heights.keep("a", "x.md", 100);
+        expect(heights.estimate("a", "new.md")).toBe(100);
+        const saved = new NoteHeights();
+        saved.keep("a", "x.md", 700);
+
+        heights.restore(JSON.parse(JSON.stringify(saved.toJSON())));
+
+        expect(heights.estimate("a", "new.md")).toBe(700);
+    });
+
     it("estimates nothing at a width that measured nothing, whatever others did", () => {
         const heights = new NoteHeights();
         heights.keep("400:16px", "a.md", 900);
@@ -249,6 +275,40 @@ describe("NoteHeights", () => {
 
             expect(heights.heightOf("a", "moved.md")).toBe(100);
             expect(heights.heightOf("a", "y.md")).toBe(300);
+        });
+
+        it("saves the mtime of only the notes it holds, under their paths now", () => {
+            const { mtimes, heights } = setup();
+            heights.rename("x.md", "moved.md");
+            heights.rename("never.md", "elsewhere.md");
+            heights.forget("y.md");
+            mtimes.set("moved.md", 1);
+            expect(heights.toJSON().mtimes).toEqual([
+                ["gone.md", 1],
+                ["moved.md", 1],
+            ]);
+
+            heights.retainOnly(new Set(["moved.md"]));
+
+            expect(heights.toJSON().mtimes).toEqual([["moved.md", 1]]);
+        });
+
+        it("comes back empty from a save whose mtimes are of another shape", () => {
+            const { heights } = setup();
+            const { heights: table } = heights.toJSON();
+            for (const mtimes of [[["x.md", "1"]], [[1, 1]], ["x.md"]]) {
+                const restored = new NoteHeights();
+                restored.restore({ heights: table, mtimes });
+                expect(restored.heightOf("a", "x.md")).toBeUndefined();
+            }
+        });
+
+        it("comes back without a height that is no number", () => {
+            const restored = new NoteHeights();
+
+            restored.restore({ heights: [["a", [["x.md", "tall"]]]], mtimes: [] });
+
+            expect(restored.heightOf("a", "x.md")).toBeUndefined();
         });
 
         it("comes back empty from a save of another shape", () => {

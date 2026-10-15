@@ -37,6 +37,15 @@ describe("basesLoaded", () => {
         expect(loaded).toBe(true);
     });
 
+    it("resolves a frame on for a Base already filled in", async () => {
+        loadingBase().removeClass("is-loading");
+
+        waitForBases();
+        await vi.advanceTimersByTimeAsync(FRAME_MS);
+
+        expect(loaded).toBe(true);
+    });
+
     it("waits while a Base runs its query", async () => {
         loadingBase();
 
@@ -51,6 +60,19 @@ describe("basesLoaded", () => {
         waitForBases();
 
         view.removeClass("is-loading");
+        await vi.advanceTimersByTimeAsync(FRAME_MS);
+
+        expect(loaded).toBe(true);
+    });
+
+    it("resolves a frame after Bases swaps the loading view for a filled one", async () => {
+        const view = loadingBase();
+        waitForBases();
+        await vi.advanceTimersByTimeAsync(FRAME_MS);
+
+        const filled = document.createElement("div");
+        filled.className = "bases-cards-container";
+        view.replaceWith(filled);
         await vi.advanceTimersByTimeAsync(FRAME_MS);
 
         expect(loaded).toBe(true);
@@ -76,5 +98,45 @@ describe("basesLoaded", () => {
         await vi.advanceTimersByTimeAsync(BASES_LOAD_LIMIT_MS);
 
         expect(loaded).toBe(true);
+    });
+
+    it("asks for one frame however many times a Base changes in it", async () => {
+        const view = loadingBase();
+        waitForBases();
+
+        view.removeClass("is-loading");
+        await vi.advanceTimersByTimeAsync(0);
+        view.createDiv({ cls: "bases-cards-item" });
+        await vi.advanceTimersByTimeAsync(0);
+
+        // The limit's timer, and one frame.
+        expect(vi.getTimerCount()).toBe(2);
+    });
+
+    it("stops watching once a Base fills in", async () => {
+        const view = loadingBase();
+        waitForBases();
+        view.removeClass("is-loading");
+        await vi.advanceTimersByTimeAsync(FRAME_MS);
+        expect(loaded).toBe(true);
+
+        // Redrawn after, it asks for no frame.
+        view.addClass("is-loading");
+        view.removeClass("is-loading");
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("leaves no frame pending once given up on", async () => {
+        const view = loadingBase();
+        waitForBases();
+        await vi.advanceTimersByTimeAsync(BASES_LOAD_LIMIT_MS - 1);
+
+        view.removeClass("is-loading");
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(loaded).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
     });
 });

@@ -152,6 +152,31 @@ describe("SearchHighlighter", () => {
         expect([...CSS.highlights.get("daily-notes-search-current")!]).toEqual([second]);
     });
 
+    // Overlapping ranges paint by priority: the current match over the rest.
+    it("paints the current match over the other matches", () => {
+        const { block, component } = renderedBlock("<p>milk</p>");
+        highlighter.setQuery("milk");
+        highlighter.track(block, component);
+        highlighter.setCurrent(highlighter.rangesIn(block)[0]!);
+
+        expect(CSS.highlights.get("daily-notes-search-current")!.priority).toBe(1);
+        expect(CSS.highlights.get("daily-notes-search-match")!.priority).toBe(0);
+    });
+
+    it("keeps the current match marked as another note's matches are found again", () => {
+        const a = renderedBlock("<p>milk</p>");
+        const b = renderedBlock("<p>milk</p>");
+        highlighter.setQuery("milk");
+        highlighter.track(a.block, a.component);
+        highlighter.track(b.block, b.component);
+        const [current] = highlighter.rangesIn(a.block);
+        highlighter.setCurrent(current!);
+
+        highlighter.refresh(b.block);
+
+        expect([...CSS.highlights.get("daily-notes-search-current")!]).toEqual([current]);
+    });
+
     it("leaves other views' ranges in the shared highlight", () => {
         const other = new SearchHighlighter();
         const a = renderedBlock("<p>milk</p>");
@@ -174,6 +199,8 @@ describe("SearchHighlighter", () => {
             highlighter.setQuery("milk");
             highlighter.track(block, component);
             highlighter.setCurrent(highlighter.rangesIn(block)[0]!);
+            highlighter.setCurrent(null);
+            highlighter.refresh(block);
 
             expect(highlighter.rangesIn(block).map((r) => r.toString())).toEqual(["milk"]);
         } finally {

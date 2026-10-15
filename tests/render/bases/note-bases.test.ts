@@ -35,6 +35,8 @@ class FakeResizeObserver {
         FakeResizeObserver.instances.push(this);
     }
     observe(target: Element) {
+        // As the real one: nothing but an element can be watched.
+        if (!(target instanceof Element)) throw new TypeError("Failed to execute 'observe': not an Element");
         this.targets.push(target);
     }
     /** Reports every observed element as resized. */
@@ -143,6 +145,14 @@ describe("NoteBases drawing a note's Bases", () => {
         expect(drawn(slotOf(content))).toMatch(/^```base\n[\s\S]*type: cards[\s\S]*\n```$/);
     });
 
+    it("draws a Base whose headers just fit as the table", async () => {
+        noteWidth = 300;
+
+        const content = await renderNote(BLOCK);
+
+        expect(drawn(slotOf(content))).toBe(BLOCK);
+    });
+
     it("draws each Base into its own placeholder", async () => {
         const content = await renderNote(lines(BLOCK, "", CARDS_ONLY));
 
@@ -189,6 +199,17 @@ describe("NoteBases drawing a note's Bases", () => {
         const content = await renderNote(CARDS_ONLY);
 
         expect(drawn(slotOf(content))).toBe(CARDS_ONLY);
+    });
+
+    it("draws a Base with no table as written, even where it was measured too wide", async () => {
+        const measured = new BaseMeasurements();
+        bases = new NoteBases(asApp(app), measured, widths, measure);
+        const content = await renderNote(CARDS_ONLY);
+        reportLayout(layOut(slotOf(content), 900));
+
+        const again = await renderNote(CARDS_ONLY);
+
+        expect(drawn(slotOf(again))).toBe(CARDS_ONLY);
     });
 
     // Headers are measured with a style read, so once, not per note.
@@ -455,6 +476,16 @@ describe("NoteBases when the note's width changes", () => {
         expect(drawn(slotOf(content))).toContain("type: cards");
     });
 
+    it("keeps a table exactly as wide as the note", async () => {
+        noteWidth = 800;
+        const content = await renderNote(BLOCK);
+        layOut(slotOf(content), 400, 800);
+
+        resize(400);
+
+        expect(drawn(slotOf(content))).toBe(BLOCK);
+    });
+
     it("redraws a kanban that no longer fits as cards", async () => {
         noteWidth = 800;
         const content = await renderNote(KANBAN);
@@ -501,6 +532,20 @@ describe("NoteBases when an embedded Base's file changes", () => {
         await bases.onBaseModified(base);
 
         expect(drawn(slotOf(content))).toBe("![[Views.base]]");
+    });
+
+    it("redraws that copy as cards again once it lays out too wide", async () => {
+        vi.useFakeTimers();
+        noteWidth = 200;
+        const content = await renderNote("![[Views.base]]");
+        app.vault.cachedRead.mockResolvedValue(oneColumn);
+        await bases.onBaseModified(base);
+
+        reportLayout(layOut(slotOf(content), 900));
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(drawn(slotOf(content))).toContain("type: cards");
+        vi.useRealTimers();
     });
 
     // Obsidian redraws a real embed when its file changes.
@@ -612,6 +657,31 @@ describe("NoteBases holding a Base while it refills", () => {
         layOutAt(slotOf(content), 500);
 
         expect(held(slotOf(content))).toBe("500px");
+    });
+
+    it("watches the placeholder, which a hold stops resizing", async () => {
+        const content = await renderNote(BLOCK);
+
+        expect(FakeResizeObserver.instances.some((observer) => observer.targets.includes(slotOf(content)))).toBe(true);
+    });
+
+    it("lets go of a Base drawn and never resized, once still", async () => {
+        const content = await renderNote(BLOCK);
+        tall(slotOf(content), 120);
+
+        vi.advanceTimersByTime(SETTLE_MS);
+
+        expect(held(slotOf(content))).toBe("120px");
+    });
+
+    it("holds nothing once let go into nothing", async () => {
+        const content = await renderNote(BLOCK);
+        layOutAt(slotOf(content), 300);
+        layOutAt(slotOf(content), 0);
+
+        vi.advanceTimersByTime(SETTLE_MS);
+
+        expect(held(slotOf(content))).toBe("");
     });
 
     it("lets go once what is drawn holds still", async () => {
@@ -766,6 +836,53 @@ describe("NoteBases changing a Base's height in a pinned note", () => {
         expect(heard.count).toBe(1);
     });
 
+    it("tells the note it sits in, wherever it listens", async () => {
+        const content = await renderNote(BLOCK);
+        layOutAt(slotOf(content), 300);
+        const heard = told(content);
+
+        vi.advanceTimersByTime(SETTLE_MS);
+
+        expect(heard.count).toBe(1);
+    });
+
+    it("tells its note once as the limit lets go, not again once still", async () => {
+        const content = await renderNote(BLOCK);
+        const heard = told(slotOf(content));
+        for (let t = 0; t < HOLD_LIMIT_MS; t += SETTLE_MS / 2) {
+            layOutAt(slotOf(content), 300 + t);
+            vi.advanceTimersByTime(SETTLE_MS / 2);
+        }
+        const atLimit = heard.count;
+
+        vi.advanceTimersByTime(SETTLE_MS);
+
+        expect(atLimit).toBe(1);
+        expect(heard.count).toBe(1);
+    });
+
+    it("tells its note nothing once unloaded while held", async () => {
+        const component = loaded();
+        const content = await renderNote(BLOCK, component);
+        layOutAt(slotOf(content), 300);
+        const heard = told(slotOf(content));
+
+        component.unload();
+        vi.advanceTimersByTime(HOLD_LIMIT_MS);
+
+        expect(heard.count).toBe(0);
+        expect(held(slotOf(content))).toBe("");
+    });
+
+    it("tells its note nothing for a table that fits, never measured", async () => {
+        const content = await renderNote(BLOCK);
+        const heard = told(slotOf(content));
+
+        reportLayout(layOut(slotOf(content), 300));
+
+        expect(heard.count).toBe(0);
+    });
+
     // Bases draws a board or table at its own height: shown, the text below
     // in the note moves a frame before the note hears of it.
     it("clips a Base redrawn as written at the height it showed while it is measured", async () => {
@@ -828,6 +945,38 @@ describe("NoteBases changing a Base's height in a pinned note", () => {
     it("clips nothing on a first draw", async () => {
         const content = await renderNote(BLOCK);
 
+        expect(measuring(slotOf(content))).toBe(false);
+    });
+
+    it("clips nothing on a first draw, however tall what it replaces", async () => {
+        vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ height: 200 } as DOMRect);
+
+        const content = await renderNote(BLOCK);
+
+        expect(measuring(slotOf(content))).toBe(false);
+    });
+
+    it("clips nothing redrawn as written from cards never laid out", async () => {
+        noteWidth = 299;
+        const content = await renderNote(BLOCK);
+        noteWidth = 800;
+        for (const watched of widths.watched.keys()) widths.resize(watched, 800);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(drawn(slotOf(content))).toBe(BLOCK);
+        expect(measuring(slotOf(content))).toBe(false);
+    });
+
+    it("clips nothing redrawn as cards from cards", async () => {
+        const base = new TFile("Bases/Views.base");
+        app.metadataCache.getFirstLinkpathDest.mockReturnValue(base);
+        noteWidth = 200;
+        const content = await renderNote("![[Views.base]]");
+        layOutAt(slotOf(content), 300);
+
+        await bases.onBaseModified(base);
+
+        expect(drawn(slotOf(content))).toContain("type: cards");
         expect(measuring(slotOf(content))).toBe(false);
     });
 });

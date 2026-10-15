@@ -83,6 +83,33 @@ describe("linkedMentions", () => {
         expect(linkedMentions(app, index, day)[0]!.excerpts).toEqual([{ start: 25, end: 45 }]);
     });
 
+    it("shows a link at the very end of a list item in that item", () => {
+        const { app, index, day } = vault({
+            "a.md": {
+                links: [link("2025-01-01", 45)],
+                sections: [{ type: "list", position: at(0, 100) }],
+                listItems: [{ parent: -1, position: at(25, 45) }],
+            },
+        });
+
+        expect(linkedMentions(app, index, day)[0]!.excerpts).toEqual([{ start: 25, end: 45 }]);
+    });
+
+    it("shows a link after every list item in the section around it", () => {
+        const { app, index, day } = vault({
+            "a.md": {
+                links: [link("2025-01-01", 50)],
+                sections: [{ type: "list", position: at(0, 100) }],
+                listItems: [
+                    { parent: -1, position: at(0, 20) },
+                    { parent: -1, position: at(25, 45) },
+                ],
+            },
+        });
+
+        expect(linkedMentions(app, index, day)[0]!.excerpts).toEqual([{ start: 0, end: 100 }]);
+    });
+
     it("shows a section holding several links once, in source order", () => {
         const { app, index, day } = vault({
             "a.md": {
@@ -204,6 +231,20 @@ describe("mentionsSignature", () => {
                     { type: "paragraph", position: at(0, 20) },
                     { type: "paragraph", position: at(30, 50) },
                 ],
+            },
+        };
+        expect(signature({}, more)).not.toBe(signature());
+    });
+
+    it("changes when a source links here from a property and one more place", () => {
+        const more = {
+            "a.md": {
+                links: [link("2025-01-01", 0), link("2025-01-01", 30)],
+                sections: [
+                    { type: "paragraph", position: at(0, 20) },
+                    { type: "paragraph", position: at(30, 50) },
+                ],
+                frontmatterLinks: [{ key: "related", link: "2025-01-01", original: "[[2025-01-01]]" }],
             },
         };
         expect(signature({}, more)).not.toBe(signature());

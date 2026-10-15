@@ -51,11 +51,9 @@ export function parseLinktext(linktext: string): { path: string; subpath: string
         : { path: linktext.slice(0, hash), subpath: linktext.slice(hash) };
 }
 
+/** As Obsidian's own: the root, or an empty path, is "/". */
 export function normalizePath(path: string): string {
-    return path
-        .replace(/\\/g, "/")
-        .replace(/\/{2,}/g, "/")
-        .replace(/^\/+|\/+$/g, "");
+    return path.replace(/[\\/]+/g, "/").replace(/^\/+|\/+$/g, "") || "/";
 }
 
 export class TAbstractFile {

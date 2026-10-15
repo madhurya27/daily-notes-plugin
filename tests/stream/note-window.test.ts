@@ -68,8 +68,15 @@ function stubObservers(): void {
 let resizeCallbacks: ResizeObserverCallback[];
 /** What the last ResizeObserver constructed was told to watch. */
 let lastResizeObserve: ReturnType<typeof vi.fn>;
+/** What the last ResizeObserver constructed was told to stop watching. */
+let lastResizeUnobserve: ReturnType<typeof vi.fn>;
 /** What each ResizeObserver constructed was told to watch, in order. */
 let resizeObserves: ReturnType<typeof vi.fn>[];
+
+/** As the real one, anything but an element throws. */
+function element(target: unknown): void {
+    if (!(target instanceof Element)) throw new TypeError("parameter 1 is not of type 'Element'");
+}
 
 function stubResizeObservers(): void {
     resizeCallbacks = [];
@@ -78,9 +85,10 @@ function stubResizeObservers(): void {
         "ResizeObserver",
         vi.fn(function (cb: ResizeObserverCallback) {
             resizeCallbacks.push(cb);
-            lastResizeObserve = vi.fn();
+            lastResizeObserve = vi.fn(element);
+            lastResizeUnobserve = vi.fn(element);
             resizeObserves.push(lastResizeObserve);
-            return { observe: lastResizeObserve, unobserve: vi.fn(), disconnect: vi.fn() };
+            return { observe: lastResizeObserve, unobserve: lastResizeUnobserve, disconnect: vi.fn() };
         })
     );
 }
@@ -736,6 +744,38 @@ describe("NoteWindowManager after the pane's width changes", () => {
         expect(placeholderHeight(block)).toBe("1100px");
     });
 
+    it("waits again after every scroll before re-reserving", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated });
+        const block = manager.add(new TFile("b.md"));
+        document.body.appendChild(block);
+
+        estimated = 1100;
+        learn();
+        manager.onScroll();
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
+        manager.onScroll();
+        await vi.advanceTimersByTimeAsync(SCROLL_IDLE_MS - 1);
+        expect(placeholderHeight(block)).toBe("900px");
+
+        await vi.advanceTimersByTimeAsync(1);
+        expect(placeholderHeight(block)).toBe("1100px");
+    });
+
+    it("counts a re-reservation as a layout change", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated });
+        document.body.appendChild(manager.add(new TFile("b.md")));
+        const before = manager.layoutChanges;
+
+        estimated = 1100;
+        learn();
+        manager.onScroll();
+        await still();
+
+        expect(manager.layoutChanges).toBe(before + 1);
+    });
+
     it("tells the anchor in the task it re-reserves, and only then", async () => {
         let estimated = 900;
         const { manager, learn } = makeResizable({ estimate: () => estimated });
@@ -1086,6 +1126,24 @@ describe("NoteWindowManager margins", () => {
         expect(placeholderHeight(block)).toBe(reserved);
     });
 
+    it("watches the blocks again with the new margins when the pane is resized", () => {
+        const root = makeScrollRoot(800);
+        const { manager } = makeManager(makeRenderer(), () => 500, root);
+        const block = manager.add(FILE);
+        observers.observe.mockClear();
+
+        Object.defineProperty(root, "clientHeight", { value: 1600, configurable: true });
+        manager.onResize();
+
+        expect(observers.observe.mock.calls.filter(([el]) => el === block)).toHaveLength(3);
+    });
+
+    it("watches what is on screen in the pane itself", () => {
+        const { scrollRoot } = makeManager();
+
+        expect(IntersectionObserver).toHaveBeenCalledWith(expect.any(Function), { root: scrollRoot });
+    });
+
     it("leaves the observers alone when a resize did not change the height", () => {
         const { manager } = makeManager();
         observers.disconnect.mockClear();
@@ -1154,6 +1212,17 @@ describe("NoteWindowManager render", () => {
         expect(renderer.renderInto).toHaveBeenCalledTimes(1);
     });
 
+    it("renders nothing for a block reported outside the render margin", async () => {
+        const { manager, renderer } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        fire(observers.render, block, false);
+        await settle();
+
+        expect(renderer.renderInto).not.toHaveBeenCalled();
+    });
+
     it("ignores an entry for a block it does not own", async () => {
         const { manager, renderer } = makeManager();
         manager.add(FILE);
@@ -1177,6 +1246,7 @@ describe("NoteWindowManager render", () => {
 
         expect(renderer.discard).toHaveBeenCalledTimes(1);
         expect(block.classList.contains("is-unloaded")).toBe(true);
+        expect(block.childElementCount).toBe(0);
     });
 
     describe("in the order the reader meets it", () => {
@@ -1205,6 +1275,27 @@ describe("NoteWindowManager render", () => {
             fire(observers.render, block, true);
             await settle();
             expect(orderOf(renderer)).toBe("from-start");
+        });
+
+        it("draws a note whose middle is the pane's from its start", async () => {
+            const { renderer, block } = placed(-400, 1200);
+            fire(observers.render, block, true);
+            await settle();
+            expect(orderOf(renderer)).toBe("from-start");
+        });
+
+        it("compares a note's middle with that of a pane lower in the window", async () => {
+            const root = makeScrollRoot(800);
+            root.getBoundingClientRect = () => ({ top: 100, bottom: 900 }) as DOMRect;
+            const { manager, renderer } = makeManager(makeRenderer(), () => 500, root);
+            const block = manager.add(FILE);
+            block.getBoundingClientRect = () => ({ top: -500, bottom: 400 }) as DOMRect;
+            document.body.appendChild(block);
+
+            fire(observers.render, block, true);
+            await settle();
+
+            expect(orderOf(renderer)).toBe("from-end");
         });
 
         it("lays a note drawn from its end out from its top again as it lands", async () => {
@@ -1384,6 +1475,32 @@ describe("NoteWindowManager pins a rendered note", () => {
         expect(pinned(block)).toBe("640px");
     });
 
+    it("tells the anchor nothing when a hold lets go at the height it held", async () => {
+        const heights = new NoteHeights();
+        heights.keep(LAYOUT, FILE.path, 812);
+        const { manager, block } = await rendered(() => 812, heights);
+        told.mockClear();
+
+        manager.onTouch(block.firstElementChild);
+
+        expect(pinned(block)).toBe("812px");
+        expect(told).not.toHaveBeenCalled();
+    });
+
+    it("keeps the pin of a hidden note whose hold lets go", async () => {
+        const heights = new NoteHeights();
+        heights.keep(LAYOUT, FILE.path, 812);
+        const { manager, block } = await rendered(
+            (b) => (b.hasClass("is-far") ? 0 : b.style.getPropertyValue("--daily-note-held-height") ? 812 : 640),
+            heights
+        );
+        fire(observers.hide, block, false);
+
+        manager.onTouch(block.firstElementChild);
+
+        expect(pinned(block)).toBe("812px");
+    });
+
     it("takes its own height when the hold's limit passes", async () => {
         const heights = new NoteHeights();
         heights.keep(LAYOUT, FILE.path, 812);
@@ -1525,6 +1642,7 @@ describe("NoteWindowManager unload", () => {
 
         expect(renderer.discard).not.toHaveBeenCalled();
         expect(placeholderHeight(block)).toBe(UNMEASURED);
+        expect(vi.getTimerCount()).toBe(0);
     });
 
     it("ignores a still-intersecting entry", async () => {
@@ -1789,6 +1907,7 @@ describe("NoteWindowManager hides a far note", () => {
 
         expect(isHidden(block)).toBe(false);
         expect(placeholderHeight(block)).toBe(UNMEASURED);
+        expect(vi.getTimerCount()).toBe(0);
     });
 
     it("ignores blocks it does not own", () => {
@@ -1803,12 +1922,14 @@ describe("NoteWindowManager hides a far note", () => {
     });
 
     // Unpinned, its height is its content's: hiding that would collapse it.
-    it("hides nothing in a note laid out at nothing", async () => {
+    it("hides nothing in a note laid out at nothing, and empties it once the scroll is still", async () => {
         const { block } = await rendered(() => 0);
 
         fire(observers.hide, block, false);
-
         expect(isHidden(block)).toBe(false);
+
+        await still();
+        expect(isRendered(block)).toBe(false);
     });
 
     it("re-estimates a hidden note edited meanwhile, emptied at the height it was hidden at", async () => {
@@ -1852,6 +1973,31 @@ describe("NoteWindowManager hides a far note", () => {
             expect(isHidden(block)).toBe(true);
 
             await still();
+            expect(renderer.discard).not.toHaveBeenCalled();
+        });
+
+        it("empties it once the scroll is still where it was reported past the unload margin alone", async () => {
+            const { renderer, block } = await landing("unload");
+
+            await still();
+            expect(renderer.discard).toHaveBeenCalledTimes(1);
+            expect(isRendered(block)).toBe(false);
+        });
+
+        it("keeps it where it came back inside the unload margin before it landed", async () => {
+            const renderer = makeSlowRenderer();
+            const { manager } = makeManager(renderer, laidOut);
+            const block = manager.add(FILE);
+            document.body.appendChild(block);
+            fire(observers.render, block, true);
+            await vi.advanceTimersByTimeAsync(1); // into the render
+            fire(observers.unload, block, false);
+            fire(observers.unload, block, true);
+            fire(observers.hide, block, false);
+            await vi.advanceTimersByTimeAsync(50);
+
+            await still();
+            expect(isHidden(block)).toBe(true);
             expect(renderer.discard).not.toHaveBeenCalled();
         });
 
@@ -2013,7 +2159,9 @@ describe("NoteWindowManager under a fast scroll", () => {
         await settleSlow();
 
         expect(block.classList.contains("is-unloaded")).toBe(false);
+        expect(block.classList.contains("is-far")).toBe(false);
         expect(block.querySelector(".daily-note-content")).not.toBeNull();
+        expect(renderer.renderInto).toHaveBeenCalledOnce();
     });
 
     it("ignores an unload for a block it does not own", () => {
@@ -2177,6 +2325,7 @@ describe("NoteWindowManager.refresh", () => {
         await settle();
 
         renderer.renderInto.mockImplementationOnce(async (el: HTMLElement) => {
+            fire(observers.render, block, true);
             await new Promise((resolve) => setTimeout(resolve, 100));
             el.createDiv({ cls: "daily-note-content" });
             return { component: new Component(), footer: Promise.resolve() };
@@ -2187,6 +2336,20 @@ describe("NoteWindowManager.refresh", () => {
         await refreshed;
 
         expect(block.querySelectorAll(".daily-note-content")).toHaveLength(1);
+        expect(renderer.renderInto).toHaveBeenCalledTimes(2);
+    });
+
+    it("stops watching what it drew before re-rendering it", async () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        const drawn = block.firstElementChild;
+
+        await manager.refresh(block);
+
+        expect(lastResizeUnobserve).toHaveBeenCalledWith(drawn);
     });
 
     it("leaves the block of a note deleted mid-refresh empty", async () => {
@@ -2246,6 +2409,35 @@ describe("NoteWindowManager.refresh", () => {
             expect(renderer.update).toHaveBeenCalledWith(block, FILE, expect.any(Component));
             expect(renderer.renderInto).toHaveBeenCalledOnce();
             expect(renderer.discard).not.toHaveBeenCalled();
+        });
+
+        it("updates a note whose linked mentions are still drawing", async () => {
+            const renderer = makeRenderer({ footer: () => new Promise(() => {}) });
+            const { manager } = makeManager(renderer);
+            const block = manager.add(FILE);
+            document.body.appendChild(block);
+            fire(observers.render, block, true);
+            await settle();
+            renderer.update.mockResolvedValueOnce(true);
+
+            await expect(manager.refresh(block)).resolves.toBeUndefined();
+        });
+
+        it("stays shown through one update after another", async () => {
+            const renderer = makeRenderer();
+            const { manager } = makeManager(renderer);
+            const block = manager.add(FILE);
+            document.body.appendChild(block);
+            fire(observers.render, block, true);
+            await settle();
+            renderer.update.mockResolvedValue(true);
+
+            await manager.refresh(block);
+            await manager.refresh(block);
+            await still();
+
+            expect(block.hasClass("is-far")).toBe(false);
+            expect(isRendered(block)).toBe(true);
         });
 
         it("takes its new height through the pin", async () => {
@@ -2347,6 +2539,17 @@ describe("NoteWindowManager teardown", () => {
         expect(observers.unobserve).toHaveBeenCalledWith(block);
         expect(renderer.discard).toHaveBeenCalledTimes(1);
         expect(heights.toJSON().heights).toEqual([]);
+
+        manager.render(block);
+        await settle();
+        expect(renderer.renderInto).toHaveBeenCalledOnce();
+    });
+
+    it("remove before attach is harmless", () => {
+        const manager = new NoteWindowManager(makeRenderer() as never, makeQueue(), new NoteHeights(), () => LAYOUT);
+        const block = manager.add(FILE);
+
+        expect(() => manager.remove(block)).not.toThrow();
     });
 
     it("remove frees an unloaded block without discarding anything", () => {
@@ -2378,6 +2581,65 @@ describe("NoteWindowManager teardown", () => {
 
         expect(observers.disconnect).toHaveBeenCalledTimes(4);
         expect(renderer.discard).toHaveBeenCalledTimes(2);
+    });
+
+    it("leaves no timer running once detached", async () => {
+        const { manager } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        fire(observers.unload, block, false);
+        manager.onResize();
+
+        manager.detach();
+
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("draws nothing queued before it was detached", async () => {
+        const { manager, renderer } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        manager.detach();
+        await settle();
+
+        expect(renderer.renderInto).not.toHaveBeenCalled();
+    });
+
+    it("picks up no block it had before it was detached", () => {
+        const { manager, scrollRoot } = makeManager();
+        const block = manager.add(FILE);
+        manager.detach();
+        observers.observe.mockClear();
+
+        manager.attach(scrollRoot, document.createElement("div"), moreBelow);
+
+        expect(observers.observe).not.toHaveBeenCalledWith(block);
+    });
+
+    it("detach lets the scroll anchor go", () => {
+        const { manager } = makeManager();
+        const detach = vi.spyOn(ScrollAnchor.prototype, "detach");
+        onTestFinished(() => detach.mockRestore());
+
+        manager.detach();
+
+        expect(detach).toHaveBeenCalled();
+    });
+
+    it("watches nothing of a note it unloaded when re-attached", async () => {
+        const { manager, scrollRoot } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        fire(observers.unload, block, false);
+        await still();
+
+        expect(() => manager.attach(scrollRoot, document.createElement("div"), moreBelow)).not.toThrow();
     });
 
     it("re-attaching picks the existing blocks back up", () => {
@@ -2576,6 +2838,25 @@ describe("NoteWindowManager watches no pinned block's own size", () => {
         expect(watched(block)).toBe(true);
     });
 
+    it("watches a block again once it lays out at nothing", async () => {
+        let height = 500;
+        const { manager, block } = await rendered(() => height);
+
+        height = 0;
+        manager.onBaseResized(block.firstElementChild);
+
+        expect(watched(block)).toBe(true);
+    });
+
+    it("watches an unloaded block when re-attached", () => {
+        const { manager, scrollRoot } = makeManager();
+        const block = manager.add(FILE);
+
+        manager.attach(scrollRoot, document.createElement("div"), moreBelow);
+
+        expect(watched(block)).toBe(true);
+    });
+
     it("watches no pinned block when re-attached", async () => {
         const { manager, scrollRoot, block } = await rendered();
 
@@ -2605,6 +2886,20 @@ describe("NoteWindowManager.layoutChanges", () => {
         document.body.appendChild(block);
         fire(observers.render, block, true);
         await settle();
+        const before = manager.layoutChanges;
+
+        await manager.refresh(block);
+
+        expect(manager.layoutChanges).toBe(before + 1);
+    });
+
+    it("counts an update in place", async () => {
+        const { manager, renderer } = makeManager();
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        renderer.update.mockResolvedValueOnce(true);
         const before = manager.layoutChanges;
 
         await manager.refresh(block);
@@ -2845,7 +3140,7 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         renderer.renderInto.mockImplementationOnce(async (block, _file, goOn) => {
             block.addClass("is-drawing-from-end");
             const content = block.createDiv({ cls: "daily-note-content" });
-            for (const top of [-12000, -8000, -4500, 0])
+            for (const top of [-12000, -8000, -4500, -1000, 0])
                 content.createEl("p", { text: `at ${top}`, attr: { "data-top": top, "data-bottom": top + 500 } });
             const component = new Component();
             await goOn!(component);
@@ -2865,6 +3160,31 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         await settle();
 
         expect(farMidDraw).toEqual(["at -8000", "at -4500"]);
+    });
+
+    it("hides no run between slices of a note drawing from its start", async () => {
+        const renderer = makeRenderer();
+        renderer.runsOf.mockImplementation(() => Array.from(document.querySelectorAll("p"), (p) => [p]));
+        let farMidDraw = -1;
+        renderer.renderInto.mockImplementationOnce(async (block, _file, goOn) => {
+            const content = block.createDiv({ cls: "daily-note-content" });
+            for (const top of [0, 4500, 9000])
+                content.createEl("p", { attr: { "data-top": top, "data-bottom": top + 500 } });
+            const component = new Component();
+            await goOn!(component);
+            farMidDraw = block.querySelectorAll(".is-far").length;
+            return { component, footer: Promise.resolve() };
+        });
+        const root = makeScrollRoot(800);
+        root.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
+        const { manager } = makeManager(renderer, () => 500, root);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        await settle();
+
+        expect(farMidDraw).toBe(0);
     });
     /** A note drawn from its end in two slices, the second adding nothing; `between` runs before each slice is handed back. */
     async function drawnFromEnd(between: (manager: NoteWindowManager) => void = () => {}) {
@@ -2967,6 +3287,7 @@ describe("NoteWindowManager hides a long note's far runs", () => {
         await still();
 
         expect(block.querySelector(".is-far")).toBeNull();
+        expect(renderer.renderInto.mock.calls[0]![3]).toBe("from-start");
     });
     it("watches its runs and spacers again when attached anew, and when the pane's height changes", async () => {
         const { manager, spacers, paragraphs, root } = await renderedLong();

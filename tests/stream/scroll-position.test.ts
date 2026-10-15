@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { keepInPlace, readPlace, scrollBlockTo, scrollIntoPlace } from "../../src/stream/scroll-position";
+import {
+    isStreamPlace,
+    keepInPlace,
+    readPlace,
+    scrollBlockTo,
+    scrollIntoPlace,
+} from "../../src/stream/scroll-position";
 import { SETTLE_MS } from "../../src/stream/height-hold";
 /** Creates a minimal HTMLElement stub with controllable getBoundingClientRect. */
 function makeEl(rect: { top: number; bottom: number }): HTMLElement {
@@ -41,7 +47,24 @@ describe("readPlace", () => {
     });
 });
 
+describe("isStreamPlace", () => {
+    it("is a note's path and its offset, and nothing else", () => {
+        expect(isStreamPlace({ path: "a.md", offset: 0 })).toBe(true);
+        expect(isStreamPlace(null)).toBe(false);
+        expect(isStreamPlace("a.md")).toBe(false);
+        expect(isStreamPlace({ path: "a.md" })).toBe(false);
+    });
+});
+
 describe("scrollBlockTo", () => {
+    it("measures the block from the pane's top, wherever the pane sits", () => {
+        const scrollEl = { getBoundingClientRect: () => ({ top: 100, bottom: 600 }), scrollTop: 200 } as HTMLElement;
+
+        scrollBlockTo(makeEl({ top: 180, bottom: 400 }), 50, scrollEl);
+
+        expect(scrollEl.scrollTop).toBe(230);
+    });
+
     it("scrolls by however far the block moved from the offset", () => {
         const scrollEl = { getBoundingClientRect: () => ({ top: 0, bottom: 500 }), scrollTop: 200 } as HTMLElement;
 
@@ -88,6 +111,33 @@ describe("scrollIntoPlace", () => {
         expect(block.scrollIntoView).toHaveBeenCalledOnce();
         expect(block.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
         expect(layout.drain).toHaveBeenCalledOnce();
+    });
+
+    it("waits two frames for the observers after each scroll", async () => {
+        const frame = vi.spyOn(window, "requestAnimationFrame");
+
+        await scrollIntoPlace(blockMoving([0]), "start", pane, layoutCounting());
+
+        expect(frame).toHaveBeenCalledTimes(2);
+        frame.mockRestore();
+    });
+
+    it("counts a block within two pixels of its place as arrived", async () => {
+        const block = blockMoving([2]);
+
+        await scrollIntoPlace(block, "start", pane, layoutCounting());
+
+        expect(block.scrollIntoView).toHaveBeenCalledOnce();
+    });
+
+    it("measures from the top of a pane lower in the window", async () => {
+        const lower = Object.assign(makeEl({ top: 100, bottom: 900 }), { scrollTop: 0 });
+        const block = blockMoving([100]);
+        block.scrollIntoView = vi.fn(() => void (lower.scrollTop += 100));
+
+        await scrollIntoPlace(block, "start", lower, layoutCounting());
+
+        expect(block.scrollIntoView).toHaveBeenCalledOnce();
     });
 
     it("scrolls again while renders above the block keep pushing it down", async () => {
@@ -138,6 +188,16 @@ describe("scrollIntoPlace", () => {
 
         expect(el.scrollIntoView).toHaveBeenCalledOnce();
         expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+    });
+
+    it("centers it on a pane lower in the window", async () => {
+        const lower = Object.assign(makeEl({ top: 100, bottom: 900 }), { scrollTop: 0 });
+        const el = elementCenteredAt([500]);
+        el.scrollIntoView = vi.fn(() => void (lower.scrollTop += 100));
+
+        await scrollIntoPlace(el, "center", lower, layoutCounting());
+
+        expect(el.scrollIntoView).toHaveBeenCalledOnce();
     });
 
     it("centers it again once the stream around it shifts it", async () => {
@@ -251,6 +311,27 @@ describe("keepInPlace", () => {
         expect(el.scrollIntoView).not.toHaveBeenCalled();
     });
 
+    it("leaves it alone within two pixels of its place", () => {
+        const el = match({ at: 402 });
+        keepInPlace(el, "center", pane, stream);
+
+        resized();
+
+        expect(el.scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it("watches the stream and what lies above it in its note, nothing beyond", () => {
+        const block = stream.createDiv({ cls: "daily-note-block" });
+        const section = block.createDiv();
+        const base = section.createDiv();
+        const heading = section.createDiv().createEl("h3");
+        heading.getBoundingClientRect = () => ({ top: 390, bottom: 410 }) as DOMRect;
+
+        keepInPlace(heading, "center", pane, stream);
+
+        expect([...FakeResizeObserver.last.observed]).toEqual([stream, base]);
+    });
+
     it("lets go once the stream is still", () => {
         keepInPlace(match({ at: 400 }), "center", pane, stream);
 
@@ -275,6 +356,7 @@ describe("keepInPlace", () => {
         stop();
 
         expect(FakeResizeObserver.last.disconnected).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
     });
 
     it("lets go of an element no longer in the stream", () => {

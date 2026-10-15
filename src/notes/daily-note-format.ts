@@ -13,10 +13,11 @@ export interface DateFormat {
 
 export function readDateFormat(settings: DailyNoteSettings): DateFormat {
     const path = settings.format || "YYYY-MM-DD";
+    // Obsidian normalizes an unset folder to "/", and strips every other's slashes.
+    const folder = normalizePath(settings.folder?.trim() ?? "");
     return {
         path,
         basename: path.split("/").pop() || "YYYY-MM-DD",
-        // Obsidian normalizes an unset folder to "/", hence the trim.
-        folder: normalizePath(settings.folder?.trim() ?? "").replace(/^\/+|\/+$/g, ""),
+        folder: folder === "/" ? "" : folder,
     };
 }
