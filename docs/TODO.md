@@ -12,6 +12,13 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
           the README
     - [ ] Once listed, lead the README's Install with **Settings → Community
           plugins → Browse**; keep the manual download as the alternative
+- [ ] A long note drawn from its end (ADR 0022) loses the reader when it lands
+      if its reserved top is in the pane: the anchor holds the note above, and
+      the note grows down from its top, so its end drops out of view and its
+      title shows. Fix: on landing, hold its drawn text instead. Behind
+      `e2e/long-note-from-end.spec.ts:194` failing ~1 run in 3 at 4 workers
+      (253,107 px); passing runs jump too, unseen. First a spec that lands it
+      only once its top is in the pane, then iPhone runs.
 - [ ] A hard flick up the stream on the iPhone outruns the drawing of notes: a
       note waits its turn in the render queue (ADR 0004) while the glide moves
       200–800 px a frame, and shows undrawn for 0–11 frames a glide. A render
