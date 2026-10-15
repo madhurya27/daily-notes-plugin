@@ -310,17 +310,22 @@ export class Phone {
         await this.rest();
     }
 
-    /** The stream, at its top and at rest. */
+    /**
+     * The stream, opened afresh, at its top and at rest. Reopened, not
+     * scrolled there: a scroll written to the top leaves the anchor holding a
+     * place from below (D-142).
+     */
     async openStream(): Promise<void> {
         await this.run(() => {
             // A pull past the top, as a flick up the stream can end, opens Obsidian's command palette.
             for (const modal of document.querySelectorAll<HTMLElement>(".modal-container .modal-bg")) modal.click();
-            window.app.commands.executeCommandById("daily-notes-stream:open-stream");
+            window.app.workspace.detachLeavesOfType("daily-notes-stream-view");
         });
+        // Opened in the same task as the close, it never drew.
+        await this.run(() => window.app.commands.executeCommandById("daily-notes-stream:open-stream"));
         await expect
             .poll(() => this.run((s: string) => document.querySelectorAll(`${s} .daily-note-block`).length, STREAM))
             .toBeGreaterThan(0);
-        await this.run((s: string) => document.querySelector(s)!.parentElement!.scrollTo({ top: 0 }), STREAM);
         await this.rest();
     }
 

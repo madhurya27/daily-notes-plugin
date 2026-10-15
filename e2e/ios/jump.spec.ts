@@ -69,10 +69,7 @@ test("a glide that bounces at the top owing the notes above hands them over as t
 // blank.
 test("a glide that reaches the newest note with scroll to spare stops there", async ({ phone }) => {
     const above = ["Journal/2026-09-28.md", "Journal/2026-09-29.md", "Journal/2026-09-30.md"];
-    // Reopened: a test before may have shortened what notes reserve. Not
-    // closed first: a close as Obsidian reloads for a new build throws.
-    await phone.openStream();
-    await phone.run(() => window.app.workspace.detachLeavesOfType("daily-notes-stream-view"));
+    // Opened afresh: a test before may have shortened what notes reserve.
     await phone.openStream();
     // Edited far from the reader: a rendered note re-renders short at once,
     // or mid-glide, as its metadata catches up.

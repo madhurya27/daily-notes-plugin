@@ -2354,3 +2354,19 @@ workers and keeps the fans at full speed.
   free, not which ones.
 - Committing the results — ~10 MB rewritten each run, for one machine and no CI.
   Stryker's own repo fetches them from its dashboard instead.
+
+## D-142 — The phone specs open the stream afresh (2026-10-15)
+
+**Decision:** `phone.openStream()` closes the stream and opens it again, at its
+top, as a reader reopens it.
+
+**Why:** it wrote the scroll to the top of the stream left open, as nothing in
+the app does. The anchor still held a place from below: over a long newest note,
+the stream drew it from its end and landed some 250,000 px down.
+
+**Rejected:**
+
+- The app's scroll to the top, a title tap's glide — notes drawn on the way
+  changed what three specs started from.
+- A jump to the newest note — it lands its title at the pane's top, 8 px below
+  the stream's: specs comparing with a title tap's top differ.
