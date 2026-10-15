@@ -18,6 +18,12 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       margin of 3 panes was no clearly better. Reopen if it shows in use. The
       other blanks, over drawn text, Obsidian's reading view shows too (up to
       185 ms).
+- [ ] On the iPhone, a flick up into a 10,000-line note never drawn, heights
+      forgotten, moves the text at the pane's middle 5–111 px in some glides
+      where the note lands with its top outside the pane's upper half: once 85
+      px in the note above as that note drew. Once, 720 px at the anchor's
+      hand-over; not seen again in ~25 runs. Measured with an element-following
+      probe (a note drawn from its end defeats `followReader`'s by-index one).
 
 ## Flaky
 
