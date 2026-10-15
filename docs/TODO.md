@@ -13,13 +13,6 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       2,252–2,298 px at the top, once, as the long note below the newest starts
       drawing: in every iPhone capture, on `main` before ADR 0022 too. Whether a
       reader sees it is unchecked.
-- [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
-      ~110 runs: once a Search tap opened no bar, once the bar opened but no
-      match was marked current. Neither came back in 50 cold starts.
-- [ ] "ResizeObserver loop completed with undelivered notifications" logged on
-      the iPhone in 2 of 11 glide probes while far content was hidden (ADR
-      0023); not seen since in ~60 probe runs or the phone suite, which fails on
-      it. Desktop never sees it: Chromium fires it as an uncaught `error` event.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**
@@ -35,6 +28,18 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       collapsing to close what draws later under a collapsed heading, space held
       for the undrawn rest, and a search jump to draw its part first. Only if
       that wait shows up on the phone.
+
+## Flaky
+
+Seen, then not reproduced: picked up again if one comes back.
+
+- [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
+      ~110 runs: once a Search tap opened no bar, once the bar opened but no
+      match was marked current. Neither came back in 50 cold starts.
+- [ ] "ResizeObserver loop completed with undelivered notifications" logged on
+      the iPhone in 2 of 11 glide probes while far content was hidden (ADR
+      0023); not seen since in ~60 probe runs or the phone suite, which fails on
+      it. Desktop never sees it: Chromium fires it as an uncaught `error` event.
 
 ## Features
 
