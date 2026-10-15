@@ -1117,6 +1117,67 @@ describe("ScrollAnchor", () => {
         expect(pane.hasClass("is-scroll-frozen")).toBe(false);
     });
 
+    /** A glide down, `step` px a frame, until `until` or the anchor freezes it: the scroll it froze at. */
+    function glideDown(pane: HTMLElement, step: number, until: number): number | null {
+        for (let top = pane.scrollTop + step; top <= until; top += step) {
+            pane.scrollTop = top;
+            anchor.onScroll();
+            if (pane.hasClass("is-scroll-frozen")) return top;
+        }
+        return null;
+    }
+
+    /** Blocks observed and first reported, every note loaded. */
+    function watchToEnd(heights: number[], scrollTop: number) {
+        const layout = makePane(heights);
+        anchor.attach(layout.pane, layout.content, () => true);
+        for (const block of layout.blocks) anchor.observe(block);
+        observer().resized(...layout.blocks);
+        layout.pane.scrollTop = scrollTop;
+        anchor.onScroll();
+        return layout;
+    }
+
+    // Notes above growing leave the stream drawn higher than its scroll: a
+    // glide down reached the last note with scroll to spare, and went on into
+    // blank until the scroll was still, some 1.8 s on an iPhone.
+    it("stops a glide two steps before the stream's end, every note loaded, would come into the pane", () => {
+        const { pane, content, blocks, resize } = watchToEnd([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 700);
+        observer().resized(blocks[0]!);
+
+        const stopped = glideDown(pane, 20, 1700);
+
+        expect(stopped).toBe(1360);
+        expect(pane.scrollTop).toBe(1660);
+        expect(shift(content)).toBe(0);
+        expect(content.getBoundingClientRect().bottom).toBe(640);
+    });
+
+    // A phone turned upright clamps the scroll at the stream's end: no glide,
+    // and a write there threw the reader 10,388 px from their place.
+    it("leaves a scroll at the stream's end that moved nothing to the hand-over, every note loaded", () => {
+        const { pane, content, blocks, resize } = watchToEnd([400, 400, 400, 400, 400], 1400);
+        resize(blocks[0]!, 700);
+        observer().resized(blocks[0]!);
+
+        anchor.onScroll();
+
+        expect(pane.hasClass("is-scroll-frozen")).toBe(false);
+        expect(pane.scrollTop).toBe(1400);
+        expect(shift(content)).toBe(-300);
+    });
+
+    it("leaves a glide down alone while more notes load below the stream's end", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 700);
+        observer().resized(blocks[0]!);
+
+        expect(glideDown(pane, 20, 1700)).toBeNull();
+
+        expect(shift(content)).toBe(-300);
+    });
+
     it("waits as usual for a scroll owing a shrink once no block is watched", () => {
         const { pane, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
         resize(blocks[0]!, 100);

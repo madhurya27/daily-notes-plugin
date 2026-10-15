@@ -161,8 +161,8 @@ export class ScrollAnchor {
      * bounce at the top ends a glide: handed over then, not once still, a flick
      * meanwhile finds room above. Mid-bounce, iOS undoes a write, a finger's
      * bounce included: it ends once the finger lifts. A glide
-     * about to bring the stream's top, drawn lower than its scroll, into the
-     * pane stops at it, short of the blank above.
+     * about to bring the stream's top or end, drawn off its scroll, into the
+     * pane stops at it, short of the blank past it.
      */
     onScroll(): void {
         if (!this.scrollRoot) return;
@@ -173,22 +173,24 @@ export class ScrollAnchor {
         const bounced = this.bouncing && this.scrollRoot.scrollTop >= 0 && !this.touching;
         this.bouncing = this.scrollRoot.scrollTop < 0 || (this.bouncing && this.touching);
         if (this.owed !== 0 && bounced) this.handOver();
-        else if (this.owed !== 0 && this.topDueInView(moved)) this.stopGlide();
+        else if (this.owed !== 0 && this.topDueInView(moved)) this.stopGlide(0);
+        else if (this.owed !== 0 && this.endDueInView(moved)) this.stopGlide(this.scrollRoot.scrollTop + this.owed);
         else if (this.owed !== 0) this.settleOnceStill();
         else if (this.scrollRoot.scrollTop === 0) this.headedForTop = false;
     }
 
     /**
-     * Stops a glide with the stream's top at the pane's: its last step, short.
-     * iOS carries a glide on from a write, undoing it the next frame; with
-     * nothing to scroll for that frame, the glide ends where the write puts it.
+     * Stops a glide at `scrollTop`, the stream's top or end where it is drawn:
+     * its last step, short. iOS carries a glide on from a write, undoing it the
+     * next frame; with nothing to scroll for that frame, the glide ends where
+     * the write puts it.
      */
-    private stopGlide(): void {
+    private stopGlide(scrollTop: number): void {
         const root = this.scrollRoot!;
         root.addClass("is-scroll-frozen");
         requestAnimationFrame(() => root.removeClass("is-scroll-frozen"));
         this.settleOnceStill.cancel();
-        root.scrollTop = 0;
+        root.scrollTop = scrollTop;
         this.headedForTop = false;
         this.unshift();
         this.pick();
@@ -202,6 +204,16 @@ export class ScrollAnchor {
     private topDueInView(moved: number): boolean {
         const stream = this.stream;
         return this.owed < 0 && !!stream && this.topInPane(stream) + 2 * Math.max(moved, 0) >= 0;
+    }
+
+    /**
+     * The stream's end, every note loaded and drawn higher than its scroll,
+     * comes into the pane within two more steps of a glide down `moved`:
+     * below it is blank until the scroll is still. While notes load, they may
+     * come below first. A clamp, as a turn makes, moved nothing: no glide.
+     */
+    private endDueInView(moved: number): boolean {
+        return moved < 0 && this.owed > 0 && this.loadedToEnd() && this.below() - this.owed <= -2 * moved;
     }
 
     /**

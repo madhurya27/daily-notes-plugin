@@ -189,6 +189,9 @@ Checks:
 - Flick hard down a 10,000-line note and back: the screen never goes blank.
   **[ios]** checks no spacer of a hidden run reaches the screen; only a capture
   (`scripts/capture-iphone.swift`) shows a blank (ADR 0021).
+- Flick hard past a 10,000-line note to the oldest note: the glide stops at it,
+  with nothing blank below but iOS's bounce (D-140). **[unit]**; only the phone
+  shows the blank.
 - Jump to a day below a long note not seen yet, then flick up into it: its end
   shows at once, under no title, and what shows stays put as the note finishes.
   **[e2e]**; the screen staying filled only a capture shows (ADR 0022).

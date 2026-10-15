@@ -2309,3 +2309,20 @@ with no frame time to gain.
 
 - The next run's first element standing for a run's end — a run shown while the
   next stays hidden (a search step, a save) has no end watched.
+
+## D-140 — A glide stops at the stream's drawn end once every note is loaded (2026-10-15)
+
+**Decision:** `ScrollAnchor` stops a glide two steps before the stream's end,
+drawn higher than its scroll, comes into the pane, as it stops one at the top,
+only once every note is loaded.
+
+**Why:** a shift owed for notes above that grew draws the end early: an iPhone
+glide to the oldest note showed a blank pane for 1.8 s, until the scroll was
+still.
+
+**Rejected:**
+
+- Stopping while notes still load — a batch appended below would let the glide
+  go on.
+- Capping the shift at the room below every frame — the reader's text moves
+  mid-glide.

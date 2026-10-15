@@ -4,11 +4,12 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] A fast glide on the iPhone outruns the drawing of notes past a 10,000-line
-      note: 13 frames in one glide blank over placeholders not drawn yet, or
-      past the stream's end before more load. Drawing further ahead mid-glide
-      might close it. The other blanks, over drawn text, Obsidian's reading view
-      shows too (up to 185 ms).
+- [ ] A hard flick up the stream on the iPhone outruns the drawing of notes: a
+      note waits its turn in the render queue (ADR 0004) while the glide moves
+      200–800 px a frame, and shows undrawn for 0–11 frames a glide. A render
+      margin of 3 panes was no clearly better. Reopen if it shows in use. The
+      other blanks, over drawn text, Obsidian's reading view shows too (up to
+      185 ms).
 - [ ] Opening the stream with heights forgotten, the anchor shifts it
       2,252–2,298 px at the top, once, as the long note below the newest starts
       drawing: in every iPhone capture, on `main` before ADR 0022 too. Whether a
@@ -40,6 +41,10 @@ Seen, then not reproduced: picked up again if one comes back.
       the iPhone in 2 of 11 glide probes while far content was hidden (ADR
       0023); not seen since in ~60 probe runs or the phone suite, which fails on
       it. Desktop never sees it: Chromium fires it as an uncaught `error` event.
+- [ ] `e2e/ios/layout.spec.ts`, "a turn flips a wide Base", lost the place on
+      the turn back by 6,316 px once, on 2026-10-08, in ~60 runs. Placing at
+      every section of the note first, as the spec before it does, did not bring
+      it back on `main`.
 
 ## Features
 
