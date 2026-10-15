@@ -53,7 +53,8 @@ function makePane(layout: (number | number[])[]) {
     let paneHeight = 600;
     /** Where the pane sits in the window: a phone turned hides its status bar. */
     let paneTop = 0;
-    pane.getBoundingClientRect = () => ({ top: paneTop, bottom: paneTop + paneHeight, left: 0, width: 400 }) as DOMRect;
+    pane.getBoundingClientRect = () =>
+        ({ top: paneTop, bottom: paneTop + paneHeight, height: paneHeight, left: 0, width: 400 }) as DOMRect;
     const movePane = (top: number) => (paneTop = top);
     let width = 400;
     Object.defineProperty(pane, "clientWidth", { configurable: true, get: () => width });
@@ -266,6 +267,60 @@ describe("ScrollAnchor", () => {
         anchor.readPlace();
         undrawn.remove();
         note.prepend(add(note, 50_000));
+        anchor.resized();
+
+        expect(shift(content)).toBe(-49_500);
+        expect(text.getBoundingClientRect().top).toBe(0);
+    });
+
+    // A glide on up brought the top of the room it reserved into the pane: the
+    // pane's top is in the note above, which the note's landing never moves.
+    it("holds the text a note drew from its end, where the note's top is in the pane", () => {
+        const { content, blocks, add } = watch([1000, 1000, 400], 900);
+        const note = blocks[1]!;
+        const reserved = add(note, 500);
+        const body = add(note);
+        body.addClass("daily-note-content");
+        const text = add(body, 500);
+
+        anchor.readPlace(note);
+        reserved.remove();
+        body.prepend(add(body, 50_000));
+        anchor.resized();
+
+        expect(shift(content)).toBe(-49_500);
+        expect(text.getBoundingClientRect().top).toBe(600);
+    });
+
+    // The reader reads what is at the pane's middle: there, the note above.
+    it("holds the note above, where a note drawn from its end starts below the pane's middle", () => {
+        const { content, blocks, add } = watch([1000, 1000, 400], 600);
+        const note = blocks[1]!;
+        const reserved = add(note, 500);
+        const body = add(note);
+        body.addClass("daily-note-content");
+        add(body, 500);
+
+        anchor.readPlace(note);
+        reserved.remove();
+        body.prepend(add(body, 50_000));
+        anchor.resized();
+
+        expect(shift(content)).toBe(0);
+        expect(blocks[0]!.getBoundingClientRect().top).toBe(-600);
+    });
+
+    it("holds the pane's top as ever, where a note drawn from its end crosses it", () => {
+        const { content, blocks, add } = watch([400, 1000, 400], 900);
+        const note = blocks[1]!;
+        const body = add(note);
+        body.addClass("daily-note-content");
+        const undrawn = add(body, 500);
+        const text = add(body, 500);
+
+        anchor.readPlace(note);
+        undrawn.remove();
+        body.prepend(add(body, 50_000));
         anchor.resized();
 
         expect(shift(content)).toBe(-49_500);

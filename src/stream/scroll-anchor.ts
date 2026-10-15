@@ -119,9 +119,24 @@ export class ScrollAnchor {
     /**
      * What is drawn at the pane's top is about to move inside its block, which
      * neither scrolled nor resized since the place was last read: read it now.
+     * `drawn`, a note drawn from its end, is held by its text where its top is
+     * in the pane above the middle, what the reader reads: the pane's top is
+     * in the note above, which its landing never moves (ADR 0022).
      */
-    readPlace(): void {
-        if (this.scrollRoot) this.hold();
+    readPlace(drawn?: HTMLElement): void {
+        if (!this.scrollRoot) return;
+        this.hold();
+        if (drawn) this.pickIn(drawn);
+    }
+
+    /** The text at the top of what `block` shows, where its top is in the pane's upper half. */
+    private pickIn(block: HTMLElement): void {
+        const { top } = block.getBoundingClientRect();
+        const pane = this.scrollRoot!.getBoundingClientRect();
+        const content = block.querySelector(`:scope > .${NOTE_CONTENT_CLASS}`);
+        if (top <= pane.top || top > pane.top + pane.height / 2 || !content) return;
+        this.place = this.placeOf(this.stream!, this.belowGap(content, top));
+        this.reflowPlace = this.place;
     }
 
     /**

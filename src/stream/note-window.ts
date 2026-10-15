@@ -438,7 +438,7 @@ export class NoteWindowManager {
                 this.orderFor(block)
             );
             // Read over what it drew: nothing scrolled or resized while it did.
-            if (rendered && block.hasClass(DRAWING_FROM_END)) this.anchor.readPlace();
+            if (rendered && block.hasClass(DRAWING_FROM_END)) this.anchor.readPlace(block);
             // Drawn or given up, it lays out from its start again in this task.
             block.removeClass(DRAWING_FROM_END);
             if (!rendered) {

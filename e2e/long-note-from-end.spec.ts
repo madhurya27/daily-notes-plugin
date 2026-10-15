@@ -29,7 +29,7 @@ interface Frame {
     text: boolean;
     /** Its title shows in the pane. */
     title: boolean;
-    /** How far what was under the middle of the pane last frame moved since, beyond the glide. */
+    /** How far what was under the middle of the pane, the glide's step taken, moved in the frame. */
     jump: number;
     /** Its content's elements in the layout: shown, not hidden behind a spacer. */
     laidOut: number;
@@ -64,20 +64,20 @@ function comeUpInto(pane: Locator, glide = 0): Promise<{ frames: Frame[]; throug
             };
             const frames: Frame[] = [];
             let held: Element | null = null;
-            /** What was under the middle of the pane last frame, and where. */
-            let under = followed(middle());
-            let underTop = under?.getBoundingClientRect().top ?? 0;
             for (let i = 0; i < 600 && (frames.length === 0 || frames.at(-1)!.drawing || frames.length < 30); i++) {
                 // Down, as the glide goes up.
                 const glided = glide && block.classList.contains("is-unloaded") ? glide : 0;
                 pane.scrollTop -= glided;
+                // Under the middle once the glide's step is taken, where the
+                // stream reads the reader's place: one step can take the
+                // middle off a note as it lands.
+                const under = followed(middle());
+                const underTop = under?.getBoundingClientRect().top ?? 0;
                 await frame();
                 const box = under?.isConnected ? under.getBoundingClientRect() : null;
                 // Gone, or hidden behind a spacer, it shows nothing to move.
-                const jump = box && box.height > 0 ? box.top - underTop - glided : 0;
+                const jump = box && box.height > 0 ? box.top - underTop : 0;
                 const el = middle();
-                under = followed(el);
-                underTop = under?.getBoundingClientRect().top ?? 0;
                 const text = !!el && el !== block && block.contains(el) && !!el.closest(".daily-note-content");
                 const header = block.querySelector(".daily-note-header");
                 const titleBox = header?.getBoundingClientRect();

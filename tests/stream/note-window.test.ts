@@ -1337,6 +1337,18 @@ describe("NoteWindowManager render", () => {
             expect(drawing).toEqual([true]);
         });
 
+        // Its top may be in the pane by then, the pane's top in the note above.
+        it("has the anchor read its place in the note it drew", async () => {
+            const readPlace = vi.spyOn(ScrollAnchor.prototype, "readPlace");
+            onTestFinished(() => readPlace.mockRestore());
+            const { block } = placed(-9000, 300);
+
+            fire(observers.render, block, true);
+            await settle();
+
+            expect(readPlace.mock.calls[0]![0]).toBe(block);
+        });
+
         it("has the anchor read nothing for a note drawn from its start", async () => {
             const readPlace = vi.spyOn(ScrollAnchor.prototype, "readPlace");
             onTestFinished(() => readPlace.mockRestore());

@@ -20,9 +20,11 @@ from its bottom (`is-drawing-from-end`), so what is drawn sits where the reader
 is, and its title and properties stay unseen. Before it lands, the scroll anchor
 reads its place over what was drawn: nothing scrolled or resized while it drew.
 Landing re-pins it, and the anchor holds that text through the height the note
-truly takes. Where the pane's top falls in a gap in a note's content, the anchor
-holds the text below it, never the content: its top rises with each slice drawn
-above.
+truly takes. Where a glide brought its top into the pane meanwhile, the anchor
+holds whichever of it and the note above is at the pane's middle, what the
+reader reads; the other moves off to make room. Where the pane's top falls in a
+gap in a note's content, the anchor holds the text below it, never the content:
+its top rises with each slice drawn above.
 
 Only what is near the reader stays in the layout while it draws: between slices,
 the stream hides each run drawn past the unload margin (ADR 0021), all but the
