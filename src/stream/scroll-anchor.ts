@@ -121,12 +121,13 @@ export class ScrollAnchor {
      * neither scrolled nor resized since the place was last read: read it now.
      * `drawn`, a note drawn from its end, is held by its text where its top is
      * in the pane above the middle, what the reader reads: the pane's top is
-     * in the note above, which its landing never moves (ADR 0022).
+     * in the note above, which its landing never moves (ADR 0022). With the
+     * scroll at the top, there is no note above: the stream's top is held.
      */
     readPlace(drawn?: HTMLElement): void {
         if (!this.scrollRoot) return;
         this.hold();
-        if (drawn) this.pickIn(drawn);
+        if (drawn && this.scrollRoot.scrollTop > 0) this.pickIn(drawn);
     }
 
     /** The text at the top of what `block` shows, where its top is in the pane's upper half. */

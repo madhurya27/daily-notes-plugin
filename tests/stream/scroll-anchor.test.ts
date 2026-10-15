@@ -310,6 +310,44 @@ describe("ScrollAnchor", () => {
         expect(blocks[0]!.getBoundingClientRect().top).toBe(-600);
     });
 
+    // A glide to the top met the newest note above the pane, and drew it from
+    // its end: landed, it stood 156 px short of its title on an iPhone.
+    it("holds the stream's top, where a note drawn from its end lands with the scroll at the top", () => {
+        // The stream's padding above its newest note.
+        const { pane, content, blocks, add } = watch([8, 1000, 400], 0);
+        const note = blocks[1]!;
+        const reserved = add(note, 500);
+        const body = add(note);
+        body.addClass("daily-note-content");
+        add(body, 500);
+
+        anchor.readPlace(note);
+        reserved.remove();
+        body.prepend(add(body, 50_000));
+        anchor.resized();
+
+        expect(shift(content)).toBe(0);
+        expect(pane.scrollTop).toBe(0);
+        expect(note.getBoundingClientRect().top).toBe(8);
+    });
+
+    it("holds the pane's top as ever, where a note drawn from its end starts at it", () => {
+        const { content, blocks, add } = watch([1000, 1000, 400], 1000);
+        const note = blocks[1]!;
+        const reserved = add(note, 500);
+        const body = add(note);
+        body.addClass("daily-note-content");
+        add(body, 500);
+
+        anchor.readPlace(note);
+        reserved.remove();
+        body.prepend(add(body, 50_000));
+        anchor.resized();
+
+        expect(shift(content)).toBe(0);
+        expect(note.getBoundingClientRect().top).toBe(0);
+    });
+
     it("holds the pane's top as ever, where a note drawn from its end crosses it", () => {
         const { content, blocks, add } = watch([400, 1000, 400], 900);
         const note = blocks[1]!;

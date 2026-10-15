@@ -22,9 +22,10 @@ reads its place over what was drawn: nothing scrolled or resized while it drew.
 Landing re-pins it, and the anchor holds that text through the height the note
 truly takes. Where a glide brought its top into the pane meanwhile, the anchor
 holds whichever of it and the note above is at the pane's middle, what the
-reader reads; the other moves off to make room. Where the pane's top falls in a
-gap in a note's content, the anchor holds the text below it, never the content:
-its top rises with each slice drawn above.
+reader reads; the other moves off to make room. With the scroll at the top,
+there is no note above: the stream's top is held, as a tap on the title brings
+it. Where the pane's top falls in a gap in a note's content, the anchor holds
+the text below it, never the content: its top rises with each slice drawn above.
 
 Only what is near the reader stays in the layout while it draws: between slices,
 the stream hides each run drawn past the unload margin (ADR 0021), all but the

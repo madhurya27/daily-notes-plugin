@@ -1,4 +1,4 @@
-import { test, expect } from "./phone";
+import { test, expect, type Phone } from "./phone";
 
 const HEADER = '.workspace-leaf-content[data-type="daily-notes-stream-view"] .view-header';
 /** An old note: every note between it and the top was never drawn. */
@@ -62,6 +62,41 @@ function longNote(lines: number): string {
         .join("\n");
 }
 
+/** Writes each of `notes`, `[days back, lines]`, as a long note, once indexed; returns their paths. */
+async function writeNotes(phone: Phone, notes: readonly (readonly [number, number])[]): Promise<string[]> {
+    const paths = await phone.run(
+        (back: number[]) =>
+            back.map((d) => `Journal/${new Date(Date.now() - d * 86_400_000).toLocaleDateString("en-CA")}.md`),
+        notes.map(([back]) => back)
+    );
+    for (const [i, [, lines]] of notes.entries())
+        await phone.runAsync(
+            async (path: string, text: string) => {
+                const { vault, metadataCache } = window.app;
+                const file = vault.getFileByPath(path);
+                await new Promise<void>((indexed) => {
+                    const ref = metadataCache.on("changed", (changed: { path: string }) => {
+                        if (changed.path !== path) return;
+                        metadataCache.offref(ref);
+                        indexed();
+                    });
+                    void (file ? vault.modify(file, text) : vault.create(path, text));
+                });
+            },
+            paths[i]!,
+            longNote(lines)
+        );
+    return paths;
+}
+
+async function deleteNotes(phone: Phone, paths: string[]): Promise<void> {
+    for (const path of paths)
+        await phone.runAsync(async (path: string) => {
+            const file = window.app.vault.getFileByPath(path);
+            if (file) await window.app.vault.delete(file);
+        }, path);
+}
+
 /**
  * Notes as `[days back, lines]`, and whether the reader has scrolled past them
  * before, so their heights are known (ADR 0020).
@@ -97,29 +132,8 @@ const CASES = [
 
 for (const { name, notes, measured, within } of CASES)
     test(name, async ({ phone }) => {
-        const paths = await phone.run(
-            (back: number[]) =>
-                back.map((d) => `Journal/${new Date(Date.now() - d * 86_400_000).toLocaleDateString("en-CA")}.md`),
-            notes.map(([back]) => back)
-        );
+        const paths = await writeNotes(phone, notes);
         try {
-            for (const [i, [, lines]] of notes.entries())
-                await phone.runAsync(
-                    async (path: string, text: string) => {
-                        const { vault, metadataCache } = window.app;
-                        const file = vault.getFileByPath(path);
-                        await new Promise<void>((indexed) => {
-                            const ref = metadataCache.on("changed", (changed: { path: string }) => {
-                                if (changed.path !== path) return;
-                                metadataCache.offref(ref);
-                                indexed();
-                            });
-                            void (file ? vault.modify(file, text) : vault.create(path, text));
-                        });
-                    },
-                    paths[i]!,
-                    longNote(lines)
-                );
             if (!measured) await phone.forgetHeights();
             await phone.openStream();
             // Each drawn once, so its height is known, as for a reader who has scrolled past them.
@@ -168,10 +182,26 @@ for (const { name, notes, measured, within } of CASES)
             });
             expect(waited).toBeLessThan(within);
         } finally {
-            for (const path of paths)
-                await phone.runAsync(async (path: string) => {
-                    const file = window.app.vault.getFileByPath(path);
-                    if (file) await window.app.vault.delete(file);
-                }, path);
+            await deleteNotes(phone, paths);
         }
     });
+
+// A glide up from inside it draws it from its end (ADR 0022), and it lands
+// with the scroll at the top. Held by the text drawn there, it stood 156 px
+// short of its title in 3 of 4 runs.
+test("a tap on the title from inside a long newest note glides to its title", async ({ phone }) => {
+    await phone.openStream();
+    const top = await phone.newestOffset();
+    const paths = await writeNotes(phone, [[0, 10000]]);
+    try {
+        await phone.flick("up", 3);
+
+        await phone.tap(`${HEADER} .view-header-title`);
+        await phone.rest();
+
+        expect(await phone.scrollTop()).toBe(0);
+        expect(await phone.newestOffset()).toBe(top);
+    } finally {
+        await deleteNotes(phone, paths);
+    }
+});
