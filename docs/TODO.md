@@ -4,16 +4,6 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] A hard flick up the stream on the iPhone outruns the drawing of notes: a
-      note waits its turn in the render queue (ADR 0004) while the glide moves
-      200–800 px a frame, and shows undrawn for 0–11 frames a glide. A render
-      margin of 3 panes was no clearly better. Reopen if it shows in use. The
-      other blanks, over drawn text, Obsidian's reading view shows too (up to
-      185 ms).
-- [ ] Opening the stream with heights forgotten, the anchor shifts it
-      2,252–2,298 px at the top, once, as the long note below the newest starts
-      drawing: in every iPhone capture, on `main` before ADR 0022 too. Whether a
-      reader sees it is unchecked.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**
@@ -22,13 +12,12 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
           the README
     - [ ] Once listed, lead the README's Install with **Settings → Community
           plugins → Browse**; keep the manual download as the alternative
-- [ ] Maybe: draw only the part of a note within the render margin, the rest as
-      the reader nears it. The window picks which notes draw, but each draws
-      whole: a long note with its top on screen draws to its end, hundreds of
-      screens below, while a note waiting on screen waits (ADR 0020). Needs
-      collapsing to close what draws later under a collapsed heading, space held
-      for the undrawn rest, and a search jump to draw its part first. Only if
-      that wait shows up on the phone.
+- [ ] A hard flick up the stream on the iPhone outruns the drawing of notes: a
+      note waits its turn in the render queue (ADR 0004) while the glide moves
+      200–800 px a frame, and shows undrawn for 0–11 frames a glide. A render
+      margin of 3 panes was no clearly better. Reopen if it shows in use. The
+      other blanks, over drawn text, Obsidian's reading view shows too (up to
+      185 ms).
 
 ## Flaky
 
