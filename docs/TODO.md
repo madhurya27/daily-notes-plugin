@@ -16,6 +16,10 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts.
+- [ ] "ResizeObserver loop completed with undelivered notifications" logged on
+      the iPhone in 2 of 11 glide probes while far content was hidden (ADR
+      0023); not seen since in ~60 probe runs or the phone suite, which fails on
+      it. Desktop never sees it: Chromium fires it as an uncaught `error` event.
 - [ ] Publish to Obsidian community plugins — before the manual submission steps
       in `docs/IMPROVEMENTS.md`:
     - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**
