@@ -39,3 +39,6 @@ test-results/
 
 # this Mac's settings for test:ios
 /e2e/ios/.env
+
+# Stryker's results and report (D-141)
+/reports/

@@ -15,6 +15,7 @@ pnpm run lint           # ESLint
 pnpm run format         # Prettier --write; format:check verifies. Markdown wraps at 80, AGENTS.md aside.
 pnpm test               # typecheck tests/ (tests/tsconfig.json), then vitest run
 pnpm run test:coverage  # the same, 100% coverage required
+pnpm run test:mutation  # Stryker over src/, incremental; results in reports/ (D-141). After a test change, `--force --mutate <its src file>`; a bare `--force` almost never
 pnpm run test:e2e       # build + typecheck e2e + playwright against real Obsidian; fetches Dataview into .dev/ once
 pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
 pnpm run test:ios       # build + e2e/ios/ on a plugged-in, unlocked iPhone (ADR 0016); setup in docs/TESTING.md

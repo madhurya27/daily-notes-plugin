@@ -2326,3 +2326,30 @@ still.
   go on.
 - Capping the shift at the room below every frame — the reader's text moves
   mid-glide.
+
+## D-141 — Mutation testing runs on demand, incrementally (2026-10-15)
+
+**Decision:** `pnpm run test:mutation` runs Stryker over `src/` with workers for
+30% of the cores, which take about 40% of the machine, rerunning only mutants
+whose code changed. Its results and report stay in `reports/`, gitignored. Not a
+quality gate. Stryker cannot see which file a vitest test is in, so it misses a
+test change: after one, rerun only the source file it covers,
+`--force --mutate <file>`. A full run, a bare `--force`, only after a change to
+Stryker, vitest or the Stryker config, which can change every result. Bail is
+off: with it, mutants that fail tests at once were reported as survived, a
+different few each run.
+
+**Why:** 100% line coverage says what ran, not what was checked: the first run
+left 657 of 5,477 mutants alive (87.9%). A full run takes ~13 minutes on 8
+workers and keeps the fans at full speed.
+
+**Rejected:**
+
+- A gate on every task — too slow, and many survivors are equivalent mutants.
+- All cores but one, the default — the laptop runs hot for little gain.
+- Half the cores — a worker takes more than a core: 5 took 6 of 10, fans at full
+  speed.
+- Efficiency cores only (`taskpolicy -b`) — cool, but the aim is cores left
+  free, not which ones.
+- Committing the results — ~10 MB rewritten each run, for one machine and no CI.
+  Stryker's own repo fetches them from its dashboard instead.
