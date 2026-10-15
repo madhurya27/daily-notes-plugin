@@ -286,6 +286,26 @@ describe("ScrollAnchor", () => {
         expect(shift(content)).toBe(0);
     });
 
+    // A far run shown again takes its spacer out: the content's top, risen
+    // since with every slice, says nothing of where the reader is.
+    it("holds the note, not its content, once what it held at the pane's top is gone", () => {
+        const { pane, content, blocks } = watch([400, 1000, 400], 900);
+        const note = blocks[1]!;
+        const body = note.createDiv({ cls: "daily-note-content" });
+        const spacer = body.createDiv({ cls: "daily-note-far-run" });
+        let bodyTop = -500;
+        body.getBoundingClientRect = () => ({ top: bodyTop, bottom: 500, height: 500 - bodyTop }) as DOMRect;
+        spacer.getBoundingClientRect = () => ({ top: -100, bottom: 400, height: 500 }) as DOMRect;
+        vi.mocked(document.elementsFromPoint).mockReturnValue([spacer, body, note, content, pane]);
+
+        anchor.readPlace();
+        spacer.remove();
+        bodyTop = -12_500;
+        anchor.resized();
+
+        expect(shift(content)).toBe(0);
+    });
+
     it("holds a note's content where no text lies below the pane's top in it", () => {
         const { pane, content, blocks } = watch([400, 1000, 400], 900);
         const note = blocks[1]!;

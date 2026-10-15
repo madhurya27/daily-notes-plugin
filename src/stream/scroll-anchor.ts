@@ -267,7 +267,7 @@ export class ScrollAnchor {
             this.placeScroll = this.scrollRoot!.scrollTop;
         }
         const place = this.reflowing ? this.reflowPlace : this.place;
-        const point = [...place].reverse().find(({ el }) => this.scrollRoot!.contains(el));
+        const point = this.pointOf(place);
         // A clamp is none of the reader's, then or once the stream grows back.
         if (this.clamped()) this.placeScroll = this.scrollRoot!.scrollTop;
         const scrolled = this.scrollRoot!.scrollTop - this.placeScroll;
@@ -280,6 +280,18 @@ export class ScrollAnchor {
         if (this.loadedToEnd()) this.owed = Math.min(this.owed, this.below());
         this.shift(this.stream!);
         return true;
+    }
+
+    /**
+     * The deepest of `place` still in the stream. Not a note's content once
+     * what it held is gone, as a far run's spacer goes when the run shows:
+     * drawn from its end, its top rises with every slice (ADR 0022).
+     */
+    private pointOf(place: Place): Place[number] | undefined {
+        const kept = place.filter(({ el }) => this.scrollRoot!.contains(el));
+        const point = kept.at(-1);
+        if (point !== place.at(-1) && point?.el.hasClass(NOTE_CONTENT_CLASS)) return kept.at(-2);
+        return point;
     }
 
     /**
