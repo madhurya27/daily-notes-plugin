@@ -37,9 +37,6 @@ Seen, then not reproduced: picked up again if one comes back.
       0023); not seen in ~60 probe runs after. Back on 2026-10-15 in 2 of ~30
       probes drawing notes of 3,000–16,000 lines; the phone suite fails on it.
       Desktop never sees it: Chromium fires it as an uncaught `error` event.
-- [ ] `e2e/ios/harness.spec.ts`: "an error thrown" and "an error rejected on the
-      phone fails the test" each passed once in a full phone run, the error not
-      caught; 15 of 15 run alone.
 - [ ] `e2e/ios/layout.spec.ts`, "a turn flips a wide Base", lost the place on
       the turn back by 6,316 px once, on 2026-10-08, in ~60 runs. Placing at
       every section of the note first, as the spec before it does, did not bring

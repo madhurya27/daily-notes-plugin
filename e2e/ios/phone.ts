@@ -825,15 +825,10 @@ export class Phone {
     async consoleErrors(): Promise<string[]> {
         await this.inWebView();
         const entries = (await this.driver.getLogs("safariConsole")) as { level: string; message: string }[];
-        // Appium hands one console entry over several times, the copies alike to the timestamp.
-        const errors = new Map<string, string>();
-        for (const { level, message } of entries) {
-            if (level !== "SEVERE") continue;
-            const { text, timestamp } = JSON.parse(message) as { text: string; timestamp: number };
-            if (text === OBSIDIANS_SANDBOX_NOTICE) continue;
-            errors.set(`${timestamp} ${text}`, text);
-        }
-        return [...errors.values()];
+        return entries
+            .filter(({ level }) => level === "SEVERE")
+            .map(({ message }) => (JSON.parse(message) as { text: string }).text)
+            .filter((text) => text !== OBSIDIANS_SANDBOX_NOTICE);
     }
 
     /** Whether anything matches `selector`. */

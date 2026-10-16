@@ -2388,3 +2388,21 @@ bounce opened Obsidian's pull-down action, the command palette, over the stream.
   first.
 - Writing what is owed mid-glide, for the glide to reach the top — iOS undoes it
   ([ADR 0013](adr/0013-pin-rendered-note-heights.md)).
+
+## D-144 — The phone harness patches Appium to one console listener (2026-10-15)
+
+**Decision:** setup rewrites the XCUITest driver's `context.js` to stop its
+console listeners before it starts one (`e2e/ios/console-listener.ts`).
+
+**Why:** the driver adds a listener on every switch into the web view and never
+removes one. After N switches each message is logged N times into a buffer of
+5,000: a full run lost a test's error before the test read it. Probed: 300
+switches and 30 lines after an error lost it; patched, it was caught.
+
+**Rejected:**
+
+- Collecting errors in the page (`error`, `unhandledrejection`, `console.error`)
+  — misses what WebKit logs itself, and errors before a reload installs it.
+- Reading the log after every switch — still lossy within one long call.
+- A fresh session per spec file — caps the copies per file, not per test: a long
+  file can still lose one.

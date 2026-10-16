@@ -3,6 +3,7 @@ import { X509Certificate } from "crypto";
 import { mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { oneConsoleListener } from "./console-listener";
 import { keyboardAfterRun } from "./keyboard";
 import { loadLocalEnv } from "./local-env";
 import { writeWebp } from "../../scripts/recording.mjs";
@@ -59,6 +60,8 @@ function installDriver(env: NodeJS.ProcessEnv): void {
     const installed = execFileSync(APPIUM, ["driver", "list", "--installed", "--json"], { env, encoding: "utf8" });
     if (!("xcuitest" in JSON.parse(installed)))
         execFileSync(APPIUM, ["driver", "install", XCUITEST], { env, stdio: "inherit" });
+    const context = join(env.APPIUM_HOME!, "node_modules/appium-xcuitest-driver/build/lib/commands/context.js");
+    writeFileSync(context, oneConsoleListener(readFileSync(context, "utf8")));
 }
 
 /** Incremental after the first run; re-signs when the free profile's week is up. */
