@@ -638,6 +638,7 @@ export class NoteWindowManager {
                 if (window.hold !== hold) return;
                 window.hold = null;
                 this.repin(block);
+                this.anchor.released(block);
             });
             window.hold = hold;
         }

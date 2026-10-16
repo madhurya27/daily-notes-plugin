@@ -1523,6 +1523,24 @@ describe("NoteWindowManager pins a rendered note", () => {
         expect(pinned(block)).toBe("640px");
     });
 
+    it("tells the anchor a hold let go once the block is re-pinned", async () => {
+        const heights = new NoteHeights();
+        heights.keep(LAYOUT, FILE.path, 812);
+        const heldOr = (height: number) => (block: HTMLElement) =>
+            block.style.getPropertyValue("--daily-note-held-height") ? 812 : height;
+        const { manager, block } = await rendered(heldOr(640), heights);
+        const pins: string[] = [];
+        const released = vi
+            .spyOn(ScrollAnchor.prototype, "released")
+            .mockImplementation((b) => void pins.push(pinned(b)));
+        onTestFinished(() => released.mockRestore());
+
+        manager.onTouch(block.firstElementChild);
+
+        expect(released).toHaveBeenCalledExactlyOnceWith(block);
+        expect(pins).toEqual(["640px"]);
+    });
+
     it("tells the anchor nothing when a hold lets go at the height it held", async () => {
         const heights = new NoteHeights();
         heights.keep(LAYOUT, FILE.path, 812);

@@ -1039,6 +1039,36 @@ describe("ScrollAnchor", () => {
             expect(shift(content)).toBe(0);
         });
 
+        // Read while the note was held, the place stayed at its top: a turn
+        // after moved the text at the pane's top by 139 px on an iPhone.
+        it("holds the text inside a note once its hold lets go", () => {
+            const { pane, content, blocks, resize, turn } = watch([[400, 400, 400], 400], 0);
+            blocks[0]!.style.setProperty("--daily-note-held-height", "1200px");
+            pane.scrollTop = 500;
+            anchor.onScroll();
+            blocks[0]!.style.removeProperty("--daily-note-held-height");
+
+            anchor.released(blocks[0]!);
+            turn();
+            resize(blocks[0]!.children[0]!, 200);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(200);
+            expect(blocks[0]!.children[1]!.getBoundingClientRect().top).toBe(-100);
+        });
+
+        it("reads nothing when a note it holds no place in lets go", () => {
+            const { pane, blocks } = watch([[400, 400, 400], 400], 0);
+            blocks[0]!.style.setProperty("--daily-note-held-height", "1200px");
+            pane.scrollTop = 500;
+            anchor.onScroll();
+            vi.mocked(document.elementsFromPoint).mockClear();
+
+            anchor.released(blocks[1]!);
+
+            expect(document.elementsFromPoint).not.toHaveBeenCalled();
+        });
+
         it("asks what is drawn there, reading only it and what starts after it", () => {
             const long = Array.from({ length: 100 }, () => 40);
             const { blocks } = watch([400, long], 500);
@@ -1290,6 +1320,10 @@ describe("ScrollAnchor", () => {
         anchor.onScroll();
 
         expect(pane.scrollTop).toBe(900);
+    });
+
+    it("ignores a hold let go before it is attached", () => {
+        expect(() => anchor.released(document.createElement("div"))).not.toThrow();
     });
 
     it("ignores a finger before it is attached", () => {

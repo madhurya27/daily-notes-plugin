@@ -117,6 +117,15 @@ export class ScrollAnchor {
     }
 
     /**
+     * `block`'s hold let go: a place read while it was held stopped at its
+     * top, and a reflow would move the text in it. Read again, as a resize
+     * would have it read; a release at the height held reports none.
+     */
+    released(block: HTMLElement): void {
+        if (this.place.at(-1)?.el === block) this.hold();
+    }
+
+    /**
      * What is drawn at the pane's top is about to move inside its block, which
      * neither scrolled nor resized since the place was last read: read it now.
      * `drawn`, a note drawn from its end, is held by its text where its top is
