@@ -308,11 +308,13 @@ test.describe("empty daily notes", () => {
                 // Its batch loads as the end comes into view.
                 await pane.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
                 await readAt(page, reading);
+                const before = await offsetOf(page, reading);
 
                 await setHideEmptyNotes(page, false);
 
                 await expect(block(page, EMPTY_NOTE)).toHaveCount(1);
-                await expect.poll(() => offsetOf(page, reading)).toBeCloseTo(0, 0);
+                // Mobile scrolls in half pixels: each correction of the scroll may land a quarter off.
+                await expect.poll(async () => Math.abs((await offsetOf(page, reading)) - before)).toBeLessThan(1);
             } finally {
                 await writeNote(page, tall, text);
             }

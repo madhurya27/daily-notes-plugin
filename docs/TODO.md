@@ -37,9 +37,6 @@ Seen, then not reproduced: picked up again if one comes back.
       0023); not seen in ~60 probe runs after. Back on 2026-10-15 in 2 of ~30
       probes drawing notes of 3,000–16,000 lines; the phone suite fails on it.
       Desktop never sees it: Chromium fires it as an uncaught `error` event.
-- [ ] `e2e/empty-notes.spec.ts`, "keeps the note being read at the top right
-      after scrolling to it", fails on mobile in 5 of 20 runs on `b911a06`,
-      before the title-tap fix, off `toBeCloseTo`.
 - [ ] `e2e/ios/lifecycle.spec.ts`, "after a quit and a jump to an old date",
       fails in 2 of 8 runs on `b911a06`: a flick toward the top ends ~595 px
       into the newest note, and the next moves nothing.
