@@ -2406,3 +2406,24 @@ switches and 30 lines after an error lost it; patched, it was caught.
 - Reading the log after every switch — still lossy within one long call.
 - A fresh session per spec file — caps the copies per file, not per test: a long
   file can still lose one.
+
+## D-145 — A scroll re-pins the note at the pane's top if its content moved (2026-10-16)
+
+**Decision:** `NoteWindowManager.onScroll` first compares where the pinned note
+at the pane's top ends its content, below its top, with where it did when
+pinned. If that moved, the note re-pins before the anchor reads its place.
+
+**Why:** Bases fills a view in a task of its own, moving the text below it
+inside the pin. A scroll before the `ResizeObserver` report let the anchor read
+its place in the moved text, so the re-pin owed nothing and the next note
+dropped by the growth: 603 px in about 1 flick in 5 (D-108 covers only a Base's
+own holds).
+
+**Rejected:**
+
+- A `MutationObserver` on each Base — Bases only; misses growth with no DOM
+  change.
+- Re-pinning every drawn note each scroll — a forced layout per note per frame
+  (ADR 0023).
+- Notes marked on screen by the `IntersectionObserver` — lags: a note ending at
+  the pane's top is not yet on it as the scroll lands.

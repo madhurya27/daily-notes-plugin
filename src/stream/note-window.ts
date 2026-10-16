@@ -5,6 +5,7 @@ import { SCROLL_IDLE_MS, ScrollAnchor } from "./scroll-anchor";
 import { HeightHold, SETTLE_MS } from "./height-hold";
 import { Reservations, type Reserving } from "./reservations";
 import { FarRunWatch } from "./far-run-watch";
+import { blockAt } from "./stream-blocks";
 
 /**
  * What a block reserves before anything was measured at this layout, in panes:
@@ -67,11 +68,14 @@ export class NoteWindowManager {
     private screenObserver: IntersectionObserver | null = null;
     /** The blocks in the pane now, not only near it. */
     private readonly onScreen = new Set<HTMLElement>();
+    /** Where each pinned block's content ended below its top as it was pinned. */
+    private readonly pinnedEnds = new WeakMap<HTMLElement, number>();
     /** Renders queued and not yet begun: a note on screen among them may go first. */
     private readonly waiting = new Map<HTMLElement, NoteWindow>();
     /** A render or unload moves everything below it; above the pane, that is the reader's place. */
     private readonly anchor = new ScrollAnchor();
     private scrollRoot: HTMLElement | null = null;
+    private stream: HTMLElement | null = null;
     /** The layout heights are read and kept in, until the task reading it ends. */
     private currentLayout: string | null = null;
     /** The height the current margins were computed from. */
@@ -113,6 +117,7 @@ export class NoteWindowManager {
     attach(scrollRoot: HTMLElement, stream: HTMLElement, loadedToEnd: () => boolean): void {
         this.detachObservers();
         this.scrollRoot = scrollRoot;
+        this.stream = stream;
         this.observeMargins(scrollRoot);
         this.screenObserver = new IntersectionObserver(
             (entries) => {
@@ -230,9 +235,29 @@ export class NoteWindowManager {
 
     /** A scroll restarts the wait on any block that left the margin. */
     onScroll(): void {
+        this.repinAtTop();
         this.anchor.onScroll();
         if (this.leaving.size > 0) this.unloadOnceStill();
         if (this.reservations.owed) this.reserveOnceStill();
+    }
+
+    /**
+     * Re-pins the note at the pane's top if its content moved inside its pin,
+     * as a Base filling in moves what is below it: the report would come
+     * after this scroll, and the anchor would read its place in the moved
+     * text first (D-145).
+     */
+    private repinAtTop(): void {
+        // A scroll queued as the view closed comes after its detach.
+        if (!this.scrollRoot) return;
+        const block = blockAt(this.stream!, this.scrollRoot.getBoundingClientRect().top) as HTMLElement | null;
+        const end = block && this.pinnedEnds.get(block);
+        if (block && end !== undefined && end !== this.contentEnd(block)) this.repin(block);
+    }
+
+    /** How far below pinned `block`'s top what it rendered ends. */
+    private contentEnd(block: HTMLElement): number {
+        return block.lastElementChild!.getBoundingClientRect().bottom - block.getBoundingClientRect().top;
     }
 
     /** A Base in a note set its height: the note re-pins in this task (D-108). */
@@ -715,16 +740,23 @@ export class NoteWindowManager {
         const before = block.style.getPropertyValue("--daily-note-pinned-height");
         block.style.removeProperty("--daily-note-pinned-height");
         const height = this.measure(block);
-        if (height > 0) block.style.setProperty("--daily-note-pinned-height", `${height}px`);
+        if (height > 0) {
+            // Read before the pin dirties the layout the measure just made.
+            this.pinnedEnds.set(block, this.contentEnd(block));
+            block.style.setProperty("--daily-note-pinned-height", `${height}px`);
+            this.anchor.pinned(block);
+        } else {
+            this.pinnedEnds.delete(block);
+            this.anchor.unpinned(block);
+        }
         block.toggleClass("is-pinned", height > 0);
-        if (height > 0) this.anchor.pinned(block);
-        else this.anchor.unpinned(block);
         const changed = block.style.getPropertyValue("--daily-note-pinned-height") !== before;
         if (changed) this.anchor.resized();
         return changed;
     }
 
     private unpin(block: HTMLElement): void {
+        this.pinnedEnds.delete(block);
         this.anchor.unpinned(block);
         block.removeClass("is-pinned");
         block.style.removeProperty("--daily-note-pinned-height");

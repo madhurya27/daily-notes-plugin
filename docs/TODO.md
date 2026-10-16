@@ -24,12 +24,6 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       px in the note above as that note drew. Once, 720 px at the anchor's
       hand-over; not seen again in ~25 runs. Measured with an element-following
       probe (a note drawn from its end defeats `followReader`'s by-index one).
-- [ ] On the iPhone, heights forgotten, a 3-stroke flick up from 2026-09-16 in
-      the harness's vault drops the text below the pane's top 603 px in about 1
-      run in 5: 2026-09-28's Base, above its code block, fills in from 76 to 679
-      px and its note re-pins, and the anchor owes nothing. What it held then is
-      not known. Before it held the next note in the gap at a note's end, 13
-      runs in 15.
 
 ## Rare, not reproduced
 

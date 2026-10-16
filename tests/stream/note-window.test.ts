@@ -172,8 +172,9 @@ function makeManager(
     heights = new NoteHeights()
 ) {
     const manager = new NoteWindowManager(renderer as never, makeQueue(), heights, () => LAYOUT, measure);
-    manager.attach(scrollRoot, document.createElement("div"), moreBelow);
-    return { manager, renderer, scrollRoot, heights };
+    const stream = document.createElement("div");
+    manager.attach(scrollRoot, stream, moreBelow);
+    return { manager, renderer, scrollRoot, stream, heights };
 }
 
 /** Settles the render promise chain. Timers are fake, so this only runs what is due. */
@@ -1507,6 +1508,91 @@ describe("NoteWindowManager pins a rendered note", () => {
 
         expect(pinned(block)).toBe("900px");
         expect(told).toHaveBeenCalledOnce();
+    });
+
+    describe("at the pane's top as it scrolls", () => {
+        /** Renders FILE at the pane's top, its content ending at `end()` below its top. */
+        async function atTop(height: () => number, end: () => number) {
+            const setup = await rendered(natural(height));
+            setup.stream.append(setup.block);
+            setup.block.getBoundingClientRect = () => ({ top: -100, bottom: 540 }) as DOMRect;
+            const content = setup.block.lastElementChild as HTMLElement;
+            content.getBoundingClientRect = () => ({ bottom: end() - 100 }) as DOMRect;
+            setup.manager.onScroll();
+            return setup;
+        }
+
+        // A Base filling in moved the text below it inside the pin, and the
+        // report re-pinning the note comes after this scroll: read first, the
+        // place would be in the moved text, and the note below would drop.
+        it("re-pins it before the anchor reads the place, once its content ends elsewhere", async () => {
+            let height = 640;
+            let end = 600;
+            const { manager, block } = await atTop(
+                () => height,
+                () => end
+            );
+            const seen: string[] = [];
+            told.mockImplementation(() => void seen.push(`told at ${pinned(block)}`));
+            const read = vi.spyOn(ScrollAnchor.prototype, "onScroll").mockImplementation(() => void seen.push("read"));
+
+            height = 1243;
+            end = 1203;
+            manager.onScroll();
+            read.mockRestore();
+
+            expect(seen).toEqual(["told at 1243px", "read"]);
+        });
+
+        it("reads nothing on a scroll that comes once it is detached", async () => {
+            const { manager } = await atTop(
+                () => 640,
+                () => 600
+            );
+            manager.detach();
+
+            expect(() => manager.onScroll()).not.toThrow();
+        });
+
+        it("leaves it pinned while its content ends where it did, however far it scrolled", async () => {
+            const measured = vi.fn(() => 640);
+            const { manager, block } = await atTop(measured, () => 600);
+            measured.mockClear();
+
+            block.getBoundingClientRect = () => ({ top: -150, bottom: 490 }) as DOMRect;
+            (block.lastElementChild as HTMLElement).getBoundingClientRect = () => ({ bottom: 450 }) as DOMRect;
+            manager.onScroll();
+
+            expect(measured).not.toHaveBeenCalled();
+        });
+
+        it("measures nothing once it unloaded", async () => {
+            const measured = vi.fn(() => 640);
+            const { manager, block } = await atTop(measured, () => 600);
+            fire(observers.unload, block, false);
+            await still();
+            measured.mockClear();
+
+            manager.onScroll();
+
+            expect(measured).not.toHaveBeenCalled();
+        });
+
+        // In a hidden tab: pinned at nothing, the note would vanish.
+        it("measures nothing once it laid out at nothing and let go of its pin", async () => {
+            let height = 640;
+            let end = 600;
+            const measured = vi.fn(() => height);
+            const { manager, block } = await atTop(measured, () => end);
+            height = 0;
+            resize(block.lastElementChild as HTMLElement);
+            measured.mockClear();
+
+            end = 900;
+            manager.onScroll();
+
+            expect(measured).not.toHaveBeenCalled();
+        });
     });
 
     // A hold is a min-height, which the pin hides: its let-go shows only once re-pinned.

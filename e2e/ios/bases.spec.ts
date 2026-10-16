@@ -55,6 +55,39 @@ test("a Base gaining a row just above the screen's top leaves the text below sti
     expect(Math.max(...tops.map(Math.abs)), `on screen at ${path(tops).join(", ")}`).toBeLessThan(2);
 });
 
+// Bases fills a view in a task of its own, moving the text below it inside
+// its pinned note; mid-glide, a scroll can come before the report that
+// re-pins the note. Both are made here, in that order, in one task.
+test("a Base filling in above the screen's top, a scroll before its report, leaves the next note still", async ({
+    phone,
+}) => {
+    await phone.openStream();
+    await phone.jumpTo(SHORT_NOTE.slice("Journal/".length, -".md".length));
+    const { scrolled, reported } = await phone.runAsync(
+        async (title: string, slot: string) => {
+            const pane = document.querySelector(title)!.closest(".view-content")!;
+            const top = () =>
+                Math.round(
+                    document.querySelector(title)!.getBoundingClientRect().top - pane.getBoundingClientRect().top
+                );
+            const frame = () => new Promise((done) => requestAnimationFrame(done));
+            const filled = document.createElement("div");
+            filled.style.height = "600px";
+            document.querySelector(slot)!.append(filled);
+            pane.scrollTop -= 100;
+            pane.dispatchEvent(new Event("scroll"));
+            const scrolled = top();
+            await frame();
+            await frame();
+            return { scrolled, reported: top() };
+        },
+        after,
+        SHORT_KANBAN
+    );
+
+    expect(reported).toBe(scrolled);
+});
+
 /** A table whose headers fit a phone and whose values do not: only a drawn table shows it is too wide. */
 const VALUES_WIDE = [
     "formulas:",
