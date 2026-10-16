@@ -208,6 +208,17 @@ describe("scrollIntoPlace", () => {
         expect(el.scrollIntoView).toHaveBeenCalledTimes(2);
     });
 
+    it("centers a range on the pane, however tall the element holding it", async () => {
+        const scrolled = Object.assign(makeEl({ top: 100, bottom: 900 }), { scrollTop: 0 });
+        const range = document.createRange();
+        range.getBoundingClientRect = () =>
+            ({ top: 1390 - scrolled.scrollTop, bottom: 1410 - scrolled.scrollTop }) as DOMRect;
+
+        await scrollIntoPlace(range, "center", scrolled, layoutCounting());
+
+        expect(scrolled.scrollTop).toBe(900);
+    });
+
     // A note too short to reach the top of a tall pane: the scroll moves
     // nothing, so no observer has anything new to report.
     it("stops once a scroll moves nothing on a quiet stream", async () => {
@@ -300,6 +311,24 @@ describe("keepInPlace", () => {
         resized(base);
 
         expect(heading.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+    });
+
+    it("centers a range again, watching what lies above its text", () => {
+        const center = { at: 400 };
+        const block = stream.createDiv({ cls: "daily-note-block" });
+        const base = block.createDiv();
+        const text = block.createEl("pre").appendChild(document.createTextNode("Wombat"));
+        const range = document.createRange();
+        range.selectNodeContents(text);
+        range.getBoundingClientRect = () => ({ top: center.at - 10, bottom: center.at + 10 }) as DOMRect;
+        pane.scrollTop = 0;
+        keepInPlace(range, "center", pane, stream);
+
+        center.at = 1300;
+        resized(base);
+
+        expect(pane.scrollTop).toBe(900);
+        expect([...FakeResizeObserver.last.observed]).toEqual([stream, base]);
     });
 
     it("leaves it alone while it is still in place", () => {

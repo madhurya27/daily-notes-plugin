@@ -1409,73 +1409,77 @@ describe("what a search moves through", () => {
         expect(filledAtRender).toEqual([false, true]);
     });
 
-    it("centers an element and keeps it there while the stream renders", async () => {
-        const el = document.createElement("span");
-        el.scrollIntoView = vi.fn();
+    /** A match over text in the stream, 20px tall, `top` down it: it moves as the pane scrolls. */
+    function matchAt(top: number): Range {
+        const range = document.createRange();
+        range.selectNodeContents(container.createSpan().appendChild(document.createTextNode("milk")));
+        range.getBoundingClientRect = () => rect(top - pane.scrollTop, top + 20 - pane.scrollTop);
+        return range;
+    }
 
-        await stream.center(el);
+    it("centers a match and keeps it there while the stream renders", async () => {
+        pane.getBoundingClientRect = () => rect(0, 800);
+        pane.scrollTop = 0;
 
-        expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+        await stream.center(matchAt(1390));
+
+        expect(pane.scrollTop).toBe(1000);
     });
 
     describe("a centered match, as the stream settles around it", () => {
-        let el: HTMLElement;
+        let match: Range;
 
         beforeEach(async () => {
             document.body.appendChild(pane);
             HTMLElement.prototype.scrollIntoView = vi.fn();
             pane.getBoundingClientRect = () => rect(0, 800);
-            el = container.createSpan();
-            el.scrollIntoView = vi.fn();
-            el.getBoundingClientRect = () => rect(390, 410);
-            await stream.center(el);
+            pane.scrollTop = 0;
+            match = matchAt(390);
+            await stream.center(match);
             // A Base above it fills in.
-            el.getBoundingClientRect = () => rect(6390, 6410);
-            vi.mocked(el.scrollIntoView).mockClear();
+            match.getBoundingClientRect = () => rect(6390 - pane.scrollTop, 6410 - pane.scrollTop);
         });
         afterEach(() => pane.remove());
 
         it("is centered again when a Base above it fills in", () => {
             resized();
 
-            expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+            expect(pane.scrollTop).toBe(6000);
         });
 
         it("is let go once another is readied", async () => {
             await stream.ready(notes[3]!);
             resized();
 
-            expect(el.scrollIntoView).not.toHaveBeenCalled();
+            expect(pane.scrollTop).toBe(0);
         });
 
         it("is let go once another is centered", async () => {
-            const next = container.createSpan();
-            next.getBoundingClientRect = () => rect(390, 410);
-            await stream.center(next);
+            await stream.center(matchAt(390));
             resized();
 
-            expect(el.scrollIntoView).not.toHaveBeenCalled();
+            expect(pane.scrollTop).toBe(0);
         });
 
         it("is let go once the reader touches the pane", () => {
             stream.onTouch(null);
             resized();
 
-            expect(el.scrollIntoView).not.toHaveBeenCalled();
+            expect(pane.scrollTop).toBe(0);
         });
 
         it("is let go once the reader wheels", () => {
             stream.onWheel();
             resized();
 
-            expect(el.scrollIntoView).not.toHaveBeenCalled();
+            expect(pane.scrollTop).toBe(0);
         });
 
         it("is let go when the stream closes", () => {
             stream.close();
             resized();
 
-            expect(el.scrollIntoView).not.toHaveBeenCalled();
+            expect(pane.scrollTop).toBe(0);
         });
     });
 

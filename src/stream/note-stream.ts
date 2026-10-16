@@ -346,13 +346,13 @@ export class NoteStream {
     }
 
     /**
-     * Centers `el`, inside a note, on the pane, and keeps it there while the
+     * Centers `range`, inside a note, on the pane, and keeps it there while the
      * stream renders and, once centered, while the Bases around it fill in.
      */
-    async center(el: HTMLElement): Promise<void> {
+    async center(range: Range): Promise<void> {
         this.letGoOfCentered();
-        await scrollIntoPlace(el, "center", this.scrollRoot, this.layout);
-        this.letGoOfCentered = keepInPlace(el, "center", this.scrollRoot, this.blocks.el);
+        await scrollIntoPlace(range, "center", this.scrollRoot, this.layout);
+        this.letGoOfCentered = keepInPlace(range, "center", this.scrollRoot, this.blocks.el);
     }
 
     /** Whether `range` lies wholly inside the pane's visible area. */

@@ -18,7 +18,7 @@ describe("StreamSearch", () => {
     let highlighter: SearchHighlighter;
     let status: string;
     let readied: TFile[];
-    let centered: HTMLElement[];
+    let centered: Range[];
     let top: TFile | null;
     let shown: (range: Range) => boolean;
     let onScreen: (range: Range) => boolean;
@@ -61,8 +61,8 @@ describe("StreamSearch", () => {
                 },
                 blockOf: (file) => blocks.get(file) ?? null,
                 firstVisibleNote: () => top,
-                center: (el) => {
-                    centered.push(el);
+                center: (range) => {
+                    centered.push(range);
                     return Promise.resolve();
                 },
                 isOnScreen: (range) => onScreen(range),
@@ -178,14 +178,15 @@ describe("StreamSearch", () => {
         expect(status).toBe("2 / 3");
     });
 
-    it("centers the current highlight in the pane", async () => {
+    // Not the element holding it: a code block taller than the pane centers off it.
+    it("centers the current highlight itself in the pane", async () => {
         await search.search("milk");
 
         await search.next();
         await search.next();
 
-        const paragraph = blocks.get(notes[0]!)!.firstChild;
-        expect(centered).toEqual([paragraph, paragraph]);
+        expect(centered.map((range) => range.startOffset)).toEqual([0, 14]);
+        expect(centered[1]).toBe(current()[0]);
     });
 
     it("wraps from the last note to the first", async () => {

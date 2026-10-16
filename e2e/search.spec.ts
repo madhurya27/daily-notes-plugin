@@ -3,11 +3,13 @@ import {
     test,
     expect,
     openStream,
+    restoreNote,
     restoreScrollAnchoring,
     scrollThroughStream,
     seededDate,
     SEEDED_DAYS,
     withoutScrollAnchoring,
+    writeNote,
 } from "./obsidian";
 
 /** Opens the bar from the header, which both layouts show. */
@@ -159,6 +161,29 @@ test.describe("search the stream", () => {
 
         await expect(bar.locator(".document-search-count")).toHaveText("1 / 1");
         await expect.poll(() => currentMatch(page)).toEqual({ text: "Ran 2 km", onScreen: true });
+    });
+
+    test.describe("a match atop a block taller than the pane", () => {
+        const path = `Notes/${seededDate(SEEDED_DAYS)}.md`;
+        const code = ["```", "Wombat", ...Array.from({ length: 150 }, (_, i) => `line ${i}`), "```"].join("\n");
+
+        test.beforeEach(async ({ obsidian }) => {
+            await writeNote(obsidian.page, path, code);
+        });
+        test.afterEach(async ({ obsidian }) => {
+            await restoreNote(obsidian.page, path, null);
+        });
+
+        test("brings the match itself on screen", async ({ obsidian }) => {
+            const { page } = obsidian;
+            await openStream(page);
+            const bar = await openSearch(page);
+            await bar.locator("input").fill("Wombat");
+            await page.keyboard.press("Enter");
+
+            await expect(bar.locator(".document-search-count")).toHaveText("1 / 1");
+            await expect.poll(() => currentMatch(page)).toEqual({ text: "Wombat", onScreen: true });
+        });
     });
 
     test.describe("a match below Bases", () => {

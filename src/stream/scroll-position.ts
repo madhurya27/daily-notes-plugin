@@ -58,22 +58,36 @@ export interface StreamLayout {
 /** Where in the pane an element is brought: its top to the pane's top, or center to center. */
 export type Placement = "start" | "center";
 
-/** How far `el` sits from its place in `scrollEl`. */
-function offsetFromPlace(el: HTMLElement, placement: Placement, scrollEl: HTMLElement): number {
-    const rect = el.getBoundingClientRect();
+/** What a scroll places: a block, or a search match, whose holder may be taller than the pane. */
+export type Placed = HTMLElement | Range;
+
+/** How far `placed` sits from its place in `scrollEl`. */
+function offsetFromPlace(placed: Placed, placement: Placement, scrollEl: HTMLElement): number {
+    const rect = placed.getBoundingClientRect();
     const pane = scrollEl.getBoundingClientRect();
     if (placement === "start") return rect.top - pane.top;
     return (rect.top + rect.bottom - pane.top - pane.bottom) / 2;
 }
 
+/** Scrolls `placed` to its place: a range has no `scrollIntoView`, so the pane moves by its offset. */
+function scrollToPlace(placed: Placed, placement: Placement, scrollEl: HTMLElement): void {
+    if (placed instanceof Range) scrollEl.scrollTop += offsetFromPlace(placed, placement, scrollEl);
+    else placed.scrollIntoView({ block: placement });
+}
+
+/** The element `placed` lies in: a match's text always has one. */
+function elementOf(placed: Placed): Element {
+    return placed instanceof Range ? placed.startContainer.parentElement! : placed;
+}
+
 /**
- * Brings `el` to its place in `scrollEl` and keeps it there. Scrolling to it
- * brings the window manager to it, and a note rendering *above* it grows past
- * its placeholder estimate and pushes it down (ADR 0006), so the scroll is
- * re-applied until `el` is in place in a stream that has stopped rendering.
+ * Brings `placed` to its place in `scrollEl` and keeps it there. Scrolling to
+ * it brings the window manager to it, and a note rendering *above* it grows
+ * past its placeholder estimate and pushes it down (ADR 0006), so the scroll is
+ * re-applied until `placed` is in place in a stream that has stopped rendering.
  */
 export async function scrollIntoPlace(
-    el: HTMLElement,
+    placed: Placed,
     placement: Placement,
     scrollEl: HTMLElement,
     layout: StreamLayout
@@ -83,7 +97,7 @@ export async function scrollIntoPlace(
     for (let pass = 0; pass < MAX_SCROLL_PASSES; pass++) {
         const changes = layout.layoutChanges();
         const scrollTop = scrollEl.scrollTop;
-        el.scrollIntoView({ block: placement });
+        scrollToPlace(placed, placement, scrollEl);
         // A scroll that moved nothing, on a stream that has not changed since
         // the last pass, is as far as it goes: no observer has news, and
         // waiting a frame for one can wait forever where none is drawn.
@@ -94,7 +108,7 @@ export async function scrollIntoPlace(
         // It is in place the instant it is scrolled to; the renders that
         // will push it down land after. Arrived means in place *and*
         // nothing rendered or unloaded on this pass.
-        const offset = offsetFromPlace(el, placement, scrollEl);
+        const offset = offsetFromPlace(placed, placement, scrollEl);
         settled = layout.layoutChanges();
         if (Math.abs(offset) <= SCROLL_TOLERANCE_PX && settled === changes) return;
     }
@@ -102,27 +116,28 @@ export async function scrollIntoPlace(
 }
 
 /**
- * Keeps `el` at its place in `scrollEl` while what lies above it resizes,
+ * Keeps `placed` at its place in `scrollEl` while what lies above it resizes,
  * until it is still for `SETTLE_MS`; returns what lets go sooner, as the
  * reader moving the pane must. A Base fills in after drawing, uncounted by
- * `scrollIntoPlace`, and one above `el` pushes it off screen. Re-placed in the
+ * `scrollIntoPlace`, and one above `placed` pushes it off screen. Re-placed in the
  * frame it moved: a resize reports before paint.
  */
 export function keepInPlace(
-    el: HTMLElement,
+    placed: Placed,
     placement: Placement,
     scrollEl: HTMLElement,
     stream: HTMLElement
 ): () => void {
+    const holder = elementOf(placed);
     let settle = 0;
     const waitForStill = () => {
         window.clearTimeout(settle);
         settle = window.setTimeout(letGo, SETTLE_MS);
     };
     const observer = new ResizeObserver(() => {
-        if (!el.isConnected) return letGo();
-        if (Math.abs(offsetFromPlace(el, placement, scrollEl)) > SCROLL_TOLERANCE_PX)
-            el.scrollIntoView({ block: placement });
+        if (!holder.isConnected) return letGo();
+        if (Math.abs(offsetFromPlace(placed, placement, scrollEl)) > SCROLL_TOLERANCE_PX)
+            scrollToPlace(placed, placement, scrollEl);
         waitForStill();
     });
     function letGo(): void {
@@ -130,7 +145,7 @@ export function keepInPlace(
         observer.disconnect();
     }
     observer.observe(stream);
-    for (const above of aboveInBlock(el, stream)) observer.observe(above);
+    for (const above of aboveInBlock(holder, stream)) observer.observe(above);
     waitForStill();
     return letGo;
 }
