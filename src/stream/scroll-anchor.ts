@@ -42,6 +42,12 @@ export class ScrollAnchor {
     private drawnBase: Element | null = null;
     /** The scroll `place` was read at: a script may move it before a resize reports. */
     private placeScroll = 0;
+    /**
+     * The scroll last heard, or written by the anchor: a glide's step runs
+     * from it. Not `placeScroll`: a resize reported at the scroll the next
+     * scroll event brings reads the place there, and the step was none.
+     */
+    private stepFrom = 0;
     /** The pane's width `place` was read at. */
     private placeWidth = 0;
     /**
@@ -74,6 +80,7 @@ export class ScrollAnchor {
         this.scrollRoot = scrollRoot;
         this.stream = stream;
         this.placeWidth = scrollRoot.clientWidth;
+        this.stepFrom = scrollRoot.scrollTop;
         // styles.css: overflow-anchor none, so no half-working native anchoring
         // corrects a second time.
         scrollRoot.addClass("is-scroll-anchored");
@@ -189,16 +196,18 @@ export class ScrollAnchor {
      */
     onScroll(): void {
         if (!this.scrollRoot) return;
-        // Since the place was read, at the last scroll or the anchor's own write: a glide's
-        // step. A clamp to the stream's end is none.
-        const moved = this.clamped() ? 0 : this.placeScroll - this.scrollRoot.scrollTop;
+        // A clamp to the stream's end is no step of a glide.
+        const moved = this.clamped(this.stepFrom) ? 0 : this.stepFrom - this.scrollRoot.scrollTop;
+        this.stepFrom = this.scrollRoot.scrollTop;
         this.hold();
         const bounced = this.bouncing && this.scrollRoot.scrollTop >= 0 && !this.touching;
         this.bouncing = this.scrollRoot.scrollTop < 0 || (this.bouncing && this.touching);
         if (this.owed !== 0 && bounced) this.handOver();
         else if (this.owed !== 0 && this.topDueInView(moved)) this.stopGlide(0);
+        // A step on: iOS draws a step past the scroll it reports, and stopped
+        // there the text moved back against the glide.
         else if (this.owed !== 0 && (this.endDueInView(moved) || this.scrollRunsOutAbove(moved)))
-            this.stopGlide(this.scrollRoot.scrollTop + this.owed);
+            this.stopGlide(this.scrollRoot.scrollTop + this.owed - moved);
         else if (this.owed !== 0) this.settleOnceStill();
         else if (this.scrollRoot.scrollTop === 0) this.headedForTop = false;
     }
@@ -215,6 +224,7 @@ export class ScrollAnchor {
         requestAnimationFrame(() => root.removeClass("is-scroll-frozen"));
         this.settleOnceStill.cancel();
         root.scrollTop = scrollTop;
+        this.stepFrom = root.scrollTop;
         this.headedForTop = false;
         this.unshift();
         this.pick();
@@ -306,14 +316,17 @@ export class ScrollAnchor {
         }
         const place = this.reflowing ? this.reflowPlace : this.place;
         const point = this.pointOf(place);
-        // A clamp is none of the reader's, then or once the stream grows back.
-        if (this.clamped()) this.placeScroll = this.scrollRoot!.scrollTop;
+        // A clamp is none of the reader's, then or once the stream grows back:
+        // nor a glide's step.
+        if (this.clamped()) this.placeScroll = this.stepFrom = this.scrollRoot!.scrollTop;
         const scrolled = this.scrollRoot!.scrollTop - this.placeScroll;
         const moved = point ? this.movedSince(point, scrolled) : 0;
         if (moved === 0) return false;
         this.owed += moved;
-        // Past the end, the place is lost once handed over all the same.
-        if (this.loadedToEnd()) this.owed = Math.min(this.owed, this.below());
+        // Past the end, the place is lost once handed over all the same. Not
+        // mid-bounce past it: the room below is the bounce's, and capped by
+        // it, what grew above was lost and the text dropped.
+        if (this.loadedToEnd() && this.below() >= 0) this.owed = Math.min(this.owed, this.below());
         this.shift(this.stream!);
         return true;
     }
@@ -401,10 +414,11 @@ export class ScrollAnchor {
     /**
      * The browser pulled the scroll back to the stream's new end: the stream
      * shrank by more than lay below the pane, as below a note jumped to. The
-     * reader never scrolls up onto the end.
+     * reader never scrolls up onto the end. Since `from`, the place's scroll
+     * unless told.
      */
-    private clamped(): boolean {
-        return this.scrollRoot!.scrollTop < this.placeScroll && this.below() <= 1;
+    private clamped(from = this.placeScroll): boolean {
+        return this.scrollRoot!.scrollTop < from && this.below() <= 1;
     }
 
     /**
@@ -477,6 +491,7 @@ export class ScrollAnchor {
         const root = this.scrollRoot!;
         this.owe();
         if (this.owed !== 0 && !(this.headedForTop && root.scrollTop === 0)) root.scrollTop += this.owed;
+        this.stepFrom = root.scrollTop;
         this.headedForTop = false;
         this.unshift();
         this.pick();

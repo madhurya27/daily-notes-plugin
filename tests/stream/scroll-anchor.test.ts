@@ -1438,7 +1438,9 @@ describe("ScrollAnchor", () => {
     // Notes above growing leave the stream drawn higher than its scroll: a
     // glide up ran out of scroll short of the newest note's top, and bounced
     // there. On an iPhone the bounce's pull opened Obsidian's pull-down action.
-    it("stops a glide two steps before its scroll runs out, short of the stream's top", () => {
+    // iOS draws a step past the scroll it reports: stopped where reported, the
+    // text moved back 40–50 px against the glide.
+    it("stops a glide two steps before its scroll runs out, a step on from where it was reported", () => {
         const { pane, content, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
         resize(blocks[0]!, 700);
         observer().resized(blocks[0]!);
@@ -1446,8 +1448,26 @@ describe("ScrollAnchor", () => {
         const stopped = glideUp(pane, 20, 0);
 
         expect(stopped).toBe(40);
-        expect(pane.scrollTop).toBe(340);
+        expect(pane.scrollTop).toBe(320);
         expect(shift(content)).toBe(0);
+    });
+
+    // A resize reported, or a note re-pinned, at the scroll the next scroll
+    // event brings reads the place there: that step was taken for none, and
+    // the glide bounced at the top owing.
+    it("stops a glide whose step is read with a resize, before the scroll hears it", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 700);
+        observer().resized(blocks[0]!);
+        expect(glideUp(pane, 20, 60)).toBeNull();
+
+        pane.scrollTop = 40;
+        resize(blocks[0]!, 750);
+        observer().resized(blocks[0]!);
+        anchor.onScroll();
+
+        expect(pane.hasClass("is-scroll-frozen")).toBe(true);
+        expect(pane.scrollTop).toBe(320);
     });
 
     // A hand-over's write is heard as a scroll a task later: not a glide's step.
@@ -1479,6 +1499,24 @@ describe("ScrollAnchor", () => {
 
         expect(pane.scrollTop).toBe(1100);
         expect(pane.hasClass("is-scroll-frozen")).toBe(false);
+    });
+
+    // A resize read the clamp, and the stream grew back below before the
+    // scroll heard it: the drop was taken for a glide's step, which stopped at
+    // the top.
+    it("takes a scroll clamped to the stream's end, read by a resize, for no step of a glide once it grows back", () => {
+        const { pane, blocks, resize } = watch([1000, 1000, 1000, 400, 400], 2100);
+        resize(blocks[0]!, 100);
+        resize(blocks[1]!, 100);
+        resize(blocks[4]!, 100);
+        pane.scrollTop = 1100;
+        observer().resized(blocks[0]!, blocks[1]!, blocks[4]!);
+        resize(blocks[4]!, 1000);
+
+        anchor.onScroll();
+
+        expect(pane.hasClass("is-scroll-frozen")).toBe(false);
+        expect(pane.scrollTop).toBe(1100);
     });
 
     it("leaves a glide alone while the stream's top is more than a frame away", () => {
@@ -1538,9 +1576,9 @@ describe("ScrollAnchor", () => {
         const stopped = glideDown(pane, 20, 1700);
 
         expect(stopped).toBe(1360);
-        expect(pane.scrollTop).toBe(1660);
+        expect(pane.scrollTop).toBe(1680);
         expect(shift(content)).toBe(0);
-        expect(content.getBoundingClientRect().bottom).toBe(640);
+        expect(content.getBoundingClientRect().bottom).toBe(620);
     });
 
     it("holds the place read where a glide stopped", () => {
@@ -1553,6 +1591,38 @@ describe("ScrollAnchor", () => {
         observer().resized(blocks[1]!);
 
         expect(shift(content)).toBe(-100);
+    });
+
+    // iOS bounces a glide past the stream's end. A note above re-pinned
+    // mid-bounce: drawn at the end, the text snapped back by the bounce's
+    // depth, 286 px on an iPhone.
+    it("draws a change above as it is through a bounce past the stream's end, every note loaded", () => {
+        const { pane, content, blocks, resize } = watchToEnd([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 300);
+        observer().resized(blocks[0]!);
+        pane.scrollTop = 1500;
+        anchor.onScroll();
+
+        resize(blocks[1]!, 450);
+        observer().resized(blocks[1]!);
+
+        expect(shift(content)).toBe(50);
+    });
+
+    // Mid-bounce the room below is the bounce's, not the stream's: capped
+    // by it, a Base filling in above lost what it owed, and the text dropped
+    // 355–435 px on an iPhone.
+    it("owes all a block above grew through a bounce past the stream's end, every note loaded", () => {
+        const { pane, content, blocks, resize } = watchToEnd([400, 400, 400, 400, 400], 900);
+        pane.scrollTop = 1500;
+        anchor.onScroll();
+
+        // The stream no taller: inside a pinned note, as before its re-pin.
+        resize(blocks[1]!, 700);
+        resize(blocks[4]!, 100);
+        observer().resized(blocks[1]!, blocks[4]!);
+
+        expect(shift(content)).toBe(-300);
     });
 
     // Drawn lower than its scroll, the stream's end is further off.

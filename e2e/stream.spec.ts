@@ -763,7 +763,8 @@ test.describe("daily notes stream in real Obsidian", () => {
                     const rendered = new MutationObserver((records) => {
                         for (const { target, oldValue } of records) {
                             const block = target as HTMLElement;
-                            if (pane.scrollTop !== at) return;
+                            // Far behind the glide, the reader's note hides its content (ADR 0023): no place then.
+                            if (pane.scrollTop !== at || reader.getClientRects().length === 0) return;
                             if (oldValue?.includes("is-unloaded") && !block.classList.contains("is-unloaded"))
                                 drifts.push(drift());
                         }

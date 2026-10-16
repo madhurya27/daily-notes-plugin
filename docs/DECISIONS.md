@@ -2427,3 +2427,18 @@ own holds).
   (ADR 0023).
 - Notes marked on screen by the `IntersectionObserver` — lags: a note ending at
   the pane's top is not yet on it as the scroll lands.
+
+## D-146 — A glide stopped short of its scroll's end stops a step on (2026-10-16)
+
+**Decision:** D-140's and D-143's stops write the scroll a glide's last step
+past the one it reported, plus what is owed.
+
+**Why:** iOS draws a step past the scroll the page hears. Stopped where heard,
+the text moved back 40–52 px against the glide in every stop recorded on an
+iPhone; a step on, 1 stop in 25 did, by 88 px.
+
+**Rejected:**
+
+- Two steps on — a stop only moves forward, but by a frame more than the glide.
+- Stopping without a write, by freezing the scroll alone — what is owed is
+  handed over on the next frame, a jump of its own.
