@@ -11,6 +11,7 @@ pnpm install
 pnpm run dev            # watch mode → main.js
 pnpm run build          # type-check + production build (esbuild → CJS main.js, `obsidian` external)
 pnpm run build:device   # the same, named on load by a notice (two words, from the code): for a phone test
+pnpm run install:vault <vault>   # build:device, then copy it into <vault>'s plugin folder; notes and settings untouched
 pnpm run lint           # ESLint
 pnpm run format         # Prettier --write; format:check verifies. Markdown wraps at 80, AGENTS.md aside.
 pnpm test               # typecheck tests/ (tests/tsconfig.json), then vitest run

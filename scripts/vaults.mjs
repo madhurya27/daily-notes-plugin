@@ -5,12 +5,13 @@
  * that opens them.
  */
 import { execFileSync } from "child_process";
-import { readFileSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
+/** @type {string} */
 export const PLUGIN_ID = JSON.parse(readFileSync(join(REPO, "manifest.json"), "utf8")).id;
 
 export const DEMO_VAULT = join(REPO, ".dev", "demo-vault");
@@ -25,6 +26,23 @@ export const TEST_VAULT = join(REPO, ".dev", "vault");
 export function vaultFrom(named, args) {
     if (named !== undefined) return resolve(named);
     return args.includes("--test") ? TEST_VAULT : DEMO_VAULT;
+}
+
+/** What a vault needs from a build, in the plugin's folder. */
+const BUILD = ["main.js", "manifest.json", "styles.css"];
+
+/**
+ * Copies the build in `repo` into the vault's plugin folder. Throws, copying
+ * nothing, when a file of it is missing.
+ * @param {string} vault
+ * @param {string} repo
+ */
+export function installBuild(vault, repo = REPO) {
+    const missing = BUILD.filter((file) => !existsSync(join(repo, file)));
+    if (missing.length > 0) throw new Error(`Build first — missing ${missing.join(", ")}. Run: pnpm run build`);
+    const pluginDir = join(vault, ".obsidian", "plugins", PLUGIN_ID);
+    mkdirSync(pluginDir, { recursive: true });
+    for (const file of BUILD) copyFileSync(join(repo, file), join(pluginDir, file));
 }
 
 /** The dev instance's own config, apart from your real Obsidian's. */

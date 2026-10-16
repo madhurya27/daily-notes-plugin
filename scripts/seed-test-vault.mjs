@@ -8,17 +8,13 @@
  * config (.obsidian) is written only when absent, so a vault you have already
  * opened keeps its layout, theme and plugin settings.
  */
-import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
 import { pdf } from "./pdf.mjs";
 import { isMain } from "./reload-plugin.mjs";
-import { PLUGIN_ID, TEST_VAULT } from "./vaults.mjs";
+import { PLUGIN_ID, installBuild, TEST_VAULT } from "./vaults.mjs";
 
-const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const NOTES = "Notes";
-const ASSETS = ["main.js", "manifest.json", "styles.css"];
-
 const body = (...lines) => lines.join("\n") + "\n";
 
 /** The daily-notes template setting: a path without `.md`, as Obsidian stores it. */
@@ -431,16 +427,7 @@ export function main() {
     writeConfigOnce(".obsidian/community-plugins.json", JSON.stringify([PLUGIN_ID], null, 2));
     writeConfigOnce(".obsidian/appearance.json", JSON.stringify({ theme: "system" }, null, 2));
 
-    const missing = ASSETS.filter((asset) => !existsSync(join(REPO, asset)));
-    if (missing.length > 0) {
-        console.error(`Build first — missing ${missing.join(", ")}. Run: pnpm run build`);
-        process.exit(1);
-    }
-    for (const asset of ASSETS) {
-        const target = join(vault, ".obsidian", "plugins", PLUGIN_ID, asset);
-        mkdirSync(dirname(target), { recursive: true });
-        copyFileSync(join(REPO, asset), target);
-    }
+    installBuild(vault);
 
     console.log(
         `Seeded ${days + 3} daily notes (${fillerDate(days - 1)} to ${fillerDate(0)}, plus the three the docs name).`

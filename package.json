@@ -14,6 +14,7 @@
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
         "build:device": "tsc -noEmit -skipLibCheck && export BUILD_LABEL=\"$(node scripts/build-name.mjs)\" && echo \"Notice on load: $BUILD_LABEL\" && node esbuild.config.mjs production",
         "version": "node scripts/version-bump.mjs && git add manifest.json versions.json",
+        "install:vault": "pnpm run build:device && node scripts/install-build.mjs",
         "seed": "node scripts/seed.mjs",
         "demo": "node scripts/dev-vault.mjs",
         "lint": "eslint .",

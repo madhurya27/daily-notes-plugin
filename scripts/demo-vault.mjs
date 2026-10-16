@@ -12,13 +12,11 @@
  * it no longer holds are deleted, changed ones rewritten; `.obsidian` is
  * written only when absent.
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
 import { isMain } from "./reload-plugin.mjs";
-import { DEMO_VAULT, PLUGIN_ID } from "./vaults.mjs";
+import { DEMO_VAULT, installBuild, PLUGIN_ID } from "./vaults.mjs";
 
-const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const JOURNAL = "Journal";
 /** The daily-notes template setting: a path without `.md`, as Obsidian stores it. */
 export const DAILY_TEMPLATE = "Templates/Daily";
@@ -586,15 +584,7 @@ export function main() {
     writeConfigOnce(".obsidian/community-plugins.json", [PLUGIN_ID]);
     writeConfigOnce(".obsidian/app.json", { attachmentFolderPath: "Attachments" });
 
-    const assets = ["main.js", "manifest.json", "styles.css"];
-    const missing = assets.filter((asset) => !existsSync(join(REPO, asset)));
-    if (missing.length > 0) {
-        console.error(`Build first — missing ${missing.join(", ")}. Run: pnpm run build`);
-        process.exit(1);
-    }
-    const pluginDir = join(vault, ".obsidian", "plugins", PLUGIN_ID);
-    mkdirSync(pluginDir, { recursive: true });
-    for (const asset of assets) copyFileSync(join(REPO, asset), join(pluginDir, asset));
+    installBuild(vault);
 
     console.log(`Wrote ${days} journal entries up to ${until.toISOString().slice(0, 10)} into ${vault}`);
 }

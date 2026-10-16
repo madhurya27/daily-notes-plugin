@@ -1,7 +1,16 @@
 import { describe, it, expect, vi } from "vitest";
 import { join, resolve } from "path";
-import { readFileSync } from "fs";
-import { DEMO_VAULT, PLUGIN_ID, TEST_VAULT, USER_DATA_DIR, stopObsidian, vaultFrom } from "../../scripts/vaults.mjs";
+import { mkdtempSync, readFileSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import {
+    DEMO_VAULT,
+    PLUGIN_ID,
+    TEST_VAULT,
+    USER_DATA_DIR,
+    installBuild,
+    stopObsidian,
+    vaultFrom,
+} from "../../scripts/vaults.mjs";
 
 const repoRoot = resolve(__dirname, "../..");
 
@@ -63,5 +72,35 @@ describe("stopObsidian", () => {
         stopObsidian(run);
 
         expect(run).not.toHaveBeenCalledWith("pkill", expect.anything());
+    });
+});
+
+describe("installBuild", () => {
+    const assets = ["main.js", "manifest.json", "styles.css"];
+
+    /** A repo stand-in holding the build files named, each containing its own name. */
+    function built(files: readonly string[]) {
+        const repo = mkdtempSync(join(tmpdir(), "build-"));
+        for (const file of files) writeFileSync(join(repo, file), file);
+        return repo;
+    }
+
+    it("copies the build into the vault's plugin folder, creating it", () => {
+        const vault = mkdtempSync(join(tmpdir(), "vault-"));
+
+        installBuild(vault, built(assets));
+
+        for (const asset of assets) {
+            expect(readFileSync(join(vault, ".obsidian", "plugins", PLUGIN_ID, asset), "utf8")).toBe(asset);
+        }
+    });
+
+    it("refuses a missing build, naming what is missing, and copies nothing", () => {
+        const vault = mkdtempSync(join(tmpdir(), "vault-"));
+
+        expect(() => installBuild(vault, built(["manifest.json"]))).toThrow(
+            "Build first — missing main.js, styles.css. Run: pnpm run build"
+        );
+        expect(() => readFileSync(join(vault, ".obsidian", "plugins", PLUGIN_ID, "manifest.json"))).toThrow();
     });
 });
