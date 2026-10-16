@@ -364,11 +364,19 @@ export class ScrollAnchor {
     /**
      * The text below the pane's top where it falls in a gap in a note's
      * content: the content's own top rises as a note drawn from its end grows
-     * above it (ADR 0022), its text's does not.
+     * above it (ADR 0022), its text's does not. In the gap at a note's end,
+     * the next note: a Base filling in above moves it, not the note's top.
      */
     private belowGap(el: Element, paneTop: number): Element {
+        if (el.parentElement === this.stream && this.endsAbove(el, paneTop)) return el.nextElementSibling ?? el;
         if (!el.hasClass(NOTE_CONTENT_CLASS)) return el;
         return Array.from(el.children).find((child) => child.getBoundingClientRect().bottom > paneTop) ?? el;
+    }
+
+    /** Everything drawn in `block` ends above `paneTop`; an unloaded one draws nothing. */
+    private endsAbove(block: Element, paneTop: number): boolean {
+        const drawn = Array.from(block.children);
+        return drawn.length > 0 && drawn.every((child) => child.getBoundingClientRect().bottom <= paneTop);
     }
 
     /** From `el`'s block down to it, each where it is drawn, stopping at anything held or a Base. */

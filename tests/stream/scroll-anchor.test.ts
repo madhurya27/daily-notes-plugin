@@ -450,6 +450,78 @@ describe("ScrollAnchor", () => {
         expect(shift(content)).toBe(100);
     });
 
+    // A note's bottom padding, between its text and the next note: what is
+    // drawn there is the note itself, whose top a Base filling in above does
+    // not move. The text below the pane's top did, 603 px on an iPhone.
+    it("holds the next note where the pane's top falls in the gap at a note's end", () => {
+        const { pane, blocks, resize } = watch([400, [500], 400], 400);
+        const note = blocks[1]!;
+        note.dataset.heldAt = "600";
+        pane.scrollTop = 950;
+        anchor.onScroll();
+        const nextTop = blocks[2]!.getBoundingClientRect().top;
+
+        resize(note.firstElementChild!, 800);
+        anchor.resized();
+
+        expect(blocks[2]!.getBoundingClientRect().top).toBe(nextTop);
+    });
+
+    it("holds a Base, not what follows it, where the pane's top falls in the box held open for it", () => {
+        const { pane, content, blocks, add, addBase } = watch([400, [], 400], 400);
+        const note = blocks[1]!;
+        const { draw, holdAt } = addBase(note);
+        add(note, 100);
+        draw(300);
+        holdAt(600);
+        pane.scrollTop = 750;
+        anchor.onScroll();
+
+        draw(900);
+        anchor.resized();
+
+        expect(shift(content)).toBe(0);
+    });
+
+    // A note drawing from its end hides its title, which takes no hits.
+    it("holds the note where something in it crosses the pane's top unhit", () => {
+        const { pane, content, blocks, resize } = watch([400, [300, 300], 400], 400);
+        const note = blocks[1]!;
+        vi.mocked(document.elementsFromPoint).mockReturnValue([note, content, pane]);
+        pane.scrollTop = 800;
+        anchor.onScroll();
+
+        resize(note.firstElementChild!, 500);
+        anchor.resized();
+
+        expect(shift(content)).toBe(0);
+    });
+
+    it("holds the next note where the note's text ends exactly at the pane's top", () => {
+        const { pane, blocks, resize } = watch([400, [500], 400], 400);
+        blocks[1]!.dataset.heldAt = "600";
+        pane.scrollTop = 900;
+        anchor.onScroll();
+        const nextTop = blocks[2]!.getBoundingClientRect().top;
+
+        resize(blocks[1]!.firstElementChild!, 800);
+        anchor.resized();
+
+        expect(blocks[2]!.getBoundingClientRect().top).toBe(nextTop);
+    });
+
+    it("holds the note itself where the pane's top falls in the gap at the stream's last note", () => {
+        const { pane, content, blocks, resize } = watch([400, [500]], 400);
+        blocks[1]!.dataset.heldAt = "600";
+        pane.scrollTop = 950;
+        anchor.onScroll();
+
+        resize(blocks[1]!.firstElementChild!, 800);
+        anchor.resized();
+
+        expect(shift(content)).toBe(0);
+    });
+
     it("has no place to read before it is attached", () => {
         expect(() => anchor.readPlace()).not.toThrow();
     });

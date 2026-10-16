@@ -24,23 +24,31 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       px in the note above as that note drew. Once, 720 px at the anchor's
       hand-over; not seen again in ~25 runs. Measured with an element-following
       probe (a note drawn from its end defeats `followReader`'s by-index one).
+- [ ] On the iPhone, heights forgotten, a 3-stroke flick up from 2026-09-16 in
+      the harness's vault drops the text below the pane's top 603 px in about 1
+      run in 5: 2026-09-28's Base, above its code block, fills in from 76 to 679
+      px and its note re-pins, and the anchor owes nothing. What it held then is
+      not known. Before it held the next note in the gap at a note's end, 13
+      runs in 15.
 
-## Flaky
+## Rare, not reproduced
 
-Seen, then not reproduced: picked up again if one comes back.
+Picked up again if one comes back.
 
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
-      match was marked current. Neither came back in 50 cold starts.
+      match was marked current. Neither came back in 50 cold starts, nor in 10
+      runs on 2026-10-16.
 - [ ] "ResizeObserver loop completed with undelivered notifications" logged on
       the iPhone in 2 of 11 glide probes while far content was hidden (ADR
       0023); not seen in ~60 probe runs after. Back on 2026-10-15 in 2 of ~30
       probes drawing notes of 3,000–16,000 lines; the phone suite fails on it.
-      Desktop never sees it: Chromium fires it as an uncaught `error` event.
+      Not seen on 2026-10-16 in 22 such probes and 30 suite tests. Desktop never
+      sees it: Chromium fires it as an uncaught `error` event.
 - [ ] `e2e/ios/layout.spec.ts`, "a turn flips a wide Base", lost the place on
       the turn back by 6,316 px once, on 2026-10-08, in ~60 runs. Placing at
       every section of the note first, as the spec before it does, did not bring
-      it back on `main`.
+      it back on `main`, nor did 10 runs on 2026-10-16.
 
 ## Features
 
