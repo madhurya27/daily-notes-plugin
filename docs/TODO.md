@@ -34,8 +34,18 @@ Seen, then not reproduced: picked up again if one comes back.
       match was marked current. Neither came back in 50 cold starts.
 - [ ] "ResizeObserver loop completed with undelivered notifications" logged on
       the iPhone in 2 of 11 glide probes while far content was hidden (ADR
-      0023); not seen since in ~60 probe runs or the phone suite, which fails on
-      it. Desktop never sees it: Chromium fires it as an uncaught `error` event.
+      0023); not seen in ~60 probe runs after. Back on 2026-10-15 in 2 of ~30
+      probes drawing notes of 3,000–16,000 lines; the phone suite fails on it.
+      Desktop never sees it: Chromium fires it as an uncaught `error` event.
+- [ ] `e2e/empty-notes.spec.ts`, "keeps the note being read at the top right
+      after scrolling to it", fails on mobile in 5 of 20 runs on `b911a06`,
+      before the title-tap fix, off `toBeCloseTo`.
+- [ ] `e2e/ios/lifecycle.spec.ts`, "after a quit and a jump to an old date",
+      fails in 2 of 8 runs on `b911a06`: a flick toward the top ends ~595 px
+      into the newest note, and the next moves nothing.
+- [ ] `e2e/ios/harness.spec.ts`: "an error thrown" and "an error rejected on the
+      phone fails the test" each passed once in a full phone run, the error not
+      caught; 15 of 15 run alone.
 - [ ] `e2e/ios/layout.spec.ts`, "a turn flips a wide Base", lost the place on
       the turn back by 6,316 px once, on 2026-10-08, in ~60 runs. Placing at
       every section of the note first, as the spec before it does, did not bring
