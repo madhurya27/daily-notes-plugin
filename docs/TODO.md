@@ -12,23 +12,18 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
           the README
     - [ ] Once listed, lead the README's Install with **Settings → Community
           plugins → Browse**; keep the manual download as the alternative
-- [ ] A hard flick up the stream on the iPhone outruns the drawing of notes: a
-      note waits its turn in the render queue (ADR 0004) while the glide moves
-      200–800 px a frame, and shows undrawn for 0–11 frames a glide. A render
-      margin of 3 panes was no clearly better. Reopen if it shows in use. The
-      other blanks, over drawn text, Obsidian's reading view shows too (up to
-      185 ms).
+
+## Rare, not reproduced
+
+Picked up again if one comes back.
+
 - [ ] On the iPhone, a flick up into a 10,000-line note never drawn, heights
       forgotten, moves the text at the pane's middle 5–111 px in some glides
       where the note lands with its top outside the pane's upper half: once 85
       px in the note above as that note drew. Once, 720 px at the anchor's
       hand-over; not seen again in ~25 runs. Measured with an element-following
       probe (a note drawn from its end defeats `followReader`'s by-index one).
-
-## Rare, not reproduced
-
-Picked up again if one comes back.
-
+      None in 22 glides on 2026-10-16.
 - [ ] `e2e/ios/search.spec.ts`, "a search paints every match", failed twice in
       ~110 runs: once a Search tap opened no bar, once the bar opened but no
       match was marked current. Neither came back in 50 cold starts, nor in 10
@@ -43,6 +38,18 @@ Picked up again if one comes back.
       the turn back by 6,316 px once, on 2026-10-08, in ~60 runs. Placing at
       every section of the note first, as the spec before it does, did not bring
       it back on `main`, nor did 10 runs on 2026-10-16.
+
+## Known limits
+
+Measured and accepted. Reopened if a reader notices.
+
+- [ ] A hard flick up the stream on the iPhone outruns the drawing of notes: a
+      note waits its turn in the render queue (ADR 0004) while the glide moves
+      200–800 px a frame. On 2026-10-16, 4-stroke flicks showed an undrawn note
+      for 1–4 frames, up to 293 px: in 6 of 6 glides with heights remembered, 3
+      of 6 with them forgotten. A render margin of 3 panes was no clearly
+      better. The other blanks, over drawn text, Obsidian's reading view shows
+      too (up to 185 ms).
 
 ## Features
 
