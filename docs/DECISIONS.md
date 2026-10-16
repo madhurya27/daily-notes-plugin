@@ -2370,3 +2370,21 @@ the stream drew it from its end and landed some 250,000 px down.
   changed what three specs started from.
 - A jump to the newest note — it lands its title at the pane's top, 8 px below
   the stream's: specs comparing with a title tap's top differ.
+
+## D-143 — A glide up owing growth stops before its scroll runs out (2026-10-15)
+
+**Decision:** `ScrollAnchor` stops a glide up two steps before its scroll runs
+out while the stream is drawn higher than its scroll, writing what it owes, as
+D-140 does at the end. Not a scroll headed for the top, as a title tap's: it
+lands there, owing nothing.
+
+**Why:** notes above that grew mid-glide left the stream's top above the pane at
+scroll 0: the glide bounced short of the newest note's top, and a pull on the
+bounce opened Obsidian's pull-down action, the command palette, over the stream.
+
+**Rejected:**
+
+- The hand-over once the bounce ends — the bounce, and the pull on it, come
+  first.
+- Writing what is owed mid-glide, for the glide to reach the top — iOS undoes it
+  ([ADR 0013](adr/0013-pin-rendered-note-heights.md)).

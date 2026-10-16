@@ -1329,6 +1329,21 @@ describe("ScrollAnchor", () => {
         expect(vi.getTimerCount()).toBe(0);
     });
 
+    // Notes above growing leave the stream drawn higher than its scroll: a
+    // glide up ran out of scroll short of the newest note's top, and bounced
+    // there. On an iPhone the bounce's pull opened Obsidian's pull-down action.
+    it("stops a glide two steps before its scroll runs out, short of the stream's top", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        resize(blocks[0]!, 700);
+        observer().resized(blocks[0]!);
+
+        const stopped = glideUp(pane, 20, 0);
+
+        expect(stopped).toBe(40);
+        expect(pane.scrollTop).toBe(340);
+        expect(shift(content)).toBe(0);
+    });
+
     // A hand-over's write is heard as a scroll a task later: not a glide's step.
     it("takes its own write for no step of a glide", () => {
         const { pane, content, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
@@ -1524,6 +1539,20 @@ describe("ScrollAnchor", () => {
 
         pane.scrollTop = 0;
         anchor.onScroll();
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(pane.scrollTop).toBe(0);
+        expect(shift(content)).toBe(0);
+    });
+
+    // A title tap's glide stopped short of the top: 75,854 px down.
+    it("lets a scroll headed for the top glide on to it, owing what grew above", () => {
+        const { pane, content, blocks, resize } = watch([400, 400, 400], 900);
+        anchor.headForTop();
+        resize(blocks[0]!, 1300);
+        observer().resized(blocks[0]!);
+
+        expect(glideUp(pane, 20, 0)).toBeNull();
         vi.advanceTimersByTime(SCROLL_IDLE_MS);
 
         expect(pane.scrollTop).toBe(0);

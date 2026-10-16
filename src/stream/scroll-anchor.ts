@@ -188,7 +188,8 @@ export class ScrollAnchor {
         this.bouncing = this.scrollRoot.scrollTop < 0 || (this.bouncing && this.touching);
         if (this.owed !== 0 && bounced) this.handOver();
         else if (this.owed !== 0 && this.topDueInView(moved)) this.stopGlide(0);
-        else if (this.owed !== 0 && this.endDueInView(moved)) this.stopGlide(this.scrollRoot.scrollTop + this.owed);
+        else if (this.owed !== 0 && (this.endDueInView(moved) || this.scrollRunsOutAbove(moved)))
+            this.stopGlide(this.scrollRoot.scrollTop + this.owed);
         else if (this.owed !== 0) this.settleOnceStill();
         else if (this.scrollRoot.scrollTop === 0) this.headedForTop = false;
     }
@@ -228,6 +229,17 @@ export class ScrollAnchor {
      */
     private endDueInView(moved: number): boolean {
         return moved < 0 && this.owed > 0 && this.loadedToEnd() && this.below() - this.owed <= -2 * moved;
+    }
+
+    /**
+     * A glide up runs out of scroll within two more steps of `moved`, short of
+     * the stream's top, drawn higher than its scroll: asked once `topDueInView`
+     * is not (D-143). A bounce begun is left to the hand-over; a scroll headed
+     * for the top lands on it, owing nothing.
+     */
+    private scrollRunsOutAbove(moved: number): boolean {
+        const { scrollTop } = this.scrollRoot!;
+        return !this.headedForTop && scrollTop > 0 && scrollTop <= 2 * moved;
     }
 
     /**

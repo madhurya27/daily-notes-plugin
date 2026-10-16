@@ -752,14 +752,18 @@ test.describe("daily notes stream in real Obsidian", () => {
                     const box = pane.getBoundingClientRect();
                     const reader = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)!;
                     const start = reader.getBoundingClientRect().top;
-                    const from = pane.scrollTop;
-                    // How far the reader is from where the scroll alone puts it.
-                    const drift = () => reader.getBoundingClientRect().top - (start + (from - pane.scrollTop));
+                    let scrolled = 0;
+                    // Where the reader's scroll left the pane: until the anchor stops
+                    // it as a glide short of the top, writing what it owes.
+                    let at = pane.scrollTop;
+                    // How far the reader is from where its own scroll puts it.
+                    const drift = () => reader.getBoundingClientRect().top - (start + scrolled);
                     const drifts: number[] = [];
                     // A mutation's callback runs as the task that made it ends.
                     const rendered = new MutationObserver((records) => {
                         for (const { target, oldValue } of records) {
                             const block = target as HTMLElement;
+                            if (pane.scrollTop !== at) return;
                             if (oldValue?.includes("is-unloaded") && !block.classList.contains("is-unloaded"))
                                 drifts.push(drift());
                         }
@@ -769,8 +773,10 @@ test.describe("daily notes stream in real Obsidian", () => {
                         attributeFilter: ["class"],
                         attributeOldValue: true,
                     });
-                    while (pane.scrollTop > 0) {
+                    while (at > 0 && pane.scrollTop === at) {
                         pane.scrollTop -= 30;
+                        scrolled += at - pane.scrollTop;
+                        at = pane.scrollTop;
                         await frame();
                         await frame();
                     }

@@ -44,23 +44,25 @@ async function recordFrames(phone: Phone): Promise<void> {
 
 const frames = (phone: Phone) => phone.run(() => (window as unknown as { streamFrames: Frame[] }).streamFrames);
 
-// Placeholders far too short leave the glide less scroll than lies above:
-// it bounces at the top, owing the rest (ADR 0010). iOS undoes a write
-// mid-bounce; once it ends, the room above is the reader's at once.
-test("a glide that bounces at the top owing the notes above hands them over as the bounce ends", async ({ phone }) => {
+// Placeholders far too short leave the glide less scroll than lies above. It
+// bounced at the top owing the rest, and a pull on the bounce opened
+// Obsidian's pull-down action over the stream (D-143).
+test("a glide owing the notes above stops before its scroll runs out, never bouncing", async ({ phone }) => {
     await phone.openStream();
     await phone.jumpTo("2026-09-12");
     await phone.shortenPlaceholders();
     await recordFrames(phone);
 
-    await phone.flick("down");
+    await phone.flick("down", 2);
 
     const seen = await frames(phone);
-    // Its first frame back at the top, or past it: handed over in that frame, the scroll is far below.
-    const bounced = seen.findIndex((f, i) => i > 0 && seen[i - 1]!.shift !== 0 && seen[i - 1]!.top < 0 && f.top >= 0);
-    expect(bounced, "the glide bounced at the top, owing").toBeGreaterThan(0);
-    const handed = seen.findIndex((f, i) => i >= bounced && f.shift === 0);
-    expect(seen[handed]!.at - seen[bounced]!.at).toBeLessThan(100);
+    const owing = seen.filter((f) => f.shift !== 0);
+    expect(Math.min(...owing.map((f) => f.top)), "the glide, owing, ran into the top").toBeLessThan(400);
+    expect(
+        seen.filter((f) => f.shift !== 0 && f.top <= 0),
+        "frames at or past the top, owing"
+    ).toEqual([]);
+    expect(seen.at(-1)!.shift).toBe(0);
 });
 
 // Notes above shorter than their stored heights, as edited on another device,
