@@ -4,12 +4,8 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] Publish to Obsidian community plugins — before the manual submission steps
-      in `docs/IMPROVEMENTS.md`:
-    - [ ] Make the GitHub repo public (private as of 2026-09) — **blocking**
-    - [ ] Release `1.0.0`, the first public version (D-100). Delete the `0.x`
-          entries from `versions.json` in the bump commit; write the notes from
-          the README
+- [ ] Submit to Obsidian community plugins: the submission steps in
+      `docs/IMPROVEMENTS.md`, from step 3.
     - [ ] Once listed, lead the README's Install with **Settings → Community
           plugins → Browse**; keep the manual download as the alternative
 - [ ] Explore adding e2e tests to CI on Linux.
