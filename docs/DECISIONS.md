@@ -2457,3 +2457,18 @@ and gets no button.
 - The button on mobile too — a third icon in a narrow header, for what the title
   already does.
 - A floating button over the notes — covers text, and no other view has one.
+
+## D-148 — CI runs the gates that need no Obsidian, on Linux (2026-10-17)
+
+**Decision:** `.github/workflows/ci.yml` runs format, lint, the e2e type-check,
+unit tests with coverage, and the build on `ubuntu-latest`, for pushes to `main`
+and pull requests. e2e, the iPhone and memory specs stay local.
+
+**Why:** Linux runners are free. The e2e harness launches the macOS app through
+LaunchServices (`open -g -j`).
+
+**Rejected:**
+
+- e2e on a macOS runner — not on the free tier for a private repo.
+- e2e on Linux under Xvfb with Obsidian's AppImage — a second launcher to keep
+  working, never checked against the specs' timings.

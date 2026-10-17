@@ -12,6 +12,7 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
           the README
     - [ ] Once listed, lead the README's Install with **Settings → Community
           plugins → Browse**; keep the manual download as the alternative
+- [ ] Explore adding e2e tests to CI on Linux.
 
 ## Known limits
 

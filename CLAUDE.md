@@ -47,6 +47,9 @@ changes: `src/`, `styles.css`, `manifest.json`, the build (`esbuild.config.mjs`,
 `playwright.config.ts`. Other e2e code runs the specs that use it. Anything else
 needs the other gates, plus a run of whatever the change touches.
 
+CI (`.github/workflows/ci.yml`) runs every gate but e2e, on Linux; e2e is run
+locally (D-148).
+
 ## Tests
 
 - `e2e/ios/` drives Obsidian on a real iPhone: real touches, real glides, real
