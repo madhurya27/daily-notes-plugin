@@ -34,4 +34,9 @@ describe("manifest.json — marketplace submission requirements", () => {
     it("keeps package.json's version in step with the manifest", () => {
         expect(pkg.version).toBe(manifest.version);
     });
+
+    // Obsidian installs from the release's assets; npm refuses to publish a private package.
+    it("marks package.json private, so it never goes to npm", () => {
+        expect(pkg.private).toBe(true);
+    });
 });
