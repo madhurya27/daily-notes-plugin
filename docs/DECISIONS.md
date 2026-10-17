@@ -2472,3 +2472,21 @@ LaunchServices (`open -g -j`).
 - e2e on a macOS runner — not on the free tier for a private repo.
 - e2e on Linux under Xvfb with Obsidian's AppImage — a second launcher to keep
   working, never checked against the specs' timings.
+
+## D-149 — A mutation run leaves no survivor (2026-10-17)
+
+**Decision:** amends D-141. A surviving mutant gets a test, or, when no test can
+tell it apart, a Stryker directive where it is, giving the reason:
+`// Stryker disable next-line <mutator>: <why>`. A mutant only a real layout
+shows says so, naming the e2e spec that covers it (ADR 0002). Directives attach
+to the next node's leading comment: a `catch` block takes a `disable`/`restore`
+pair around its `try`.
+
+**Why:** a clean run makes a new survivor the only one, and so read.
+
+**Rejected:**
+
+- `mutator.excludedMutations` in the config — drops a mutator everywhere, hiding
+  real gaps with the equivalent ones.
+- Tests asserting what nothing depends on, a zoom of 1 or a field's first value,
+  overwritten before it is read — pass the metric, guard nothing.

@@ -198,12 +198,15 @@ describe("EmptyNotes", () => {
         expect(vault.notes.isEmpty(renamed)).toBe(false);
     });
 
-    it("ignores a rename of a note it never read", () => {
-        const vault = vaultOf({});
+    it("ignores a rename of a note it never read, saving nothing for it", async () => {
+        const vault = vaultOf({ "Templates/Daily.md": TEMPLATE, "c.md": TEMPLATE });
+        await vault.notes.checkAll([vault.fileAt("c.md")]);
 
         vault.notes.rename("a.md", "b.md");
+        vault.notes.flush();
 
         expect(vault.notes.isEmpty(new TFile("b.md"))).toBe(false);
+        expect(vault.store.save).toHaveBeenLastCalledWith(expect.objectContaining({ empty: [["c.md", 0]] }));
     });
 });
 

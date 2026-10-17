@@ -140,6 +140,23 @@ describe("NoteWidths", () => {
         expect(refit).not.toHaveBeenCalled();
     });
 
+    // A note drawn again into the same element, as a re-render does.
+    it("watches a note again once watched afresh after it unloaded", () => {
+        let width = 400;
+        const content = noteContent(() => width);
+        const first = loaded();
+        widths.watch(content, first, vi.fn());
+        first.unload();
+        const refit = vi.fn();
+
+        widths.watch(content, loaded(), refit);
+        width = 800;
+        observer().report(content);
+
+        expect(observer().observed.has(content)).toBe(true);
+        expect(refit).toHaveBeenCalledExactlyOnceWith(800);
+    });
+
     it("makes no observer until a note is watched", () => {
         expect(FakeResizeObserver.instances).toEqual([]);
     });

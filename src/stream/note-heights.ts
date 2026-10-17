@@ -104,6 +104,7 @@ export class NoteHeights {
         const sorted = entries.map(([, height]) => height).sort((a, b) => a - b);
         const belowTallest = Math.min(Math.floor(sorted.length * 0.9), sorted.length - 2);
         const tail = sorted[Math.max(belowTallest, 0)];
+        // Stryker disable next-line ConditionalExpression: with no heights there are no rates, and the estimate is undefined either way.
         if (tail === undefined) return undefined;
         const rates = entries.map(([path, height]) => height / (this.statOf(path)?.size ?? 0)).filter(Number.isFinite);
         const learned = { tail, densest: rates.length > 0 ? Math.max(...rates) : undefined };

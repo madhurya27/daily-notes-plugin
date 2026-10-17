@@ -44,6 +44,17 @@ describe("narrowestTableWidth", () => {
         expect(narrowestTableWidth(definition, undefined, headers)).toBe(100 + 35);
     });
 
+    it("labels a property by its name when its display name is not text", () => {
+        const definition = lines("properties:", "  mood:", "    displayName: 5", table(["mood"]));
+
+        expect(narrowestTableWidth(definition, undefined, headers)).toBe(40 + 35);
+    });
+
+    // Only a leading note., formula. or file. names where the column comes from.
+    it("keeps the whole name of a property with one inside it", () => {
+        expect(narrowestTableWidth(table(["trip.note.length"]), undefined, headers)).toBe(160 + 35);
+    });
+
     it("keeps a column at least Bases' minimum", () => {
         expect(narrowestTableWidth(table(["a"]), undefined, { chrome: 0, textWidth: () => 0 })).toBe(40);
     });

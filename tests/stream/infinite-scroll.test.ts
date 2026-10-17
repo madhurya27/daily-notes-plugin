@@ -124,11 +124,12 @@ describe("InfiniteScrollController", () => {
     it("logs error to console when onTrigger rejects", async () => {
         const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
         const ctrl = new InfiniteScrollController();
-        const trigger = vi.fn().mockRejectedValue(new Error("boom"));
+        const error = new Error("boom");
+        const trigger = vi.fn().mockRejectedValue(error);
         ctrl.attach(document.createElement("div"), document.createElement("div"), trigger);
         capturedCallback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
         await new Promise((resolve) => setTimeout(resolve, 0));
-        expect(consoleSpy).toHaveBeenCalled();
+        expect(consoleSpy).toHaveBeenCalledExactlyOnceWith("DailyNotesStream: Failed to load more notes", error);
         consoleSpy.mockRestore();
     });
 

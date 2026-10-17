@@ -70,6 +70,7 @@ export class LayoutMemory {
 }
 
 function isVersion(saved: unknown): saved is { notes: unknown; bases: unknown } {
+    // Stryker disable next-line ConditionalExpression: a primitive has no version either.
     return typeof saved === "object" && saved !== null && (saved as { version?: unknown }).version === VERSION;
 }
 
@@ -79,6 +80,7 @@ function isVersion(saved: unknown): saved is { notes: unknown; bases: unknown } 
  * the width.
  */
 export function layoutOf(column: HTMLElement, width = column.clientWidth): string {
+    // Stryker disable next-line MethodExpression: jsdom trims a custom property's value, as engines since 2021 do; older ones kept the space.
     const textSize = getComputedStyle(column).getPropertyValue("--font-text-size").trim();
     return `${width}:${textSize}`;
 }

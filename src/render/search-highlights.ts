@@ -33,7 +33,7 @@ const OUTSIDE_THE_NOTE = ".daily-note-mentions, .metadata-properties-heading, .i
 function findRanges(root: HTMLElement, pattern: RegExp): Range[] {
     const ranges: Range[] = [];
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, (node) =>
-        node.parentElement?.closest(OUTSIDE_THE_NOTE) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+        node.parentElement!.closest(OUTSIDE_THE_NOTE) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
     );
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         for (const match of (node as Text).data.matchAll(pattern)) {
@@ -81,6 +81,7 @@ export class SearchHighlighter {
     /** Marks the match the reader is on; null clears the mark. */
     setCurrent(range: Range | null): void {
         const highlight = registered(CURRENT);
+        // Stryker disable next-line ConditionalExpression: deleting null from a highlight deletes nothing.
         if (this.current) highlight?.delete(this.current);
         this.current = range;
         if (range) highlight?.add(range);
@@ -100,6 +101,7 @@ export class SearchHighlighter {
     }
 
     private unpaint(block: HTMLElement): void {
+        // Stryker disable next-line ArrayDeclaration: a stray entry is no range of the highlight's to delete.
         const ranges = this.ranges.get(block) ?? [];
         if (this.current && ranges.includes(this.current)) this.setCurrent(null);
         const highlight = registered(MATCH);

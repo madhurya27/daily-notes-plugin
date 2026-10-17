@@ -16,6 +16,18 @@ describe("TimeSlice", () => {
         expect(yielded).toHaveBeenCalledOnce();
     });
 
+    it("times its slice by the page's clock unless given one", async () => {
+        const clock = vi.spyOn(performance, "now").mockReturnValue(1000);
+        const yielded = vi.fn(() => Promise.resolve());
+        const slice = new TimeSlice(25, undefined, yielded);
+
+        clock.mockReturnValue(1024);
+        expect(await slice.yieldIfSpent()).toBe(false);
+        clock.mockReturnValue(1025);
+        expect(await slice.yieldIfSpent()).toBe(true);
+        clock.mockRestore();
+    });
+
     it("starts a new budget once the thread comes back", async () => {
         let now = 0;
         const yielded = vi.fn(() => {

@@ -81,6 +81,7 @@ describe("changedSpan", () => {
 
     it("never lets the shared ends overlap: a repeated section counts once", () => {
         expect(changedSpan(["a", "a"], ["a", "a", "a"])).toEqual({ start: 2, endBefore: 2, endAfter: 3 });
+        expect(changedSpan(["a", "a"], ["a"])).toEqual({ start: 1, endBefore: 2, endAfter: 1 });
     });
 });
 

@@ -91,6 +91,8 @@ describe("StreamSearch", () => {
 
         await search.search("");
         expect(status).toBe("");
+        await search.search("  ");
+        expect(status).toBe("");
     });
 
     // Obsidian's own bar selects a match as you type; the stream does so only
@@ -298,6 +300,36 @@ describe("StreamSearch", () => {
         expect(readied).toEqual([notes[0], notes[2]]);
         expect(current()).toEqual([]);
         expect(status).toBe("2 / 3 · hidden");
+    });
+
+    // Drawn again since, as a save redraws it, its matches are in sight.
+    it("steps into a hidden note's first match once it shows", async () => {
+        shown = () => false;
+        await search.search("milk");
+        await search.next();
+        shown = () => true;
+
+        await search.next();
+
+        expect(readied).toEqual([notes[0]]);
+        expect(currentNote()).toBe(notes[0]);
+    });
+
+    it("moves on from a hidden note no longer drawn", async () => {
+        shown = () => false;
+        await search.search("milk");
+        await search.next();
+        blocks.delete(notes[0]!);
+
+        await search.next();
+
+        expect(readied).toEqual([notes[0], notes[2]]);
+    });
+
+    it("moves nowhere before any search", async () => {
+        await search.next();
+
+        expect(readied).toEqual([]);
     });
 
     it("moves nowhere when nothing matches", async () => {

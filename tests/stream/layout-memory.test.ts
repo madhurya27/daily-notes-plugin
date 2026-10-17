@@ -42,6 +42,9 @@ describe("LayoutMemory", () => {
     it("starts empty from another version's save", () => {
         const memory = new LayoutMemory(asApp(makeApp({ version: 4, notes: [["600:16px", [["a.md", 300]]]] })));
         expect(memory.notes.toJSON().heights).toEqual([]);
+        // Even one that reads as this version's.
+        const shaped = new LayoutMemory(asApp(makeApp({ version: 4, notes: saved([["600:16px", [["a.md", 300]]]]) })));
+        expect(shaped.notes.toJSON().heights).toEqual([]);
         expect(memory.bases.toJSON()).toEqual([]);
         expect(new LayoutMemory(asApp(makeApp())).notes.toJSON().heights).toEqual([]);
     });
@@ -70,6 +73,29 @@ describe("LayoutMemory", () => {
             ]),
             bases: [["600:16px", [["a.md\nb1", { tooWide: true }]]]],
         });
+    });
+
+    it("saves what Bases measured, on its own", () => {
+        const app = makeApp();
+        const memory = new LayoutMemory(asApp(app));
+
+        memory.bases.markTooWide({ layout: "600:16px", path: "a.md", base: "b1" });
+        vi.advanceTimersByTime(SAVE_DELAY_MS);
+
+        expect(app.saveLocalStorage).toHaveBeenCalledOnce();
+    });
+
+    it("forgets a deleted note's heights and what its Bases measured", () => {
+        const memory = new LayoutMemory(asApp(makeApp()));
+        for (const path of ["gone.md", "kept.md"]) {
+            memory.notes.keep("600:16px", path, 300);
+            memory.bases.markTooWide({ layout: "600:16px", path, base: "b1" });
+        }
+
+        memory.forget("gone.md");
+
+        expect(memory.notes.toJSON().heights).toEqual([["600:16px", [["kept.md", 300]]]]);
+        expect(memory.bases.toJSON()).toEqual([["600:16px", [["kept.md\nb1", { tooWide: true }]]]]);
     });
 
     it("carries a note's measurements across a rename, and forgets a deleted note's", () => {

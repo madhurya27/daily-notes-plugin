@@ -10,11 +10,12 @@ describe("saveLoggingOnce", () => {
         });
 
         save(refused);
-        save(refused);
-
-        expect(refused).toHaveBeenCalledTimes(2);
         expect(error).toHaveBeenCalledOnce();
         expect(error.mock.calls[0]![0]).toBe("DailyNotesStream: Failed to save the thing");
+
+        save(refused);
+        expect(refused).toHaveBeenCalledTimes(2);
+        expect(error).toHaveBeenCalledOnce();
         error.mockRestore();
     });
 

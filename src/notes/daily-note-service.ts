@@ -22,6 +22,7 @@ const SHOW_ALL: NoteFilter = {
     prepare: () => Promise.resolve(),
     recheck: () => Promise.resolve(),
     isHidden: () => false,
+    // Stryker disable next-line StringLiteral: a signature that never changes need only stay the same.
     signature: () => "",
 };
 
@@ -172,6 +173,7 @@ export class DailyNoteService {
      * granularity; -1 when every note is newer, or the stream is empty.
      */
     indexForDate(target: Moment): number {
+        // Stryker disable next-line StringLiteral: a jump's target is a date, at its day's start already.
         const index = this.firstIndexOnOrBefore(target.clone().startOf("day").valueOf());
         return index < this.sorted.length ? index : -1;
     }
@@ -271,7 +273,9 @@ export class DailyNoteService {
 
     /** Parses a markdown file's basename against the date format. */
     private parseBasename(file: TFile, format: DateFormat) {
+        // Stryker disable next-line ConditionalExpression: parseDate's path check refuses it too; this saves the parse.
         if (file.extension !== "md") return null;
+        // Stryker disable next-line BooleanLiteral: parseDate's path check refuses a loose match too.
         const date = moment(file.basename, format.basename, true);
         return date.isValid() ? date : null;
     }

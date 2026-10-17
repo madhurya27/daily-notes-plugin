@@ -82,5 +82,6 @@ describe("baseDigest", () => {
         expect(baseDigest("![[Reading.base]]", definition)).toBe(baseDigest("![[Reading.base]]", definition));
         expect(baseDigest("![[Reading.base]]", definition)).not.toBe(baseDigest("![[Reading.base#Two]]", definition));
         expect(baseDigest("![[Reading.base]]", definition)).not.toBe(baseDigest("![[Reading.base]]", null));
+        expect(baseDigest("![[Reading.base]]", definition)).not.toBe(baseDigest("![[Reading.base]]", "views: []"));
     });
 });

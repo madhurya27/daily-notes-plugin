@@ -49,6 +49,7 @@ export interface ChangedSpan {
 /** What a save changed: the run between the sections that match at either end. */
 export function changedSpan(before: readonly string[], after: readonly string[]): ChangedSpan {
     let start = 0;
+    // Stryker disable next-line ConditionalExpression,EqualityOperator,LogicalOperator: past the shorter list, undefined matches no section.
     while (start < before.length && start < after.length && before[start] === after[start]) start++;
     let endBefore = before.length;
     let endAfter = after.length;

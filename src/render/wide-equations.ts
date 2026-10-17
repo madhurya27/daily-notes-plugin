@@ -22,6 +22,7 @@ export function fitWideEquations(
             // Measured at its own size: shrunk, it is exactly as wide as the note.
             math.style.removeProperty("--daily-note-equation-zoom");
             const room = contentWidth(math.parentElement!);
+            // Stryker disable next-line EqualityOperator: at equal widths the zoom is 1, no zoom.
             if (math.offsetWidth > room)
                 math.style.setProperty("--daily-note-equation-zoom", String(room / math.offsetWidth));
         }

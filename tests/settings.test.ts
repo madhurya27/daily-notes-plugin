@@ -53,6 +53,7 @@ describe("DailyNotesStreamSettingTab", () => {
                 ],
             },
         ]);
+        for (const item of definitions) if ("items" in item) expect(item.type, item.heading).toBe("group");
         for (const item of toggles(definitions)) {
             expect(item.desc, item.name).toBeTruthy();
             expect(item.control.type, item.name).toBe("toggle");

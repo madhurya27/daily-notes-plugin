@@ -14,6 +14,11 @@ describe("templatePattern", () => {
         expect(matches(" \n\t\n", TEMPLATE)).toBe(true);
     });
 
+    it("holds, with no template, for blank text alone", () => {
+        expect(matches(" \n", null)).toBe(true);
+        expect(matches("Stryker was here!", null)).toBe(false);
+    });
+
     it("holds for the template with its placeholders filled in", () => {
         const text = "---\ntags: daily\ncreated: 2026-09-28\n---\n# Monday, September 28\n\n## Log\n- \n";
 

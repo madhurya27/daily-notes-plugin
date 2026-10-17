@@ -91,6 +91,7 @@ export class FarRunWatch {
         const block = blockOf(spacer);
         this.farRuns.reveal(spacer);
         this.renderObserver?.unobserve(spacer);
+        // Stryker disable next-line ConditionalExpression: a spacer in no block is in no note's set either.
         if (block) this.notes.get(block)?.spacers.delete(spacer);
     }
 
@@ -115,6 +116,7 @@ export class FarRunWatch {
     forget(block: HTMLElement): void {
         this.forgetSpacers(block);
         this.unwatchEdges(block);
+        // Stryker disable next-line all: frees memory only; the entry's sets are emptied above.
         this.notes.delete(block);
     }
 

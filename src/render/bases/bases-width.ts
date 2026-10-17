@@ -27,12 +27,13 @@ export interface HeaderMetrics {
  */
 export function narrowestTableWidth(definition: string, view: string | undefined, headers: HeaderMetrics): number {
     const parsed = parseDefinition(definition);
+    // Stryker disable next-line ArrayDeclaration: a first view not a record draws no table, as none does.
     const views = Array.isArray(parsed?.views) ? (parsed.views as unknown[]) : [];
     const shown = views.find((v) => isRecord(v) && v.name === view) ?? views[0];
     if (!isRecord(shown) || shown.type !== "table" || !Array.isArray(shown.order)) return 0;
 
     const sizes = isRecord(shown.columnSize) ? shown.columnSize : {};
-    const properties = isRecord(parsed?.properties) ? parsed.properties : {};
+    const properties = isRecord(parsed!.properties) ? parsed!.properties : {};
     return (shown.order as unknown[]).map(String).reduce((sum, column) => {
         const size = sizes[column];
         if (typeof size === "number") return sum + Math.max(MIN_COLUMN_PX, size);

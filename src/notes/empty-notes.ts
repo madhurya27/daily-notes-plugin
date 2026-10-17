@@ -110,6 +110,7 @@ export class EmptyNotes {
         const stale = files.filter((file) => verdicts.get(file.path)?.mtime !== file.stat.mtime);
         const read = await Promise.all(
             stale.map(async (file) => {
+                // Stryker disable BlockStatement: an empty catch returns undefined, failing `every` as false does.
                 try {
                     const empty =
                         file.stat.size <= template.maxBytes &&
@@ -119,6 +120,7 @@ export class EmptyNotes {
                 } catch {
                     return false;
                 }
+                // Stryker restore BlockStatement
             })
         );
         if (stale.length > 0 && this.checkedAt !== null) this.saveSoon();
@@ -197,8 +199,10 @@ function moveKey<V>(map: Map<string, V>, from: string, to: string): void {
 
 /** What `save` wrote, or null for anything else. */
 function restore(value: unknown): Saved | null {
+    // Stryker disable next-line ConditionalExpression: a primitive has no version, and is refused below.
     if (typeof value !== "object" || value === null) return null;
     const { version, template, checkedAt, empty } = value as Record<string, unknown>;
+    // Stryker disable next-line ConditionalExpression: a template not a string never matches the current one's key.
     if (version !== VERSION || typeof template !== "string" || typeof checkedAt !== "number") return null;
     if (!Array.isArray(empty)) return null;
     return { template, checkedAt, empty: new Map(empty as [string, number][]) };

@@ -61,6 +61,7 @@ export class BaseMeasurements {
 }
 
 function isMeasurement(value: unknown): value is Measurement {
+    // Stryker disable next-line ConditionalExpression: a primitive's tooWide is undefined either way.
     return typeof value === "object" && value !== null && (value as Record<string, unknown>).tooWide === true;
 }
 
@@ -70,9 +71,11 @@ function isMeasurement(value: unknown): value is Measurement {
  * handful of Bases, so a collision is out of reach.
  */
 export function baseDigest(markdown: string, definition: string | null): string {
+    // Stryker disable next-line StringLiteral: what stands for no definition need only stay the same.
     const text = `${markdown}\n${definition ?? ""}`;
     let h1 = 0xdeadbeef;
     let h2 = 0x41c6ce57;
+    // Stryker disable next-line EqualityOperator: any fixed mix of the text is a digest of it.
     for (let i = 0; i < text.length; i++) {
         const code = text.charCodeAt(i);
         h1 = Math.imul(h1 ^ code, 2654435761);
@@ -80,5 +83,6 @@ export function baseDigest(markdown: string, definition: string | null): string 
     }
     h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
     h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    // Stryker disable next-line ArithmeticOperator: any fixed mix of the text is a digest of it.
     return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }

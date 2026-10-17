@@ -285,10 +285,10 @@ describe("removeLocalStorageKeys", () => {
     });
 
     it("removes nothing when the vault has no id to scope by", () => {
-        const storage = storageOf("old:a", "-old:a");
+        const storage = storageOf("old:a", "-old:a", "undefined-old:a");
 
         expect(removeLocalStorageKeys({} as App, () => true, storage)).toBe(0);
-        expect(keysOf(storage)).toEqual(["old:a", "-old:a"]);
+        expect(keysOf(storage)).toEqual(["old:a", "-old:a", "undefined-old:a"]);
     });
 });
 
@@ -325,8 +325,20 @@ describe("getDailyNoteSettings", () => {
         expect(getDailyNoteSettings(appWith(daily, periodic))).toEqual(daily);
     });
 
+    // Loaded before its settings, as at launch.
+    it("keeps the core options while Periodic Notes has no settings yet", () => {
+        expect(getDailyNoteSettings(appWith(daily, {}))).toEqual(daily);
+    });
+
     it("reads nothing set when the internals are gone", () => {
         expect(getDailyNoteSettings({} as App)).toEqual({});
         expect(getDailyNoteSettings(appWith(undefined))).toEqual({});
+        const internals = (plugin: unknown) =>
+            ({
+                internalPlugins: { getPluginById: () => plugin },
+                plugins: { getPlugin: () => null },
+            }) as unknown as App;
+        expect(getDailyNoteSettings(internals(undefined))).toEqual({});
+        expect(getDailyNoteSettings(internals({}))).toEqual({});
     });
 });

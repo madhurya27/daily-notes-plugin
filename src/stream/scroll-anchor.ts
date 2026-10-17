@@ -32,11 +32,13 @@ export class ScrollAnchor {
      * From a block down to the element at the pane's top, each where it was
      * drawn. A re-render may replace the deeper ones: the deepest left stands in.
      */
+    // Stryker disable next-line ArrayDeclaration: attach runs detach first, which resets it.
     private place: Place = [];
     /**
      * The same from the first element starting inside the pane, held instead
      * once the pane's width changes (D-057).
      */
+    // Stryker disable next-line ArrayDeclaration: read only reflowing; no entry of a stray one is in the pane.
     private reflowPlace: Place = [];
     /** What the Base the pane's top crosses draws: it fills in after drawing, inside a box held open. */
     private drawnBase: Element | null = null;
@@ -55,6 +57,7 @@ export class ScrollAnchor {
      * several frames, and `reflowPlace`, as read before, is held through all
      * of them. Re-read mid-reflow, it was whatever was being redrawn.
      */
+    // Stryker disable next-line BooleanLiteral: attach runs detach first, which resets it.
     private reflowing = false;
     /** What the scroll owes the content, drawn as a shift until the scroll stops. */
     private owed = 0;
@@ -63,8 +66,10 @@ export class ScrollAnchor {
     /** A scroll to the top is under way; nothing above it is owed. */
     private headedForTop = false;
     /** The scroll went past the top: iOS bounces a glide that runs out of scroll there. */
+    // Stryker disable next-line BooleanLiteral: attach runs detach first, which resets it.
     private bouncing = false;
     /** A finger is on the pane: a bounce under it reads the top for a frame, and goes on. */
+    // Stryker disable next-line BooleanLiteral: attach runs detach first, which resets it.
     private touching = false;
     private readonly settleOnceStill = debounce(() => this.settle(), SCROLL_IDLE_MS, true);
     /** Every note is loaded: nothing comes below the stream's end to fill what a shift draws past it. */
@@ -107,12 +112,12 @@ export class ScrollAnchor {
     pinned(block: HTMLElement): void {
         if (!this.watched.has(block)) return;
         this.pins.add(block);
-        this.observer?.unobserve(block);
+        this.observer!.unobserve(block);
     }
 
     /** Unloaded, or laid out at nothing: `block` resizes untold again. */
     unpinned(block: HTMLElement): void {
-        if (this.pins.delete(block)) this.observer?.observe(block);
+        if (this.pins.delete(block)) this.observer!.observe(block);
     }
 
     /**
@@ -163,6 +168,7 @@ export class ScrollAnchor {
      */
     anticipate(moved: number): void {
         const stream = this.stream;
+        // Stryker disable next-line LogicalOperator: attach and detach set and clear both together.
         if (!this.scrollRoot || !stream || moved === 0) return;
         this.owed += moved;
         this.shift(stream);
@@ -203,7 +209,7 @@ export class ScrollAnchor {
         const bounced = this.bouncing && this.scrollRoot.scrollTop >= 0 && !this.touching;
         this.bouncing = this.scrollRoot.scrollTop < 0 || (this.bouncing && this.touching);
         if (this.owed !== 0 && bounced) this.handOver();
-        else if (this.owed !== 0 && this.topDueInView(moved)) this.stopGlide(0);
+        else if (this.topDueInView(moved)) this.stopGlide(0);
         // A step on: iOS draws a step past the scroll it reports, and stopped
         // there the text moved back against the glide.
         else if (this.owed !== 0 && (this.endDueInView(moved) || this.scrollRunsOutAbove(moved)))
@@ -247,6 +253,7 @@ export class ScrollAnchor {
      * come below first. A clamp, as a turn makes, moved nothing: no glide.
      */
     private endDueInView(moved: number): boolean {
+        // Stryker disable next-line EqualityOperator: asked only while something is owed.
         return moved < 0 && this.owed > 0 && this.loadedToEnd() && this.below() - this.owed <= -2 * moved;
     }
 
@@ -288,6 +295,7 @@ export class ScrollAnchor {
         this.drawnBase = null;
         this.bouncing = false;
         this.touching = false;
+        // Stryker disable next-line ArrayDeclaration: before the next pick, no entry of a stray place is in the pane.
         this.place = [];
         this.scrollRoot?.removeClass("is-scroll-anchored");
         this.scrollRoot = null;
@@ -350,6 +358,7 @@ export class ScrollAnchor {
      */
     private pick(): void {
         this.place = [];
+        // Stryker disable next-line ArrayDeclaration: read only reflowing; no entry of a stray one is in the pane.
         this.reflowPlace = [];
         const stream = this.stream;
         if (!stream) return;
@@ -371,6 +380,7 @@ export class ScrollAnchor {
             return;
         }
         const starting = this.startingIn(pane, stream, crossing);
+        // Stryker disable next-line ConditionalExpression: read again, the same place.
         this.reflowPlace = starting === crossing ? this.place : this.placeOf(stream, starting);
     }
 
@@ -395,6 +405,7 @@ export class ScrollAnchor {
     /** From `el`'s block down to it, each where it is drawn, stopping at anything held or a Base. */
     private placeOf(stream: HTMLElement, el: Element): Place {
         const path: Element[] = [];
+        // Stryker disable next-line ConditionalExpression: past the stream, ancestors move only with the scroll and shift, taken off.
         for (let at: Element | null = el; at && at !== stream; at = at.parentElement) path.unshift(at);
         const place: Place = [];
         for (const at of path) {
@@ -418,6 +429,7 @@ export class ScrollAnchor {
      * unless told.
      */
     private clamped(from = this.placeScroll): boolean {
+        // Stryker disable next-line EqualityOperator: a clamp to the scroll it came from moves nothing.
         return this.scrollRoot!.scrollTop < from && this.below() <= 1;
     }
 
@@ -428,6 +440,7 @@ export class ScrollAnchor {
      */
     private movedSince(point: Place[number], scrolled: number): number {
         const now = this.topInPane(point.el) + scrolled;
+        // Stryker disable next-line EqualityOperator: a place is read 1 px into the pane, so never starting or ending at its top.
         const crossed = point.top < 0 && point.top + point.height > 0;
         if (!crossed || !point.el.hasClass(BASE_SLOT_CLASS)) return now - point.top;
         const through = -point.top / point.height;
@@ -444,6 +457,7 @@ export class ScrollAnchor {
     private watchBase(): void {
         const base = this.place.find(({ el }) => el.hasClass(BASE_SLOT_CLASS))?.el;
         const drawn = base?.lastElementChild ?? null;
+        // Stryker disable next-line ConditionalExpression: unobserving and observing the same Base again changes nothing.
         if (drawn === this.drawnBase) return;
         if (this.drawnBase) this.observer!.unobserve(this.drawnBase);
         this.drawnBase = drawn;
@@ -465,12 +479,14 @@ export class ScrollAnchor {
      * next one starts past the pane.
      */
     private startingIn(pane: DOMRect, stream: HTMLElement, crossing: Element): Element {
+        // Stryker disable next-line ConditionalExpression: nothing past the stream starts inside the pane.
         for (let el: Element | null = crossing; el && el !== stream; el = el.parentElement) {
             if (getComputedStyle(el).display.startsWith("inline")) continue;
             const next = this.nextDrawn(el);
             if (!next) continue;
             const { top } = next.getBoundingClientRect();
             if (top >= pane.bottom) return crossing;
+            // Stryker disable next-line EqualityOperator: what starts at the pane's top is crossing itself, read 1 px in.
             if (top >= pane.top) return next;
         }
         return crossing;

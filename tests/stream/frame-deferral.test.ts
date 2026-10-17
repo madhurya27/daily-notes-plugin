@@ -156,11 +156,54 @@ describe("FrameDeferral", () => {
         await observed();
 
         frames.detach();
+        expect(vi.getTimerCount()).toBe(0);
         const later = container.appendChild(frame());
         await observed();
         await still();
 
         expect(held.hasAttribute("src")).toBe(false);
         expect(later.getAttribute("src")).toBe(PAGE);
+    });
+
+    it("watches only the container it was last attached to", async () => {
+        frames.attach(document.createElement("div"));
+        const added = container.appendChild(frame());
+
+        await observed();
+
+        expect(added.getAttribute("src")).toBe(PAGE);
+    });
+
+    // A note drawn in slices adds to a block already in the stream.
+    it("holds back a frame added inside what was already there", async () => {
+        const note = container.appendChild(document.createElement("div"));
+        await observed();
+        const added = note.appendChild(frame());
+
+        await observed();
+
+        expect(added.hasAttribute("src")).toBe(false);
+    });
+
+    it("waits on nothing while it holds nothing", async () => {
+        container.appendChild(document.createElement("p"));
+        await observed();
+        frames.onScroll();
+
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    // Set again, a frame's page loads again.
+    it("loads each page once", async () => {
+        const first = container.appendChild(frame());
+        await observed();
+        await still();
+        const set = vi.spyOn(first, "setAttribute");
+
+        container.appendChild(frame());
+        await observed();
+        await still();
+
+        expect(set).not.toHaveBeenCalled();
     });
 });

@@ -16,10 +16,13 @@ describe("StreamBlocks", () => {
     /** Puts a sentinel last in the container, as the scroll controller does. */
     function addSentinel(): HTMLElement {
         sentinel = container.appendChild(document.createElement("div"));
+        sentinel.id = "sentinel";
         return sentinel;
     }
 
-    const block = () => document.createElement("div");
+    // Each its own: `toEqual` compares elements by their markup.
+    let made = 0;
+    const block = () => Object.assign(document.createElement("div"), { id: `block-${made++}` });
 
     describe("get", () => {
         // A per-lookup querySelector made reading the place O(n^2) across a

@@ -164,6 +164,7 @@ export function removeLocalStorageKeys(
     if (!appId) return 0;
     const prefix = `${appId}-`;
     const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter(
+        // Stryker disable next-line ConditionalExpression: below the length, every index has a key.
         (key): key is string => key !== null && key.startsWith(prefix) && matches(key.slice(prefix.length))
     );
     for (const key of keys) storage.removeItem(key);

@@ -30,6 +30,7 @@ export class InfiniteScrollController {
 
     /** Forces a fresh callback: IntersectionObserver fires only on *changes*. */
     recheck(): void {
+        // Stryker disable next-line LogicalOperator: attach and detach set and clear both together.
         if (!this.observer || !this.sentinel) return;
         this.observer.unobserve(this.sentinel);
         this.observer.observe(this.sentinel);

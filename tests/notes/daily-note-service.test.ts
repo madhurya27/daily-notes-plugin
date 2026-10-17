@@ -204,6 +204,15 @@ describe("DailyNoteService", () => {
             expect(svc.streamLength).toBe(1);
         });
 
+        it("keeps its length when the first note past its end is removed", async () => {
+            const svc = await serviceOf("2025-01-01", "2025-01-02", "2025-01-03");
+            svc.extendStream(1);
+
+            svc.removeSorted("Notes/2025-01-02.md");
+
+            expect(svc.streamLength).toBe(1);
+        });
+
         it("empties when the list is built again", async () => {
             const svc = await serviceOf("2025-01-01");
             svc.extendStream(1);
@@ -305,10 +314,35 @@ describe("DailyNoteService", () => {
             await svc.initialize();
 
             expect(svc.removeSorted("Notes/nonexistent.md")).toBe(-1);
+            expect(svc.length).toBe(1);
         });
     });
 
     describe("instance: insertSorted — invalid date", () => {
+        // A vault event fires for every file, attachments and copies too.
+        it.each(["Notes/2025-01-02.pdf", "Notes/2025-01-02 copy.md"])("returns null for %s", async (path) => {
+            __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
+            __setMockNotes(["Notes/2025-01-01.md"]);
+            const svc = new DailyNoteService(__mockMarkdownFiles, __mockSettings);
+            await svc.initialize();
+
+            expect(svc.insertSorted(new TFile(path))).toBeNull();
+        });
+
+        it("logs, and lists nothing, when listing the notes fails", async () => {
+            const error = vi.spyOn(console, "error").mockImplementation(() => {});
+            const failure = new Error("vault unavailable");
+            const svc = new DailyNoteService(() => {
+                throw failure;
+            }, __mockSettings);
+
+            await svc.initialize();
+
+            expect(svc.length).toBe(0);
+            expect(error).toHaveBeenCalledWith("DailyNotesStream: Failed to list the daily notes", failure);
+            error.mockRestore();
+        });
+
         it("returns null for a file with no parseable date", async () => {
             __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes" });
             __setMockNotes(["Notes/2025-01-01.md"]);

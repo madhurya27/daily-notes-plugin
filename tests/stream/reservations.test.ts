@@ -155,6 +155,17 @@ describe("Reservations", () => {
             expect(plan?.movedAbove).toBe(400);
         });
 
+        it("counts a block ending at the pane's top as above it", () => {
+            const plan = reservations.plan(
+                [[placeholder(500, PANE_TOP - 500), reserving("Notes/a.md")]],
+                LAYOUT,
+                PANE_TOP,
+                ROOM_BELOW
+            );
+
+            expect(plan?.movedAbove).toBe(400);
+        });
+
         // In a hidden tab nothing is laid out, and nothing is above the pane.
         it("counts a block not laid out as below the pane", () => {
             const hidden = placeholder(500, -600);
@@ -182,6 +193,15 @@ describe("Reservations", () => {
 
             expect(plan).toBeNull();
             expect(reservations.owed).toBe(true);
+        });
+
+        it("goes ahead when the notes below shrink the stream by just what lies below the pane", () => {
+            estimated = 300;
+            heights.keep(LAYOUT, "Notes/b.md", 320);
+
+            const plan = reservations.plan([[placeholder(900, 1000), reserving("Notes/a.md")]], LAYOUT, PANE_TOP, 600);
+
+            expect(plan).not.toBeNull();
         });
     });
 });

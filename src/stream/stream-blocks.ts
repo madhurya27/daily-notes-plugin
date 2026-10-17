@@ -37,6 +37,7 @@ export class StreamBlocks {
     /** Places `block` ahead of the note at `nextPath`, or last when it has none. */
     insertBefore(path: string, block: HTMLElement, nextPath: string | undefined): void {
         this.byPath.set(path, block);
+        // Stryker disable next-line ConditionalExpression: no note has an undefined path, so get finds none either.
         const next = nextPath === undefined ? null : this.get(nextPath);
         if (next) {
             this.container.insertBefore(block, next);
@@ -82,12 +83,8 @@ export class StreamBlocks {
 
     /** The sentinel must stay the last child, so everything lands before it. */
     private insertBeforeSentinel(el: HTMLElement): void {
-        const sentinel = this.sentinel();
-        if (sentinel) {
-            this.container.insertBefore(el, sentinel);
-        } else {
-            this.container.appendChild(el);
-        }
+        // Before null is last.
+        this.container.insertBefore(el, this.sentinel());
     }
 }
 

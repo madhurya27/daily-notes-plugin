@@ -42,8 +42,10 @@ export class StreamSearch {
     private query = "";
     private matches: TFile[] = [];
     /** Index into `matches`; -1 before the first step. */
+    // Stryker disable next-line UnaryOperator: search sets it before any step finds a match.
     private current = -1;
     /** Index into the current note's reachable ranges; -1 when it has none. */
+    // Stryker disable next-line UnaryOperator: search sets it before any step finds a match.
     private range = -1;
     private queue: Promise<void> = Promise.resolve();
 
@@ -61,6 +63,7 @@ export class StreamSearch {
         return this.run(async () => {
             this.query = query;
             this.current = -1;
+            // Stryker disable next-line UnaryOperator: read only once a step has entered a note, which sets it.
             this.range = -1;
             this.highlighter.setCurrent(null);
             this.highlighter.setQuery(query);
@@ -72,6 +75,7 @@ export class StreamSearch {
     /** Re-reads the vault after it changed, staying on the current note while it matches. */
     refresh(): Promise<void> {
         return this.run(async () => {
+            // Stryker disable next-line ConditionalExpression: an empty query finds no note, reading none.
             if (!this.query) return;
             const file = this.matches[this.current];
             this.matches = await this.find();

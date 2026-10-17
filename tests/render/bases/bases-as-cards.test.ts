@@ -14,6 +14,13 @@ interface View {
 const views = (definition: string | null): View[] => (parseYaml(definition!) as { views: View[] }).views;
 
 describe("asCards", () => {
+    // YAML reads a bare "-" as null.
+    it("passes over an empty view", () => {
+        const [, view] = views(asCards(lines("views:", "  -", "  - type: table", "    name: Files")));
+
+        expect(view).toEqual({ type: "cards", name: "Files" });
+    });
+
     it("draws a table view as cards, keeping the rest of it", () => {
         const [view] = views(asCards(TABLE));
 
@@ -78,6 +85,12 @@ describe("extractBases", () => {
         // The blank line ends the HTML block; without it "After" joins it.
         expect(rest).toBe(lines("Before", SLOT, "", "After"));
         expect(bases).toEqual([{ kind: "block", definition: TABLE, markdown: lines("```base", TABLE, "```") }]);
+    });
+
+    it("reads an embed indented less than a code block as written, without its indent", () => {
+        const { bases } = extractBases("   ![[Views.base]]");
+
+        expect(bases).toEqual([{ kind: "embed", link: "Views.base", view: undefined, markdown: "![[Views.base]]" }]);
     });
 
     it("keeps a block's indent on its placeholder, and reads it without", () => {

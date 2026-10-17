@@ -42,6 +42,8 @@ describe("SearchBar", () => {
         expect(bar.el.matches(".document-search-container")).toBe(true);
         expect(input.closest(".document-search-input")).not.toBeNull();
         expect(input.placeholder).toBe("Find...");
+        // Obsidian's stylesheet selects the attribute; an empty one still reads as text.
+        expect(input.getAttribute("type")).toBe("text");
         expect(button("Previous").dataset.icon).toBe("arrow-up");
         expect(button("Next").dataset.icon).toBe("arrow-down");
         expect(button("Exit search").dataset.icon).toBe("x");

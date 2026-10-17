@@ -117,6 +117,7 @@ export class JumpToDateModal extends SuggestModal<JumpChoice> {
         // A property, not a registration: the picker dies with the modal, and
         // one handler is all a single element can hold.
         picker.onchange = () => {
+            // Stryker disable next-line BooleanLiteral: a date input's value is a whole ISO date or empty.
             const picked = moment(picker.value, ISO_FORMAT, true);
             if (!picked.isValid()) return;
             // Through the query, not straight to the jump: the reader sees what

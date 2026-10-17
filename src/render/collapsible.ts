@@ -189,10 +189,12 @@ export class CollapsibleManager {
      */
     private headingsAbove(contentEl: HTMLElement): Map<Element, string> {
         const above = new Map<Element, string>();
+        // Stryker disable next-line ArrayDeclaration: a stray entry has no slug, and keys nothing.
         const open: { level: number; slug: string }[] = [];
         for (const el of Array.from(contentEl.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6, li"))) {
             const level = this.headingLevel(el);
-            if (level !== null && el.parentElement?.tagName === "LI") continue;
+            // Stryker disable next-line ConditionalExpression: a list item's parent is a list, never an item.
+            if (level !== null && el.parentElement!.tagName === "LI") continue;
             while (level !== null && open.length > 0 && open[open.length - 1]!.level >= level) open.pop();
             const nearest = open[open.length - 1];
             if (nearest) above.set(el, nearest.slug);
@@ -240,7 +242,7 @@ export class CollapsibleManager {
     private processHeaders(contentEl: HTMLElement, filePath: string, keyFor: KeyFor): string[] {
         const headers = Array.from(contentEl.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"));
         return headers
-            .filter((header) => header.parentElement?.tagName !== "LI")
+            .filter((header) => header.parentElement!.tagName !== "LI")
             .map((header) => {
                 const sectionKey = keyFor(header, slugify(header.getText()));
                 if (this.kept(header, sectionKey)) return sectionKey;
@@ -274,6 +276,7 @@ export class CollapsibleManager {
                     defaultCollapsed: false,
                     apply: (collapsed) => li.toggleClass("is-collapsed", collapsed),
                     hides: (node) =>
+                        // Stryker disable next-line Regex: no other HTML tag name holds these letters.
                         Array.from(li.children).some((el) => /^(UL|OL)$/.test(el.tagName) && el.contains(node)),
                 });
                 return sectionKey;
@@ -288,11 +291,13 @@ export class CollapsibleManager {
         let collapsedNestedLevel: number | null = null;
         for (const el of this.sectionBody(header)) {
             const level = this.headingLevel(el);
+            // Stryker disable next-line ConditionalExpression: no heading's level is at most null's 0.
             if (level !== null && collapsedNestedLevel !== null && level <= collapsedNestedLevel) {
                 collapsedNestedLevel = null;
             }
             if (collapsedNestedLevel === null) {
                 el.toggleClass("is-hidden", isCollapsed);
+                // Stryker disable next-line ConditionalExpression,LogicalOperator: folding, a folded section's body is hidden either way; only headings fold here.
                 if (!isCollapsed && level !== null && el.hasClass("is-collapsed")) collapsedNestedLevel = level;
             }
         }
@@ -311,6 +316,7 @@ export class CollapsibleManager {
     }
 
     private headingLevel(el: Element): number | null {
+        // Stryker disable next-line Regex: no other HTML tag name holds these letters.
         return /^H[1-6]$/.test(el.tagName) ? parseInt(el.tagName.substring(1)) : null;
     }
 
@@ -321,6 +327,7 @@ export class CollapsibleManager {
     private ownText(li: HTMLElement): string {
         let text = "";
         for (const node of Array.from(li.childNodes)) {
+            // Stryker disable next-line ConditionalExpression,Regex: a text node has no tag name to match; no other HTML tag name holds these letters.
             if (node.nodeType === Node.ELEMENT_NODE && /^(UL|OL)$/.test((node as HTMLElement).tagName)) continue;
             text += node.textContent;
         }

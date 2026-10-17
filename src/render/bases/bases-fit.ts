@@ -14,6 +14,7 @@ const caps = new WeakMap<HTMLElement, number>();
 export function fitBaseToWidth(view: HTMLElement): void {
     const width = tableWidth(view);
     const available = view.clientWidth;
+    // Stryker disable next-line EqualityOperator: a table exactly as wide as its view is capped where it is.
     if (!(width > available) || available <= 0) return;
 
     const current = caps.get(view) ?? DEFAULT_MAX_COLUMN_PX;

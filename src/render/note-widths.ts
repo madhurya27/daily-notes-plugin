@@ -54,6 +54,6 @@ export class NoteWidths implements WidthWatch {
         watched.refits.delete(refit);
         if (watched.refits.size > 0) return;
         this.watched.delete(el);
-        this.observer?.unobserve(el);
+        this.observer!.unobserve(el);
     }
 }

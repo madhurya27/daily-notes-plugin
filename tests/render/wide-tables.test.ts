@@ -80,6 +80,16 @@ describe("stackWideTables", () => {
         expect(el.classList.contains("is-stacked")).toBe(false);
     });
 
+    // Widths round: a table a pixel over the note's still fits.
+    it("keeps a table one pixel wider than the note as a grid", () => {
+        const el = content.appendChild(table(["A"], [["1"]]));
+        setWidth(el, "offsetWidth", () => 401);
+
+        stackWideTables(content, component, widths);
+
+        expect(el.classList.contains("is-stacked")).toBe(false);
+    });
+
     // A stacked table is exactly as wide as the note, which would say it fits.
     it("measures a stacked table as a grid", () => {
         const el = content.appendChild(table(["A"], [["1"]]));

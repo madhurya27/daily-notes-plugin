@@ -46,11 +46,13 @@ export function templatePattern(template: string | null): RegExp {
     let trimAfter: Trim;
     for (const match of normalized.matchAll(PLACEHOLDER)) {
         const block = match[0];
+        // Stryker disable next-line Regex: a placeholder opens with its one "<%".
         const trimBefore = /^<%[-_]/.test(block) ? (block[2] as Trim) : undefined;
         parts.push(
             ...literalParts(trimEnd(trimStart(normalized.slice(literalFrom, match.index), trimAfter), trimBefore))
         );
         parts.push({ isText: false, source: CURSOR.test(block) ? CURSOR_LEFT : ON_ONE_LINE });
+        // Stryker disable next-line Regex: a placeholder closes with its one "%>".
         trimAfter = /[-_]%>$/.test(block) ? (block.at(-3) as Trim) : undefined;
         literalFrom = match.index + block.length;
     }
@@ -66,10 +68,12 @@ interface Part {
 
 /** A literal as its text and the whitespace closing it. */
 function literalParts(literal: string): Part[] {
+    // Stryker disable next-line StringLiteral,Regex: both groups always match, from the start: lazy, the first group is.
     const [, text = "", gap = ""] = /^([\s\S]*?)(\s*)$/.exec(literal)!;
     const parts: Part[] = [];
     if (text) parts.push({ isText: true, source: escapeRegExp(text) });
     // Filled in with nothing, a placeholder leaves the space before it trailing, and trimmed.
+    // Stryker disable next-line Regex: normalize leaves spaces only after a gap's last line break.
     parts.push({ isText: false, source: escapeRegExp(gap).replace(/[ \t]+$/, "[ \\t]*") });
     return parts;
 }

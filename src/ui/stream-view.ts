@@ -47,6 +47,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
     private search: StreamSearch;
     private searchBar: SearchBar;
     /** Obsidian's "Search current file" binding, re-read on each config write. */
+    // Stryker disable next-line ArrayDeclaration: set on open, before a key reaches the view.
     private searchHotkeys: Hotkey[] = [];
     /**
      * Obsidian restores the pane before the vault is indexed, and may close it
@@ -54,6 +55,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
      * Never back to "opening": Obsidian builds a new view for every open, Back
      * and a layout rebuild included.
      */
+    // Stryker disable next-line StringLiteral: only "open" and "closed" are ever compared.
     private lifecycle: "opening" | "open" | "closed" = "opening";
 
     /** `service` is this view's own (.claude/rules/invariants.md). */

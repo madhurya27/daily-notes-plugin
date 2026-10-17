@@ -33,6 +33,7 @@ export class FrameDeferral {
         this.observer?.disconnect();
         this.observer = null;
         this.loadOnceStill.cancel();
+        // Stryker disable next-line CallExpression: frees memory only; attached once, it is detached as the stream closes.
         this.held.clear();
     }
 

@@ -186,6 +186,7 @@ interface DrawnNote {
 
 /** On mobile a Base draws as cards (ADR 0008), into a slot its source leaves. */
 function withoutBases(source: string): { markdown: string; bases: BaseSource[] } {
+    // Stryker disable next-line ArrayDeclaration: desktop leaves no slot, so nothing reads the list.
     return Platform.isMobile ? extractBases(source) : { markdown: source, bases: [] };
 }
 
@@ -227,6 +228,7 @@ export class NoteRenderer {
         baseMeasurements: BaseMeasurements,
         backlinks: BacklinkIndex,
         /** Whether a note will likely be saved while on screen: today's (ADR 0019). */
+        // Stryker disable next-line ArrowFunction: undefined is as falsy as false.
         private readonly expectsSaves: (file: TFile) => boolean = () => false
     ) {
         this.widths = new NoteWidths(component);
@@ -261,6 +263,7 @@ export class NoteRenderer {
         block: HTMLElement,
         file: TFile,
         goOn: (note: Component) => Promise<boolean> = () => Promise.resolve(true),
+        // Stryker disable next-line StringLiteral: only "from-end" is ever compared.
         order: DrawOrder = "from-start"
     ): Promise<RenderedNote | null> {
         const noteComponent = new Component();

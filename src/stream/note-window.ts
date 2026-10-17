@@ -110,6 +110,7 @@ export class NoteWindowManager {
             heights.estimate(layout, path, this.unmeasured())
     ) {
         this.reservations = new Reservations(heights, estimate);
+        // Stryker disable next-line OptionalChaining: asked only of a run shown in a block of the stream's.
         this.runs = new FarRunWatch(renderer, (block) => !!this.windows.get(block)?.component);
     }
 
@@ -204,9 +205,9 @@ export class NoteWindowManager {
     private refreshMargins(): void {
         if (!this.scrollRoot) return;
         if (Math.max(this.scrollRoot.clientHeight, MIN_VIEWPORT_PX) === this.rootHeight) return;
-        this.renderObserver?.disconnect();
-        this.hideObserver?.disconnect();
-        this.unloadObserver?.disconnect();
+        this.renderObserver!.disconnect();
+        this.hideObserver!.disconnect();
+        this.unloadObserver!.disconnect();
         this.observeMargins(this.scrollRoot);
         for (const block of this.windows.keys()) {
             this.renderObserver!.observe(block);
@@ -295,6 +296,7 @@ export class NoteWindowManager {
             order: null,
             unloadWanted: false,
             height: this.unmeasured(),
+            // Stryker disable next-line BooleanLiteral: reservations.add sets it.
             measured: false,
             hold: null,
             watched: [],
@@ -394,6 +396,7 @@ export class NoteWindowManager {
         if (!window) return;
         this.unobserve(block);
         this.leaving.delete(block);
+        // Stryker disable next-line CallExpression: frees memory only; a block gone from the stream never lands again.
         this.beyond.delete(block);
         this.onScreen.delete(block);
         this.stopSettling(window);
@@ -406,6 +409,7 @@ export class NoteWindowManager {
         this.unloadOnceStill.cancel();
         this.reserveOnceStill.cancel();
         this.leaving.clear();
+        // Stryker disable next-line CallExpression: frees memory only; the blocks go with the windows below.
         this.beyond.clear();
         this.waiting.clear();
         this.scrollRoot = null;
@@ -574,9 +578,9 @@ export class NoteWindowManager {
 
     private unloadLeaving(): void {
         for (const block of this.leaving) {
-            const window = this.windows.get(block);
+            const window = this.windows.get(block)!;
             // A refresh in flight waits for the next still scroll.
-            if (!window?.component || window.rendering) continue;
+            if (!window.component || window.rendering) continue;
             this.empty(block, window);
         }
     }
@@ -613,6 +617,7 @@ export class NoteWindowManager {
             // Their spacers measured the old width; they hide again at the next rest.
             this.runs.showAll(block);
             this.releaseHold(window);
+            // Stryker disable next-line ConditionalExpression: a drawn note's height is measured again as it unloads.
             if (!window.component) this.reservations.expect(window, layout);
         }
     }
@@ -736,6 +741,7 @@ export class NoteWindowManager {
      */
     private repin(block: HTMLElement): boolean {
         // Hidden, its content lays out at nothing: the pin holds.
+        // Stryker disable next-line BooleanLiteral: only contentResized reads the result, and it re-pins no far block.
         if (block.hasClass(FAR)) return false;
         const before = block.style.getPropertyValue("--daily-note-pinned-height");
         block.style.removeProperty("--daily-note-pinned-height");
@@ -823,8 +829,10 @@ export class NoteWindowManager {
         this.renderObserver = null;
         this.hideObserver = null;
         this.unloadObserver = null;
+        // Stryker disable next-line CallExpression: a disconnected observer watches nothing.
         this.runs.observeWith(null, null);
         this.resizes = null;
+        // Stryker disable next-line CallExpression: the next observer's first report sets every block's entry.
         this.onScreen.clear();
     }
 }

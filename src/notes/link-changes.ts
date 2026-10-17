@@ -29,6 +29,7 @@ export class LinkChanges {
         const before = this.targetsBySource.get(source) ?? [];
         for (const target of now) if (!before.includes(target)) this.changed.add(target);
         for (const target of before) if (!now.includes(target)) this.changed.add(target);
+        // Stryker disable next-line ConditionalExpression,EqualityOperator: frees memory only; no links compares as none kept.
         if (now.length > 0) this.targetsBySource.set(source, now);
         else this.targetsBySource.delete(source);
     }
@@ -40,6 +41,7 @@ export class LinkChanges {
 
     onRename(oldPath: string, newPath: string): void {
         const targets = this.targetsBySource.get(oldPath);
+        // Stryker disable next-line ConditionalExpression: none kept under the new path reads as none either way.
         if (!targets) return;
         this.targetsBySource.delete(oldPath);
         this.targetsBySource.set(newPath, targets);

@@ -1186,6 +1186,21 @@ describe("Obsidian's daily-notes settings changed", () => {
         expect(shown()).toEqual(files.map((f) => f.path));
     });
 
+    // The old notes' windows go with them.
+    it("lets the window manager go of the old notes, and attaches it anew", async () => {
+        await load(note("2025-01-01"));
+        movedToJournal(journal("2025-01-01"));
+        noteWindow.detach.mockClear();
+        noteWindow.attach.mockClear();
+
+        await settingsChanged();
+
+        expect(noteWindow.detach).toHaveBeenCalledOnce();
+        expect(noteWindow.detach.mock.invocationCallOrder[0]).toBeLessThan(
+            noteWindow.attach.mock.invocationCallOrder[0]!
+        );
+    });
+
     it("logs, and keeps the stream working, when rebuilding the cache throws", async () => {
         const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
         vi.spyOn(service, "refreshIfSettingsChanged").mockRejectedValue(new Error("daily notes folder missing"));
@@ -1454,11 +1469,28 @@ describe("what a search moves through", () => {
             expect(pane.scrollTop).toBe(0);
         });
 
+        // Nothing to show: nothing changes.
+        it("is kept through readying a note no longer listed", async () => {
+            await stream.ready(note("1990-01-01"));
+            resized();
+
+            expect(pane.scrollTop).toBe(6000);
+        });
+
+        it("is kept through a jump to before every note", async () => {
+            await stream.jumpToDate(moment("1990-01-01", "YYYY-MM-DD", true));
+            resized();
+
+            expect(pane.scrollTop).toBe(6000);
+        });
+
         it("is let go once another is centered", async () => {
             await stream.center(matchAt(390));
             resized();
 
             expect(pane.scrollTop).toBe(0);
+            // Kept too, it would pull the pane to it first on every resize.
+            expect(observers.filter((o) => !o.disconnected)).toHaveLength(1);
         });
 
         it("is let go once the reader touches the pane", () => {

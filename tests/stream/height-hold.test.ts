@@ -25,6 +25,7 @@ describe("HeightHold", () => {
         hold.release();
 
         expect(held()).toBe("");
+        expect(vi.getTimerCount()).toBe(0);
     });
 
     // Something that never holds still, a Base updating live, is not held forever.

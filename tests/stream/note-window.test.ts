@@ -1097,11 +1097,14 @@ describe("NoteWindowManager margins", () => {
     it("recomputes the margins when the pane is resized", () => {
         const root = makeScrollRoot(800);
         const { manager } = makeManager(makeRenderer(), () => 500, root);
+        observers.disconnect.mockClear();
 
         Object.defineProperty(root, "clientHeight", { value: 1600, configurable: true });
         manager.onResize();
 
         expect(marginsPx()).toEqual([2400, 6400, 19200]);
+        // The render, hide and unload margins' old observers.
+        expect(observers.disconnect).toHaveBeenCalledTimes(3);
     });
 
     // Turning a phone changes the height too (D-055).
@@ -1109,6 +1112,7 @@ describe("NoteWindowManager margins", () => {
         const root = makeScrollRoot(800);
         const { manager } = makeManager(makeRenderer(), () => 500, root);
         const detach = vi.spyOn(ScrollAnchor.prototype, "detach");
+        onTestFinished(() => detach.mockRestore());
 
         Object.defineProperty(root, "clientHeight", { value: 1600, configurable: true });
         manager.onResize();
@@ -2749,6 +2753,89 @@ describe("NoteWindowManager teardown", () => {
         expect(vi.getTimerCount()).toBe(0);
     });
 
+    // A hidden tab lays a note out at nothing: nothing kept, nothing new to reserve.
+    it("waits on no re-reserve for a note that settles measuring nothing", async () => {
+        const root = makeScrollRoot(800);
+        Object.defineProperty(root, "scrollHeight", { value: 10_000, configurable: true });
+        const { manager } = makeManager(makeRenderer(), () => 0, root);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+
+        // Settled after as long as a scroll takes to rest.
+        await still();
+
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    describe("once a note it was unloading is gone, waits on nothing for it", () => {
+        /** A rendered note past the unload margin: it waits for the scroll to be still. */
+        async function leaving() {
+            // Room below the pane, so what the rest reserve is never put off.
+            const root = makeScrollRoot(800);
+            Object.defineProperty(root, "scrollHeight", { value: 10_000, configurable: true });
+            const made = makeManager(makeRenderer(), () => 500, root);
+            const block = made.manager.add(FILE);
+            document.body.appendChild(block);
+            fire(observers.render, block, true);
+            await settle();
+            fire(observers.unload, block, false);
+            return { ...made, block };
+        }
+
+        it("emptied", async () => {
+            const { manager } = await leaving();
+            await still();
+            await still();
+
+            manager.onScroll();
+
+            expect(vi.getTimerCount()).toBe(0);
+        });
+
+        it("removed", async () => {
+            const { manager, block } = await leaving();
+            manager.remove(block);
+            await still();
+            await still();
+
+            manager.onScroll();
+
+            expect(vi.getTimerCount()).toBe(0);
+        });
+
+        it("detached", async () => {
+            const { manager } = await leaving();
+            manager.detach();
+
+            manager.onScroll();
+
+            expect(vi.getTimerCount()).toBe(0);
+        });
+    });
+
+    // A hidden tab lays a note out at nothing: unloaded there, it keeps what it reserved.
+    it("keeps a rendered note's height through forgotten heights, for an unload that measures nothing", async () => {
+        let measured = 500;
+        const heights = new NoteHeights();
+        heights.keep(LAYOUT, FILE.path, 812);
+        const { manager } = makeManager(makeRenderer(), () => measured, undefined, heights);
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+        fire(observers.render, block, true);
+        await settle();
+        await still();
+
+        heights.retainOnly(new Set());
+        manager.forgetHeights();
+        measured = 0;
+        fire(observers.unload, block, false);
+        await still();
+
+        expect(placeholderHeight(block)).toBe("812px");
+    });
+
     it("draws nothing queued before it was detached", async () => {
         const { manager, renderer } = makeManager();
         const block = manager.add(FILE);
@@ -2776,6 +2863,8 @@ describe("NoteWindowManager teardown", () => {
         const { manager } = makeManager();
         const detach = vi.spyOn(ScrollAnchor.prototype, "detach");
         onTestFinished(() => detach.mockRestore());
+        // A spy another test left counts its calls too.
+        detach.mockClear();
 
         manager.detach();
 
@@ -3402,6 +3491,36 @@ describe("NoteWindowManager hides a long note's far runs", () => {
             spacers = Array.from(block.querySelectorAll<HTMLElement>(".daily-note-far-run"));
             block.empty();
             return null;
+        });
+        const root = makeScrollRoot(800);
+        root.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;
+        const { manager } = makeManager(renderer, () => 500, root);
+        const block = manager.add(FILE);
+        block.getBoundingClientRect = () => ({ top: -12000, bottom: 500 }) as DOMRect;
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        await settle();
+
+        expect(spacers).toHaveLength(1);
+        expect(observers.unobserve).toHaveBeenCalledWith(spacers[0]);
+    });
+
+    // close() empties the container mid-flight: the block comes back nobody's child.
+    it("stops watching the spacers of a note whose block left the stream mid-draw", async () => {
+        const renderer = makeRenderer();
+        renderer.runsOf.mockImplementation(() => Array.from(document.querySelectorAll("p"), (p) => [p]));
+        let spacers: HTMLElement[] = [];
+        renderer.renderInto.mockImplementationOnce(async (block, _file, goOn) => {
+            block.addClass("is-drawing-from-end");
+            const content = block.createDiv({ cls: "daily-note-content" });
+            for (const top of [-12000, -8000, 0])
+                content.createEl("p", { attr: { "data-top": top, "data-bottom": top + 500 } });
+            const component = new Component();
+            await goOn!(component);
+            spacers = Array.from(block.querySelectorAll<HTMLElement>(".daily-note-far-run"));
+            block.remove();
+            return { component, footer: Promise.resolve() };
         });
         const root = makeScrollRoot(800);
         root.getBoundingClientRect = () => ({ top: 0, bottom: 800 }) as DOMRect;

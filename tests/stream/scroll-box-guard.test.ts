@@ -139,9 +139,18 @@ describe("ScrollBoxGuard safety net", () => {
         await Promise.resolve();
 
         guard.detach();
+        expect(vi.getTimerCount()).toBe(0);
         await still();
 
         expect(box.classList.contains("is-scroll-clipped")).toBe(false);
+    });
+
+    it("waits on nothing while nothing is unchecked", async () => {
+        container.appendChild(document.createTextNode("text"));
+        await Promise.resolve();
+        guard.onScroll();
+
+        expect(vi.getTimerCount()).toBe(0);
     });
 
     it("watches only the container it was last attached to", async () => {
@@ -218,6 +227,15 @@ describe("ScrollBoxGuard Bases", () => {
         await Promise.resolve();
 
         expect(laidOut).not.toHaveBeenCalled();
+    });
+
+    it("reports a Base when rows are added to it", async () => {
+        const { view } = await mounted();
+
+        view.createDiv({ cls: "bases-tr" });
+        await Promise.resolve();
+
+        expect(laidOut).toHaveBeenCalledExactlyOnceWith(view);
     });
 
     it("ignores changes outside a Base", async () => {

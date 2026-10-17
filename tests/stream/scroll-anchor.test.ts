@@ -292,6 +292,23 @@ describe("ScrollAnchor", () => {
         expect(text.getBoundingClientRect().top).toBe(600);
     });
 
+    it("holds the text a note drew from its end, where the note's top is at the pane's middle", () => {
+        const { content, blocks, add } = watch([1000, 1000, 400], 700);
+        const note = blocks[1]!;
+        const reserved = add(note, 500);
+        const body = add(note);
+        body.addClass("daily-note-content");
+        const text = add(body, 500);
+
+        anchor.readPlace(note);
+        reserved.remove();
+        body.prepend(add(body, 50_000));
+        anchor.resized();
+
+        expect(shift(content)).toBe(-49_500);
+        expect(text.getBoundingClientRect().top).toBe(800);
+    });
+
     // The reader reads what is at the pane's middle: there, the note above.
     it("holds the note above, where a note drawn from its end starts below the pane's middle", () => {
         const { content, blocks, add } = watch([1000, 1000, 400], 600);
@@ -1202,6 +1219,18 @@ describe("ScrollAnchor", () => {
             expect(shift(content)).toBe(0);
         });
 
+        it("holds nothing, past every note, as the pane turns", () => {
+            const { pane, content, blocks, resize, turn } = watch([400, 400], 0);
+            pane.scrollTop = 1000;
+            anchor.onScroll();
+
+            turn();
+            resize(blocks[0]!, 500);
+            observer().resized(blocks[0]!);
+
+            expect(shift(content)).toBe(0);
+        });
+
         it("picks it anew once the change is handed over", () => {
             const { pane, blocks, resize } = watch([[400, 400, 400], 400], 500);
             resize(blocks[0]!.children[0]!, 1000);
@@ -1530,6 +1559,32 @@ describe("ScrollAnchor", () => {
         expect(shift(content)).toBe(300);
     });
 
+    it("leaves a glide up owing nothing alone all the way to the top", () => {
+        const { pane, content } = watch([400, 400, 400, 400, 400], 900);
+
+        expect(glideUp(pane, 20, 0)).toBeNull();
+
+        expect(pane.scrollTop).toBe(0);
+        expect(shift(content)).toBe(0);
+    });
+
+    // Stopped short, the scroll is not at the top: the next glide up is no scroll to it.
+    it("forgets the top once it stops a glide headed there", () => {
+        const { pane, blocks, resize } = watch([400, 400, 400, 400, 400], 900);
+        anchor.headForTop();
+        resize(blocks[0]!, 100);
+        observer().resized(blocks[0]!);
+        expect(glideUp(pane, 20, 0)).toBe(340);
+        vi.advanceTimersToNextFrame();
+
+        pane.scrollTop = 900;
+        anchor.onScroll();
+        resize(blocks[0]!, 700);
+        observer().resized(blocks[0]!);
+
+        expect(glideUp(pane, 20, 0)).toBe(40);
+    });
+
     // iOS carries a glide on from a write, undoing it the next frame. With
     // nothing to scroll, the glide ends where it is, and the write holds.
     it("freezes the pane's scroll for a frame around the write that stops a glide", () => {
@@ -1688,6 +1743,23 @@ describe("ScrollAnchor", () => {
         expect(pane.scrollTop).toBe(900);
         vi.advanceTimersByTime(SCROLL_IDLE_MS);
         expect(pane.scrollTop).toBe(1800);
+    });
+
+    // A turn's text reflows over several frames, a bounce among them.
+    it("holds a reflow through a bounce at the top that owed nothing", () => {
+        const { pane, content, blocks, resize, turn } = watch([[400, 400, 400], 400], 0);
+        turn();
+        observer().resized(...blocks);
+        pane.scrollTop = -120;
+        anchor.onScroll();
+        pane.scrollTop = 0;
+        anchor.onScroll();
+
+        resize(blocks[0]!.children[0]!, 200);
+        observer().resized(blocks[0]!);
+
+        expect(shift(content)).toBe(200);
+        expect(blocks[0]!.children[1]!.getBoundingClientRect().top).toBe(400);
     });
 
     it("lands a scroll headed for the top at the top through a bounce", () => {

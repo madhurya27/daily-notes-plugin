@@ -55,6 +55,18 @@ describe("LinkChanges", () => {
         expect(heard).toHaveLength(1);
     });
 
+    it("tells nothing when a note that lost its links resolves to none again", () => {
+        resolve("Meeting.md", "Notes/2026-03-15.md");
+        changes.onResolved();
+        resolve("Meeting.md");
+        changes.onResolved();
+
+        resolve("Meeting.md");
+        changes.onResolved();
+
+        expect(heard).toHaveLength(2);
+    });
+
     it("tells a batch of resolves as one, each target once", () => {
         resolve("Meeting.md", "Notes/2026-03-15.md");
         resolve("Plan.md", "Notes/2026-03-15.md", "Notes/2026-03-16.md");
@@ -101,6 +113,23 @@ describe("LinkChanges", () => {
         changes.onResolved();
 
         expect(heard).toHaveLength(1);
+    });
+
+    // A note made again at the path links afresh: what it gains is news.
+    it.each([
+        ["deleted", (c: LinkChanges) => c.onDelete("Meeting.md")],
+        ["renamed away", (c: LinkChanges) => c.onRename("Meeting.md", "Standup.md")],
+    ])("forgets the links of a note %s", (_case, leave) => {
+        resolve("Meeting.md", "Notes/2026-03-15.md");
+        changes.onResolved();
+        leave(changes);
+        changes.onResolved();
+        const told = heard.length;
+
+        resolve("Meeting.md", "Notes/2026-03-15.md");
+        changes.onResolved();
+
+        expect(heard.slice(told)).toEqual([["Notes/2026-03-15.md"]]);
     });
 
     it("ignores the delete or rename of a note with no links followed", () => {

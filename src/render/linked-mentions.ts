@@ -34,11 +34,12 @@ export class LinkedMentionsFooter {
         const el = block.createDiv({ cls: "daily-note-mentions" });
         let unloaded = false;
         note.register(() => (unloaded = true));
-        let signature = "";
+        let signature: string;
         let generation = 0;
 
         const fill = (mentions: Mention[]): Promise<void> => {
             signature = mentionsSignature(mentions);
+            // Stryker disable next-line UpdateOperator: counted down, each fill is as much its own.
             const current = ++generation;
             el.empty();
             if (mentions.length === 0) return Promise.resolve();
@@ -97,6 +98,7 @@ export class LinkedMentionsFooter {
         try {
             const texts = await Promise.all(
                 mentions.map((mention) =>
+                    // Stryker disable next-line StringLiteral: a mention with no excerpt never reads its text.
                     mention.excerpts.length > 0 ? this.app.vault.cachedRead(mention.source) : ""
                 )
             );

@@ -127,6 +127,7 @@ export class NoteStream {
 
     close(): void {
         this.closed = true;
+        // Stryker disable next-line ConditionalExpression: clearing no timer clears nothing.
         if (this.midnight !== null) window.clearTimeout(this.midnight);
         this.catchUpDayOnceStill.cancel();
         this.letGoOfCentered();
@@ -161,6 +162,7 @@ export class NoteStream {
     }
 
     onFileModify(file: TAbstractFile) {
+        // Stryker disable next-line ConditionalExpression: Obsidian sends modify only for files.
         if (!(file instanceof TFile)) return;
         // Keyed by path, so a burst touching two notes still re-renders both
         // while repeated saves of one collapse into a single render.
@@ -240,6 +242,7 @@ export class NoteStream {
         }
 
         const next = this.service.getBatch(inserted.index + 1, 1)[0];
+        // Stryker disable next-line OptionalChaining: placed in the stream, a note lands before one already there.
         this.blocks.insertBefore(file.path, this.window.add(file), next?.path);
     }
 
@@ -351,8 +354,10 @@ export class NoteStream {
      */
     async center(range: Range): Promise<void> {
         this.letGoOfCentered();
+        // Stryker disable StringLiteral: any placement but "start" centers.
         await scrollIntoPlace(range, "center", this.scrollRoot, this.layout);
         this.letGoOfCentered = keepInPlace(range, "center", this.scrollRoot, this.blocks.el);
+        // Stryker restore StringLiteral
     }
 
     /** Whether `range` lies wholly inside the pane's visible area. */
@@ -393,6 +398,7 @@ export class NoteStream {
 
     private async returnTo(place: StreamPlace): Promise<void> {
         const index = this.service.indexOf(place.path);
+        // Stryker disable next-line ConditionalExpression: -1 is no note's index; loadThrough finds none there either.
         const file = index === -1 ? undefined : await this.loadThrough(index);
         const block = file && this.blocks.get(file.path);
         if (!block) return;
@@ -449,6 +455,7 @@ export class NoteStream {
             const date = place && this.service.dates()[this.service.indexOf(place.path)];
             if (!(await this.service.refreshIfSettingsChanged())) return this.rerenderAll();
             await this.reload();
+            // Stryker disable next-line LogicalOperator: a place is read from a listed note, which has a date.
             if (place && date) await this.returnNear(place, date);
         });
     }
@@ -460,6 +467,7 @@ export class NoteStream {
     private async returnNear(place: StreamPlace, date: Moment): Promise<void> {
         if (this.service.indexOf(place.path) !== -1) return this.returnTo(place);
         const index = this.service.indexForDate(date);
+        // Stryker disable next-line ConditionalExpression: -1 is no note's index; getBatch finds none there either.
         const older = index === -1 ? undefined : this.service.getBatch(index, 1)[0];
         if (older) return this.returnTo({ path: older.path, offset: 0 });
         await this.returnToEnd();

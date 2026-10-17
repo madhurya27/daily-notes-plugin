@@ -96,7 +96,27 @@ describe("LayoutTable", () => {
 
     it("restores nothing from what it did not save", () => {
         const values = table();
-        for (const junk of [null, 3, {}, [["a"]], [["a", [["x.md", "1"]]]], [[1, []]], [["a", [[1, 1]]]], [["a", 5]]]) {
+        for (const junk of [
+            null,
+            3,
+            {},
+            [["a"]],
+            [["a", [["x.md", "1"]]]],
+            [[1, []]],
+            [["a", [[1, 1]]]],
+            [["a", 5]],
+            // One bad entry spoils the rest: a table half restored is not what was saved.
+            [["a", [["x.md", 1]]], ["b"]],
+            [
+                [
+                    "a",
+                    [
+                        ["x.md", 1],
+                        ["y.md", "2"],
+                    ],
+                ],
+            ],
+        ]) {
             values.restore(junk);
             expect(values.toJSON()).toEqual([]);
         }

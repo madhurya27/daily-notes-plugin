@@ -249,4 +249,17 @@ describe("mentionsSignature", () => {
         };
         expect(signature({}, more)).not.toBe(signature());
     });
+
+    // Run together, `a.md` written at 1 then `2b.md` reads as `a.md` written at 12 then `b.md`.
+    it("tells one source's end from the next one's start", () => {
+        const mention = (path: string, mtime: number) => {
+            const source = new TFile(path);
+            source.stat.mtime = mtime;
+            return { source, excerpts: [], properties: ["related: [[2025-01-01]]"] };
+        };
+
+        expect(mentionsSignature([mention("a.md", 1), mention("2b.md", 0)])).not.toBe(
+            mentionsSignature([mention("a.md", 12), mention("b.md", 0)])
+        );
+    });
 });

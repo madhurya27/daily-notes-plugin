@@ -34,6 +34,7 @@ export class ScrollBoxGuard {
         this.observer?.disconnect();
         this.observer = null;
         this.checkOnceStill.cancel();
+        // Stryker disable next-line CallExpression: frees memory only; attached once, it is detached as the stream closes.
         this.unchecked.clear();
     }
 

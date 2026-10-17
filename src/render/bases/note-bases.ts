@@ -54,11 +54,7 @@ export class NoteBases {
         for (const [i, placeholder] of placeholders.entries()) {
             const source = sources[i]!;
             const base = source.kind === "embed" ? this.resolveBase(source.link, file) : null;
-            const definition = base
-                ? await this.app.vault.cachedRead(base)
-                : source.kind === "block"
-                  ? source.definition
-                  : null;
+            const definition = base ? await this.app.vault.cachedRead(base) : blockDefinition(source);
             const slot = new BaseSlot(this.app, contentEl, placeholder, file, noteComponent, source, definition);
             this.slots.set(placeholder, slot);
             if (base) this.track(base.path, slot, noteComponent);
@@ -114,6 +110,7 @@ export class NoteBases {
     }
 
     private wantsCards(slot: BaseSlot, width: number): boolean {
+        // Stryker disable next-line ConditionalExpression: a Base with no table is never marked too wide, and measures 0.
         if (!slot.cards) return false;
         if (this.measured.isTooWide(slot.key(width))) return true;
         return this.headers ? narrowestTableWidth(slot.definition!, slot.view, this.headers) > width : false;
@@ -151,6 +148,7 @@ export class NoteBases {
 
 /** One Base in a note: where it draws, from what, and how it is drawn now. */
 class BaseSlot {
+    // Stryker disable next-line StringLiteral: read before the first draw only as not "cards".
     mode: "table" | "cards" = "table";
     /** The Base drawn as cards, or null when it has no table to convert. */
     cards: string | null = null;
@@ -161,8 +159,10 @@ class BaseSlot {
      * Drawn as written over cards, until measured: clipped at the height the
      * cards showed, as what Bases draws is likely replaced (styles.css).
      */
+    // Stryker disable next-line BooleanLiteral: the first draw finds the placeholder empty, at 0 either way.
     private measuring = false;
     /** `baseDigest` of its markdown and definition. */
+    // Stryker disable next-line StringLiteral: set by the constructor's redefine.
     private digest = "";
     private component: Component | null = null;
     /** The placeholder, and what is drawn in it: a held placeholder stops resizing, its contents do not. */
@@ -188,6 +188,7 @@ class BaseSlot {
         private readonly source: BaseSource,
         public definition: string | null
     ) {
+        // Stryker disable next-line ConditionalExpression: a code block has no view to read.
         this.view = source.kind === "embed" ? source.view : undefined;
         this.redefine(definition);
         this.letGoOnceStill = debounce(() => this.letGo(), SETTLE_MS, true);
@@ -205,6 +206,7 @@ class BaseSlot {
     redefine(definition: string | null): void {
         this.definition = definition;
         this.digest = baseDigest(this.source.markdown, definition);
+        // Stryker disable next-line ConditionalExpression: asCards of null is null.
         const cards = definition === null ? null : asCards(definition, this.view);
         this.cards = cards === null ? null : ["```base", cards, "```"].join("\n");
     }
@@ -258,6 +260,7 @@ class BaseSlot {
     /** Taller, it is held there: the hold only rises here, which resizes nothing. Clipped, it shows no taller. */
     private resized(): void {
         const height = this.height();
+        // Stryker disable next-line EqualityOperator: held again at the same height, nothing changes.
         if (height > this.laidOut && !this.measuring) this.holdAt(height);
         this.waitForStill();
     }
@@ -289,6 +292,12 @@ class BaseSlot {
     }
 }
 
+/** A code block's definition; an embed's is in its file. */
+function blockDefinition(source: BaseSource): string | null {
+    // Stryker disable next-line ConditionalExpression: an embed's is undefined, drawn as null is.
+    return source.kind === "block" ? source.definition : null;
+}
+
 /**
  * How wide Bases draws a header, read once from a hidden copy of one: the
  * name's font, and the padding, icon and gap around it. Null when nothing is
@@ -296,6 +305,7 @@ class BaseSlot {
  */
 export function measureHeaderMetrics(host: HTMLElement): HeaderMetrics | null {
     // Built whole, then attached: one insertion for the page, and for observers.
+    // Stryker disable StringLiteral,ObjectLiteral,CallExpression: Bases' stylesheet matches these, which only a real layout shows: e2e/bases-cards.spec.ts.
     const probe = document.createElement("div");
     probe.addClass("daily-note-bases-probe", "block-language-base", "bases-embed");
     const label = probe
@@ -307,6 +317,7 @@ export function measureHeaderMetrics(host: HTMLElement): HeaderMetrics | null {
         .createDiv({ cls: "bases-table-header-label" });
     setIcon(label.createDiv({ cls: "bases-table-header-icon" }), "text");
     const name = label.createDiv({ cls: "bases-table-header-name", text: "M" });
+    // Stryker restore StringLiteral,ObjectLiteral,CallExpression
     host.appendChild(probe);
 
     const font = getComputedStyle(name).font;

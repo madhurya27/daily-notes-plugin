@@ -588,10 +588,13 @@ describe("NoteBases when an embedded Base's file changes", () => {
         const component = loaded();
         await renderNote("![[Views.base]]", component);
         component.unload();
+        const reads = app.vault.cachedRead.mock.calls.length;
 
         await bases.onBaseModified(base);
 
         expect(render).toHaveBeenCalledOnce();
+        // Nothing left to redraw: the file is not read for it.
+        expect(app.vault.cachedRead).toHaveBeenCalledTimes(reads);
     });
 });
 
@@ -989,16 +992,22 @@ describe("measureHeaderMetrics", () => {
     // A header is its name's text, in Bases' font, plus what surrounds it.
     it("reads Bases' header font and what surrounds the name", () => {
         const host = document.body.createDiv();
-        vi.spyOn(window, "getComputedStyle").mockReturnValue({ font: "14px Inter" } as CSSStyleDeclaration);
+        // Read inside the host, the probe takes the styles a header there would.
+        let readInHost = false;
+        vi.spyOn(window, "getComputedStyle").mockImplementation((el) => {
+            readInHost = host.contains(el);
+            return { font: "14px Inter" } as CSSStyleDeclaration;
+        });
         vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function (this: HTMLElement) {
             return this.hasClass("bases-table-header-label") ? 50 : this.hasClass("bases-table-header-name") ? 16 : 0;
         });
         const context = { font: "", measureText: (text: string) => ({ width: text.length * 7 }) };
-        vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-            context as unknown as CanvasRenderingContext2D
-        );
+        vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(((type: string) =>
+            type === "2d" ? context : null) as unknown as HTMLCanvasElement["getContext"]);
 
         const measured = measureHeaderMetrics(host)!;
+
+        expect(readInHost).toBe(true);
 
         expect(context.font).toBe("14px Inter");
         expect(measured.chrome).toBe(34);
@@ -1006,6 +1015,22 @@ describe("measureHeaderMetrics", () => {
         // The probe leaves nothing behind.
         expect(host.children).toHaveLength(0);
         host.remove();
+    });
+
+    it.each([
+        ["no font", "", 50],
+        ["nothing around the name", "14px Inter", 16],
+    ])("measures nothing with %s", (_case, font, labelWidth) => {
+        vi.spyOn(window, "getComputedStyle").mockReturnValue({ font } as CSSStyleDeclaration);
+        vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function (this: HTMLElement) {
+            return this.hasClass("bases-table-header-label") ? labelWidth : 16;
+        });
+        const context = { font: "", measureText: () => ({ width: 0 }) };
+        vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+            context as unknown as CanvasRenderingContext2D
+        );
+
+        expect(measureHeaderMetrics(document.createElement("div"))).toBeNull();
     });
 
     it("measures nothing without a canvas", () => {

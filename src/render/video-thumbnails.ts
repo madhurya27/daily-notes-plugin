@@ -38,11 +38,13 @@ export function youtubeThumbnail(frame: HTMLIFrameElement, src: string): HTMLEle
 
 /** `//` borrows the page's scheme, which in the app is not the web's. */
 function parse(src: string): URL | null {
+    // Stryker disable BlockStatement: an empty catch returns undefined, as falsy to the caller as null.
     try {
         return new URL(src.startsWith("//") ? `https:${src}` : src);
     } catch {
         return null;
     }
+    // Stryker restore BlockStatement
 }
 
 /** The player's box: its width, capped by the stylesheet, and its shape; else the stylesheet's 16:9. */
@@ -75,7 +77,8 @@ export function fallBackToSmallThumbnail(event: Event): void {
     if (!(image instanceof HTMLImageElement) || !image.parentElement?.matches(".daily-note-video")) return;
     // Only from the large one: the same src set again loads, and fails, again.
     if (!LARGE.test(image.src)) return;
-    if (event.type === "load" && image.naturalWidth > MISSING_WIDTH) return;
+    // One that failed has no width.
+    if (image.naturalWidth > MISSING_WIDTH) return;
     image.src = image.src.replace(LARGE, "/hqdefault.jpg");
 }
 

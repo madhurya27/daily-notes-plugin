@@ -20,9 +20,11 @@ export function webPageLink(frame: HTMLIFrameElement, src: string): HTMLAnchorEl
 
 /** `//` borrows the page's scheme, which in the app is not the web's. */
 function parse(src: string): URL | null {
+    // Stryker disable BlockStatement: an empty catch returns undefined, as falsy to the caller as null.
     try {
         return new URL(src.startsWith("//") ? `https:${src}` : src);
     } catch {
         return null;
     }
+    // Stryker restore BlockStatement
 }

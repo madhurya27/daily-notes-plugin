@@ -140,6 +140,8 @@ describe("DailyNotesStreamPlugin — onload", () => {
             { icon: "gallery-vertical-end", title: "Open daily notes stream" },
         ]);
         expect(plugin.commands.map((c) => c.id)).toEqual(["open-stream", "jump-to-date", "scroll-to-top"]);
+        // The README tells readers to run them by these names.
+        expect(plugin.commands.map((c) => c.name)).toEqual(["Open stream", "Jump to date", "Scroll to top"]);
         expect(plugin.settingTabs).toHaveLength(1);
     });
 
@@ -732,6 +734,15 @@ describe("DailyNotesStreamPlugin — forget-note-heights command", () => {
         if (label !== undefined) vi.stubGlobal("BUILD_LABEL", label);
         const { plugin } = await loadPlugin();
         expect(offered(plugin)).toBe(false);
+    });
+
+    it("offers the testing aids by name in a build put on a device", async () => {
+        vi.stubGlobal("BUILD_LABEL", "amber otter");
+        const { plugin } = await loadPlugin();
+
+        expect(plugin.commands.map((c) => c.name)).toEqual(
+            expect.arrayContaining(["Forget measured note heights", "Forget collapse state"])
+        );
     });
 
     it("empties the layout memory and re-estimates every open stream", async () => {
