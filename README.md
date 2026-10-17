@@ -27,8 +27,8 @@ fast with years of notes.
 - **[Full notes](#open-the-stream).** Each note is shown in full, the way
   Obsidian shows it, with its images, tables, embeds, links, tasks and Bases.
   The stream is read-only, so you can't tick a task in it.
-- **[Phone and tablet](#phone-and-tablet).** Tables and Bases too wide for the
-  screen are shown as cards.
+- **[Phone and tablet](#phone-and-tablet).** Tables, Bases and Kanban Bases too
+  wide for the screen are shown as cards, so one swipe moves the whole stream.
 
 ## Before you install
 
@@ -50,11 +50,16 @@ fast with years of notes.
   contains no code from other projects and uses only what Obsidian provides.
 - **Which devices does it run on?** Desktop and mobile. It needs Obsidian 1.14.4
   or later.
+- **Does it show notes the way Obsidian does?** On desktop, yes, except that a
+  wide diagram shrinks to fit. On a phone or tablet it's opinionated: nothing
+  inside a note scrolls on its own, so one swipe always moves the whole stream.
+  A table, Base or Kanban Base too wide for the screen becomes a stack of cards,
+  a Kanban Base keeping one group per column. Only the stream's view changes,
+  never your notes; see [Phone and tablet](#phone-and-tablet).
 - **Does it work with other plugins?** Yes. Dataview tables and Bases are shown
-  the way Obsidian shows them, except that on a phone or tablet one too wide for
-  the screen is reshaped to fit; see [Phone and tablet](#phone-and-tablet).
-  Templates made with the core Templates plugin or with Templater are recognised
-  when empty notes are hidden; see [Empty notes](#empty-notes).
+  the way Obsidian shows them, reshaped on a phone or tablet as above. Templates
+  made with the core Templates plugin or with Templater are recognised when
+  empty notes are hidden; see [Empty notes](#empty-notes).
 
 If you want to edit notes directly inside the feed, try
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
