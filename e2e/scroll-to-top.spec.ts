@@ -170,6 +170,25 @@ test.describe("tapping the header title", () => {
     });
 });
 
+test("the Scroll to top button glides back to the newest note, on desktop", async ({ obsidian, mobileLayout }) => {
+    test.skip(mobileLayout, "the title does it on mobile");
+    const { page } = obsidian;
+    const container = await openStream(page);
+    await scrollToOldest(page, container);
+
+    await page.locator('.view-action[aria-label="Scroll to top"]').click();
+
+    await expect.poll(() => pane(container).evaluate((el) => el.scrollTop)).toBe(0);
+    expect(await newestOffset(container)).toBeGreaterThanOrEqual(0);
+});
+
+test("there is no Scroll to top button on mobile", async ({ obsidian, mobileLayout }) => {
+    test.skip(!mobileLayout, "a mobile rule");
+    await openStream(obsidian.page);
+
+    await expect(obsidian.page.locator('.view-action[aria-label="Scroll to top"]')).toHaveCount(0);
+});
+
 test("the Scroll to top command glides back to the newest note", async ({ obsidian, mobileLayout }) => {
     const { page } = obsidian;
     const container = await openStream(page);

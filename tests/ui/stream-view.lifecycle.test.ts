@@ -224,6 +224,24 @@ describe("DailyNotesStreamView — header title", () => {
         expect(view["stream"]["window"].forgetHeights).toHaveBeenCalledOnce();
     });
 
+    it("scrolls the stream to its top from a header button, on desktop", async () => {
+        const { view } = await withTitle();
+
+        view.actions
+            .find((a) => a.icon === "arrow-up-to-line" && a.title === "Scroll to top")!
+            .callback(new MouseEvent("click"));
+
+        expect(view["stream"]["window"].scrollToTop).toHaveBeenCalledOnce();
+    });
+
+    // The title does it there.
+    it("has no scroll to top button on mobile", async () => {
+        Platform.isMobile = true;
+        const { view } = await withTitle();
+
+        expect(view.actions.map((a) => a.title)).not.toContain("Scroll to top");
+    });
+
     it("leaves the title alone on desktop", async () => {
         const { view, titleEl } = await withTitle();
 

@@ -113,11 +113,11 @@ To show every note, turn off **Hide empty notes** in [settings](#settings).
 
 ### Move around
 
-| To                    | Do                                                                             |
-| --------------------- | ------------------------------------------------------------------------------ |
-| Load older notes      | Scroll down                                                                    |
-| Go back to the newest | Run `Daily notes stream: Scroll to top`, or on mobile tap the title at the top |
-| Go to a date          | Click the calendar icon at the top, or run `Daily notes stream: Jump to date`  |
+| To                    | Do                                                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Load older notes      | Scroll down                                                                                                      |
+| Go back to the newest | Click the arrow icon at the top, or run `Daily notes stream: Scroll to top`. On mobile, tap the title at the top |
+| Go to a date          | Click the calendar icon at the top, or run `Daily notes stream: Jump to date`                                    |
 
 The jump list opens on your 62 newest notes, about two months. Type to search
 the rest: a year, such as `2025`, lists every day of it that has a note. You can

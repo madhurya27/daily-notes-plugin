@@ -165,9 +165,10 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
 
         this.addAction("calendar-1", "Jump to date", () => this.promptJumpToDate());
         this.addAction("text-search", "Search", () => this.searchBar.open());
-        // iOS apps scroll to the top on a tap of the title bar.
+        // iOS apps scroll to the top on a tap of the title bar; desktop's title is a label.
         const title = getViewTitle(this);
-        if (Platform.isMobile && title) this.registerDomEvent(title, "click", () => this.scrollToTop());
+        if (!Platform.isMobile) this.addAction("arrow-up-to-line", "Scroll to top", () => this.scrollToTop());
+        else if (title) this.registerDomEvent(title, "click", () => this.scrollToTop());
 
         this.registerDomEvent(this.contentEl, "scroll", () => this.stream.onScroll());
         this.registerDomEvent(this.contentEl, "pointerdown", (evt) => this.stream.onTouch(evt.target));

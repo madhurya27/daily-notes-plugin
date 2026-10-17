@@ -2442,3 +2442,18 @@ iPhone; a step on, 1 stop in 25 did, by 88 px.
 - Two steps on — a stop only moves forward, but by a frame more than the glide.
 - Stopping without a write, by freezing the scroll alone — what is owed is
   handed over on the next frame, a jump of its own.
+
+## D-147 — Desktop scrolls to the top from a header button (2026-10-16)
+
+**Decision:** amends D-037. On desktop, an `arrow-up-to-line` action beside
+Search and Jump to date glides the stream to its top. Mobile keeps the title tap
+and gets no button.
+
+**Why:** desktop had only the command; nothing on screen offered it.
+
+**Rejected:**
+
+- The title on desktop too — D-037's reason stands.
+- The button on mobile too — a third icon in a narrow header, for what the title
+  already does.
+- A floating button over the notes — covers text, and no other view has one.
