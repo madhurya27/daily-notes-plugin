@@ -13,7 +13,10 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "allowSyntheticDefaultImports": true,
-        "lib": ["ES2021", "DOM", "DOM.Iterable"]
+        // Array#at and String#at are ES2022; every app the plugin runs in has them.
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        // The plugin runs where Node may not: no ambient Node types.
+        "types": []
     },
     "include": ["src/**/*.ts"]
 }
