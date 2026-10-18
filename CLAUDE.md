@@ -39,6 +39,10 @@ with its assets. pnpm tags `v1.0.0`, ignoring `.npmrc`; the workflow wants
 `git log --first-parent <last tag>..` — what a reader notices, in plain words —
 then publish (D-115).
 
+To clear scorecard warnings, the user first runs the listing's **Review branch →
+Run preview scan** on the branch or tag. Once published, **... → Check for new
+releases** picks the release up at once.
+
 ## Quality gates
 
 `pnpm run test:e2e` runs in full only when what ships or what every spec shares
