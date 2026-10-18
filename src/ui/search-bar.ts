@@ -31,7 +31,7 @@ export class SearchBar {
         component: Component,
         private readonly actions: SearchBarActions
     ) {
-        this.el = document.createElement("div");
+        this.el = createDiv();
         this.el.addClass("document-search-container", "daily-notes-search", "is-closed");
         const search = this.el.createDiv({ cls: "document-search" });
 

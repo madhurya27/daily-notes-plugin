@@ -4,7 +4,7 @@
  * hold every timer until a long render ends (ADR 0020).
  */
 export function yieldToMain(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, 0));
+    return new Promise((resolve) => window.setTimeout(resolve, 0));
 }
 
 /** Work split into a task per slice of time, so no long render freezes the stream. */

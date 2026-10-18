@@ -9,7 +9,7 @@ export function webPageLink(frame: HTMLIFrameElement, src: string): HTMLAnchorEl
     const url = parse(src);
     if (!url || !WEB.has(url.protocol)) return null;
 
-    const link = document.createElement("a");
+    const link = createEl("a");
     link.className = "external-link daily-note-frame-link";
     link.href = url.href;
     link.target = "_blank";

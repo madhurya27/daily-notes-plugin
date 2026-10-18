@@ -99,7 +99,7 @@ export class LinkedMentionsFooter {
             const texts = await Promise.all(
                 mentions.map((mention) =>
                     // Stryker disable next-line StringLiteral: a mention with no excerpt never reads its text.
-                    mention.excerpts.length > 0 ? this.app.vault.cachedRead(mention.source) : ""
+                    mention.excerpts.length > 0 ? this.app.vault.cachedRead(mention.source) : Promise.resolve("")
                 )
             );
             if (stale()) return;

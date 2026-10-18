@@ -243,7 +243,7 @@ export class NoteRenderer {
      * unloading empties it, so the path stays resolvable either way.
      */
     createBlock(file: TFile): HTMLElement {
-        const block = document.createElement("div");
+        const block = createDiv();
         block.addClass("daily-note-block");
         block.dataset.sourcePath = file.path;
         return block;
@@ -401,7 +401,7 @@ export class NoteRenderer {
         if (!note) return [];
         const { sections, runStarts } = note;
         return (runStarts ? groupByStarts(sections, runStarts) : groupByLength(sections))
-            .map((run) => run.flatMap((section) => section.nodes.filter((node) => node instanceof Element)))
+            .map((run) => run.flatMap((section) => section.nodes.filter((node) => node.instanceOf(Element))))
             .filter((run) => run.length > 0);
     }
 
@@ -492,7 +492,7 @@ export class NoteRenderer {
         noteComponent: Component
     ): Promise<RenderedSection> {
         const component = noteComponent.addChild(new Component());
-        const holder = contentEl.insertBefore(document.createElement("div"), next);
+        const holder = contentEl.insertBefore(createDiv(), next);
         const { markdown, bases } = withoutBases(source);
         await MarkdownRenderer.render(this.app, markdown, holder, file.path, component);
         this.markUnresolvedLinks(holder);

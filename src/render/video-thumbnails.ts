@@ -23,7 +23,7 @@ export function youtubeThumbnail(frame: HTMLIFrameElement, src: string): HTMLEle
     const start = url.searchParams.get("start");
     if (start) watch.searchParams.set("t", start);
 
-    const link = document.createElement("a");
+    const link = createEl("a");
     link.className = "external-link daily-note-video";
     link.href = watch.href;
     link.target = "_blank";
@@ -58,7 +58,7 @@ function sizeLike(link: HTMLElement, frame: HTMLIFrameElement): void {
 
 /** The 1,280 px thumbnail, sharp across a phone at 3x; `fallBackToSmallThumbnail` swaps it if missing. */
 function thumbnailImage(id: string): HTMLImageElement {
-    const image = document.createElement("img");
+    const image = createEl("img");
     image.alt = "";
     image.src = `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
     return image;

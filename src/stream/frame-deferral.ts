@@ -45,8 +45,8 @@ export class FrameDeferral {
     private onMutations(records: MutationRecord[]): void {
         for (const record of records) {
             for (const node of Array.from(record.addedNodes)) {
-                if (!(node instanceof HTMLElement)) continue;
-                const frames = node instanceof HTMLIFrameElement ? [node] : node.querySelectorAll("iframe");
+                if (!node.instanceOf(HTMLElement)) continue;
+                const frames = node.instanceOf(HTMLIFrameElement) ? [node] : node.querySelectorAll("iframe");
                 for (const frame of Array.from(frames)) this.hold(frame);
             }
         }

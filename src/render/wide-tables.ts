@@ -28,7 +28,7 @@ export function stackWideTables(contentEl: HTMLElement, noteComponent: Component
             const changed = (record.target as Element).closest("table");
             if (changed) tables.add(changed);
             for (const node of Array.from(record.addedNodes)) {
-                if (node instanceof HTMLElement) tablesIn(node).forEach((table) => tables.add(table));
+                if (node.instanceOf(HTMLElement)) tablesIn(node).forEach((table) => tables.add(table));
             }
         }
         stack([...tables]);
@@ -40,7 +40,7 @@ export function stackWideTables(contentEl: HTMLElement, noteComponent: Component
 }
 
 function tablesIn(el: HTMLElement): HTMLTableElement[] {
-    return el instanceof HTMLTableElement ? [el] : Array.from(el.querySelectorAll("table"));
+    return el.instanceOf(HTMLTableElement) ? [el] : Array.from(el.querySelectorAll("table"));
 }
 
 /** A stacked cell shows its column's name, read from `data-column` by the stylesheet. */

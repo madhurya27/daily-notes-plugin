@@ -49,7 +49,7 @@ export class ScrollBoxGuard {
             const view = baseViewChangedBy(record);
             if (view) views.add(view);
             for (const node of Array.from(record.addedNodes)) {
-                if (!(node instanceof HTMLElement)) continue;
+                if (!node.instanceOf(HTMLElement)) continue;
                 if (node.closest(BASE)) node.querySelectorAll<HTMLElement>(".bases-view").forEach((v) => views.add(v));
                 else this.unchecked.add(node);
             }
@@ -62,7 +62,7 @@ export class ScrollBoxGuard {
         for (const root of this.unchecked) {
             if (!root.isConnected) continue;
             for (const el of [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))]) {
-                if (el instanceof HTMLElement && isScrollBox(el)) el.addClass("is-scroll-clipped");
+                if (el.instanceOf(HTMLElement) && isScrollBox(el)) el.addClass("is-scroll-clipped");
             }
         }
         this.unchecked.clear();

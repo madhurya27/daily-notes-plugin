@@ -2508,3 +2508,17 @@ its warnings
 
 - Fixing the harness to the plugin rules — `fs`, `child_process` and `fetch` are
   what a Node test harness is for.
+
+## D-151 — Lint fails on a warning (2026-10-17)
+
+**Decision:** `pnpm run lint` runs `--max-warnings 0`, on the
+`eslint-plugin-obsidianmd` and `typescript-eslint` the review scanner runs.
+Rules guarding the app's runtime — popout windows, mobile, the config folder —
+are off for `scripts/` and `tests/`, which run in Node.
+
+**Why:** the scanner reports most rules as warnings; a warning lint lets pass
+reaches the review.
+
+**Rejected:**
+
+- Raising each rule to an error by name — the list drifts from the scanner's.

@@ -4,6 +4,17 @@ import globals from "globals";
 import { globalIgnores } from "eslint/config";
 import prettier from "eslint-config-prettier/flat";
 
+/**
+ * Rules for code inside the app: popout windows, mobile, the vault's config
+ * folder. Scripts and tests run in Node.
+ */
+const offOutsideTheApp = {
+    "obsidianmd/no-nodejs-modules": "off",
+    "obsidianmd/hardcoded-config-path": "off",
+    "obsidianmd/prefer-window-timers": "off",
+    "obsidianmd/prefer-instanceof": "off",
+} as const;
+
 export default tseslint.config(
     {
         languageOptions: {
@@ -77,6 +88,11 @@ export default tseslint.config(
             parserOptions: { projectService: false },
         },
         extends: [tseslint.configs.disableTypeChecked],
+        rules: {
+            ...offOutsideTheApp,
+            // A script's console is its output.
+            "obsidianmd/rule-custom-message": "off",
+        },
     },
     // Tests run in Node under vitest, never inside the app: the rules that
     // guard the shipped plugin's runtime don't apply. unbound-method misreads
@@ -85,10 +101,14 @@ export default tseslint.config(
         files: ["tests/**/*.ts"],
         languageOptions: { globals: { ...globals.node } },
         rules: {
+            ...offOutsideTheApp,
             "import/no-nodejs-modules": "off",
-            "obsidianmd/hardcoded-config-path": "off",
             "@microsoft/sdl/no-inner-html": "off",
+            "no-unsanitized/property": "off",
             "no-restricted-imports": "off",
+            "@typescript-eslint/no-restricted-imports": "off",
+            "obsidianmd/no-global-this": "off",
+            "obsidianmd/prefer-create-el": "off",
             "@typescript-eslint/unbound-method": "off",
             // Tests stand in for Obsidian and Bases, which style inline.
             "obsidianmd/no-static-styles-assignment": "off",
@@ -101,6 +121,7 @@ export default tseslint.config(
         "coverage",
         "dist",
         "esbuild.config.mjs",
+        "stryker.config.mjs",
         "eslint.config.mts",
         "versions.json",
         "main.js",

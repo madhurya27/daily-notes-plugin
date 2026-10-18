@@ -306,7 +306,7 @@ function blockDefinition(source: BaseSource): string | null {
 export function measureHeaderMetrics(host: HTMLElement): HeaderMetrics | null {
     // Built whole, then attached: one insertion for the page, and for observers.
     // Stryker disable StringLiteral,ObjectLiteral,CallExpression: Bases' stylesheet matches these, which only a real layout shows: e2e-tests/bases-cards.spec.ts.
-    const probe = document.createElement("div");
+    const probe = createDiv();
     probe.addClass("daily-note-bases-probe", "block-language-base", "bases-embed");
     const label = probe
         .createDiv({ cls: "bases-view" })
@@ -325,7 +325,7 @@ export function measureHeaderMetrics(host: HTMLElement): HeaderMetrics | null {
     probe.remove();
     if (!font || chrome <= 0) return null;
 
-    const context = document.createElement("canvas").getContext("2d");
+    const context = createEl("canvas").getContext("2d");
     if (!context) return null;
     context.font = font;
     return { chrome, textWidth: (text) => context.measureText(text).width };

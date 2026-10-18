@@ -227,7 +227,7 @@ export class ScrollAnchor {
     private stopGlide(scrollTop: number): void {
         const root = this.scrollRoot!;
         root.addClass("is-scroll-frozen");
-        requestAnimationFrame(() => root.removeClass("is-scroll-frozen"));
+        window.requestAnimationFrame(() => root.removeClass("is-scroll-frozen"));
         this.settleOnceStill.cancel();
         root.scrollTop = scrollTop;
         this.stepFrom = root.scrollTop;

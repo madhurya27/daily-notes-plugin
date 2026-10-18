@@ -107,7 +107,7 @@ export class CollapsibleManager {
      * inside it must not collapse. Returns the toggle, for binding extra hosts.
      */
     attachCollapseToggle(host: HTMLElement, section: CollapsibleSection): () => void {
-        const indicator = document.createElement("span");
+        const indicator = createSpan();
         indicator.addClass("collapse-indicator");
         indicator.setAttribute("role", "button");
         indicator.setAttribute("tabindex", "0");

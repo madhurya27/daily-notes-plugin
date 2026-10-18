@@ -43,7 +43,7 @@ describe("noteSections", () => {
     it("is null with no sections indexed", () => {
         const { markdown } = indexed(journal());
         expect(noteSections(markdown, null)).toBeNull();
-        expect(noteSections(markdown, {} as CachedMetadata)).toBeNull();
+        expect(noteSections(markdown, {})).toBeNull();
     });
 
     it.each([

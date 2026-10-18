@@ -77,6 +77,21 @@ proto.createSpan = function (this: HTMLElement, params?: { cls?: string; text?: 
     return this.createEl("span", params);
 };
 
+/** Obsidian's cross-window check; tests have one window. */
+Node.prototype.instanceOf = function <T>(this: Node, type: new () => T): this is T {
+    return this instanceof type;
+};
+
+/** Obsidian's global helpers: an element built as on a parent, then detached. */
+const globals = globalThis as unknown as Pick<typeof globalThis, "createEl" | "createDiv" | "createSpan">;
+globals.createEl = ((tag: keyof HTMLElementTagNameMap, o?: Parameters<typeof proto.createEl>[1]) => {
+    const el = document.createElement("div").createEl(tag, o);
+    el.remove();
+    return el;
+}) as typeof createEl;
+globals.createDiv = (o?: Parameters<typeof proto.createDiv>[0]) => globals.createEl("div", o);
+globals.createSpan = (o?: Parameters<typeof proto.createSpan>[0]) => globals.createEl("span", o);
+
 /** jsdom implements no scrolling; Obsidian runs on Chromium, which does. */
 proto.scrollIntoView ??= function () {};
 

@@ -22,7 +22,7 @@ class FakeResizeObserver {
     report(...targets: Element[]) {
         this.callback(
             targets.map((target) => ({ target }) as ResizeObserverEntry),
-            this as unknown as ResizeObserver
+            this
         );
     }
 }

@@ -45,7 +45,7 @@ export class FarRuns {
     hide(elements: Element[], box: Box | null = this.measure(elements)): HTMLElement | null {
         if (!box) return null;
 
-        const spacer = document.createElement("div");
+        const spacer = createDiv();
         spacer.addClass(SPACER);
         spacer.style.setProperty("--daily-note-far-height", `${box.bottom - box.top}px`);
         spacer.style.setProperty("--daily-note-far-margin-top", `${box.marginTop}px`);
@@ -100,7 +100,7 @@ export class FarRuns {
     }
 
     private runOf(node: Node): Run | undefined {
-        for (let el = node instanceof Element ? node : node.parentElement; el; el = el.parentElement) {
+        for (let el = node.instanceOf(Element) ? node : node.parentElement; el; el = el.parentElement) {
             const run = this.runs.get(el);
             if (run) return run;
         }

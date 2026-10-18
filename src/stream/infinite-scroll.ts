@@ -6,7 +6,7 @@ export class InfiniteScrollController {
     attach(scrollRoot: HTMLElement, container: HTMLElement, onTrigger: () => Promise<void>): void {
         this.detach();
 
-        this.sentinel = document.createElement("div");
+        this.sentinel = createDiv();
         this.sentinel.addClass("daily-notes-stream-sentinel");
         container.appendChild(this.sentinel);
 

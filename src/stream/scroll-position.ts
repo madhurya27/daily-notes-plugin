@@ -43,7 +43,7 @@ const SCROLL_TOLERANCE_PX = 2;
  */
 async function observersDelivered(): Promise<void> {
     for (let frame = 0; frame < 2; frame++) {
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
     }
 }
 
