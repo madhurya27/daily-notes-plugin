@@ -42,7 +42,9 @@ fast with years of notes.
 - **Is it private?** Yes. It collects no telemetry or analytics, needs no
   account, and never sends your notes or anything about you anywhere. The only
   things that load from the web are embeds you put in your notes yourself, such
-  as videos.
+  as videos. On a phone or tablet, a YouTube video shows as its preview image,
+  loaded from YouTube (`i.ytimg.com`), because a YouTube embed inside the stream
+  causes scroll issues.
 - **Does it slow down with years of notes?** No. It's tested on five years of
   daily notes, and stays fast and light on memory throughout: only the notes
   near what you're reading are loaded at a time.
@@ -197,7 +199,7 @@ instead:
 | Code block                   | Long lines wrap                                                                     |
 | Diagram                      | Smaller, to fit the width (on desktop too)                                          |
 | Embedded note                | Shown in full, not in a box of its own that scrolls                                 |
-| YouTube video                | Its thumbnail; tap it to watch on YouTube                                           |
+| YouTube video                | Its preview image; tap it to watch on YouTube                                       |
 | Embedded web page            | Shown as it is; tap it to open the page in your browser                             |
 | Any other embed that scrolls | Cut off at its edge                                                                 |
 

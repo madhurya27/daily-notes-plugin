@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { resolve } from "path";
 import DailyNotesStreamPlugin from "../../src/main";
 import { DailyNotesStreamSettingTab, DEFAULT_SETTINGS } from "../../src/settings";
@@ -58,6 +58,24 @@ describe("README", () => {
         expect(commands.length).toBeGreaterThan(0);
         for (const { name } of commands) {
             expect(readme).toContain(`${manifest.name}: ${name}`);
+        }
+    });
+
+    // Obsidian's developer policies: network use is disclosed, naming the service and why.
+    it("names, in its privacy answer, each service the plugin loads from", () => {
+        const services: Record<string, string> = { "i.ytimg.com": "YouTube" };
+        const privacy = readme.split("\n- **").find((item) => item.startsWith("Is it private?**")) ?? "";
+        const hosts = readdirSync(resolve(repoRoot, "src"), { recursive: true, encoding: "utf8" })
+            .filter((file) => file.endsWith(".ts"))
+            .flatMap((file) => [
+                ...readFileSync(resolve(repoRoot, "src", file), "utf8").matchAll(/\.src = `https:\/\/([^/]+)/g),
+            ])
+            .map((match) => match[1]!);
+
+        expect(hosts).toContain("i.ytimg.com");
+        for (const host of hosts) {
+            expect(services[host], `${host}: name its service here`).toBeDefined();
+            expect(privacy.replace(/\s+/g, " "), host).toContain(`from ${services[host]} (\`${host}\`)`);
         }
     });
 
