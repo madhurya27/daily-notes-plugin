@@ -79,6 +79,11 @@ If you want to edit notes directly inside the feed, try
 On a phone or tablet, install the plugin on a computer first and let your sync
 service copy the plugin folder to the device. Then enable it there.
 
+To check that the downloaded files were built from this repository, run
+`gh attestation verify main.js --repo madhurya27/daily-notes-stream` with the
+GitHub CLI, and the same for the other two files. This works for releases after
+1.0.0.
+
 To build from source instead, run `pnpm run build` and copy the same three files
 to the same folder.
 

@@ -9,6 +9,9 @@ on:
 
 permissions:
     contents: write
+    # For the attestation: a signing token, and the right to store it.
+    id-token: write
+    attestations: write
 
 jobs:
     release:
@@ -49,6 +52,14 @@ jobs:
 
             - name: Build the plugin
               run: pnpm run build
+
+            - name: Attest the release assets' provenance
+              uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+              with:
+                  subject-path: |
+                      main.js
+                      manifest.json
+                      styles.css
 
             - name: Create the draft release
               env:

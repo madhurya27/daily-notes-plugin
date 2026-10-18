@@ -12,6 +12,7 @@ interface Step {
     with?: Record<string, unknown>;
 }
 interface Workflow {
+    permissions?: Record<string, string>;
     on: { push?: { tags?: string[] } };
     jobs: Record<string, { steps: Step[] }>;
 }
@@ -41,6 +42,19 @@ describe("release workflow", () => {
 
     it("attaches each release asset individually", () => {
         for (const asset of RELEASE_ASSETS) expect(script()).toContain(asset);
+    });
+
+    // Lets anyone check, with `gh attestation verify`, that an asset was built
+    // here from this repo; the directory's review recommends it.
+    it("attests each release asset's provenance before it releases them", () => {
+        const all = steps();
+        const attest = all.findIndex((step) => step.uses?.startsWith("actions/attest-build-provenance@"));
+        const release = all.findIndex((step) => step.run?.includes("gh release create"));
+        expect(attest, "no attestation step").toBeGreaterThanOrEqual(0);
+        expect(attest).toBeLessThan(release);
+        const subjects = String(all[attest]!.with?.["subject-path"]).split(/\s+/);
+        expect(subjects).toEqual(expect.arrayContaining(RELEASE_ASSETS));
+        expect(workflow!.permissions).toMatchObject({ "id-token": "write", attestations: "write" });
     });
 
     it("refuses a tag that does not match the manifest version", () => {
