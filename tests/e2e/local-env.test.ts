@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtempSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { loadLocalEnv } from "../../e2e/ios/local-env";
+import { loadLocalEnv } from "../../e2e-tests/ios/local-env";
 
 function envFile(text: string): string {
     const file = join(mkdtempSync(join(tmpdir(), "local-env-")), ".env");

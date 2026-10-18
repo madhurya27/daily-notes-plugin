@@ -33,8 +33,8 @@ No element inside the stream is a scroll container.
 ## Consequences
 
 - Overflow is cut off, not reachable: a hand-resized Base column clips.
-- `e2e/scroll-boxes.spec.ts` checks no element computes `auto`, `scroll` or
-  `hidden`.
+- `e2e-tests/scroll-boxes.spec.ts` checks no element computes `auto`, `scroll`
+  or `hidden`.
 - PDFs, iframes and canvases are unchecked.
 
 ## Rejected alternatives

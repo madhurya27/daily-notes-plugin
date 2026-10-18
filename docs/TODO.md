@@ -86,7 +86,8 @@ Out of scope:
   mid-glide (ADR 0013); the jump modal reaches any date.
 - Journals support, or Periodic Notes' weekly and monthly notes — a second note
   source behind `DailyNoteService`. Revisit if users ask once it is published.
-  Periodic Notes' daily settings already work (`e2e/periodic-notes.spec.ts`).
+  Periodic Notes' daily settings already work
+  (`e2e-tests/periodic-notes.spec.ts`).
 - Hiding untouched notes whose Templater blocks write several lines — D-117's
   rejected fingerprints. Revisit if users ask once it is published.
 - Period scope — newest-first already opens on this week; the jump modal reaches

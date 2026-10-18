@@ -25,7 +25,7 @@
         "test:coverage": "pnpm run typecheck:tests && vitest run --coverage",
         "test:mutation": "stryker run",
         "typecheck:tests": "tsc -noEmit -p tests/tsconfig.json",
-        "typecheck:e2e": "tsc -noEmit -p e2e/tsconfig.json",
+        "typecheck:e2e": "tsc -noEmit -p e2e-tests/tsconfig.json",
         "test:e2e": "pnpm run build && pnpm run typecheck:e2e && playwright test",
         "test:ios": "pnpm run build && pnpm run typecheck:e2e && playwright test -c playwright.ios.config.ts",
         "capture:screenshots": "pnpm run build && CAPTURE_SCREENSHOTS=1 E2E_SHOW_WINDOW=1 playwright test screenshots.spec.ts",

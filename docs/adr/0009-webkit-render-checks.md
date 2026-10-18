@@ -15,11 +15,11 @@ could fail a test. Playwright's WebKit cannot run Obsidian itself.
 
 ## Decision
 
-`e2e/webkit.ts` gives a mobile-project test `inWebKit()`: it snapshots the live
-page — markup, stylesheets as raw text, scroll offsets, CSS highlight ranges —
-and renders it in Playwright's WebKit as an iPhone 17 (density, touch, user
-agent) at the phone layout's viewport. `e2e/webkit.spec.ts` asserts there what
-the engines disagree on: what paints, what the cascade computes.
+`e2e-tests/webkit.ts` gives a mobile-project test `inWebKit()`: it snapshots the
+live page — markup, stylesheets as raw text, scroll offsets, CSS highlight
+ranges — and renders it in Playwright's WebKit as an iPhone 17 (density, touch,
+user agent) at the phone layout's viewport. `e2e-tests/webkit.spec.ts` asserts
+there what the engines disagree on: what paints, what the cascade computes.
 
 ## Consequences
 

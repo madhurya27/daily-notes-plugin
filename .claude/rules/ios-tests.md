@@ -1,6 +1,6 @@
 ---
 paths:
-    - "e2e/ios/**"
+    - "e2e-tests/ios/**"
 ---
 
 # iPhone tests

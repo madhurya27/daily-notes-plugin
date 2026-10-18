@@ -6,8 +6,8 @@
 ## Context
 
 One `MarkdownRenderer` call drew a whole note in one task. At phone speed (CPU
-slowed 4x, `e2e/edit-cost.spec.ts`) opening a 10,000-line note froze the stream
-2.4 s, and 4.2 s if it was today's, drawn section by section (ADR 0019).
+slowed 4x, `e2e-tests/edit-cost.spec.ts`) opening a 10,000-line note froze the
+stream 2.4 s, and 4.2 s if it was today's, drawn section by section (ADR 0019).
 
 ## Decision
 
@@ -28,7 +28,7 @@ note whose sections cannot stand alone (ADR 0019) still renders in one call.
   ~340 ms, and no timer waits over ~550 ms. Desktop: 744 ms to ~200.
 - A glide past a long note no longer finishes drawing it first: tapping the
   title over 16,000 lines showed the top blank for 0.75–1.2 s on an iPhone, now
-  for none (`e2e/ios/header.spec.ts`).
+  for none (`e2e-tests/ios/header.spec.ts`).
 - A glide to a short newest note over a 10,000-line note never measured ended
   with it in the render margin, drawing to its end first: the newest waited
   286–341 ms on an iPhone, now 44–49.

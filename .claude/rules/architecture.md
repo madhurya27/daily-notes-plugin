@@ -2,7 +2,7 @@
 paths:
     - "src/**"
     - "tests/**"
-    - "e2e/**"
+    - "e2e-tests/**"
     - "styles.css"
 ---
 

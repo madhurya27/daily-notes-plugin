@@ -19,8 +19,8 @@ pnpm run test:coverage  # the same, 100% coverage required
 pnpm run test:mutation  # Stryker over src/, incremental; results in reports/ (D-141); no survivor left (D-149). After a test change, `--force --mutate <its src file>`; a bare `--force` almost never
                         # once per change, once its tests settle. To compare survivors, copy reports/ first; never re-run on main
 pnpm run test:e2e       # build + typecheck e2e + playwright against real Obsidian; fetches Dataview into .dev/ once
-pnpm exec playwright install webkit   # once, for e2e/webkit.spec.ts
-pnpm run test:ios       # build + e2e/ios/ on a plugged-in, unlocked iPhone (ADR 0016); setup in docs/TESTING.md
+pnpm exec playwright install webkit   # once, for e2e-tests/webkit.spec.ts
+pnpm run test:ios       # build + e2e-tests/ios/ on a plugged-in, unlocked iPhone (ADR 0016); setup in docs/TESTING.md
 xcrun devicectl list devices   # is the iPhone connected? Not system_profiler, which misses it
 pnpm run test:memory    # memory, render-cost and edit-cost specs on a seeded five-year vault (E2E_SEED_DAYS)
 # Every test run stops at its first failure; a full report: --max-failures=0 (Playwright), --bail=0 (vitest)
@@ -43,18 +43,19 @@ then publish (D-115).
 
 `pnpm run test:e2e` runs in full only when what ships or what every spec shares
 changes: `src/`, `styles.css`, `manifest.json`, the build (`esbuild.config.mjs`,
-`tsconfig.json`, dependencies), `e2e/obsidian.ts`, `e2e/global-setup.ts`,
-`playwright.config.ts`. Other e2e code runs the specs that use it. Anything else
-needs the other gates, plus a run of whatever the change touches.
+`tsconfig.json`, dependencies), `e2e-tests/obsidian.ts`,
+`e2e-tests/global-setup.ts`, `playwright.config.ts`. Other e2e code runs the
+specs that use it. Anything else needs the other gates, plus a run of whatever
+the change touches.
 
 CI (`.github/workflows/ci.yml`) runs every gate but e2e, on Linux; e2e is run
 locally (D-148).
 
 ## Tests
 
-- `e2e/ios/` drives Obsidian on a real iPhone: real touches, real glides, real
-  turns ([ADR 0016](docs/adr/0016-drive-a-real-iphone.md)). Run it, with a phone
-  plugged in, for any change to how the stream scrolls, loads or turns.
+- `e2e-tests/ios/` drives Obsidian on a real iPhone: real touches, real glides,
+  real turns ([ADR 0016](docs/adr/0016-drive-a-real-iphone.md)). Run it, with a
+  phone plugged in, for any change to how the stream scrolls, loads or turns.
 - **Look at a UI change before handing it over.** Screenshot it from the e2e
   harness, desktop and mobile, and inspect the image: measurements prove a rule
   was matched, not that the result looks right.

@@ -4,7 +4,7 @@ import { SHORT_NOTE } from "./vault";
 const inNote = (path: string, selector: string) => `.daily-note-block[data-source-path="${path}"] ${selector}`;
 
 // iOS hands a returning view its place a frame after it draws, so the stream
-// may show somewhere else first, then jump (e2e/history.spec.ts). Each case:
+// may show somewhere else first, then jump (e2e-tests/history.spec.ts). Each case:
 // where `placeAt` puts the pane's top, and what must then be at it.
 for (const [what, target, depth, atTop] of [
     ["text", inNote(SHORT_NOTE, ".daily-note-content > p"), -20, ".daily-note-block"],

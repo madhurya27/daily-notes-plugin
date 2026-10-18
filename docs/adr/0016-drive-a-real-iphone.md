@@ -14,10 +14,10 @@ and desktop Chromium has none of iOS's scrolling. So the Mobile checklist in
 
 ## Decision
 
-`pnpm run test:ios` runs `e2e/ios/` against Obsidian on an iPhone plugged into
-the Mac. Appium's XCUITest driver sends real touches through WebDriverAgent, so
-a flick glides as a thumb's does. Obsidian's web view, which is inspectable,
-answers what the stream did. The harness:
+`pnpm run test:ios` runs `e2e-tests/ios/` against Obsidian on an iPhone plugged
+into the Mac. Appium's XCUITest driver sends real touches through
+WebDriverAgent, so a flick glides as a thumb's does. Obsidian's web view, which
+is inspectable, answers what the stream did. The harness:
 
 - signs WebDriverAgent with the Mac's own Apple Development certificate;
 - seeds a vault of its own, `Stream E2E`, stored on the phone rather than in

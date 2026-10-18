@@ -2,7 +2,7 @@ import { test, expect } from "./phone";
 
 const STREAM = ".daily-notes-stream-container";
 
-// As e2e/ios/far-runs.spec.ts for a long note's runs: a note hidden far keeps
+// As e2e-tests/ios/far-runs.spec.ts for a long note's runs: a note hidden far keeps
 // its height but shows nothing, so one on screen is a blank. A stall may
 // carry one on for a frame; the next shows it (ADR 0023). Turned back within
 // the unload margin, the reader meets the notes it hid, not ones emptied.

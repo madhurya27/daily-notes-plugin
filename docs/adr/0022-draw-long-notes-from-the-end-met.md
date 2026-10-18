@@ -37,7 +37,7 @@ the re-pin: far is measured from where the anchor put the reader.
 
 - Text under a reader who comes up into a never-drawn 3,000-line note shows
   before it lands, from its last tenth, and stays within a pixel as it lands
-  (`e2e/long-note-from-end.spec.ts`).
+  (`e2e-tests/long-note-from-end.spec.ts`).
 - At phone speed, under 10% of a 10,000-line note is laid out at any frame of
   its draw, against 98% hiding only once it lands.
 - iPhone: see the merge's measurements.

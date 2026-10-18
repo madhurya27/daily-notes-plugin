@@ -38,5 +38,5 @@ Traps that span files, so no single file's comments can hold them.
 - **No scroll containers inside a note on mobile**
   ([ADR 0008](../../docs/adr/0008-nothing-scrolls-on-mobile.md)): one ends iOS
   glides early. Under `.is-mobile`, clip with `overflow: clip`, never `hidden`
-  or `auto`; `e2e/scroll-boxes.spec.ts` enforces it. Desktop keeps Obsidian's
-  scroll bars.
+  or `auto`; `e2e-tests/scroll-boxes.spec.ts` enforces it. Desktop keeps
+  Obsidian's scroll bars.

@@ -21,5 +21,5 @@ export default {
     // A static mutant reruns every test; they are few and slow.
     ignoreStatic: true,
     // Only what the unit tests import: the vaults in .dev/ are thousands of files.
-    ignorePatterns: ["/.dev", "/docs/plans", "/e2e", "/coverage", "/test-results"],
+    ignorePatterns: ["/.dev", "/docs/plans", "/e2e-tests", "/coverage", "/test-results"],
 };

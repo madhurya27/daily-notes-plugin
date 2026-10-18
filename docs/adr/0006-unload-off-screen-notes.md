@@ -41,7 +41,8 @@ DOM per note, which is what keeps a jump to a distant date cheap.
   reports changes, so that unload is the only one the block gets until it
   returns: a render in flight records it and honors it on landing, and a render
   still queued is skipped outright rather than holding the queue.
-- jsdom lays nothing out, so unloading is provable only in `e2e/` (ADR 0002).
+- jsdom lays nothing out, so unloading is provable only in `e2e-tests/` (ADR
+  0002).
 
 ## Rejected alternatives
 

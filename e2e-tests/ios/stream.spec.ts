@@ -56,7 +56,7 @@ for (const [what, target, depth] of [
         await phone.turn("LANDSCAPE");
         await phone.turn("PORTRAIT");
 
-        // As e2e/turn.spec.ts allows: a pixel's rounding is not a jump.
+        // As e2e-tests/turn.spec.ts allows: a pixel's rounding is not a jump.
         const now = await phone.topOf(seen);
         expect(Math.abs(now - seen.top), `"${seen.text}" moved from ${seen.top} to ${now}`).toBeLessThan(5);
     });

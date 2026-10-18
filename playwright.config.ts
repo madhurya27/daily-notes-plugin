@@ -1,14 +1,14 @@
 import { defineConfig } from "@playwright/test";
-import type { MobileLayoutOptions } from "./e2e/obsidian";
+import type { MobileLayoutOptions } from "./e2e-tests/obsidian";
 
 /** When this run started, to the second, safe in a file name. */
 const runStamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
 
 export default defineConfig<MobileLayoutOptions>({
-    testDir: "e2e",
+    testDir: "e2e-tests",
     // A phone, not Obsidian on this Mac: playwright.ios.config.ts.
     testIgnore: "ios/**",
-    globalSetup: "./e2e/global-setup.ts",
+    globalSetup: "./e2e-tests/global-setup.ts",
     // One Obsidian instance and vault per worker; more starves them of CPU.
     workers: 4,
     // A run stops at its first failure; --max-failures=0 runs on, for a full report.

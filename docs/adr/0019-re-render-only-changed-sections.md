@@ -7,7 +7,7 @@
 
 A save re-rendered the whole note. With an editor beside the stream, a
 10,000-line note froze desktop ~0.4 s every 2 s autosave even after D-129, and a
-phone (CPU slowed 4x) ~1.8 s per synced save (`e2e/edit-cost.spec.ts`).
+phone (CPU slowed 4x) ~1.8 s per synced save (`e2e-tests/edit-cost.spec.ts`).
 
 ## Decision
 
@@ -31,7 +31,8 @@ holding a Base. A frontmatter change draws the properties again (D-133).
 - Opening today's note costs one render by section, about twice a whole render's
   JavaScript for a long note: a 200-line one 95 ms at phone speed, against 68.
 - Another note opens as it did; its first save pays that render once.
-- `e2e/saved-note.spec.ts` checks a note saved in place against a fresh render.
+- `e2e-tests/saved-note.spec.ts` checks a note saved in place against a fresh
+  render.
 
 ## Rejected alternatives
 

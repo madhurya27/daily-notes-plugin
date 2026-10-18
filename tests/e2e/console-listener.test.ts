@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { oneConsoleListener } from "../../e2e/ios/console-listener";
+import { oneConsoleListener } from "../../e2e-tests/ios/console-listener";
 
 const start = "            this.remote.startConsole(eventListener);";
 const driver = `        if (safariConsole) {\n${start}\n        }`;
@@ -20,7 +20,7 @@ describe("oneConsoleListener", () => {
 
     it("refuses a driver that no longer starts its console as expected", () => {
         expect(() => oneConsoleListener("this.remote.startConsole(listener);")).toThrow(
-            "The XCUITest driver no longer starts its console listener as e2e/ios/console-listener.ts expects."
+            "The XCUITest driver no longer starts its console listener as e2e-tests/ios/console-listener.ts expects."
         );
     });
 });

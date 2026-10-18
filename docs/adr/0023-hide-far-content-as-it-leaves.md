@@ -42,8 +42,8 @@ Supersedes the waits in D-032 and ADR 0021 for hiding; unloading still waits.
   frames than the render margin. The next frame shows the run. A spacer margin
   of 3 panes took these to 0–1 but left the blank time unchanged (1.4–2.5 s
   either way) and stalls over 80 ms rose from 7–10 to 11–13: the screen is blank
-  there unpainted all the same. `e2e/ios/far-runs.spec.ts` fails a spacer on
-  screen two frames running.
+  there unpainted all the same. `e2e-tests/ios/far-runs.spec.ts` fails a spacer
+  on screen two frames running.
 - Desktop, 1,825 notes scrolled to the end: 6 notes drawn, not 4; 2,654 live
   nodes, not 2,378; heap grows 7.3 MB, not 5.8 MB.
 

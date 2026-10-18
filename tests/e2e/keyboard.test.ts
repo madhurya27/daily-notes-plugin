@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { keyboardAfterRun } from "../../e2e/ios/keyboard";
+import { keyboardAfterRun } from "../../e2e-tests/ios/keyboard";
 
 // WebDriverAgent turns both off on the phone each time it starts.
 describe("keyboardAfterRun", () => {

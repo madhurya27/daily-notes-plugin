@@ -138,7 +138,7 @@ function encodeScene(): void {
 /** Appium serving the phone on the cable; returns what stops it. */
 export default async function startAppium(): Promise<() => Promise<void>> {
     mkdirSync(DEV, { recursive: true });
-    loadLocalEnv(join(REPO, "e2e/ios/.env"));
+    loadLocalEnv(join(REPO, "e2e-tests/ios/.env"));
     // A typo fails here, not after the run.
     keyboardAfterRun(process.env);
     const team = teamId();

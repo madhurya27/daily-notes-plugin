@@ -43,7 +43,7 @@ describe("plugin submission compliance", () => {
     // Obsidian's sample plugin names files in kebab-case; D-023.
     it("names every source and test file in kebab-case", () => {
         const kebab = /^[a-z0-9]+(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*\.ts$/;
-        for (const dir of ["src", "tests", "e2e"]) {
+        for (const dir of ["src", "tests", "e2e-tests"]) {
             for (const path of tsFilesUnder(resolve(repoRoot, dir))) {
                 for (const segment of path.split(/[\\/]/)) {
                     expect(segment, `${dir}/${path}`).toMatch(
@@ -51,6 +51,20 @@ describe("plugin submission compliance", () => {
                     );
                 }
             }
+        }
+    });
+
+    // The directory's scanner lints every .ts it does not skip, test helpers
+    // included; these are its skip patterns that cover our folders. The root's
+    // config files are linted, and clean.
+    // https://github.com/obsidianmd/eslint-plugin/blob/master/docs/configuration.md#community-plugin-scanner-configuration
+    it("keeps every TypeScript folder but src/ where the review scanner skips it", () => {
+        const skipped = /^(tests|e2e-tests|scripts|docs)\//;
+        const folders = readdirSync(repoRoot, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory() && !["src", "node_modules", ".dev", ".git"].includes(entry.name))
+            .map((entry) => entry.name);
+        for (const folder of folders) {
+            for (const path of tsFilesUnder(resolve(repoRoot, folder))) expect(`${folder}/${path}`).toMatch(skipped);
         }
     });
 

@@ -29,7 +29,8 @@ measured the old one.
 
 - iPhone, glide through a drawn note: 5,000 lines blank 0.13 s in all, longest
   50 ms (was 3.7 s, 584 ms); 10,000 lines 0.17 s, longest 83 ms.
-- A note's height is unchanged by hiding, to 0.5 px (`e2e/far-runs.spec.ts`).
+- A note's height is unchanged by hiding, to 0.5 px
+  (`e2e-tests/far-runs.spec.ts`).
 - A save shows only the runs it touches: iPhone, one task of 31–36 ms at 5,000
   lines, 40–43 ms at 10,000 (D-134).
 - Selecting and copying across a hidden run copies none of it.

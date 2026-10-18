@@ -376,9 +376,9 @@ searches hidden frontmatter too (checked 2026-09-23).
 
 ## D-023 — Kebab-case files, grouped into folders (2026-09-23)
 
-**Decision:** every `.ts` file in `src/`, `tests/` and `e2e/` is kebab-case;
-`src/` groups them into `ui/`, `stream/`, `render/` and `notes/`. Class names
-are unchanged. `tests/repo/compliance.test.ts` enforces the case.
+**Decision:** every `.ts` file in `src/`, `tests/` and `e2e-tests/` is
+kebab-case; `src/` groups them into `ui/`, `stream/`, `render/` and `notes/`.
+Class names are unchanged. `tests/repo/compliance.test.ts` enforces the case.
 
 **Why:** Obsidian's plugin guidelines ask for folders once there is more than
 one `.ts` file, and the official sample plugin and Minimal Settings name files
@@ -1142,7 +1142,7 @@ docs promise only "better performance", so the timing test is the guard.
 tables and equations in place.
 
 **Why:** scrolling 40 notes, each embedding a Base over 1,825 notes plus
-equations and a wide table (`e2e/render-cost.spec.ts`, CPU slowed 4x to a
+equations and a wide table (`e2e-tests/render-cost.spec.ts`, CPU slowed 4x to a
 phone's, on an M5, in the on-screen window of D-124): a Base held the queue 19
 ms median, 29–74 ms at most; the plugin forced 797–857 layouts, 266–290 ms in
 all, about 7 ms a note. The spec's budgets are about twice these.
@@ -1286,8 +1286,8 @@ lines' difference × line height; else the template's measured height here, plus
 its lines past the template's × a per-line rate learned from text-only notes,
 plus its embeds × a per-embed height learned at this layout (the pane's height
 until one is); else the layout's median. Lines come from the metadata cache, so
-adding a block stays synchronous. Benchmark: `e2e/estimates.spec.ts`, scored by
-`scripts/score-estimates.mjs`.
+adding a block stays synchronous. Benchmark: `e2e-tests/estimates.spec.ts`,
+scored by `scripts/score-estimates.mjs`.
 
 **Why:** a turn changes a text note only by re-wrapping it, and every note is
 its template plus writing (ADR 0011). Mean error for text notes falls from 85px
@@ -1385,7 +1385,7 @@ phone.
 - `stackWideTables` stacks a table whenever one is added or filled in, not only
   at render.
 - e2e runs a pinned Dataview release, fetched once into `.dev/`
-  (`e2e/dataview.ts`).
+  (`e2e-tests/dataview.ts`).
 
 **Why:** Dataview draws after the note renders, over several passes; its wide
 tables were clipped, not stacked, and each block was a scroll box until the
@@ -1843,8 +1843,9 @@ paints a frame after, so text below a Base in the same note jumped and returned:
 
 **Decision:** the iOS harness ends a run by setting both through WebDriverAgent:
 on by default, `IOS_KEYBOARD_AUTOCORRECT=off` or `IOS_KEYBOARD_PREDICTION=off`
-to leave one off, set on the command line or in a gitignored `e2e/ios/.env`,
-which the command line overrides. Tests still type with both off.
+to leave one off, set on the command line or in a gitignored
+`e2e-tests/ios/.env`, which the command line overrides. Tests still type with
+both off.
 
 **Why:** WebDriverAgent turns both off each time it starts, real phones
 included, and never back on: the tester's keyboard stayed changed.
@@ -1864,7 +1865,7 @@ stream's own class rather than taking Obsidian's.
 **Why:** on an iPhone, a flick begun on a `.clickable-icon` never scrolled:
 Obsidian's mobile tap handling for the class swallows the pan, with no
 `preventDefault` or `touch-action` to see. The pencil on every title in the
-editing spike (ADR 0018) failed four `e2e/ios/` glides.
+editing spike (ADR 0018) failed four `e2e-tests/ios/` glides.
 
 **Rejected:**
 
@@ -2016,7 +2017,8 @@ Obsidian sent.
 
 - One incremental index for both — correct only if Obsidian fires `resolve` for
   every source whose links change, renames and deletes of targets included.
-  `e2e/linked-mentions.spec.ts` guards the delete and rename cases for a retry.
+  `e2e-tests/linked-mentions.spec.ts` guards the delete and rename cases for a
+  retry.
 
 ## D-123 — The day's turn waits for the stream's next change, or midnight (2026-10-11)
 
@@ -2144,11 +2146,11 @@ more restyle of the whole note, ~520 ms at phone speed.
 **Decision:** no length limit: any note saved while rendered re-renders only the
 sections a save changed from then on (ADR 0019).
 
-**Why:** at phone speed (CPU slowed 4x, `e2e/edit-cost.spec.ts`), a 200-line
-note's first save by section holds one 61–96 ms task, against none rendered
-whole; each save after costs nothing, against 35 ms. A limit set the path's use
-by an M5's speed, and left it to the few with long notes, where its faults would
-surface late.
+**Why:** at phone speed (CPU slowed 4x, `e2e-tests/edit-cost.spec.ts`), a
+200-line note's first save by section holds one 61–96 ms task, against none
+rendered whole; each save after costs nothing, against 35 ms. A limit set the
+path's use by an M5's speed, and left it to the few with long notes, where its
+faults would surface late.
 
 **Rejected:**
 
@@ -2157,10 +2159,10 @@ surface late.
 
 ## D-131 — Specs time a laptop slowed below every supported iPhone (2026-10-13)
 
-**Decision:** `emulatePhoneCpu` times a fixed workload (`e2e/phone-speed.ts`) on
-the machine, then slows its CPU until the workload takes 20 ms: about 2.3 times
-an iPhone 16 Pro's 7.6–9.0 ms. `e2e/ios/phone-speed.spec.ts` keeps that ratio to
-the real phone.
+**Decision:** `emulatePhoneCpu` times a fixed workload
+(`e2e-tests/phone-speed.ts`) on the machine, then slows its CPU until the
+workload takes 20 ms: about 2.3 times an iPhone 16 Pro's 7.6–9.0 ms.
+`e2e-tests/ios/phone-speed.spec.ts` keeps that ratio to the real phone.
 
 **Why:** the fixed 4x slowed an M5 to 22–29 ms, and a slower laptop ran slower
 still. 20 ms is below an iPhone 11 (~18 ms, half a 16 Pro's single core on
@@ -2392,7 +2394,7 @@ bounce opened Obsidian's pull-down action, the command palette, over the stream.
 ## D-144 — The phone harness patches Appium to one console listener (2026-10-15)
 
 **Decision:** setup rewrites the XCUITest driver's `context.js` to stop its
-console listeners before it starts one (`e2e/ios/console-listener.ts`).
+console listeners before it starts one (`e2e-tests/ios/console-listener.ts`).
 
 **Why:** the driver adds a listener on every switch into the web view and never
 removes one. After N switches each message is logged N times into a buffer of
@@ -2490,3 +2492,19 @@ pair around its `try`.
   real gaps with the equivalent ones.
 - Tests asserting what nothing depends on, a zoom of 1 or a field's first value,
   overwritten before it is read — pass the metric, guard nothing.
+
+## D-150 — End-to-end tests live in `e2e-tests/` (2026-10-17)
+
+**Decision:** the Playwright suite moves from `e2e/` to `e2e-tests/`.
+`tests/repo/compliance.test.ts` keeps every TypeScript folder but `src/` under a
+path the directory's review scanner skips.
+
+**Why:** the scanner skips `e2e-tests/**` and `*.spec.*`, not `e2e/`, so it
+linted the harness as plugin code: the 1.0.0 review's three errors and most of
+its warnings
+([scanner config](https://github.com/obsidianmd/eslint-plugin/blob/master/docs/configuration.md#community-plugin-scanner-configuration)).
+
+**Rejected:**
+
+- Fixing the harness to the plugin rules — `fs`, `child_process` and `fetch` are
+  what a Node test harness is for.

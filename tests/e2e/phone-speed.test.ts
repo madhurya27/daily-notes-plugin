@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cpuSlowdown } from "../../e2e/phone-speed";
+import { cpuSlowdown } from "../../e2e-tests/phone-speed";
 
 describe("cpuSlowdown", () => {
     it("slows a machine until the workload takes as long as on the target phone", () => {

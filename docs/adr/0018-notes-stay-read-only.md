@@ -13,7 +13,7 @@ lost: drawing a note's Bases threw the reader thousands of px, and every fix to
 the anchor, the pinned heights or the keyboard surfaced the next case. Opening a
 note already costs little: a title opens it, ⌘-click in a tab, ⌘⌥-click in a
 split beside the stream, and Back returns to the place left
-(`e2e/history.spec.ts`).
+(`e2e-tests/history.spec.ts`).
 
 ## Decision
 

@@ -13,12 +13,12 @@ actually _visible_. A rendered-list indent bug shipped for exactly this reason.
 
 ## Decision
 
-`e2e/` drives the installed Obsidian app: Playwright attaches over CDP to an
-instance launched with its own `--user-data-dir` and a throwaway seeded vault,
-so the user's real vault and config are never touched. Every spec runs twice — a
-`desktop` project and a `mobile` one applying `emulateMobile(true)` at an iPhone
-Pro's 402px — because Obsidian's mobile stylesheet differs enough that a rule
-can be right on one layout and wrong on the other.
+`e2e-tests/` drives the installed Obsidian app: Playwright attaches over CDP to
+an instance launched with its own `--user-data-dir` and a throwaway seeded
+vault, so the user's real vault and config are never touched. Every spec runs
+twice — a `desktop` project and a `mobile` one applying `emulateMobile(true)` at
+an iPhone Pro's 402px — because Obsidian's mobile stylesheet differs enough that
+a rule can be right on one layout and wrong on the other.
 
 Unit tests keep the mock and keep 100% coverage; anything about real rendering,
 real events, or what is visible on screen belongs in e2e.
@@ -30,7 +30,8 @@ real events, or what is visible on screen belongs in e2e.
 - E2E needs Obsidian installed and is slower (~50s), so it is a task gate rather
   than a per-save one.
 - The launch is fiddly by nature — window bounds, focus, the single-instance
-  lock, first-run trust prompt — and that machinery lives in `e2e/obsidian.ts`.
+  lock, first-run trust prompt — and that machinery lives in
+  `e2e-tests/obsidian.ts`.
 - Obsidian internals can change under us. That is the point: the suite fails
   when they do.
 

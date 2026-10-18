@@ -106,8 +106,8 @@ export default tseslint.config(
         "main.js",
         ".dev",
         "vitest.config.ts",
-        // Typechecked by e2e/tsconfig.json; ESLint's project service covers src and tests.
-        "e2e",
+        // Typechecked by e2e-tests/tsconfig.json; ESLint's project service covers src and tests.
+        "e2e-tests",
         "playwright.config.ts",
         "playwright.ios.config.ts",
     ])

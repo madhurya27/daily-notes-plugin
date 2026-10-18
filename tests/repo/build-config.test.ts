@@ -9,12 +9,12 @@ describe("build configuration", () => {
     it('keeps "type": "module" even though the bundle is CommonJS', () => {
         // The two are unrelated: esbuild's format is an output setting Obsidian
         // consumes, while the field tells Node — and so Playwright's TypeScript
-        // loader — how to read this repo's own sources. e2e/obsidian.ts uses
+        // loader — how to read this repo's own sources. e2e-tests/obsidian.ts uses
         // import.meta.url, which fails to parse without it.
         const pkg = JSON.parse(read("package.json")) as { type?: string };
         expect(read("esbuild.config.mjs")).toContain('format: "cjs"');
         expect(pkg.type).toBe("module");
-        expect(read("e2e/obsidian.ts")).toContain("import.meta.url");
+        expect(read("e2e-tests/obsidian.ts")).toContain("import.meta.url");
     });
 
     // Release builds run without BUILD_LABEL, so they carry an empty label and show no notice.

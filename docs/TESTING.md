@@ -59,8 +59,8 @@ harness seeds, `Stream E2E`, stored on the phone. It ends a run where it began:
 Obsidian back in the vault it had open, then closed, on the Home Screen. The
 keyboard's autocorrection and predictive text, which WebDriverAgent turns off,
 end on; `IOS_KEYBOARD_AUTOCORRECT=off` or `IOS_KEYBOARD_PREDICTION=off` leaves
-one off (D-112), on the command line or in a gitignored `e2e/ios/.env`. Once per
-Mac and phone:
+one off (D-112), on the command line or in a gitignored `e2e-tests/ios/.env`.
+Once per Mac and phone:
 
 1. Install Xcode, open it once, and add an Apple ID under Settings → Accounts.
    Then Manage Certificates → + → Apple Development. A free account is enough.
@@ -97,7 +97,7 @@ the account. When a run fails:
 
 ## Verification
 
-What `pnpm run test:e2e` cannot check; the specs in `e2e/` hold the rest.
+What `pnpm run test:e2e` cannot check; the specs in `e2e-tests/` hold the rest.
 **[e2e]** marks an item the suite covers in part, **[ios]** one
 `pnpm run test:ios` does.
 
