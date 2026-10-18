@@ -6,6 +6,12 @@ import { blockAt } from "./stream-blocks";
 /** How long the scroll is still before the stream counts it stopped (D-032). */
 export const SCROLL_IDLE_MS = 300;
 
+/**
+ * WebKit's layout unit: no layout moves anything less. A debt below it is a
+ * remainder of summing fractions, as 0.1 + 0.2 - 0.3 leaves 5.6e-17.
+ */
+const LAYOUT_UNIT = 1 / 64;
+
 /** From a block down to an element, each where it was drawn in the pane, and how tall. */
 type Place = { el: Element; top: number; height: number }[];
 
@@ -170,7 +176,7 @@ export class ScrollAnchor {
         const stream = this.stream;
         // Stryker disable next-line LogicalOperator: attach and detach set and clear both together.
         if (!this.scrollRoot || !stream || moved === 0) return;
-        this.owed += moved;
+        this.setOwed(this.owed + moved);
         this.shift(stream);
         this.settleOnceStill();
     }
@@ -330,11 +336,11 @@ export class ScrollAnchor {
         const scrolled = this.scrollRoot!.scrollTop - this.placeScroll;
         const moved = point ? this.movedSince(point, scrolled) : 0;
         if (moved === 0) return false;
-        this.owed += moved;
+        this.setOwed(this.owed + moved);
         // Past the end, the place is lost once handed over all the same. Not
         // mid-bounce past it: the room below is the bounce's, and capped by
         // it, what grew above was lost and the text dropped.
-        if (this.loadedToEnd() && this.below() >= 0) this.owed = Math.min(this.owed, this.below());
+        if (this.loadedToEnd() && this.below() >= 0) this.setOwed(Math.min(this.owed, this.below()));
         this.shift(this.stream!);
         return true;
     }
@@ -522,6 +528,11 @@ export class ScrollAnchor {
         this.shifted = content;
         content.addClass("is-scroll-shifted");
         content.style.setProperty("--daily-notes-scroll-shift", `${-this.owed}px`);
+    }
+
+    /** Owes `amount`, or nothing when less than any layout moves. */
+    private setOwed(amount: number): void {
+        this.owed = Math.abs(amount) < LAYOUT_UNIT ? 0 : amount;
     }
 
     /** Drops the debt, and the reflow it came from. */

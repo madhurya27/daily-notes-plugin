@@ -229,6 +229,38 @@ describe("ScrollAnchor", () => {
         expect(readerTop(blocks)).toBe(-100);
     });
 
+    // Summed, 0.1 + 0.2 - 0.3 leaves 5.6e-17: owed still, the stream stayed
+    // shifted, and the hand-over wrote the scroll, which stops a glide.
+    it("owes nothing once moves cancel out, though their sum leaves a remainder", () => {
+        const { pane, content } = watch([400, 400, 400], 900);
+        const write = vi.fn();
+        let scrollTop = pane.scrollTop;
+        Object.defineProperty(pane, "scrollTop", {
+            configurable: true,
+            get: () => scrollTop,
+            set: (value: number) => {
+                write(value);
+                scrollTop = value;
+            },
+        });
+
+        anchor.anticipate(0.1);
+        anchor.anticipate(0.2);
+        anchor.anticipate(-0.3);
+        vi.advanceTimersByTime(SCROLL_IDLE_MS);
+
+        expect(shift(content)).toBe(0);
+        expect(write).not.toHaveBeenCalled();
+    });
+
+    it("owes a move as small as a layout moves anything", () => {
+        const { content } = watch([400, 400, 400], 900);
+
+        anchor.anticipate(1 / 64);
+
+        expect(shift(content)).toBe(-1 / 64);
+    });
+
     // Told the scroll is still, it writes now: a handover put off is lost to a scroll begun meanwhile.
     it("hands what it owes to the scroll at once when told the scroll is still", () => {
         const { pane, content, blocks, resize } = watch([400, 400, 400], 900);

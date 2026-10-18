@@ -2522,3 +2522,17 @@ reaches the review.
 **Rejected:**
 
 - Raising each rule to an error by name — the list drifts from the scanner's.
+
+## D-154 — A debt under a layout unit is none (2026-10-18)
+
+**Decision:** the scroll anchor owes nothing when its debt is under 1/64 px,
+WebKit's layout unit (`src/stream/scroll-anchor.ts`).
+
+**Why:** the debt sums fractional moves, which can cancel to a remainder such as
+`2.8e-14`. Owed still, the stream stayed shifted and the hand-over wrote the
+scroll, which stops a glide; `e2e-tests/ios/jump.spec.ts` failed 1 run in 3.
+
+**Rejected:**
+
+- Rounding each move to 1/64 px — errs on every move, and the errors add up.
+- `Number.EPSILON` — a remainder grows with the sums it comes from.
