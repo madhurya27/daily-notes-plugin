@@ -1248,6 +1248,24 @@ test.describe("daily notes stream in real Obsidian", () => {
         expect(chevronBox!.x).toBeGreaterThanOrEqual(paneBox!.x);
     });
 
+    // A list starts flush under its heading, a quarter of a paragraph's
+    // spacing below; a paragraph or table keeps its own margin.
+    test("spaces a heading from what follows it", async ({ obsidian }) => {
+        const container = await openStream(obsidian.page);
+        const gaps = await container
+            .locator(".daily-note-block")
+            .first()
+            .evaluate((el) => {
+                const spacing = parseFloat(getComputedStyle(el.querySelector("p")!).marginBlockStart);
+                return Array.from(el.querySelectorAll(".daily-note-content h2.is-collapsible")).map((heading) => {
+                    const next = heading.nextElementSibling!;
+                    const gap = next.getBoundingClientRect().top - heading.getBoundingClientRect().bottom;
+                    return `${next.tagName}: ${gap / spacing}`;
+                });
+            });
+        expect(gaps).toEqual(["P: 1", "UL: 0.25", "TABLE: 1", "UL: 0.25"]);
+    });
+
     test("sets the properties heading on the same line as the note's own headings", async ({ obsidian }) => {
         const { page } = obsidian;
         await page.evaluate(async () => {

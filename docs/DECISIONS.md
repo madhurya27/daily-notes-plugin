@@ -1001,8 +1001,8 @@ one above the match pushed it off screen, leaving the reader on the Base.
 
 ## D-059 — A Base's header and summaries scroll with it, on mobile (2026-09-27)
 
-**Decision:** on mobile, a Base table's header and summary row are
-`position: static` (`styles.css`).
+**Decision:** on mobile, a Base table's header is `position: static` and its
+summary row `bottom: auto`, sticky with no inset (`styles.css`, D-153).
 
 **Why:** Bases pins both to its own scroll box. ADR 0008 clips that box away, so
 they pinned to the stream's instead and floated over the notes.
@@ -2540,6 +2540,21 @@ reproduces them; with this, none.
   still flagged.
 - Waiting for a scanner fix — the rating stays meanwhile. Revert once fixed
   (`docs/TODO.md`).
+
+## D-153 — styles.css avoids what the scorecard flags (2026-10-18)
+
+**Decision:** no `:has`, no custom element selected by tag, and one
+`!important`: the clip on Dataview's blocks and the scroll box guard's finds.
+`tests/repo/styles.test.ts` holds all three.
+
+**Why:** the directory's scorecard warns on each. Dataview and Obsidian set
+`overflow-x` inline, which only `!important` outranks; every other override wins
+on specificity, or, for Bases' sticky summaries, on their inset.
+
+**Rejected:**
+
+- Clearing the inline overflow from code — more code in the scroll path, and an
+  exception to D-003, to drop one warning.
 
 ## D-154 — A debt under a layout unit is none (2026-10-18)
 

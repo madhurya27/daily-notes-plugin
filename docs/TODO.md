@@ -11,6 +11,9 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 - [ ] Explore adding e2e tests to CI on Linux.
 - [ ] Once the scorecard's lint resolves moment's types, return to Obsidian's
       `moment` and drop `src/notes/moment.ts` (D-152).
+- [ ] If the scorecard still warns on `styles.css`'s last `!important` (D-153),
+      clear Dataview's and Obsidian's inline `overflow-x` from code instead;
+      needs a D-003 exception.
 
 ## Known limits
 

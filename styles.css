@@ -439,8 +439,9 @@
     margin-block-end: calc(var(--p-spacing) * 0.5);
 }
 
-.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ :is(p, ul, ol)) {
-    margin-block-end: calc(var(--p-spacing) * 0.25);
+/* A list sits closer: a negative margin collapses into the heading's. */
+.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible + :is(ul, ol) {
+    margin-block-start: calc(var(--p-spacing) * -0.25);
 }
 
 /* Centered on the first line by offset, so a heading stays one run of text: a
@@ -624,7 +625,7 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
 }
 
 /* An equation wider than the note shrinks to fit (src/render/wide-equations.ts). */
-.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) mjx-container[display="true"] > mjx-math {
+.is-mobile :is(.daily-note-content, .daily-note-mention-excerpt) .MathJax[display="true"] > [display="true"] {
     zoom: var(--daily-note-equation-zoom, 1);
 }
 
@@ -633,15 +634,18 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
     max-height: none;
 }
 
-/* A Base and everything in it, a Dataview query, and whatever the scroll box
-   guard found (src/stream/scroll-box-guard.ts). !important outranks Bases' and
-   Dataview's own rules. */
+/* A Base and everything in it, an embedded note and a PDF. */
 .is-mobile .daily-note-block :is(.bases-embed, .block-language-base),
 .is-mobile .daily-note-block :is(.bases-embed, .block-language-base) *,
-.is-mobile .daily-note-block :is(.block-language-dataview, .block-language-dataviewjs),
 .is-mobile .daily-note-block .markdown-embed-content,
-.is-mobile .daily-note-block :is(.pdf-embed, .pdf-embed *),
-.is-mobile .daily-note-block .is-scroll-clipped {
+.is-mobile .daily-note-block :is(.pdf-embed, .pdf-embed *) {
+    overflow: clip;
+}
+
+/* A Dataview query and whatever the scroll box guard found
+   (src/stream/scroll-box-guard.ts). Dataview and Obsidian set their overflow
+   inline, which only !important outranks. */
+.is-mobile .daily-note-block :is(.block-language-dataview, .block-language-dataviewjs, .is-scroll-clipped) {
     overflow: clip !important;
 }
 
@@ -658,13 +662,13 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
 /* A card's border is a ring Bases draws just outside it, which the grid ends
    on; the view around the grid still clips, in its padding. */
 .is-mobile .daily-note-block :is(.bases-cards-container, .bases-cards-group) {
-    overflow: visible !important;
+    overflow: visible;
 }
 
 /* A tag pill's padding reaches past the line it sits in; Bases leaves its
    wrappers unclipped, so it shows whole. */
 .is-mobile .daily-note-block :is(.value-list-container, .value-list-element) {
-    overflow: visible !important;
+    overflow: visible;
 }
 
 /* Cards and the header's first icon line up with the note's text (D-089). The
@@ -701,9 +705,9 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
     position: static;
 }
 
-/* Bases' own rule for the summaries is !important. */
+/* Bases' own rule keeps the summaries sticky; with no inset they never stick. */
 .is-mobile .daily-note-block .bases-table-footer {
-    position: static !important;
+    bottom: auto;
 }
 
 /* Bases fixes a card's line at 24px, which a tag pill outgrows at a larger

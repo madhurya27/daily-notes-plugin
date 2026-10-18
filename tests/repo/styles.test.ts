@@ -14,6 +14,24 @@ describe("styles.css", () => {
         expect(rules.length).toBeGreaterThan(0);
     });
 
+    // The directory's scorecard warns on each (D-153).
+    it("selects with no :has", () => {
+        for (const { selector } of rules) expect(selector).not.toContain(":has(");
+    });
+
+    it("selects no custom element by its tag", () => {
+        for (const { selector } of rules) {
+            // A highlight's name is not a tag.
+            const tags = selector.replace(/::highlight\([^)]*\)/g, "");
+            expect(tags, selector).not.toMatch(/(^|[\s>+~(,])[a-z]+-[a-z-]+(?=[\s[.:>+~,)]|$)/);
+        }
+    });
+
+    it("uses !important only to outrank an inline overflow", () => {
+        const important = rules.filter(({ body }) => body.includes("!important"));
+        expect(important.map(({ body }) => body.trim())).toEqual(["overflow: clip !important;"]);
+    });
+
     // WebKit reads only the prefixed property, so on iOS Obsidian's
     // `-webkit-user-select: none` won: no selecting, and no search highlights,
     // which WebKit does not paint on unselectable text.
