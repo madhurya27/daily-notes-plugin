@@ -6,7 +6,7 @@
     "description": "Infinite scroll view for daily notes.",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/madhurya27/daily-notes-plugin.git"
+        "url": "git+https://github.com/madhurya27/daily-notes-stream.git"
     },
     "main": "main.js",
     "type": "module",

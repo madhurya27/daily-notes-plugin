@@ -69,7 +69,7 @@ If you want to edit notes directly inside the feed, try
 ## Install
 
 1. From the
-   [latest release](https://github.com/madhurya27/daily-notes-plugin/releases/latest),
+   [latest release](https://github.com/madhurya27/daily-notes-stream/releases/latest),
    download `main.js`, `manifest.json` and `styles.css`.
 2. Put them in `<Vault>/.obsidian/plugins/daily-notes-stream/`. Create the
    folder if it doesn't exist; `.obsidian` is hidden in most file browsers.
