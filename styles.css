@@ -134,7 +134,7 @@
    against the note's text size, not the interface's. */
 .daily-note-header {
     margin-bottom: var(--size-4-4, 1rem);
-    font-size: var(--font-text-size);
+    font-size: var(--font-preferred-size);
 }
 
 .daily-note-title {
@@ -156,14 +156,15 @@
 
 /* `overflow-wrap`: a long URL breaks mid-word rather than widening the stream,
    as in reading view: Obsidian sets it on .markdown-preview-view, which the
-   stream lacks. */
+   stream lacks. The size too: the text size, scaled on a phone by iOS's text
+   size setting. */
 .daily-note-content {
     line-height: var(--line-height-normal);
     -webkit-user-select: text;
     user-select: text;
     cursor: auto;
     font-family: var(--font-text);
-    font-size: var(--font-text-size);
+    font-size: var(--font-preferred-size);
     overflow-wrap: break-word;
 }
 
@@ -183,7 +184,7 @@
 /* The panel belongs to the note, so it reads at the note's text size — what
    Obsidian's own panel inherits from the editor around it. */
 .daily-notes-stream-container .metadata-container {
-    font-size: var(--font-text-size);
+    font-size: var(--font-preferred-size);
 }
 
 /* Obsidian sets a key and a value through `input.metadata-property-key-input`
@@ -660,6 +661,12 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
     overflow: visible !important;
 }
 
+/* A tag pill's padding reaches past the line it sits in; Bases leaves its
+   wrappers unclipped, so it shows whole. */
+.is-mobile .daily-note-block :is(.value-list-container, .value-list-element) {
+    overflow: visible !important;
+}
+
 /* Cards and the header's first icon line up with the note's text (D-089). The
    view keeps 1px each side for the cards' ring; the header gives back its own
    padding and its first button's. */
@@ -703,7 +710,7 @@ body:not(.is-mobile) :is(.daily-note-content, .daily-note-mention-excerpt) :is(t
    font. Its ratio to the default font, kept at every size; Bases lays cards
    out from this. */
 .is-mobile .daily-note-block {
-    --bases-cards-line-height: calc(var(--font-text-size) * 1.5);
+    --bases-cards-line-height: calc(var(--font-preferred-size) * 1.5);
 }
 
 /* Obsidian pins the copy button to a code block's top-right corner and wraps

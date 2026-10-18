@@ -185,16 +185,17 @@ describe("LayoutMemory", () => {
 });
 
 describe("layoutOf", () => {
-    // Obsidian's font size and line width both reach the column's width or text size.
-    it("names a layout by the stream column's width and text size", () => {
+    // Obsidian's font size and line width both reach the column's width or text size;
+    // on a phone, so does iOS's text size setting.
+    it("names a layout by the stream column's width and the text size notes are drawn at", () => {
         const column = document.createElement("div");
         Object.defineProperty(column, "clientWidth", { value: 612 });
-        column.style.setProperty("--font-text-size", " 16px");
+        column.style.setProperty("--font-preferred-size", " calc(16px * 1.25)");
         document.body.appendChild(column);
 
-        expect(layoutOf(column)).toBe("612:16px");
+        expect(layoutOf(column)).toBe("612:calc(16px * 1.25)");
         // A Base asks of the width it is checked against.
-        expect(layoutOf(column, 500)).toBe("500:16px");
+        expect(layoutOf(column, 500)).toBe("500:calc(16px * 1.25)");
         column.remove();
     });
 });

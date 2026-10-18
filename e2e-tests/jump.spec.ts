@@ -320,7 +320,7 @@ test.describe("jump to date", () => {
         await jumpTo(page, seededDate(SEEDED_DAYS - 1));
 
         const { layout, remembered, reserved } = await container.evaluate((column) => {
-            const layout = `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-text-size").trim()}`;
+            const layout = `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-preferred-size").trim()}`;
             const notes: [string, [string, number][]][] =
                 window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.toJSON().heights;
             const unloaded = [...column.querySelectorAll<HTMLElement>(".daily-note-block.is-unloaded")];
@@ -333,7 +333,8 @@ test.describe("jump to date", () => {
                 ]),
             };
         });
-        expect(layout).toMatch(/^\d+:\d+px$/);
+        // On a phone, the text size scaled by iOS's setting.
+        expect(layout).toMatch(/^\d+:(\d+px|calc\(\d+px \* [\d.]+\))$/);
         expect(reserved.length).toBeGreaterThan(0);
         // A note unloaded this session reserves what it measured, as the store keeps it (D-105).
         for (const [path, height] of reserved) expect(height, path).toBe(`${remembered[path!]}px`);

@@ -76,11 +76,11 @@ function isVersion(saved: unknown): saved is { notes: unknown; bases: unknown } 
 
 /**
  * The layout `column` lays notes out in: its width, or the one it is checked
- * against, and text size. Theme margins, line width and pane size all reach
- * the width.
+ * against, and the size notes are drawn at, which on a phone iOS's text size
+ * setting scales. Theme margins, line width and pane size all reach the width.
  */
 export function layoutOf(column: HTMLElement, width = column.clientWidth): string {
     // Stryker disable next-line MethodExpression: jsdom trims a custom property's value, as engines since 2021 do; older ones kept the space.
-    const textSize = getComputedStyle(column).getPropertyValue("--font-text-size").trim();
+    const textSize = getComputedStyle(column).getPropertyValue("--font-preferred-size").trim();
     return `${width}:${textSize}`;
 }

@@ -748,6 +748,19 @@ export async function atTextSize(page: Page, px: number, body: () => Promise<voi
 }
 
 /**
+ * Runs `body` with iOS's text size setting at `scale`, as Obsidian on a phone
+ * sets it, then back. Off 1, a size that ignores it shows.
+ */
+export async function atTextScale(page: Page, scale: number, body: () => Promise<void>) {
+    await page.evaluate((s) => document.documentElement.style.setProperty("--preferred-text-scale", `${s}`), scale);
+    try {
+        await body();
+    } finally {
+        await page.evaluate(() => document.documentElement.style.removeProperty("--preferred-text-scale"));
+    }
+}
+
+/**
  * Chromium stands in for iOS WebKit, which has no scroll anchoring: the stream
  * holds the reader's place itself from the next view opened. Undone by
  * `restoreScrollAnchoring`, since tests share the instance.

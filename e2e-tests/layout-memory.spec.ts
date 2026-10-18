@@ -7,7 +7,7 @@ test("reserves a note never measured at what the vault's notes measured, erring 
     const container = await openStream(obsidian.page);
     const reserved = () =>
         container.evaluate((column) => {
-            const layout = `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-text-size").trim()}`;
+            const layout = `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-preferred-size").trim()}`;
             const { notes } = window.app.plugins.plugins["daily-notes-stream"].layoutMemory;
             const unmeasured = [...column.querySelectorAll<HTMLElement>(".daily-note-block.is-unloaded")].find(
                 (block) => notes.heightOf(layout, block.dataset.sourcePath) === undefined
@@ -68,7 +68,7 @@ test("forgets every height on a device build's command", async ({ obsidian }) =>
     const container = await openStream(obsidian.page);
     const stored = () =>
         container.evaluate((column) => {
-            const layout = `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-text-size").trim()}`;
+            const layout = `${column.clientWidth}:${getComputedStyle(column).getPropertyValue("--font-preferred-size").trim()}`;
             return window.app.plugins.plugins["daily-notes-stream"].layoutMemory.notes.entries(layout).length as number;
         });
     await expect.poll(stored).toBeGreaterThan(0);

@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, atTextSize, openStream, LAYOUT_VIEWPORT, unloadFar } from "./obsidian";
+import { test, expect, atTextScale, atTextSize, openStream, LAYOUT_VIEWPORT, unloadFar } from "./obsidian";
 
 /** Newer than every seeded note, so it opens the stream. */
 const NOTE = "Notes/2026-03-15.md";
@@ -205,34 +205,61 @@ test.describe("Bases on mobile", () => {
         expect(shortened).toEqual([]);
     });
 
+    /** Draws a card holding a tag pill below its title; returns whatever clips the pill short, up to its card. */
+    async function tagPillClippedBy(page: Page): Promise<string[]> {
+        await seed(page, [
+            "---",
+            "tags:",
+            "  - Books",
+            "---",
+            "",
+            ...block(
+                "views:",
+                "  - type: cards",
+                "    name: Tags",
+                "    order:",
+                "      - file.name",
+                "      - note.tags"
+            ),
+        ]);
+        const pill = cards((await openStream(page)).locator(".daily-note-base").first())
+            .first()
+            .locator(".bases-cards-line a.tag")
+            .first();
+        await expect(pill).toBeVisible();
+        return pill.evaluate((el) => {
+            const box = el.getBoundingClientRect();
+            const found: string[] = [];
+            for (let e = el.parentElement; e && !e.matches(".bases-cards-item"); e = e.parentElement) {
+                if (getComputedStyle(e).overflow === "visible") continue;
+                const clip = e.getBoundingClientRect();
+                // Within a pixel: inline layout leaves the pill a fraction of one past its line's top.
+                const cut = Math.max(
+                    clip.top - box.top,
+                    box.bottom - clip.bottom,
+                    clip.left - box.left,
+                    box.right - clip.right
+                );
+                if (cut >= 1) found.push(e.className);
+            }
+            return found;
+        });
+    }
+
     // Bases draws a card's line at a fixed height, which a pill outgrows as
     // the font grows.
-    test("fits a tag pill inside its card line at a large font", async ({ obsidian }) => {
+    test("shows a tag pill whole in its card at a large font", async ({ obsidian }) => {
         const { page } = obsidian;
         await atTextSize(page, 22, async () => {
-            await seed(page, [
-                "---",
-                "tags:",
-                "  - Books",
-                "---",
-                "",
-                ...block("views:", "  - type: cards", "    name: Tags", "    order:", "      - note.tags"),
-            ]);
-            const line = cards((await openStream(page)).locator(".daily-note-base").first())
-                .first()
-                .locator(".bases-cards-line");
-            await expect(line.locator(".value-list-element").first()).toBeVisible();
-            const textSize = await line
-                .first()
-                .evaluate((el) => getComputedStyle(el).getPropertyValue("--font-text-size"));
-            expect(textSize).toBe("22px");
+            expect(await tagPillClippedBy(page)).toEqual([]);
+        });
+    });
 
-            const overrun = await line.first().evaluate((el) => {
-                const bottom = el.getBoundingClientRect().bottom;
-                const pill = el.querySelector(".value-list-element")!.getBoundingClientRect().bottom;
-                return pill - bottom;
-            });
-            expect(overrun).toBeLessThanOrEqual(0);
+    // On a phone, Obsidian scales a pill's text by iOS's text size setting.
+    test("shows a tag pill whole in its card at iOS's larger text sizes", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await atTextScale(page, 1.5, async () => {
+            expect(await tagPillClippedBy(page)).toEqual([]);
         });
     });
 
