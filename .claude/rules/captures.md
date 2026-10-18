@@ -18,7 +18,11 @@ paths:
 pnpm run capture:screenshots   # rewrite the README's stills in docs/images/, from the demo vault
 pnpm run capture:recording     # rewrite only docs/images/demo-desktop.webp, the README's desktop recording
 pnpm run capture:recording:ios # rewrite only docs/images/demo-phone.webp, on the plugged-in iPhone
+pnpm run capture:listing       # the directory listing's five desktop screenshots, into .dev/listing/
 ```
+
+- The listing's screenshots are uploaded by hand under **Edit listing** on the
+  directory's dashboard: 1200x800, the whole window, sidebar open.
 
 - The desktop stills are the top of the note column, framed; the desktop
   recording shows the window (D-126). The transparent e2e window lays out at 1x,
