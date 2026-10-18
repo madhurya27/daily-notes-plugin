@@ -74,7 +74,7 @@ describe("StreamSearch", () => {
         );
     });
 
-    const current = () => [...CSS.highlights.get("daily-notes-search-current")!] as Range[];
+    const current = () => [...(CSS.highlights.get("daily-notes-search-current") ?? [])] as Range[];
     const currentNote = () => notes.find((f) => blocks.get(f)!.contains(current()[0]!.startContainer));
 
     it("counts the matching notes, not the matches", async () => {

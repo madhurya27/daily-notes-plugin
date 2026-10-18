@@ -5,17 +5,23 @@ import { searchPattern } from "../notes/note-search";
 const MATCH = "daily-notes-search-match";
 const CURRENT = "daily-notes-search-current";
 
+/** A window as far as highlights go: a registry, absent without the API. */
+type HighlightWindow = Window & { CSS: { highlights?: HighlightRegistry }; Highlight: typeof Highlight };
+
 /**
- * The document's highlight of `name`, registered on first use. Shared by every
- * stream view, so each adds and deletes only its own ranges. Null where the
- * platform has no highlight API: the ranges are still tracked, just unpainted.
+ * The highlight of `name` in the window showing `node`, registered on first
+ * use: each window paints only from its own registry, a pop-out's included.
+ * Shared by every stream view in that window, so each adds and deletes only its
+ * own ranges. Null where the platform has no highlight API: the ranges are
+ * still tracked, just unpainted.
  */
-function registered(name: string): Highlight | null {
-    const registry = CSS.highlights as HighlightRegistry | undefined;
+function registered(name: string, node: Node): Highlight | null {
+    const win = node.win as HighlightWindow;
+    const registry = win.CSS.highlights;
     if (!registry) return null;
     let highlight = registry.get(name);
     if (!highlight) {
-        highlight = new Highlight();
+        highlight = new win.Highlight();
         // Overlapping ranges paint by priority: the current match over the rest.
         if (name === CURRENT) highlight.priority = 1;
         registry.set(name, highlight);
@@ -32,12 +38,12 @@ const OUTSIDE_THE_NOTE = ".daily-note-mentions, .metadata-properties-heading, .i
 /** Every occurrence of `pattern` inside one text node of `root`, what is outside the note left out. */
 function findRanges(root: HTMLElement, pattern: RegExp): Range[] {
     const ranges: Range[] = [];
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, (node) =>
+    const walker = root.doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, (node) =>
         node.parentElement!.closest(OUTSIDE_THE_NOTE) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
     );
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         for (const match of (node as Text).data.matchAll(pattern)) {
-            const range = document.createRange();
+            const range = root.doc.createRange();
             range.setStart(node, match.index);
             range.setEnd(node, match.index + match[0].length);
             ranges.push(range);
@@ -80,18 +86,16 @@ export class SearchHighlighter {
 
     /** Marks the match the reader is on; null clears the mark. */
     setCurrent(range: Range | null): void {
-        const highlight = registered(CURRENT);
-        // Stryker disable next-line ConditionalExpression: deleting null from a highlight deletes nothing.
-        if (this.current) highlight?.delete(this.current);
+        if (this.current) registered(CURRENT, this.current.startContainer)?.delete(this.current);
         this.current = range;
-        if (range) highlight?.add(range);
+        if (range) registered(CURRENT, range.startContainer)?.add(range);
     }
 
     private highlight(block: HTMLElement): void {
         this.unpaint(block);
         const found = this.pattern ? findRanges(block, this.pattern) : [];
         this.ranges.set(block, found);
-        const highlight = registered(MATCH);
+        const highlight = registered(MATCH, block);
         for (const range of found) highlight?.add(range);
     }
 
@@ -104,7 +108,7 @@ export class SearchHighlighter {
         // Stryker disable next-line ArrayDeclaration: a stray entry is no range of the highlight's to delete.
         const ranges = this.ranges.get(block) ?? [];
         if (this.current && ranges.includes(this.current)) this.setCurrent(null);
-        const highlight = registered(MATCH);
+        const highlight = registered(MATCH, block);
         for (const range of ranges) highlight?.delete(range);
     }
 }

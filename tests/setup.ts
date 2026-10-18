@@ -82,6 +82,20 @@ Node.prototype.instanceOf = function <T>(this: Node, type: new () => T): this is
     return this instanceof type;
 };
 
+/** Obsidian's handles on a node's own window and document, which a pop-out window has apart. */
+Object.defineProperties(Node.prototype, {
+    doc: {
+        get(this: Node) {
+            return this.ownerDocument ?? this;
+        },
+    },
+    win: {
+        get(this: Node) {
+            return (this.ownerDocument ?? (this as Document)).defaultView ?? window;
+        },
+    },
+});
+
 /** Obsidian's global helpers: an element built as on a parent, then detached. */
 const globals = globalThis as unknown as Pick<typeof globalThis, "createEl" | "createDiv" | "createSpan">;
 globals.createEl = ((tag: keyof HTMLElementTagNameMap, o?: Parameters<typeof proto.createEl>[1]) => {

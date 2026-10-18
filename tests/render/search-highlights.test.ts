@@ -14,6 +14,22 @@ function renderedBlock(html: string): { block: HTMLElement; component: Component
     return { block, component };
 }
 
+/**
+ * A pop-out window's stand-in: an iframe has a window and document of its own,
+ * and here a highlight registry of its own, as each Chromium window does.
+ */
+function popOutWindow(): { win: Window & typeof globalThis; registry: HighlightRegistry } {
+    const frame = document.body.appendChild(document.createElement("iframe"));
+    const win = frame.contentWindow as Window & typeof globalThis;
+    const registry = new Map() as unknown as HighlightRegistry;
+    (win as { CSS: unknown }).CSS = { highlights: registry };
+    win.Highlight = Highlight;
+    // Obsidian extends each window's nodes, a pop-out's too.
+    const { doc, win: ownWindow } = Object.getOwnPropertyDescriptors(Node.prototype);
+    Object.defineProperties(win.Node.prototype, { doc, win: ownWindow });
+    return { win, registry };
+}
+
 describe("SearchHighlighter", () => {
     let highlighter: SearchHighlighter;
 
@@ -189,6 +205,29 @@ describe("SearchHighlighter", () => {
         highlighter.setQuery("");
 
         expect(highlighted("daily-notes-search-match")).toEqual(["milk"]);
+    });
+
+    it("paints a note in a pop-out window in that window's registry, not the main one's", () => {
+        const { win, registry } = popOutWindow();
+        const block = win.document.body.appendChild(win.document.createElement("div"));
+        block.append(win.document.createTextNode("Ran 5 km"));
+        const component = new Component();
+        component.load();
+        highlighter.setQuery("km");
+
+        highlighter.track(block, component);
+        highlighter.setCurrent(highlighter.rangesIn(block)[0]!);
+
+        const painted = (name: string) => [...(registry.get(name) ?? [])].map((r) => (r as Range).toString());
+        expect(painted("daily-notes-search-match")).toEqual(["km"]);
+        expect(painted("daily-notes-search-current")).toEqual(["km"]);
+        expect(highlighted("daily-notes-search-match")).toEqual([]);
+        expect(highlighted("daily-notes-search-current")).toEqual([]);
+
+        highlighter.setCurrent(null);
+        component.unload();
+        expect(painted("daily-notes-search-match")).toEqual([]);
+        expect(painted("daily-notes-search-current")).toEqual([]);
     });
 
     it("tracks ranges without painting where the platform has no highlight API", () => {
