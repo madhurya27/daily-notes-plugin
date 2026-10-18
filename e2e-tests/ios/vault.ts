@@ -3,10 +3,11 @@ import { createHash } from "crypto";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
-import { DAILY_TEMPLATE, demoVault } from "../../scripts/demo-vault.mjs";
+import { demoVault } from "../../scripts/demo-vault.mjs";
 import { DEMO as README_DEMO } from "../demo";
 import { testVault } from "../../scripts/seed-test-vault.mjs";
 import type { Phone } from "./phone";
+import { PLUGIN_ID, vaultConfig } from "./vault-config";
 
 /**
  * The harness's own vault on the phone, stored on it rather than in iCloud,
@@ -18,7 +19,6 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 /** The README recording's run: the desktop recording's journal, nothing shaped for a test. */
 const RECORDING = process.env.CAPTURE_RECORDING === "1";
 export const VAULT = process.env.IOS_VAULT ?? (RECORDING ? "Stream Demo" : "Stream E2E");
-const PLUGIN_ID = "daily-notes-stream";
 const DEMO: Record<string, string> = demoVault({ until: new Date(Date.UTC(2026, 8, 30)), days: 21 });
 /**
  * What once stopped iOS glides, in the newest notes, so a flick from the top
@@ -93,14 +93,7 @@ const NOTES = RECORDING ? README_DEMO : TEST_NOTES;
 
 /** Everything the vault holds, configuration and build included, by path. */
 function contents(configDir: string): Record<string, string> {
-    const config = {
-        "daily-notes.json": { folder: "Journal", format: "YYYY-MM-DD", template: DAILY_TEMPLATE },
-        "core-plugins.json": { "daily-notes": true, bases: true },
-        "community-plugins.json": [PLUGIN_ID],
-        "app.json": { attachmentFolderPath: "Attachments" },
-        // Light, whatever the phone's own theme: the desktop recording's.
-        ...(RECORDING ? { "appearance.json": { theme: "moonstone" } } : {}),
-    };
+    const config = vaultConfig({ recording: RECORDING });
     const build = ["main.js", "manifest.json", "styles.css"].map((name) => [
         `${configDir}/plugins/${PLUGIN_ID}/${name}`,
         readFileSync(join(REPO, name), "utf8"),
