@@ -68,7 +68,8 @@ describe("README", () => {
         const hosts = readdirSync(resolve(repoRoot, "src"), { recursive: true, encoding: "utf8" })
             .filter((file) => file.endsWith(".ts"))
             .flatMap((file) => [
-                ...readFileSync(resolve(repoRoot, "src", file), "utf8").matchAll(/\.src = `https:\/\/([^/]+)/g),
+                // Lazy to the statement's end: Stryker wraps the URL in a mutant switch.
+                ...readFileSync(resolve(repoRoot, "src", file), "utf8").matchAll(/\.src = [^;]*?`https:\/\/([^/]+)/g),
             ])
             .map((match) => match[1]!);
 
