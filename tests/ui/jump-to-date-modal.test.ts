@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from "vitest";
-import type { Moment } from "moment";
 import { JumpToDateModal, JUMP_OPEN_LIMIT, JUMP_SEARCH_LIMIT } from "../../src/ui/jump-to-date-modal";
 import { DailyNoteService } from "../../src/notes/daily-note-service";
 import { __mockSettings, __mockMarkdownFiles, __setMockNotes, __setMockSettings } from "../mocks/daily-notes";
 import { Platform, moment } from "obsidian";
+import type { Moment } from "../../src/notes/moment";
 import { asApp, makeApp } from "../stream-view-fixture";
 
 describe("JumpToDateModal", () => {

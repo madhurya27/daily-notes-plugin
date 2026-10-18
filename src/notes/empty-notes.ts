@@ -1,5 +1,6 @@
-import { debounce, moment, type TFile } from "obsidian";
-import type { Moment, NoteFilter } from "./daily-note-service";
+import { debounce, type TFile } from "obsidian";
+import type { NoteFilter } from "./daily-note-service";
+import type { Moment } from "./moment";
 import { isTemplateOnly, templatePattern } from "./template-match";
 import type { BacklinkIndex } from "./backlink-index";
 import type { DailyNotesStreamSettings } from "../settings";
@@ -222,7 +223,7 @@ export function hideEmptyNotes(
         prepare: (files) => (settings().hideEmptyNotes ? notes.checkAll(files) : Promise.resolve()),
         recheck: (file) => (settings().hideEmptyNotes ? notes.refresh([file]) : Promise.resolve()),
         isHidden: (file: TFile, date: Moment) =>
-            settings().hideEmptyNotes && notes.isEmpty(file) && !date.isSame(moment(), "day") && !hasMentions(file),
+            settings().hideEmptyNotes && notes.isEmpty(file) && !date.isSame(Date.now(), "day") && !hasMentions(file),
         signature: () => {
             const { hideEmptyNotes, showLinkedMentions } = settings();
             return `${hideEmptyNotes}\u0000${showLinkedMentions}\u0000${notes.templatePath()}`;

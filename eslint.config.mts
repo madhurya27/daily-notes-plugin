@@ -72,6 +72,24 @@ export default tseslint.config(
             ],
         },
     },
+    {
+        files: ["src/**/*.ts"],
+        ignores: ["src/notes/moment.ts"],
+        rules: {
+            "no-restricted-imports": [
+                "error",
+                {
+                    paths: [
+                        {
+                            name: "obsidian",
+                            importNames: ["moment"],
+                            message: "Import moment from src/notes/moment.ts, which the scorecard can type (D-152).",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
     // manifest.json, for validate-manifest; parsed as JSON by the TS parser.
     {
         files: ["manifest.json"],

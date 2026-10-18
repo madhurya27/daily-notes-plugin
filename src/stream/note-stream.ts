@@ -1,6 +1,7 @@
 import { basesLoaded } from "../render/bases/bases-loaded";
-import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce, moment } from "obsidian";
-import type { DailyNoteService, Moment } from "../notes/daily-note-service";
+import { Debouncer, Notice, Platform, TFile, TAbstractFile, debounce } from "obsidian";
+import type { DailyNoteService } from "../notes/daily-note-service";
+import { moment, type Moment } from "../notes/moment";
 import type { NoteRenderer } from "../render/note-renderer";
 import { StreamBlocks } from "./stream-blocks";
 import { InfiniteScrollController } from "./infinite-scroll";
@@ -112,7 +113,7 @@ export class NoteStream {
      * stream catches up once then, when the reader is still (D-123).
      */
     private armMidnight(): void {
-        const untilMidnight = moment().add(1, "day").startOf("day").diff(moment());
+        const untilMidnight = moment().add(1, "day").startOf("day").diff(Date.now());
         this.midnight = window.setTimeout(() => {
             this.dayTurnWaiting = true;
             this.catchUpDayOnceStill();

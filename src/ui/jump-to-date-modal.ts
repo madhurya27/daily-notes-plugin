@@ -1,5 +1,6 @@
-import { App, Platform, SuggestModal, moment, setIcon } from "obsidian";
-import type { DailyNoteService, Moment } from "../notes/daily-note-service";
+import { App, Platform, SuggestModal, setIcon } from "obsidian";
+import type { DailyNoteService } from "../notes/daily-note-service";
+import { moment, type Moment } from "../notes/moment";
 
 /** The one format every reader can fall back on, whatever their vault uses. */
 const ISO_FORMAT = "YYYY-MM-DD";

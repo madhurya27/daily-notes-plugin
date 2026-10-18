@@ -2523,6 +2523,24 @@ reaches the review.
 
 - Raising each rule to an error by name — the list drifts from the scanner's.
 
+## D-152 — Moment is typed locally (2026-10-18)
+
+**Decision:** `src/notes/moment.ts` types the moment methods the plugin calls
+and is the only importer of Obsidian's `moment`; lint enforces it. Another
+moment is passed as its milliseconds. A test holds the real moment to the type.
+
+**Why:** the directory's scorecard lints without moment's types, which
+`obsidian.d.ts` imports from its own dependency, so every moment call scored a
+warning: 91 on 1.0.2, rating its Review "Caution". Hiding moment locally
+reproduces them; with this, none.
+
+**Rejected:**
+
+- `@types/moment` — an empty stub depending on `moment`; nldates has it and is
+  still flagged.
+- Waiting for a scanner fix — the rating stays meanwhile. Revert once fixed
+  (`docs/TODO.md`).
+
 ## D-154 — A debt under a layout unit is none (2026-10-18)
 
 **Decision:** the scroll anchor owes nothing when its debt is under 1/64 px,

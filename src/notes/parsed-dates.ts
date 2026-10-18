@@ -1,5 +1,5 @@
 import type { TFile } from "obsidian";
-import type { Moment } from "./daily-note-service";
+import type { Moment } from "./moment";
 
 /**
  * Each path's parsed date, kept on the plugin between stream opens. A date

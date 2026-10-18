@@ -167,7 +167,7 @@ beforeEach(() => {
     const filter: NoteFilter = {
         prepare: () => Promise.resolve(),
         recheck: () => Promise.resolve(),
-        isHidden: (file, date) => hidden.has(file.path) && !date.isSame(moment(), "day"),
+        isHidden: (file, date) => hidden.has(file.path) && !date.isSame(Date.now(), "day"),
         signature: () => [...hidden].join("\n"),
     };
     service = new DailyNoteService(() => vault, __mockSettings, new ParsedDates(), filter);

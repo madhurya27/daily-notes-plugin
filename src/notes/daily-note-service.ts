@@ -1,10 +1,8 @@
-import { TFile, moment, normalizePath } from "obsidian";
+import { TFile, normalizePath } from "obsidian";
+import { moment, type Moment } from "./moment";
 import { ParsedDates } from "./parsed-dates";
 import { readDateFormat, type DateFormat } from "./daily-note-format";
 import type { DailyNoteSettings } from "../obsidian-internals";
-
-/** `obsidian` exports moment as a value, so the type comes from its return. */
-export type Moment = ReturnType<typeof moment>;
 
 /** Which daily notes the stream leaves out. */
 export interface NoteFilter {
@@ -93,11 +91,11 @@ export class DailyNoteService {
      */
     catchUpDay(): TFile[] {
         const today = moment();
-        if (today.isSame(this.seenDay, "day")) return [];
+        if (today.isSame(this.seenDay.valueOf(), "day")) return [];
         const seen = this.seenDay;
         this.seenDay = today;
         return this.datedNotes(this.format())
-            .filter((note) => note.date.isSame(seen, "day") || note.date.isSame(today, "day"))
+            .filter((note) => note.date.isSame(seen.valueOf(), "day") || note.date.isSame(today.valueOf(), "day"))
             .map((note) => note.file);
     }
 
@@ -182,7 +180,7 @@ export class DailyNoteService {
     isToday(path: string): boolean {
         const today = moment();
         const note = this.sorted[this.indexForDate(today)];
-        return !!note && note.file.path === path && note.date.isSame(today, "day");
+        return !!note && note.file.path === path && note.date.isSame(today.valueOf(), "day");
     }
 
     /** The index of the note at `path`; -1 when absent. */
