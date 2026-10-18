@@ -154,6 +154,9 @@
     text-decoration: underline;
 }
 
+/* `overflow-wrap`: a long URL breaks mid-word rather than widening the stream,
+   as in reading view: Obsidian sets it on .markdown-preview-view, which the
+   stream lacks. */
 .daily-note-content {
     line-height: var(--line-height-normal);
     -webkit-user-select: text;
@@ -161,6 +164,7 @@
     cursor: auto;
     font-family: var(--font-text);
     font-size: var(--font-text-size);
+    overflow-wrap: break-word;
 }
 
 /* Ensure standard spacing within rendered content */
@@ -422,8 +426,7 @@
     left: calc(-1 * var(--size-4-16, 4rem));
 }
 
-.daily-note-content li.is-collapsed > ul,
-.daily-note-content li.is-collapsed > ol {
+.daily-note-content li.is-collapsed > :is(ul, ol) {
     display: none;
 }
 
@@ -435,9 +438,7 @@
     margin-block-end: calc(var(--p-spacing) * 0.5);
 }
 
-.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ p),
-.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ ul),
-.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ ol) {
+.daily-note-content :is(h1, h2, h3, h4, h5, h6).is-collapsible:has(+ :is(p, ul, ol)) {
     margin-block-end: calc(var(--p-spacing) * 0.25);
 }
 
@@ -454,15 +455,11 @@
     color: var(--text-muted);
 }
 
-/* Headings, tables and code blocks each carry their own display rule below, all
-   of which outrank a single .is-hidden. The class is repeated to raise this rule's
-   specificity above every one of them: hidden must win wherever it lands. */
-.daily-note-content .is-hidden.is-hidden {
-    display: none;
-}
-
-/* A run of a long note far from the screen: out of the layout, behind a spacer
-   holding its room and outer margins (ADR 0021). Repeated as .is-hidden is. */
+/* Hidden content, and a run of a long note far from the screen, out of the
+   layout behind a spacer holding its room and outer margins (ADR 0021).
+   Headings, tables and code blocks each carry their own display rule, all of
+   which outrank a single class: each is repeated, to win wherever it lands. */
+.daily-note-content .is-hidden.is-hidden,
 .daily-note-content .is-far.is-far {
     display: none;
 }
@@ -480,12 +477,6 @@
 .daily-note-content li > :is(h1, h2, h3, h4, h5, h6) {
     margin-block-start: 0;
     margin-block-end: 0;
-}
-
-/* A long URL breaks mid-word rather than widening the stream, as in reading
-   view: Obsidian sets this on .markdown-preview-view, which the stream lacks. */
-.daily-note-content {
-    overflow-wrap: break-word;
 }
 
 /* A pasted video embed fixes a width wider than a phone. Capped, not clipped:
