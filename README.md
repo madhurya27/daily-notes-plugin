@@ -38,6 +38,7 @@ If you want to edit notes directly inside the feed, try [Daily Notes Editor](htt
 1. In Obsidian, open **Settings → Community plugins** and turn off **Restricted mode** if it's on.
 2. Select **Browse**, search for **Daily notes stream**, and select **Install**.
 3. Select **Enable**.
+4. Open the stream from the ribbon or the command palette; see [Open the stream](#open-the-stream).
 
 You can also open the plugin's [page in the Obsidian plugin directory](https://community.obsidian.md/plugins/daily-notes-stream) and install it from there. This works the same on a phone or tablet.
 
@@ -59,6 +60,8 @@ To build from source instead, run `pnpm run build` and copy the same three files
 ### Open the stream
 
 Click the ribbon icon (a stack of cards), or run `Daily notes stream: Open stream` from the command palette (Ctrl/Cmd+P). It opens in the current tab; Ctrl/Cmd-click the icon to open it in a new tab.
+
+On a phone, tap the menu button (☰) at the right of the bottom bar, then **Open daily notes stream**. The same menu has **Open command palette**.
 
 Each note is shown in full, as it looks in Obsidian's reading view, with its properties, images, tables, embeds, links, tasks and Bases. The stream is read-only, so clicking a task's checkbox doesn't tick it; open the note to edit it. Some content is reshaped so the stream scrolls smoothly, mostly on a phone or tablet; see [Phone and tablet](#phone-and-tablet).
 
