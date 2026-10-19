@@ -2745,3 +2745,22 @@ redraw, and the reader ended up 409px below their place: 5 turns in 60.
 
 - A hand-over that keeps holding the reflow — changes what every caller of
   `handOver` gets, to fix one.
+
+## D-161 — The listing's screenshots are cards (2026-10-19)
+
+**Decision:** each of the community listing's images is a card: a headline in
+Avenir Next on a warm paper background. Its five desktop cards show the stream's
+tab alone, sidebar closed, and last a light and a dark phone; its five mobile
+cards show one whole phone each, the last in the dark theme. Each phone is drawn
+at the 402x874 shape of its capture.
+
+**Why:** a bare window says nothing on its own, and its sidebar took a third of
+the image. A headline names the feature the picture shows. The mobile slots are
+9:16, shorter than a phone's screen, so a bare capture was cut or letterboxed.
+
+**Rejected:**
+
+- The whole window, sidebar open — mostly Obsidian's file list, not the plugin.
+- Bare phone captures cropped to 9:16 — cuts off the phone's own bars.
+- White text on black beside the window — reads as a copy of other listings.
+- A serif headline — looked out of place next to Obsidian's interface.

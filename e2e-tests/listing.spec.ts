@@ -1,18 +1,19 @@
-import type { Page } from "@playwright/test";
+import type { Page, TestInfo } from "@playwright/test";
 import { mkdirSync } from "fs";
 import { join, resolve } from "path";
 import { test, expect, openStream } from "./obsidian";
 import { prepareDemo, showLightTheme } from "./demo";
 
 /**
- * Captures the community directory listing's five desktop screenshots: the
- * whole window at the listing's 1200x800, at the display's scale. Uploaded by
- * hand under Edit listing, so they go to .dev/, not docs/. Opt-in, through
- * `pnpm run capture:listing`.
+ * Captures the community directory listing's raw screenshots, each on desktop
+ * and phone: the stream's pane on desktop, the whole screen on a phone. `scripts/listing-cards.mjs` lays
+ * them out as the cards uploaded by hand under Edit listing, so they go to
+ * .dev/, not docs/. Opt-in, through `pnpm run capture:listing`.
  */
 
-const OUT = resolve(import.meta.dirname, "..", ".dev", "listing");
-const SIZE = { width: 1200, height: 800 };
+const OUT = resolve(import.meta.dirname, "..", ".dev", "listing", "raw");
+/** Sized so the pane shows on its card at about its own size. */
+const WINDOW = { width: 904, height: 640 };
 
 /** Scrolls the stream so the note at `path` starts `fraction` of the way down the window. */
 async function placeNote(page: Page, path: string, fraction: number): Promise<void> {
@@ -24,36 +25,37 @@ async function placeNote(page: Page, path: string, fraction: number): Promise<vo
     }, fraction);
 }
 
-/** The window as a reader's vault shows it: a vault name, not the fixture's, and no sync status. */
+/** The window without the status bar, which shows the throwaway vault's sync state. */
 async function dressWindow(page: Page): Promise<void> {
     await page.evaluate(
         async ({ width, height }) => window.electron.remote.getCurrentWindow().setContentSize(width, height),
-        SIZE
+        WINDOW
     );
-    await page.waitForFunction(({ width }) => window.innerWidth === width, SIZE);
+    await page.waitForFunction(({ width }) => window.innerWidth === width, WINDOW);
     await page.evaluate(() => {
-        window.app.workspace.leftSplit.expand();
-        document.querySelector(".workspace-drawer-vault-name")!.textContent = "Journal";
         document.head.appendChild(document.createElement("style")).textContent = ".status-bar { display: none; }";
     });
-    const notes = page.locator('.nav-folder-title[data-path="Notes"]');
-    await notes.click();
-    await expect(page.locator('.nav-file-title[data-path^="Notes/"]').first()).toBeVisible();
 }
 
-async function capture(page: Page, name: string): Promise<void> {
+/** On desktop the stream's pane, its tab bar included; on a phone the whole screen. */
+async function capture(page: Page, name: string, testInfo: TestInfo): Promise<void> {
     await page.waitForTimeout(1000);
-    await page.screenshot({ path: join(OUT, `${name}.png`) });
+    const layout = testInfo.project.name === "mobile" ? "phone" : "desktop";
+    const path = join(OUT, `${name}-${layout}.png`);
+    if (layout === "phone") return void (await page.screenshot({ path }));
+    const clip = await page.locator(".workspace-split.mod-root").boundingBox();
+    if (!clip) throw new Error("the stream's pane is not on screen");
+    await page.screenshot({ path, clip });
 }
 
 test.describe("listing screenshots", () => {
     test.skip(process.env.CAPTURE_LISTING !== "1", "set CAPTURE_LISTING=1 to capture");
     test.describe.configure({ mode: "serial" });
 
-    test.beforeAll(async ({ obsidian }) => {
+    test.beforeAll(async ({ obsidian }, testInfo) => {
         const { page } = obsidian;
         await prepareDemo(page);
-        await dressWindow(page);
+        if (testInfo.project.name === "desktop") await dressWindow(page);
         mkdirSync(OUT, { recursive: true });
     });
 
@@ -61,25 +63,28 @@ test.describe("listing screenshots", () => {
         await obsidian.page.keyboard.press("Escape");
     });
 
-    test("the stream", async ({ obsidian }) => {
+    test("the stream", async ({ obsidian }, testInfo) => {
         const { page } = obsidian;
         await openStream(page);
         await placeNote(page, "Notes/2026-09-24.md", 0.4);
-        await capture(page, "1-stream");
+        await capture(page, "stream", testInfo);
     });
 
-    test("search", async ({ obsidian }) => {
+    test("search", async ({ obsidian }, testInfo) => {
         const { page } = obsidian;
         await openStream(page);
         await page.locator('.view-action[aria-label="Search"]').click();
         const bar = page.locator(".daily-notes-search");
         await bar.locator("input").fill("Mara");
-        await page.keyboard.press("Enter");
-        await expect(bar.locator(".document-search-count")).toHaveText(/^2 \/ \d+$/);
-        await capture(page, "2-search");
+        // Typing marks a match already on screen (D-022); with none on screen it only counts them, and Enter steps.
+        const count = bar.locator(".document-search-count");
+        await expect(count).toHaveText(/^(\d+ notes|1 \/ \d+)$/);
+        if ((await count.textContent())?.endsWith("notes")) await page.keyboard.press("Enter");
+        await expect(count).toHaveText(/^1 \/ \d+$/);
+        await capture(page, "search", testInfo);
     });
 
-    test("jump to date", async ({ obsidian }) => {
+    test("jump to date", async ({ obsidian }, testInfo) => {
         const { page } = obsidian;
         await openStream(page);
         // Below the prompt, so it covers no date.
@@ -88,29 +93,29 @@ test.describe("listing screenshots", () => {
         const prompt = page.locator(".prompt");
         await prompt.locator("input.prompt-input").fill("2026-09-1");
         await expect(prompt.locator(".suggestion-item").first()).toBeVisible();
-        await capture(page, "3-jump");
+        await capture(page, "jump", testInfo);
     });
 
-    test("a Base in a Sunday review", async ({ obsidian }) => {
+    test("a Base in a Sunday review", async ({ obsidian }, testInfo) => {
         const { page } = obsidian;
         const container = await openStream(page);
         const sunday = container.locator('[data-source-path="Notes/2026-09-20.md"]');
         await sunday.scrollIntoViewIfNeeded();
         await sunday.locator("h3", { hasText: "Reading" }).evaluate((heading) => heading.scrollIntoView());
-        await expect(sunday.locator(".bases-thead").first()).toBeVisible();
-        await capture(page, "4-bases");
+        // A table on desktop, cards on a phone.
+        await expect(sunday.locator(".bases-thead, .bases-cards-item").first()).toBeVisible();
+        await capture(page, "bases", testInfo);
     });
 
-    test("linked mentions in dark mode", async ({ obsidian }) => {
+    test("the stream in dark mode", async ({ obsidian }, testInfo) => {
+        test.skip(testInfo.project.name === "desktop", "only the phone cards show the dark theme");
         const { page } = obsidian;
         await page.emulateMedia({ colorScheme: "dark" });
         try {
             await expect(page.locator("body")).toHaveClass(/theme-dark/);
-            const container = await openStream(page);
-            const mentions = container.locator(".daily-note-block").first().locator(".daily-note-mentions");
-            await expect(mentions.locator(".daily-note-mention").first()).toBeVisible();
-            await mentions.evaluate((footer) => footer.scrollIntoView({ block: "center" }));
-            await capture(page, "5-mentions-dark");
+            await openStream(page);
+            await placeNote(page, "Notes/2026-09-24.md", 0.4);
+            await capture(page, "dark", testInfo);
         } finally {
             await showLightTheme(page);
         }
