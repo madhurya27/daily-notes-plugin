@@ -21,6 +21,7 @@ pnpm run test:mutation  # Stryker over src/, incremental; results in reports/ (D
 pnpm run test:e2e       # build + typecheck e2e + playwright against real Obsidian; fetches Dataview into .dev/ once
 pnpm exec playwright install webkit   # once, for e2e-tests/webkit.spec.ts
 pnpm run test:ios       # build + e2e-tests/ios/ on a plugged-in, unlocked iPhone (ADR 0016); setup in docs/TESTING.md
+IOS_SEED_DAYS=1825 pnpm run test:ios   # the same on five years of journal (D-158); ~7 min, as on 21 days
 xcrun devicectl list devices   # is the iPhone connected? Not system_profiler, which misses it
 pnpm run test:memory    # memory, render-cost and edit-cost specs on a seeded five-year vault (E2E_SEED_DAYS)
 # Every test run stops at its first failure; a full report: --max-failures=0 (Playwright), --bail=0 (vitest)

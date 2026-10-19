@@ -1,6 +1,6 @@
 import { test, expect, type Phone } from "./phone";
 import { OBSIDIAN } from "./session";
-import { EMBEDS_NOTE, KANBAN } from "./vault";
+import { EMBEDS_NOTE, FREE_DAYS, KANBAN } from "./vault";
 
 const NOTE = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"]`;
 const PDF = `${NOTE} .pdf-embed`;
@@ -88,7 +88,7 @@ test("a Base table's header and summary row stay on it as the stream scrolls pas
 
 // A preview, a link to the page (D-098): a touch on the page would scroll it, not the stream.
 test("a web page in a frame shows, and a tap opens it", async ({ phone }) => {
-    const note = "Journal/2026-09-06.md";
+    const note = FREE_DAYS[1];
     const link = `.daily-note-block[data-source-path="${note}"] a.daily-note-frame-link`;
     await phone.runAsync(async (path: string) => {
         await window.app.vault.create(

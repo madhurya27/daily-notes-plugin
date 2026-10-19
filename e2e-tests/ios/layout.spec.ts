@@ -1,5 +1,5 @@
 import { test, expect, type Phone } from "./phone";
-import { EMBEDS_NOTE, KANBAN } from "./vault";
+import { EMBEDS_NOTE, FREE_DAYS, KANBAN } from "./vault";
 
 const NOTE = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"]`;
 
@@ -168,7 +168,7 @@ test("centers a task's checkbox on its words at the default and a large text siz
 // iOS's system font draws the box larger than Chromium's phone layout: Obsidian's
 // hang left the first line 10px left of the rest at 28px here (D-106).
 test("lines a wrapped task's words up under its first line at the default and a large text size", async ({ phone }) => {
-    const note = "Journal/2026-09-05.md";
+    const note = FREE_DAYS[0];
     const task = `.daily-note-block[data-source-path="${note}"] li.task-list-item`;
     await phone.runAsync(async (path: string) => {
         await window.app.vault.create(

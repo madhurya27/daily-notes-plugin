@@ -19,7 +19,11 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 /** The README recording's run: the desktop recording's journal, nothing shaped for a test. */
 const RECORDING = process.env.CAPTURE_RECORDING === "1";
 export const VAULT = process.env.IOS_VAULT ?? (RECORDING ? "Stream Demo" : "Stream E2E");
-const DEMO: Record<string, string> = demoVault({ until: new Date(Date.UTC(2026, 8, 30)), days: 21 });
+/** Days of journal, 21 unless IOS_SEED_DAYS says otherwise: 1825 for five years. */
+const DEMO: Record<string, string> = demoVault({
+    until: new Date(Date.UTC(2026, 8, 30)),
+    days: Number(process.env.IOS_SEED_DAYS ?? 21),
+});
 /**
  * What once stopped iOS glides, in the newest notes, so a flick from the top
  * starts on it: math (D-085), a Base, a wide table and a long code line
@@ -68,14 +72,31 @@ export const MIDDLE = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"] .dai
 export const KANBAN = `.daily-note-block[data-source-path="${EMBEDS_NOTE}"] .daily-note-content > .daily-note-base:nth-child(7 of .daily-note-base)`;
 export const KANBAN_FILE = "Bases/Kanban.base";
 const TEST: Record<string, string> = testVault({ days: 0 });
+/**
+ * Unfiltered, the test Bases list every file: over five years, thousands of
+ * rows and a note a million pixels tall. Held to a month of the journal.
+ */
+export const A_MONTH = [
+    "filters:",
+    "  or:",
+    `    - '!file.inFolder("Journal")'`,
+    `    - 'file.name >= "${EMBEDS_NOTE.slice("Journal/".length, -".md".length)}"'`,
+    "",
+].join("\n");
 const EMBEDS = {
-    [EMBEDS_NOTE]: TEST["Notes/2026-08-30.md"]!,
-    ...Object.fromEntries(Object.entries(TEST).filter(([path]) => path.startsWith("Bases/"))),
+    [EMBEDS_NOTE]: TEST["Notes/2026-08-30.md"]!.replaceAll("```base\n", `\`\`\`base\n${A_MONTH}`),
+    ...Object.fromEntries(
+        Object.entries(TEST)
+            .filter(([path]) => path.startsWith("Bases/"))
+            .map(([path, base]) => [path, A_MONTH + base])
+    ),
     "Attachments/Manual.pdf": TEST["Attachments/Manual.pdf"]!,
     "Reading list.md": TEST["Reading list.md"]!,
 };
+/** Days the journal leaves out, for a test to write a note of its own on and delete. */
+export const FREE_DAYS = ["Journal/2026-09-05.md", "Journal/2026-09-06.md"] as const;
 const TEST_NOTES = {
-    ...DEMO,
+    ...Object.fromEntries(Object.entries(DEMO).filter(([path]) => !(FREE_DAYS as readonly string[]).includes(path))),
     ...EMBEDS,
     ...Object.fromEntries(
         NEWEST.map((path) => [path, DEMO[path]!.replace(/^(---\n[\s\S]*?\n---\n\n)/, `$1${STALLERS.join("\n")}`)])
@@ -236,6 +257,34 @@ export async function useVault(phone: Phone): Promise<void> {
     await rememberTestersVault(phone);
     await open(phone);
     await seed(phone);
+    await laidOut(phone);
+    await indexed(phone);
+}
+
+/**
+ * Waits for Obsidian to restore its tabs, which `seed` does only when it
+ * writes: a stream opened before has no tab to open in, and Obsidian throws.
+ */
+async function laidOut(phone: Phone): Promise<void> {
+    await expect
+        .poll(() => phone.run(() => !!window.app?.workspace?.layoutReady).catch(() => false), { timeout: 60_000 })
+        .toBe(true);
+}
+
+/**
+ * Waits out Obsidian's indexing of the vault: until every note has its cache
+ * and links, each note indexed redraws the stream, and its mentions, under the
+ * tests. Minutes on a fresh five-year vault.
+ */
+async function indexed(phone: Phone): Promise<void> {
+    const done = () => {
+        const { vault, metadataCache } = window.app;
+        const notes = vault.getMarkdownFiles() as { path: string }[];
+        return notes.every(
+            (note) => metadataCache.getFileCache(note) !== null && note.path in metadataCache.resolvedLinks
+        );
+    };
+    await expect.poll(() => phone.run(done).catch(() => false), { timeout: 600_000, intervals: [2_000] }).toBe(true);
 }
 
 /** The tester's vault, on disk until put back: a worker restarted by a failure finds the harness's open. */

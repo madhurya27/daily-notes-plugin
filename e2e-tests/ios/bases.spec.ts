@@ -1,5 +1,5 @@
 import { test, expect, type Phone } from "./phone";
-import { KANBAN, KANBAN_FILE, MIDDLE, SHORT_KANBAN, SHORT_NOTE } from "./vault";
+import { A_MONTH, KANBAN, KANBAN_FILE, MIDDLE, SHORT_KANBAN, SHORT_NOTE } from "./vault";
 
 /** A file the Base lists: it shows every note in `Books/`. */
 const NEW_ROW = "Books/A new book.md";
@@ -90,7 +90,7 @@ test("a Base filling in above the screen's top, a scroll before its report, leav
 
 /** A table whose headers fit a phone and whose values do not: only a drawn table shows it is too wide. */
 const VALUES_WIDE = [
-    "formulas:",
+    A_MONTH + "formulas:",
     ...["a", "b", "c", "d"].map((formula) => `  ${formula}: file.path + " " + file.path`),
     "views:",
     "  - type: table",

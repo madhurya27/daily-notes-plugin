@@ -2612,3 +2612,22 @@ short.
 - The setting in the layout key — a second set of heights for one setting.
 - Forgetting every height on a flip — most notes, holding no Base, lose a right
   height.
+
+## D-158 — The iPhone suite runs on five years by choice (2026-10-19)
+
+**Decision:** `IOS_SEED_DAYS` sets the iPhone vault's journal, 21 days unless
+set; 1825 is five years. Each test costs the same either way: the test Bases
+list a month of the journal (`A_MONTH`), and a trip to the oldest note starts 21
+notes above it (`stream.spec.ts`). The harness waits for Obsidian's layout and
+index before the first test.
+
+**Why:** the README says the stream stays fast over years of notes; desktop
+measured that (`pnpm run test:memory`), the phone did not.
+
+**Rejected:**
+
+- Five years always — each run reseeds the phone's vault, ~1,800 writes.
+- Bases listing every file — a note a million pixels tall tests a Base's size,
+  not the stream's length; tracked in `docs/TODO.md`.
+- Trips through every note — 11.5 min down, ~23 down and back, to check what 21
+  notes check.

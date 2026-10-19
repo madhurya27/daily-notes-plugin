@@ -60,6 +60,7 @@ Obsidian back in the vault it had open, then closed, on the Home Screen. The
 keyboard's autocorrection and predictive text, which WebDriverAgent turns off,
 end on; `IOS_KEYBOARD_AUTOCORRECT=off` or `IOS_KEYBOARD_PREDICTION=off` leaves
 one off (D-112), on the command line or in a gitignored `e2e-tests/ios/.env`.
+`IOS_SEED_DAYS=1825` seeds five years of journal in place of 21 days (D-158).
 Once per Mac and phone:
 
 1. Install Xcode, open it once, and add an Apple ID under Settings → Accounts.

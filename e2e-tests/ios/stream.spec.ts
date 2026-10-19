@@ -1,10 +1,28 @@
-import { test, expect } from "./phone";
+import { test, expect, type Phone } from "./phone";
+import { FREE_DAYS } from "./vault";
+
+/** A trip to the oldest note starts this many notes above it, as long as the default journal. */
+const TRIP_NOTES = 21;
+
+/** Jumps to the note `TRIP_NOTES` above the oldest, or to the newest; that note's path. */
+async function startTrip(phone: Phone): Promise<string> {
+    const dates = await phone.run(() =>
+        window.app.workspace
+            .getLeavesOfType("daily-notes-stream-view")[0]
+            .view.service.dates()
+            .map((date: { format(f: string): string }) => date.format("YYYY-MM-DD"))
+    );
+    const date = dates[Math.max(0, dates.length - TRIP_NOTES)]!;
+    await phone.jumpTo(date);
+    return `Journal/${date}.md`;
+}
 
 test("flicks reach the oldest note, each note once, newest first", async ({ phone }) => {
     await phone.openStream();
     const total = await phone.run(
         () => window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view.service.length
     );
+    await startTrip(phone);
 
     for (let flicks = 0; flicks < 100 && !(await phone.atEnd()); flicks++) await phone.flick("up", 3);
 
@@ -24,13 +42,14 @@ test("flicks to the oldest note and back change a rendered note's height only as
     const total = await phone.run(
         () => window.app.workspace.getLeavesOfType("daily-notes-stream-view")[0].view.service.length
     );
+    const start = await startTrip(phone);
     await phone.watchPins();
 
     for (let flicks = 0; flicks < 100 && !(await phone.atEnd()); flicks++) await phone.flick("up", 3);
-    for (let flicks = 0; flicks < 100 && (await phone.scrollTop()) > 0; flicks++) await phone.flick("down", 3);
+    for (let flicks = 0; flicks < 100 && (await phone.place()).path < start; flicks++) await phone.flick("down", 3);
 
     const { unpinned, rendered } = await phone.stopWatchingPins();
-    expect(rendered).toBe(total);
+    expect(rendered).toBeGreaterThanOrEqual(Math.min(total, TRIP_NOTES));
     expect(unpinned).toEqual([]);
 });
 
@@ -77,7 +96,7 @@ for (const direction of ["up", "down"] as const)
 
 /** A web page taller than its frame, so it could scroll inside it, in a note deep in the stream. */
 const PAGE = "Pages/Tall page.html";
-const FRAMED = "Journal/2026-09-05.md";
+const FRAMED = FREE_DAYS[0];
 
 for (const direction of ["up", "down"] as const)
     test(`a flick ${direction} over a web page in a frame glides on`, async ({ phone }) => {

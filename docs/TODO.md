@@ -4,6 +4,18 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] WebKit's "ResizeObserver loop completed with undelivered notifications" is
+      back (D-095). To reproduce, with an iPhone plugged in:
+      `IOS_SEED_DAYS=1825 pnpm run test:ios --max-failures=0`; on 2026-10-19
+      `stream.spec.ts:20` failed with it in 2 of 2 runs, though 0 of 5 alone.
+      Rarer on 21 days: the kanban in `bases.spec.ts:163`, 1 of ~70. Commoner
+      with a Base of ~1,800 rows: `A_MONTH` in `e2e-tests/ios/vault.ts` set to
+      `""` failed `embeds.spec.ts:17` 3 of 5 on five years.
+- [ ] The iPhone harness's own check can miss an error: on 2026-10-19 "an error
+      thrown on the phone fails the test" (`harness.spec.ts:17`) passed,
+      expected to fail, in 1 of 4 runs. Its `setTimeout` throws after the test's
+      console check reads the console, and the error lands on the next test.
+      Seen in a full `pnpm run test:ios --max-failures=0`.
 - [ ] Explore adding e2e tests to CI on Linux.
 - [ ] Once the scorecard's lint resolves moment's types, return to Obsidian's
       `moment` and drop `src/notes/moment.ts` (D-152).

@@ -1054,7 +1054,8 @@ export const test = base.extend<{ quietConsole: void }, { phone: Phone }>({
                 await driver.deleteSession();
             }
         },
-        { scope: "worker" },
+        // Seeding and indexing a five-year vault outlast a test's timeout.
+        { scope: "worker", timeout: 900_000 },
     ],
 });
 
