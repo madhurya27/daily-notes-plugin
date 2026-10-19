@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import {
+    setHideEmptyNotes,
     test,
     expect,
     atTextSize,
@@ -37,17 +38,10 @@ async function setShowLinkedMentions(page: Page, on: boolean) {
     }, on);
 }
 
-async function setHideEmptyNotes(page: Page, on: boolean) {
-    await page.evaluate(async (on) => {
-        const plugin = window.app.plugins.plugins["daily-notes-stream"];
-        plugin.settings.hideEmptyNotes = on;
-        await plugin.saveSettings();
-    }, on);
-}
-
 test.describe("empty daily notes", () => {
     test.beforeEach(async ({ obsidian }) => {
         const { page, vaultPath } = obsidian;
+        await setHideEmptyNotes(page, true);
         await page.evaluate(async () => {
             await window.app.vault.createFolder("Templates").catch(() => {});
         });
@@ -66,7 +60,7 @@ test.describe("empty daily notes", () => {
 
     test.afterEach(async ({ obsidian }) => {
         const { page, vaultPath } = obsidian;
-        await setHideEmptyNotes(page, true);
+        await setHideEmptyNotes(page, false);
         await setShowLinkedMentions(page, true);
         writeDailyNotesConfig(vaultPath, DAILY_NOTES_CONFIG);
         const paths = [

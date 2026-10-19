@@ -69,13 +69,11 @@ Each note is shown in full, as it looks in Obsidian's reading view, with its pro
 
 ### Empty notes
 
-A daily note that holds nothing, or only the text of your daily-notes template, is left out of the stream. It appears as soon as you write in it or change one of its properties.
+Every daily note is shown, including ones you never wrote in. To leave those out, turn on **Hide empty notes** in [settings](#settings). Then a daily note that holds nothing, or only the text of your daily-notes template, is left out of the stream. It appears as soon as you write in it or change one of its properties.
 
 Some empty notes still show. Today's note always does, and so does a note that another note links to, so you can see its linked mentions. A note made from an older version of your template shows too, because it no longer matches the current one.
 
 Templates made with the core Templates plugin or with Templater both work. A placeholder such as `{{date}}` or `<% tp.date.now() %>` can fill in anything on its own line. A Templater command that can write more than one line, such as `tp.file.include` or an `if` that picks between sections, can't be matched. A note made from a template that uses one always shows, even before you write in it.
-
-To show every note, turn off **Hide empty notes** in [settings](#settings).
 
 ### Move around
 
@@ -158,7 +156,7 @@ On desktop, wide tables and code blocks scroll sideways in their own box, as the
 
 ## Settings
 
-- **Hide empty notes** (on by default) leaves out daily notes you never wrote in. See [Empty notes](#empty-notes).
+- **Hide empty notes** (off by default) leaves out daily notes you never wrote in. See [Empty notes](#empty-notes).
 - **Properties**
     - **Show note properties** (on by default) shows each note's properties.
     - **Collapse properties by default** (off by default) starts each note with its properties folded.
@@ -178,7 +176,7 @@ The stream follows Obsidian's theme, light or dark.
 | --- | --- |
 | "No daily notes found" | Make sure the folder and date format in **Settings → Daily notes** match where your notes are and how they're named. |
 | "Every daily note is hidden" | Every daily note holds only its template, so all of them are hidden. Write in one, or turn off **Hide empty notes**. |
-| A note you expected is missing | Either it holds only its template (see [Empty notes](#empty-notes)), or its name doesn't match the date format. |
+| A note you expected is missing | Either **Hide empty notes** is on and it holds only its template (see [Empty notes](#empty-notes)), or its name doesn't match the date format. |
 | After installing by hand, the plugin isn't listed under Community plugins | Make sure the three files sit directly in `daily-notes-stream/`, not in a subfolder, then reload Obsidian. |
 
 ## Support

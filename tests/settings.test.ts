@@ -34,6 +34,12 @@ function toggles(items: (Toggle | Group)[]): Toggle[] {
     return items.flatMap((item) => ("type" in item ? item.items : [item]));
 }
 
+describe("DEFAULT_SETTINGS", () => {
+    it("shows empty notes until the user hides them", () => {
+        expect(DEFAULT_SETTINGS.hideEmptyNotes).toBe(false);
+    });
+});
+
 describe("DailyNotesStreamSettingTab", () => {
     it("puts Hide empty notes first, then each section's toggles in a group under its heading", () => {
         const definitions = definitionsOf(makeTab(makePlugin()));

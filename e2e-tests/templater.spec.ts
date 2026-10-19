@@ -1,5 +1,5 @@
 import { installPinned, TEMPLATER } from "./pinned-plugin";
-import { test, expect, openStream, writeDailyNotesConfig, DAILY_NOTES_CONFIG } from "./obsidian";
+import { test, expect, openStream, setHideEmptyNotes, writeDailyNotesConfig, DAILY_NOTES_CONFIG } from "./obsidian";
 
 const TEMPLATE_PATH = "Templates/Daily.md";
 /** A journal's daily-notes template, filled in only by Templater. */
@@ -28,6 +28,7 @@ const read = (page: Parameters<typeof openStream>[0]) =>
 
 test.beforeEach(async ({ obsidian }) => {
     const { page, vaultPath } = obsidian;
+    await setHideEmptyNotes(page, true);
     // Device-local, where Templater's own switch saves it: the setting runs code on a file's creation.
     await page.evaluate(() =>
         window.app.saveLocalStorage("templater-local-settings", { trigger_on_file_creation: true })
@@ -59,6 +60,7 @@ test.beforeEach(async ({ obsidian }) => {
 test.afterEach(async ({ obsidian }) => {
     const { page, vaultPath } = obsidian;
     await uninstall();
+    await setHideEmptyNotes(page, false);
     await page.evaluate(() => window.app.saveLocalStorage("templater-local-settings", null));
     writeDailyNotesConfig(vaultPath, DAILY_NOTES_CONFIG);
     await page.evaluate(

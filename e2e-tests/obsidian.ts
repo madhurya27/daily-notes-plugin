@@ -93,6 +93,15 @@ export async function restoreNote(page: Page, path: string, before: string | nul
 /** Core daily-notes settings every fixture vault starts with. */
 export const DAILY_NOTES_CONFIG = { folder: "Notes", format: "YYYY-MM-DD" };
 
+/** Sets Hide empty notes and saves it, as its toggle does. */
+export async function setHideEmptyNotes(page: Page, on: boolean) {
+    await page.evaluate(async (on) => {
+        const plugin = window.app.plugins.plugins["daily-notes-stream"];
+        plugin.settings.hideEmptyNotes = on;
+        await plugin.saveSettings();
+    }, on);
+}
+
 /** Rewrites the core daily-notes settings the plugin reads through the interface package, as their settings pane does. */
 export function writeDailyNotesConfig(vaultPath: string, config: Record<string, string>) {
     writeFileSync(join(vaultPath, ".obsidian", "daily-notes.json"), JSON.stringify(config));

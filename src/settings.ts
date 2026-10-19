@@ -14,7 +14,7 @@ export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
     propertiesCollapsed: false,
     showLinkedMentions: true,
     linkedMentionsCollapsed: false,
-    hideEmptyNotes: true,
+    hideEmptyNotes: false,
 };
 
 type SettingKey = keyof DailyNotesStreamSettings;

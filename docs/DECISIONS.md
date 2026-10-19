@@ -2582,3 +2582,14 @@ break, so a README wrapped at 80 broke mid-sentence on narrow screens.
 
 - Trailing-space or `<br>` tricks — Obsidian's renderer is the problem, not the
   breaks' kind.
+
+## D-156 — Empty notes show by default (2026-10-18)
+
+**Decision:** Hide empty notes is off by default (`src/settings.ts`).
+
+**Why:** a new user saw notes vanish with no cause in sight; a missing day read
+as a bug. Hiding stays one toggle away.
+
+**Rejected:**
+
+- On by default, explained in the README — the stream itself gives no hint.

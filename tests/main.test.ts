@@ -174,6 +174,8 @@ describe("DailyNotesStreamPlugin — onload", () => {
 });
 
 describe("DailyNotesStreamPlugin — empty notes", () => {
+    const HIDING = { hideEmptyNotes: true };
+
     /** The daily notes a newly opened view lists. */
     async function listed(plugin: DailyNotesStreamPlugin, app: ReturnType<typeof makeApp>) {
         const view = plugin.views[VIEW_TYPE_DAILY_NOTES_STREAM]!(new WorkspaceLeaf(asApp(app)));
@@ -185,7 +187,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
     beforeEach(() => __setMockNotes(["Notes/2025-01-01.md", "Notes/2025-01-02.md"]));
 
     it("leaves out of every view a daily note holding only its template", async () => {
-        const { plugin, app } = await loadPlugin();
+        const { plugin, app } = await loadPlugin(HIDING);
         app.vault.cachedRead.mockImplementation((file: TFile) =>
             Promise.resolve(file.path === "Notes/2025-01-02.md" ? "Written." : "")
         );
@@ -197,7 +199,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
 
     it("finds the template as the daily-notes plugin does", async () => {
         __setMockSettings({ format: "YYYY-MM-DD", folder: "Notes", template: "Templates/Daily" });
-        const { plugin, app } = await loadPlugin();
+        const { plugin, app } = await loadPlugin(HIDING);
 
         await listed(plugin, app);
 
@@ -205,7 +207,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
     });
 
     it("keeps an empty note another note links to, for its linked mentions", async () => {
-        const { plugin, app } = await loadPlugin();
+        const { plugin, app } = await loadPlugin(HIDING);
         app.metadataCache.resolvedLinks = { "Meeting.md": { "Notes/2025-01-01.md": 1 } };
 
         expect(await listed(plugin, app)).toEqual(["Notes/2025-01-01.md"]);
@@ -213,7 +215,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
 
     // A later session reads only what changed since (D-072).
     it("keeps which notes are empty on this device, saving them as the plugin unloads", async () => {
-        const { plugin, app } = await loadPlugin();
+        const { plugin, app } = await loadPlugin(HIDING);
         await listed(plugin, app);
 
         plugin.unload();
@@ -230,7 +232,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
     });
 
     it("reads no note unchanged since the last session", async () => {
-        const first = await loadPlugin();
+        const first = await loadPlugin(HIDING);
         await listed(first.plugin, first.app);
         first.plugin.unload();
         const saved: unknown = first.app.saveLocalStorage.mock.calls.find(([key]) => key === EMPTY_NOTES_KEY)![1];
@@ -238,6 +240,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
         const app = makeApp();
         app.loadLocalStorage.mockImplementation((key: string) => (key === EMPTY_NOTES_KEY ? saved : null));
         const plugin = new DailyNotesStreamPlugin(asApp(app), { id: "daily-notes-stream" } as PluginManifest);
+        plugin.data = HIDING;
         await plugin.onload();
 
         expect(await listed(plugin, app)).toEqual([]);
@@ -252,7 +255,7 @@ describe("DailyNotesStreamPlugin — empty notes", () => {
     });
 
     it("carries a note's verdict across a rename, and forgets a deleted note's", async () => {
-        const { plugin, app } = await loadPlugin();
+        const { plugin, app } = await loadPlugin(HIDING);
         const rename = vi.spyOn(plugin.emptyNotes, "rename");
         const forget = vi.spyOn(plugin.emptyNotes, "forget");
         fire(app.vault, "rename", { path: "Notes/new.md" }, "Notes/old.md");
