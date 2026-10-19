@@ -38,6 +38,10 @@ describe("DEFAULT_SETTINGS", () => {
     it("shows empty notes until the user hides them", () => {
         expect(DEFAULT_SETTINGS.hideEmptyNotes).toBe(false);
     });
+
+    it("draws a Base's cards at Bases' own size until the user asks for one per row", () => {
+        expect(DEFAULT_SETTINGS.oneCardPerRow).toBe(false);
+    });
 });
 
 describe("DailyNotesStreamSettingTab", () => {
@@ -46,6 +50,7 @@ describe("DailyNotesStreamSettingTab", () => {
 
         expect(outline(definitions)).toEqual([
             "Hide empty notes (hideEmptyNotes)",
+            "One card per row (oneCardPerRow)",
             {
                 "[Properties]": [
                     "Show note properties (showProperties)",

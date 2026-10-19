@@ -62,6 +62,28 @@ describe("asCards", () => {
         expect(views(asCards(definition, "Gone")).map((v) => v.name)).toEqual(["Files", "Second"]);
     });
 
+    it("sizes the cards it draws at the size given", () => {
+        const [view] = views(asCards(TABLE, undefined, 800));
+
+        expect(view).toEqual({ type: "cards", name: "Files", order: ["file.name"], cardSize: 800 });
+    });
+
+    // Bases keeps a view's card size when the view switches to a table and back.
+    it("keeps the card size a table view holds when given none", () => {
+        const [view] = views(asCards(lines(TABLE, "    cardSize: 150")));
+
+        expect(view).toEqual({ type: "cards", name: "Files", order: ["file.name"], cardSize: 150 });
+    });
+
+    // A cards view the note wrote keeps the size it chose.
+    it("leaves a view already cards at its own size", () => {
+        const definition = lines(TABLE, "  - type: cards", "    name: Mine", "    cardSize: 150");
+
+        const [, view] = views(asCards(definition, undefined, 800));
+
+        expect(view).toEqual({ type: "cards", name: "Mine", cardSize: 150 });
+    });
+
     it.each([
         ["no table or kanban view", lines("views:", "  - type: cards", "    name: C")],
         ["no views", "filters: file.hasTag('daily')"],

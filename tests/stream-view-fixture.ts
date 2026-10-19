@@ -57,6 +57,7 @@ export function makePlugin(): DailyNotesStreamPlugin {
             showLinkedMentions: false,
             linkedMentionsCollapsed: false,
             hideEmptyNotes: false,
+            oneCardPerRow: false,
         },
         collapseStore: new CollapsibleStateStore(asApp(app)),
         layoutMemory: new LayoutMemory(asApp(app)),

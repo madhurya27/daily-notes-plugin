@@ -2593,3 +2593,22 @@ as a bug. Hiding stays one toggle away.
 **Rejected:**
 
 - On by default, explained in the README — the stream itself gives no hint.
+
+## D-157 — One card per row is a setting (2026-10-19)
+
+**Decision:** **One card per row** (off by default) gives the cards a too-wide
+Base draws as (D-033) `cardSize: 800`, Bases' largest: one card fills any row. A
+view written as cards keeps its own size. A flip leaves remembered heights stale
+until each note redraws, as Show note properties does.
+
+**Why:** on a phone Bases fits two cards to a row, cutting each card's values
+short.
+
+**Rejected:**
+
+- A card size slider — how many fit a row still depends on the screen.
+- Cards per row, 1–3 — a size worked out from each width, redrawn as it changes.
+- Resizing cards the note wrote — the note chose that size.
+- The setting in the layout key — a second set of heights for one setting.
+- Forgetting every height on a flip — most notes, holding no Base, lose a right
+  height.

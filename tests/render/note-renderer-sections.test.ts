@@ -126,6 +126,7 @@ describe("NoteRenderer, a note by section", () => {
                 showLinkedMentions: false,
                 linkedMentionsCollapsed: false,
                 hideEmptyNotes: false,
+                oneCardPerRow: false,
             }),
             highlighter,
             new BaseMeasurements(),

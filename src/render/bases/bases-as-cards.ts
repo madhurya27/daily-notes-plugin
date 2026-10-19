@@ -14,17 +14,19 @@ interface Fence {
 }
 
 /**
- * A Base's definition with its table and kanban views drawn as cards, and `first`, the
- * view an embed names, moved to the front: a Base shows its first view. Null
- * when no view converts, so the Base keeps its fitted columns.
+ * A Base's definition with its table and kanban views drawn as cards, at
+ * `cardSize` when given, and `first`, the view an embed names, moved to the
+ * front: a Base shows its first view. Null when no view converts, so the Base
+ * keeps its fitted columns.
  */
-export function asCards(definition: string, first?: string): string | null {
+export function asCards(definition: string, first?: string, cardSize?: number): string | null {
     const parsed = parseDefinition(definition);
     if (!parsed || !Array.isArray(parsed.views)) return null;
 
     const views: unknown[] = parsed.views;
     if (!views.some(drawsWide)) return null;
-    const converted = views.map((view) => (drawsWide(view) ? { ...view, type: "cards" } : view));
+    const size = cardSize === undefined ? {} : { cardSize };
+    const converted = views.map((view) => (drawsWide(view) ? { ...view, type: "cards", ...size } : view));
     const named = converted.findIndex((view) => isRecord(view) && view.name === first);
     // Stryker disable next-line EqualityOperator: the first view moved to the front stays where it is.
     if (named > 0) converted.unshift(...converted.splice(named, 1));

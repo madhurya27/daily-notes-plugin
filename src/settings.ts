@@ -7,6 +7,7 @@ export interface DailyNotesStreamSettings {
     showLinkedMentions: boolean;
     linkedMentionsCollapsed: boolean;
     hideEmptyNotes: boolean;
+    oneCardPerRow: boolean;
 }
 
 export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
@@ -15,6 +16,7 @@ export const DEFAULT_SETTINGS: DailyNotesStreamSettings = {
     showLinkedMentions: true,
     linkedMentionsCollapsed: false,
     hideEmptyNotes: false,
+    oneCardPerRow: false,
 };
 
 type SettingKey = keyof DailyNotesStreamSettings;
@@ -34,6 +36,11 @@ export class DailyNotesStreamSettingTab extends PluginSettingTab {
                 "hideEmptyNotes",
                 "Hide empty notes",
                 "Leave out daily notes that hold only their template. Today's note always shows."
+            ),
+            toggle(
+                "oneCardPerRow",
+                "One card per row",
+                "When a Base too wide for a phone or tablet shows as cards, give each card the note's full width."
             ),
             this.section(
                 "Properties",

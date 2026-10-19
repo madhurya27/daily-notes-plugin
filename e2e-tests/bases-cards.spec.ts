@@ -91,6 +91,22 @@ test.describe("Bases on mobile", () => {
         await expect(cards(bases.nth(1))).toHaveCount(0);
     });
 
+    test("draws one card to a row when the settings ask", async ({ obsidian }) => {
+        const { page } = obsidian;
+        await seed(page, block("views:", ...table("Wide", HEADERS_WIDE)));
+        await page.evaluate(async () => {
+            const plugin = window.app.plugins.plugins["daily-notes-stream"];
+            plugin.settings.oneCardPerRow = true;
+            await plugin.saveSettings();
+        });
+        const base = (await openStream(page)).locator(".daily-note-base").first();
+        await expect(cards(base).nth(1)).toBeVisible();
+
+        const [first, second] = await Promise.all([0, 1].map((i) => cards(base).nth(i).boundingBox()));
+        expect(second!.x).toBe(first!.x);
+        expect(second!.y).toBeGreaterThan(first!.y + first!.height - 1);
+    });
+
     // Its headers alone decide it: measured from Bases' own header, once.
     test("draws a Base whose headers overrun the note straight as cards", async ({ obsidian }) => {
         const { page } = obsidian;

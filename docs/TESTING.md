@@ -146,6 +146,8 @@ Checks:
   ellipsis. **[e2e]** **[ios]**
 - A kanban wider than the note draws as cards, every column a group, upright and
   on its side. **[e2e]** **[ios]**
+- With **One card per row** on, each card a wide Base draws as fills the note's
+  width; a Base written as cards keeps its own size. **[e2e]**
 - A PDF shows its first page without a toolbar; a tap opens the PDF. **[e2e]**
   **[ios]**
 - A web page in a frame shows; a flick over it scrolls the stream, and a tap

@@ -232,7 +232,7 @@ export class NoteRenderer {
         private readonly expectsSaves: (file: TFile) => boolean = () => false
     ) {
         this.widths = new NoteWidths(component);
-        this.bases = new NoteBases(app, baseMeasurements, this.widths);
+        this.bases = new NoteBases(app, baseMeasurements, this.widths, () => getSettings().oneCardPerRow);
         this.mentions = new LinkedMentionsFooter(app, backlinks, collapsible, getSettings, this.widths, (el) =>
             this.markUnresolvedLinks(el)
         );

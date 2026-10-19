@@ -61,6 +61,7 @@ let render: MockInstance<typeof MarkdownRenderer.render>;
 let measure: ReturnType<typeof vi.fn<(host: HTMLElement) => HeaderMetrics | null>>;
 let bases: NoteBases;
 let noteWidth: number;
+let oneCardPerRow: boolean;
 let widths: FakeWidths;
 
 /** A note's content element holding `markdown`'s Bases, rendered. */
@@ -120,8 +121,9 @@ beforeEach(() => {
     };
     render = vi.spyOn(MarkdownRenderer, "render").mockResolvedValue();
     measure = vi.fn().mockReturnValue(metrics);
-    bases = new NoteBases(asApp(app), new BaseMeasurements(), widths, measure);
+    bases = new NoteBases(asApp(app), new BaseMeasurements(), widths, () => oneCardPerRow, measure);
     noteWidth = 400;
+    oneCardPerRow = false;
 });
 
 afterEach(() => {
@@ -143,6 +145,24 @@ describe("NoteBases drawing a note's Bases", () => {
         const content = await renderNote(BLOCK);
 
         expect(drawn(slotOf(content))).toMatch(/^```base\n[\s\S]*type: cards[\s\S]*\n```$/);
+    });
+
+    it("draws cards at Bases' own size", async () => {
+        noteWidth = 299;
+
+        const content = await renderNote(BLOCK);
+
+        expect(drawn(slotOf(content))).not.toContain("cardSize");
+    });
+
+    // Bases fits as many cards to a row as their size allows: at its largest, one.
+    it("draws cards one to a row when the settings ask", async () => {
+        noteWidth = 299;
+        oneCardPerRow = true;
+
+        const content = await renderNote(BLOCK);
+
+        expect(drawn(slotOf(content))).toContain("cardSize: 800");
     });
 
     it("draws a Base whose headers just fit as the table", async () => {
@@ -203,7 +223,7 @@ describe("NoteBases drawing a note's Bases", () => {
 
     it("draws a Base with no table as written, even where it was measured too wide", async () => {
         const measured = new BaseMeasurements();
-        bases = new NoteBases(asApp(app), measured, widths, measure);
+        bases = new NoteBases(asApp(app), measured, widths, () => oneCardPerRow, measure);
         const content = await renderNote(CARDS_ONLY);
         reportLayout(layOut(slotOf(content), 900));
 
@@ -309,9 +329,9 @@ describe("NoteBases measuring a drawn table", () => {
     // Back rebuilds the stream's view, and its NoteBases with it.
     it("draws it straight as cards in a view sharing what this one measured", async () => {
         const measured = new BaseMeasurements();
-        bases = new NoteBases(asApp(app), measured, widths, measure);
+        bases = new NoteBases(asApp(app), measured, widths, () => oneCardPerRow, measure);
         reportLayout(layOut(slotOf(await renderNote(BLOCK)), 900));
-        bases = new NoteBases(asApp(app), measured, widths, measure);
+        bases = new NoteBases(asApp(app), measured, widths, () => oneCardPerRow, measure);
 
         const again = await renderNote(BLOCK);
 

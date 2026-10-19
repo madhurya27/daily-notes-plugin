@@ -92,7 +92,7 @@ test.describe("The plugin's settings tab", () => {
         const names = (group: number) => groups.nth(group).locator(".setting-item:visible .setting-item-name");
         const properties = ["Properties", "Show note properties", "Collapse properties by default"];
         await expect(groups).toHaveCount(3);
-        await expect(names(0)).toHaveText(["Hide empty notes"]);
+        await expect(names(0)).toHaveText(["Hide empty notes", "One card per row"]);
         await expect(names(1)).toHaveText(properties);
         await expect(names(2)).toHaveText([
             "Linked mentions",
@@ -100,7 +100,7 @@ test.describe("The plugin's settings tab", () => {
             "Collapse linked mentions by default",
         ]);
         await expect(groups.locator(".setting-item-heading")).toHaveText(["Properties", "Linked mentions"]);
-        await expect(groups.locator(".setting-item:visible")).toHaveCount(7);
+        await expect(groups.locator(".setting-item:visible")).toHaveCount(8);
 
         const show = () => groups.nth(1).locator(".setting-item", { hasText: "Show note properties" });
         await show().locator(".checkbox-container").click();

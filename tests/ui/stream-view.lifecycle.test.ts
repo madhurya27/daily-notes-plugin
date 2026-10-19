@@ -106,6 +106,7 @@ describe("DailyNotesStreamView — view API", () => {
             showLinkedMentions: false,
             linkedMentionsCollapsed: false,
             hideEmptyNotes: false,
+            oneCardPerRow: false,
         }; // as loadSettings() would
         const file = new TFile("Notes/2025-01-01.md");
         const renderer = freshView["renderer"];

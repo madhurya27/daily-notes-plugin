@@ -7,6 +7,9 @@ import { fitBaseToWidth, laidOutWidth } from "./bases-fit";
 import { narrowestTableWidth, type HeaderMetrics } from "./bases-width";
 import type { WidthWatch } from "../note-widths";
 
+/** Bases' largest card size: one card fills any row a note is wide enough for (D-157). */
+const ONE_PER_ROW_CARD_SIZE = 800;
+
 /** A Base set its height: its note re-pins in the same task (ADR 0013). */
 export const BASE_RESIZED = "daily-notes-base-resized";
 
@@ -39,6 +42,7 @@ export class NoteBases {
         private readonly app: App,
         private readonly measured: BaseMeasurements,
         private readonly widths: WidthWatch,
+        private readonly oneCardPerRow: () => boolean,
         /** jsdom lays nothing out, so measuring is the one seam tests replace. */
         private readonly measureHeaders: (host: HTMLElement) => HeaderMetrics | null = measureHeaderMetrics
     ) {}
@@ -55,7 +59,17 @@ export class NoteBases {
             const source = sources[i]!;
             const base = source.kind === "embed" ? this.resolveBase(source.link, file) : null;
             const definition = base ? await this.app.vault.cachedRead(base) : blockDefinition(source);
-            const slot = new BaseSlot(this.app, contentEl, placeholder, file, noteComponent, source, definition);
+            const cardSize = this.oneCardPerRow() ? ONE_PER_ROW_CARD_SIZE : undefined;
+            const slot = new BaseSlot(
+                this.app,
+                contentEl,
+                placeholder,
+                file,
+                noteComponent,
+                source,
+                cardSize,
+                definition
+            );
             this.slots.set(placeholder, slot);
             if (base) this.track(base.path, slot, noteComponent);
             slots.push(slot);
@@ -186,6 +200,8 @@ class BaseSlot {
         private readonly file: TFile,
         private readonly noteComponent: Component,
         private readonly source: BaseSource,
+        /** The size its cards draw at; Bases' own when undefined. */
+        private readonly cardSize: number | undefined,
         public definition: string | null
     ) {
         // Stryker disable next-line ConditionalExpression: a code block has no view to read.
@@ -207,7 +223,7 @@ class BaseSlot {
         this.definition = definition;
         this.digest = baseDigest(this.source.markdown, definition);
         // Stryker disable next-line ConditionalExpression: asCards of null is null.
-        const cards = definition === null ? null : asCards(definition, this.view);
+        const cards = definition === null ? null : asCards(definition, this.view, this.cardSize);
         this.cards = cards === null ? null : ["```base", cards, "```"].join("\n");
     }
 

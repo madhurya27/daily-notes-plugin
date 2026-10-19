@@ -111,6 +111,7 @@ function makeSettings(overrides: Partial<DailyNotesStreamSettings> = {}): () => 
         showLinkedMentions: false,
         linkedMentionsCollapsed: false,
         hideEmptyNotes: false,
+        oneCardPerRow: false,
         ...overrides,
     };
     return () => settings;
@@ -188,6 +189,7 @@ describe("NoteRenderer.renderInto", () => {
             showLinkedMentions: false,
             linkedMentionsCollapsed: false,
             hideEmptyNotes: false,
+            oneCardPerRow: false,
         };
         app.metadataCache.getFileCache = vi.fn().mockReturnValue({ frontmatter: { title: "Test" } });
         renderer = new NoteRenderer(
@@ -206,6 +208,7 @@ describe("NoteRenderer.renderInto", () => {
             showLinkedMentions: false,
             linkedMentionsCollapsed: false,
             hideEmptyNotes: false,
+            oneCardPerRow: false,
         }; // as loadSettings() would
         const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
 
@@ -1213,6 +1216,33 @@ describe("NoteRenderer Bases", () => {
         await renderer.onBaseModified(file);
 
         expect(spy).toHaveBeenCalledWith(file);
+    });
+
+    it("draws a Base's cards one to a row when the settings ask", async () => {
+        renderer = new NoteRenderer(
+            asApp(makeApp({ readResult: BASE })),
+            new Component(),
+            makeCollapsible(),
+            makeSettings({ oneCardPerRow: true }),
+            new SearchHighlighter(),
+            new BaseMeasurements(),
+            new BacklinkIndex(() => ({}))
+        );
+        // The note draws its placeholder; the Base, a table twice the note's width.
+        const render = vi.spyOn(MarkdownRenderer, "render").mockImplementation((_app, _md, el) => {
+            if (!el.matches(".daily-note-base")) el.createDiv({ cls: "daily-note-base" });
+            else {
+                const view = el.createDiv({ cls: "bases-view" });
+                Object.defineProperty(view, "clientWidth", { get: () => 300 });
+                view.createDiv({ cls: "bases-thead" }).setAttribute("style", "width: 600px");
+            }
+            return Promise.resolve();
+        });
+        const el = mount(renderer, await renderNote(renderer, new TFile("Notes/2025-01-01.md")));
+
+        renderer.onBaseLayout(el.querySelector<HTMLElement>(".bases-view")!);
+
+        await vi.waitFor(() => expect(render.mock.lastCall?.[1]).toContain("cardSize: 800"));
     });
 
     it("fits a Base it did not draw", () => {

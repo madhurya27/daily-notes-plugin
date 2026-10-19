@@ -137,6 +137,7 @@ On desktop, wide tables and code blocks scroll sideways in their own box, as the
 ## Settings
 
 - **Hide empty notes** (off by default) leaves out daily notes you never wrote in. See [Empty notes](#empty-notes).
+- **One card per row** (off by default) gives each card the full width of the note when a Base is too wide for a phone or tablet and is shown as cards. When it's off, Obsidian decides how many cards fit in a row, usually two on a phone. A Base you set up as cards yourself keeps its own card size.
 - **Properties**
     - **Show note properties** (on by default) shows each note's properties.
     - **Collapse properties by default** (off by default) starts each note with its properties folded.
