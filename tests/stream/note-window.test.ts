@@ -4,6 +4,7 @@ import { NoteWindowManager, UNMEASURED_PANES } from "../../src/stream/note-windo
 import { SCROLL_IDLE_MS, ScrollAnchor } from "../../src/stream/scroll-anchor";
 import { NoteHeights } from "../../src/stream/note-heights";
 import { HOLD_LIMIT_MS, SETTLE_MS } from "../../src/stream/height-hold";
+import { STALL_MS } from "../../src/stream/stall-warning";
 import { FarRuns, type Box } from "../../src/render/far-runs";
 import type { DrawOrder } from "../../src/render/note-renderer";
 
@@ -1228,6 +1229,20 @@ describe("NoteWindowManager render", () => {
         expect(block.querySelector(".daily-note-content")).not.toBeNull();
         expect(block.classList.contains("is-unloaded")).toBe(false);
         expect(placeholderHeight(block)).toBe("");
+    });
+
+    // Each note waits its turn: one that never finishes leaves every other undrawn (D-164).
+    it("names a note still drawing after the stall time in the console", async () => {
+        const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+        onTestFinished(() => logged.mockRestore());
+        const { manager } = makeManager(makeRenderer({ render: () => new Promise(() => {}) }));
+        const block = manager.add(FILE);
+        document.body.appendChild(block);
+
+        fire(observers.render, block, true);
+        await vi.advanceTimersByTimeAsync(STALL_MS);
+
+        expect(logged).toHaveBeenCalledWith(expect.stringContaining(`Drawing ${FILE.path} has run for`));
     });
 
     it("renders a block only once while it stays in view", async () => {

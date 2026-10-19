@@ -15,6 +15,7 @@ import { webPageLink } from "../../src/render/web-page-links";
 import { BASE_SLOT_CLASS } from "../../src/render/bases/bases-as-cards";
 import { flushPromises } from "../stream-view-fixture";
 import { SCROLL_IDLE_MS } from "../../src/stream/scroll-anchor";
+import { STALL_MS } from "../../src/stream/stall-warning";
 
 /** What the stream constructed its window with, besides what it calls on it. */
 type FakeWindow = Omit<Mocked<NoteWindowManager>, "enqueue" | "layoutChanges"> & {
@@ -537,6 +538,18 @@ describe("a note modified", () => {
         await vi.runAllTimersAsync();
 
         expect(noteWindow.refresh).toHaveBeenCalledTimes(2);
+    });
+
+    // Every change waits its turn: one that never finishes holds every note back (D-164).
+    it("logs a change still running after the stall time", async () => {
+        const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+        await load(note("2025-01-01"));
+
+        void noteWindow.enqueue(() => new Promise(() => {}));
+        await vi.advanceTimersByTimeAsync(STALL_MS);
+
+        expect(logged).toHaveBeenCalledWith(expect.stringContaining("A change to the stream has run for"));
+        logged.mockRestore();
     });
 
     it("drops a pending re-render when the stream closes", async () => {

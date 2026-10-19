@@ -10,6 +10,7 @@ import { layoutOf, type LayoutMemory } from "./layout-memory";
 import { ScrollBoxGuard } from "./scroll-box-guard";
 import { FrameDeferral } from "./frame-deferral";
 import { SCROLL_IDLE_MS } from "./scroll-anchor";
+import { warnIfStalled } from "./stall-warning";
 import { youtubeThumbnail } from "../render/video-thumbnails";
 import { webPageLink } from "../render/web-page-links";
 import {
@@ -538,7 +539,7 @@ export class NoteStream {
      */
     private enqueue(task: () => Promise<void>): Promise<void> {
         this.queue = this.queue
-            .then(() => (this.closed ? undefined : task()))
+            .then(() => (this.closed ? undefined : warnIfStalled("A change to the stream", task)))
             .catch((e) => console.error("DailyNotesStream: Failed to update the stream", e));
         return this.queue;
     }

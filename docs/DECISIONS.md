@@ -2794,3 +2794,23 @@ ten frames a second a scroll stepped. The file grows from 1.3 MB to 5.6 MB.
 
 - Lossy at 2x — not needed at this size, and it trades away the exact pixels
   D-116 kept lossless for.
+
+## D-164 — A change of the stream running 10 seconds logs an error (2026-10-19)
+
+**Decision:** every change in the stream's queue, and each note's drawing, logs
+an error in the developer console once it has run for 10 seconds, naming it, and
+again when it ends. The messages ship in the published build. An error, not a
+warning: the lint allows only `console.error`.
+
+**Why:** every change waits its turn in one queue (ADR 0004). A reader on a slow
+Windows laptop came Back to a stream that stayed empty until the tab reopened,
+and it did not reproduce here. A change that never ends leaves every note
+undrawn and logged nothing; an error is already logged.
+
+**Rejected:**
+
+- A timeout that abandons the change — the queue's order is what keeps the
+  blocks and the note list in step; skipping ahead breaks that.
+- A debug setting for the logging — a reader can only use the published build,
+  and a hang can't be turned on after the fact.
+- A shorter threshold — a long note slowed on a phone draws for seconds.

@@ -6,6 +6,7 @@ import { HeightHold, SETTLE_MS } from "./height-hold";
 import { Reservations, type Reserving } from "./reservations";
 import { FarRunWatch } from "./far-run-watch";
 import { blockAt } from "./stream-blocks";
+import { warnIfStalled } from "./stall-warning";
 
 /**
  * What a block reserves before anything was measured at this layout, in panes:
@@ -468,17 +469,19 @@ export class NoteWindowManager {
             // Between a long note's slices, it stops once it has left, so the
             // note the reader stopped on draws next, and a note on screen
             // draws ahead of one only near it (ADR 0020).
-            const rendered = await this.renderer.renderInto(
-                block,
-                window.file,
-                async (note) => {
-                    // Drawn from its end, it grows at its top: its topmost run may grow yet.
-                    if (block.hasClass(DRAWING_FROM_END))
-                        this.hideFarRunsOf(block, this.renderer.runsOf(note).slice(1));
-                    if (!this.onScreen.has(block)) await this.renderWaitingOnScreen();
-                    return !window.unloadWanted;
-                },
-                window.order ?? this.orderFor(block)
+            const rendered = await warnIfStalled(`Drawing ${window.file.path}`, () =>
+                this.renderer.renderInto(
+                    block,
+                    window.file,
+                    async (note) => {
+                        // Drawn from its end, it grows at its top: its topmost run may grow yet.
+                        if (block.hasClass(DRAWING_FROM_END))
+                            this.hideFarRunsOf(block, this.renderer.runsOf(note).slice(1));
+                        if (!this.onScreen.has(block)) await this.renderWaitingOnScreen();
+                        return !window.unloadWanted;
+                    },
+                    window.order ?? this.orderFor(block)
+                )
             );
             // Read over what it drew: nothing scrolled or resized while it did.
             if (rendered && block.hasClass(DRAWING_FROM_END)) this.anchor.readPlace(block);
