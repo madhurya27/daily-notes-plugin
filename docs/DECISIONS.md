@@ -2569,3 +2569,16 @@ scroll, which stops a glide; `e2e-tests/ios/jump.spec.ts` failed 1 run in 3.
 
 - Rounding each move to 1/64 px — errs on every move, and the errors add up.
 - `Number.EPSILON` — a remainder grows with the sums it comes from.
+
+## D-155 — README.md is not hard-wrapped (2026-10-18)
+
+**Decision:** Prettier writes each README paragraph on one line
+(`proseWrap: "never"` in `.prettierrc.json`).
+
+**Why:** Obsidian's community plugin view renders a single newline as a line
+break, so a README wrapped at 80 broke mid-sentence on narrow screens.
+
+**Rejected:**
+
+- Trailing-space or `<br>` tricks — Obsidian's renderer is the problem, not the
+  breaks' kind.

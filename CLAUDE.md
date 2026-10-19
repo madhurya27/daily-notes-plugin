@@ -13,7 +13,7 @@ pnpm run build          # type-check + production build (esbuild → CJS main.js
 pnpm run build:device   # the same, named on load by a notice (two words, from the code): for a phone test
 pnpm run install:vault <vault>   # build:device, then copy it into <vault>'s plugin folder; notes and settings untouched
 pnpm run lint           # ESLint
-pnpm run format         # Prettier --write; format:check verifies. Markdown wraps at 80, AGENTS.md aside.
+pnpm run format         # Prettier --write; format:check verifies. Markdown wraps at 80; README.md never (D-155), AGENTS.md aside.
 pnpm test               # typecheck tests/ (tests/tsconfig.json), then vitest run
 pnpm run test:coverage  # the same, 100% coverage required
 pnpm run test:mutation  # Stryker over src/, incremental; results in reports/ (D-141); no survivor left (D-149). After a test change, `--force --mutate <its src file>`; a bare `--force` almost never
