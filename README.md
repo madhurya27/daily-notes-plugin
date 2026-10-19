@@ -33,28 +33,6 @@ It works with the daily notes you already have. There's no new folder, format or
 
 If you want to edit notes directly inside the feed, try [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
-## Install
-
-1. In Obsidian, open **Settings → Community plugins** and turn off **Restricted mode** if it's on.
-2. Select **Browse**, search for **Daily notes stream**, and select **Install**.
-3. Select **Enable**.
-4. Open the stream from the ribbon or the command palette; see [Open the stream](#open-the-stream).
-
-You can also open the plugin's [page in the Obsidian plugin directory](https://community.obsidian.md/plugins/daily-notes-stream) and install it from there. This works the same on a phone or tablet.
-
-### Install by hand
-
-1. From the [latest release](https://github.com/madhurya27/daily-notes-stream/releases/latest), download `main.js`, `manifest.json` and `styles.css`.
-2. Put them in `<Vault>/.obsidian/plugins/daily-notes-stream/`. Create the folder if it doesn't exist; `.obsidian` is hidden in most file browsers.
-3. Reload Obsidian.
-4. Enable **Daily notes stream** in **Settings → Community plugins**.
-
-On a phone or tablet, install the plugin on a computer first and let your sync service copy the plugin folder to the device. Then enable it there.
-
-To check that the downloaded files were built from this repository, run `gh attestation verify main.js --repo madhurya27/daily-notes-stream` with the GitHub CLI, and the same for the other two files. This works for releases after 1.0.0.
-
-To build from source instead, run `pnpm run build` and copy the same three files to the same folder.
-
 ## Use
 
 ### Open the stream
@@ -171,6 +149,28 @@ Each collapse setting appears only while its section is shown.
 The stream follows Obsidian's theme, light or dark.
 
 <img src="docs/images/stream-dark-desktop.png" alt="The stream in Obsidian's dark theme" width="800">
+
+## Install
+
+1. In Obsidian, open **Settings → Community plugins** and turn off **Restricted mode** if it's on.
+2. Select **Browse**, search for **Daily notes stream**, and select **Install**.
+3. Select **Enable**.
+4. Open the stream from the ribbon or the command palette; see [Open the stream](#open-the-stream).
+
+You can also open the plugin's [page in the Obsidian plugin directory](https://community.obsidian.md/plugins/daily-notes-stream) and install it from there. This works the same on a phone or tablet.
+
+### Install by hand
+
+1. From the [latest release](https://github.com/madhurya27/daily-notes-stream/releases/latest), download `main.js`, `manifest.json` and `styles.css`.
+2. Put them in `<Vault>/.obsidian/plugins/daily-notes-stream/`. Create the folder if it doesn't exist; `.obsidian` is hidden in most file browsers.
+3. Reload Obsidian.
+4. Enable **Daily notes stream** in **Settings → Community plugins**.
+
+On a phone or tablet, install the plugin on a computer first and let your sync service copy the plugin folder to the device. Then enable it there.
+
+To check that the downloaded files were built from this repository, run `gh attestation verify main.js --repo madhurya27/daily-notes-stream` with the GitHub CLI, and the same for the other two files. This works for releases after 1.0.0.
+
+To build from source instead, run `pnpm run build` and copy the same three files to the same folder.
 
 ## Troubleshooting
 
