@@ -823,7 +823,8 @@ export class Phone {
 
     /** What Obsidian's console has shown as an error since last asked: logged, thrown or rejected. */
     async consoleErrors(): Promise<string[]> {
-        await this.inWebView();
+        // A timer already queued, behind a busy page, throws after the read.
+        await this.runAsync(() => new Promise<void>((done) => setTimeout(done)));
         const entries = (await this.driver.getLogs("safariConsole")) as { level: string; message: string }[];
         return entries
             .filter(({ level }) => level === "SEVERE")

@@ -12,6 +12,17 @@ for (const [how, cause] of [
                 throw new Error("A thrown error");
             }),
     ],
+    [
+        "thrown behind a busy page",
+        () => {
+            setTimeout(() => {
+                for (const end = performance.now() + 1000; performance.now() < end;);
+            });
+            setTimeout(() => {
+                throw new Error("A thrown error, late");
+            });
+        },
+    ],
     ["rejected", () => void Promise.reject(new Error("A rejected promise"))],
 ] as const)
     test(`an error ${how} on the phone fails the test`, async ({ phone }) => {

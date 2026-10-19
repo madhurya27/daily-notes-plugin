@@ -4,11 +4,6 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] The iPhone harness's own check can miss an error: on 2026-10-19 "an error
-      thrown on the phone fails the test" (`harness.spec.ts:17`) passed,
-      expected to fail, in 1 of 4 runs. Its `setTimeout` throws after the test's
-      console check reads the console, and the error lands on the next test.
-      Seen in a full `pnpm run test:ios --max-failures=0`.
 - [ ] Explore adding e2e tests to CI on Linux.
 - [ ] Once the scorecard's lint resolves moment's types, return to Obsidian's
       `moment` and drop `src/notes/moment.ts` (D-152).
