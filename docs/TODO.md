@@ -4,6 +4,11 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] Make typing a search mark only a match the reader can see (D-022):
+      `isOnScreen` checks the whole pane, so on a phone it marks one under the
+      floating header or bottom bar, or under the open keyboard. Enter then
+      steps past it. Measure the pane minus what covers it; prove it on the
+      phone layout and the iPhone.
 - [ ] Explore adding e2e tests to CI on Linux.
 - [ ] Once the scorecard's lint resolves moment's types, return to Obsidian's
       `moment` and drop `src/notes/moment.ts` (D-152).
