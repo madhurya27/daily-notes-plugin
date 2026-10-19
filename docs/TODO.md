@@ -9,6 +9,9 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
       floating header or bottom bar, or under the open keyboard. Enter then
       steps past it. Measure the pane minus what covers it; prove it on the
       phone layout and the iPhone.
+- [ ] Drop the outline Obsidian draws around a property on hover: it offers an
+      edit the read-only stream doesn't allow. Check desktop and the phone
+      layout.
 - [ ] Explore adding e2e tests to CI on Linux.
 - [ ] Once the scorecard's lint resolves moment's types, return to Obsidian's
       `moment` and drop `src/notes/moment.ts` (D-152).
