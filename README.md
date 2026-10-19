@@ -2,7 +2,7 @@
 
 Read your daily notes as one continuous timeline. Every day appears on one page, with the newest at the top and older days loading as you scroll. The stream is for reading; to edit a note, click its date.
 
-It works with the daily notes you already have. There's no new folder, format, or template to set up, and it never changes your notes. It's lightweight, and stays fast with years of notes.
+It works with the daily notes you already have. There's no new folder, format, or template to set up, and it never changes your notes. Scrolling stays smooth and fast, even through years of notes.
 
 [Get it from the Obsidian plugin directory](https://community.obsidian.md/plugins/daily-notes-stream), or see [Install](#install).
 
@@ -11,6 +11,7 @@ It works with the daily notes you already have. There's no new folder, format, o
 ## Features
 
 - **One stream.** Every daily note appears on one scrolling page, newest first, including notes in nested folders such as `2025/03/2025-03-04.md`.
+- **Smooth scrolling.** Scroll through years of notes on desktop or a phone without stutters, and without the page jumping as notes load. Only the notes near what you're reading are kept loaded, so it stays fast and light on memory.
 - **Always current.** When you create, edit, rename, or delete a note, the stream updates right away.
 - **[Search](#search).** Press Ctrl/Cmd+F to find text across every note.
 - **[Jump to a date](#move-around).** Go straight to any day that has a note.
@@ -25,7 +26,7 @@ It works with the daily notes you already have. There's no new folder, format, o
 - **Which notes does it show?** The notes in the folder set in **Settings → Daily notes**, including its subfolders, whose names match the date format set there. If you use Periodic Notes with its daily notes turned on, the stream uses Periodic Notes' folder and format instead.
 - **What does it store?** Your settings, saved in the plugin's folder. Which sections you folded, and layout measurements that keep scrolling steady, are kept separately on each device.
 - **Is it private?** Yes. It collects no telemetry or analytics, needs no account, and never sends your notes or anything about you anywhere. The only things that load from the web are embeds you put in your notes yourself, such as videos. On a phone or tablet, a YouTube video shows as its preview image, loaded from YouTube (`i.ytimg.com`), because a YouTube embed inside the stream causes scroll issues.
-- **Does it slow down with years of notes?** No. It's tested on five years of daily notes, and stays fast and light on memory throughout: only the notes near what you're reading are loaded at a time.
+- **Does it slow down with years of notes?** No. It's tested on five years of daily notes, on a computer and on an iPhone, and stays as fast at the end as at the start.
 - **Does it need anything else installed?** No. It has no dependencies: it contains no code from other projects and uses only what Obsidian provides.
 - **Which devices does it run on?** Desktop and mobile. It needs Obsidian 1.14.4 or later.
 - **Does it show notes the way Obsidian does?** On desktop, yes, except that a wide diagram shrinks to fit. On a phone or tablet it's opinionated: nothing inside a note scrolls on its own, so one swipe always moves the whole stream. A table, Base, or Kanban Base too wide for the screen becomes a stack of cards, a Kanban Base keeping one group per column. Only the stream's view changes, never your notes. See [Phone and tablet](#phone-and-tablet).
