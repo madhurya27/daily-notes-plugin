@@ -76,11 +76,13 @@ test.describe("listing screenshots", () => {
         await page.locator('.view-action[aria-label="Search"]').click();
         const bar = page.locator(".daily-notes-search");
         await bar.locator("input").fill("Mara");
-        // Typing marks a match already on screen (D-022); with none on screen it only counts them, and Enter steps.
+        // Typing marks a match it finds on screen without scrolling (D-022), even one under a phone's bottom bar.
+        // Enter steps to the next and centers it: the first match, or the second if typing marked the first.
         const count = bar.locator(".document-search-count");
         await expect(count).toHaveText(/^(\d+ notes|1 \/ \d+)$/);
-        if ((await count.textContent())?.endsWith("notes")) await page.keyboard.press("Enter");
-        await expect(count).toHaveText(/^1 \/ \d+$/);
+        const typed = await count.textContent();
+        await page.keyboard.press("Enter");
+        await expect(count).toHaveText(typed?.endsWith("notes") ? /^1 \/ \d+$/ : /^2 \/ \d+$/);
         await capture(page, "search", testInfo);
     });
 

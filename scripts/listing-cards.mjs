@@ -165,7 +165,10 @@ export async function renderCards(cards, rawDir, outDir) {
             const html = join(rawDir, `${card.layout}-${card.name}.html`);
             writeFileSync(html, cardHtml(card));
             await page.goto(`file://${html}`);
-            await page.evaluate(() => document.fonts.ready);
+            // Loaded is not yet drawn: a screenshot can catch an image before it decodes.
+            await page.evaluate(() =>
+                Promise.all([document.fonts.ready, ...[...document.images].map((img) => img.decode())])
+            );
             await page.screenshot({ path: join(outDir, `${card.name}.png`) });
             await page.close();
         }
