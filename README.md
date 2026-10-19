@@ -63,6 +63,8 @@ Click the ribbon icon (a stack of cards), or run `Daily notes stream: Open strea
 
 On a phone, tap the menu button (☰) at the right of the bottom bar, then **Open daily notes stream**. The same menu has **Open command palette**.
 
+To find the stream waiting each time you start Obsidian, pin its tab: right-click the tab and select **Pin**. Obsidian reopens the tabs you left open, and a pinned stream stays in its tab: notes you open from it open in a new tab instead of replacing it. It reopens at the newest note.
+
 Each note is shown in full, as it looks in Obsidian's reading view, with its properties, images, tables, embeds, links, tasks and Bases. The stream is read-only, so clicking a task's checkbox doesn't tick it; open the note to edit it. Some content is reshaped so the stream scrolls smoothly, mostly on a phone or tablet; see [Phone and tablet](#phone-and-tablet).
 
 <img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="800">
@@ -119,7 +121,7 @@ Note dates, links inside notes, and the notes and links in linked mentions all o
 
 | Gesture | Opens |
 | --- | --- |
-| Click | In the stream's tab; Back returns to the stream |
+| Click | In the stream's tab, and Back returns to the stream; in a new tab if the stream's tab is pinned |
 | Ctrl/Cmd-click or middle-click | In a new tab |
 | Ctrl/Cmd+Alt-click | Side by side, in a split |
 | Right-click | The file menu |
