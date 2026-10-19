@@ -4,6 +4,8 @@ Read your daily notes as one continuous timeline. Every day appears on one page,
 
 It works with the daily notes you already have. There's no new folder, format or template to set up, and it never changes your notes. It's lightweight, and stays fast with years of notes.
 
+[Get it from the Obsidian plugin directory](https://community.obsidian.md/plugins/daily-notes-stream), or see [Install](#install).
+
 <p><img src="docs/images/demo-desktop.webp" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Mara, a jump goes to an older date, and the command palette scrolls it back to the top" width="800"></p>
 
 ## Features
@@ -32,6 +34,14 @@ It works with the daily notes you already have. There's no new folder, format or
 If you want to edit notes directly inside the feed, try [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
 ## Install
+
+1. In Obsidian, open **Settings → Community plugins** and turn off **Restricted mode** if it's on.
+2. Select **Browse**, search for **Daily notes stream**, and select **Install**.
+3. Select **Enable**.
+
+You can also open the plugin's [page in the Obsidian plugin directory](https://community.obsidian.md/plugins/daily-notes-stream) and install it from there. This works the same on a phone or tablet.
+
+### Install by hand
 
 1. From the [latest release](https://github.com/madhurya27/daily-notes-stream/releases/latest), download `main.js`, `manifest.json` and `styles.css`.
 2. Put them in `<Vault>/.obsidian/plugins/daily-notes-stream/`. Create the folder if it doesn't exist; `.obsidian` is hidden in most file browsers.
@@ -166,7 +176,7 @@ The stream follows Obsidian's theme, light or dark.
 | "No daily notes found" | Make sure the folder and date format in **Settings → Daily notes** match where your notes are and how they're named. |
 | "Every daily note is hidden" | Every daily note holds only its template, so all of them are hidden. Write in one, or turn off **Hide empty notes**. |
 | A note you expected is missing | Either it holds only its template (see [Empty notes](#empty-notes)), or its name doesn't match the date format. |
-| The plugin isn't listed under Community plugins | Make sure the three files sit directly in `daily-notes-stream/`, not in a subfolder, then reload Obsidian. |
+| After installing by hand, the plugin isn't listed under Community plugins | Make sure the three files sit directly in `daily-notes-stream/`, not in a subfolder, then reload Obsidian. |
 
 ## Development
 

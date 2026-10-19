@@ -4,10 +4,6 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
-- [ ] Submit to Obsidian community plugins: the submission steps in
-      `docs/IMPROVEMENTS.md`, from step 3.
-    - [ ] Once listed, lead the README's Install with **Settings → Community
-          plugins → Browse**; keep the manual download as the alternative
 - [ ] Explore adding e2e tests to CI on Linux.
 - [ ] Once the scorecard's lint resolves moment's types, return to Obsidian's
       `moment` and drop `src/notes/moment.ts` (D-152).
