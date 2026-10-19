@@ -2,23 +2,23 @@
 
 Read your daily notes as one continuous timeline. Every day appears on one page, with the newest at the top and older days loading as you scroll. The stream is for reading; to edit a note, click its date.
 
-It works with the daily notes you already have. There's no new folder, format or template to set up, and it never changes your notes. It's lightweight, and stays fast with years of notes.
+It works with the daily notes you already have. There's no new folder, format, or template to set up, and it never changes your notes. It's lightweight, and stays fast with years of notes.
 
 [Get it from the Obsidian plugin directory](https://community.obsidian.md/plugins/daily-notes-stream), or see [Install](#install).
 
-<p><img src="docs/images/demo-desktop.webp" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed; the stream then scrolls through older days, a search steps through notes mentioning Mara, a jump goes to an older date, and the command palette scrolls it back to the top" width="800"></p>
+<p><img src="docs/images/demo-desktop.webp" alt="Recording on desktop: the newest note, open in a split, is edited and the stream beside it updates as the words are typed. The stream then scrolls through older days, a search steps through notes mentioning Mara, a jump goes to an older date, and the command palette scrolls it back to the top" width="800"></p>
 
 ## Features
 
 - **One stream.** Every daily note appears on one scrolling page, newest first, including notes in nested folders such as `2025/03/2025-03-04.md`.
-- **Always current.** When you create, edit, rename or delete a note, the stream updates right away.
+- **Always current.** When you create, edit, rename, or delete a note, the stream updates right away.
 - **[Search](#search).** Press Ctrl/Cmd+F to find text across every note.
 - **[Jump to a date](#move-around).** Go straight to any day that has a note.
 - **[Fold sections](#fold-sections).** Collapse any heading or nested list, and the stream remembers it.
 - **Properties.** Each note's properties appear at its top. You can hide or collapse them in [settings](#settings).
 - **[Linked mentions](#linked-mentions).** Each note ends with the notes that link to it. You can hide or collapse them in [settings](#settings).
-- **[Full notes](#open-the-stream).** Each note is shown in full, the way Obsidian shows it, with its images, tables, embeds, links, tasks and Bases. The stream is read-only, so you can't tick a task in it.
-- **[Phone and tablet](#phone-and-tablet).** Tables, Bases and Kanban Bases too wide for the screen are shown as cards, so one swipe moves the whole stream.
+- **[Full notes](#open-the-stream).** Each note is shown in full, the way Obsidian shows it, with its images, tables, embeds, links, tasks, and Bases. The stream is read-only, so you can't tick a task in it.
+- **[Phone and tablet](#phone-and-tablet).** Tables, Bases, and Kanban Bases too wide for the screen are shown as cards, so one swipe moves the whole stream.
 
 ## Before you install
 
@@ -28,8 +28,8 @@ It works with the daily notes you already have. There's no new folder, format or
 - **Does it slow down with years of notes?** No. It's tested on five years of daily notes, and stays fast and light on memory throughout: only the notes near what you're reading are loaded at a time.
 - **Does it need anything else installed?** No. It has no dependencies: it contains no code from other projects and uses only what Obsidian provides.
 - **Which devices does it run on?** Desktop and mobile. It needs Obsidian 1.14.4 or later.
-- **Does it show notes the way Obsidian does?** On desktop, yes, except that a wide diagram shrinks to fit. On a phone or tablet it's opinionated: nothing inside a note scrolls on its own, so one swipe always moves the whole stream. A table, Base or Kanban Base too wide for the screen becomes a stack of cards, a Kanban Base keeping one group per column. Only the stream's view changes, never your notes; see [Phone and tablet](#phone-and-tablet).
-- **Does it work with other plugins?** Yes. Dataview tables and Bases are shown the way Obsidian shows them, reshaped on a phone or tablet as above. Templates made with the core Templates plugin or with Templater are recognised when empty notes are hidden; see [Empty notes](#empty-notes).
+- **Does it show notes the way Obsidian does?** On desktop, yes, except that a wide diagram shrinks to fit. On a phone or tablet it's opinionated: nothing inside a note scrolls on its own, so one swipe always moves the whole stream. A table, Base, or Kanban Base too wide for the screen becomes a stack of cards, a Kanban Base keeping one group per column. Only the stream's view changes, never your notes. See [Phone and tablet](#phone-and-tablet).
+- **Does it work with other plugins?** Yes. Dataview tables and Bases are shown the way Obsidian shows them, reshaped on a phone or tablet as above. Templates made with the core Templates plugin or with Templater are recognized when empty notes are hidden. See [Empty notes](#empty-notes).
 
 If you want to edit notes directly inside the feed, try [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor).
 
@@ -37,13 +37,13 @@ If you want to edit notes directly inside the feed, try [Daily Notes Editor](htt
 
 ### Open the stream
 
-Click the ribbon icon (a stack of cards), or run `Daily notes stream: Open stream` from the command palette (Ctrl/Cmd+P). It opens in the current tab; Ctrl/Cmd-click the icon to open it in a new tab.
+Click the ribbon icon (a stack of cards), or run `Daily notes stream: Open stream` from the command palette (Ctrl/Cmd+P). It opens in the current tab. To open it in a new tab, Ctrl/Cmd-click the icon.
 
 On a phone, tap the menu button (☰) at the right of the bottom bar, then **Open daily notes stream**. The same menu has **Open command palette**.
 
 To find the stream waiting each time you start Obsidian, pin its tab: right-click the tab and select **Pin**. Obsidian reopens the tabs you left open, and a pinned stream stays in its tab: notes you open from it open in a new tab instead of replacing it. It reopens at the newest note.
 
-Each note is shown in full, as it looks in Obsidian's reading view, with its properties, images, tables, embeds, links, tasks and Bases. The stream is read-only, so clicking a task's checkbox doesn't tick it; open the note to edit it. Some content is reshaped so the stream scrolls smoothly, mostly on a phone or tablet; see [Phone and tablet](#phone-and-tablet).
+Each note is shown in full, as it looks in Obsidian's reading view, with its properties, images, tables, embeds, links, tasks, and Bases. The stream is read-only, so clicking a task's checkbox doesn't tick it. Open the note to edit it. Some content is reshaped so the stream scrolls smoothly, mostly on a phone or tablet. See [Phone and tablet](#phone-and-tablet).
 
 <img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="800">
 
@@ -77,7 +77,7 @@ Press Ctrl/Cmd+F, or click the search icon at the top. If you changed Obsidian's
 | Shift+Enter | Previous matching note |
 | Escape      | Close search           |
 
-Search looks only at each note's own text. Content that comes from other notes, such as a Base, an embedded note or linked mentions, isn't searched. If a match is inside a folded section, search unfolds it. If the counter reads `2 / 5 · hidden`, the match is in a part of the note that isn't shown, such as hidden properties or an embed.
+Search looks only at each note's own text. Content that comes from other notes, such as a Base, an embedded note, or linked mentions, isn't searched. If a match is inside a folded section, search unfolds it. If the counter reads `2 / 5 · hidden`, the match is in a part of the note that isn't shown, such as hidden properties or an embed.
 
 <img src="docs/images/search-desktop.png" alt="The search bar stepping through notes that mention Mara" width="800">
 
@@ -99,7 +99,7 @@ Note dates, links inside notes, and the notes and links in linked mentions all o
 
 | Gesture | Opens |
 | --- | --- |
-| Click | In the stream's tab, and Back returns to the stream; in a new tab if the stream's tab is pinned |
+| Click | In the stream's tab, where Back returns to the stream, or in a new tab if the stream's tab is pinned |
 | Ctrl/Cmd-click or middle-click | In a new tab |
 | Ctrl/Cmd+Alt-click | Side by side, in a split |
 | Right-click | The file menu |
@@ -113,7 +113,7 @@ On a phone or tablet, nothing inside a note scrolls on its own, so one swipe mov
 | Content | Becomes |
 | --- | --- |
 | Table | A card per row, each value under its column's name |
-| Base | Narrower columns; if that isn't enough, a card per note, using Bases' own card view |
+| Base | Narrower columns, or if that isn't enough, a card per note in Bases' own card view |
 | Kanban Base | Cards, each column a group |
 | Equation | Smaller, to fit the width |
 | Code block | Long lines wrap |
@@ -125,7 +125,7 @@ On a phone or tablet, nothing inside a note scrolls on its own, so one swipe mov
 
 On desktop, wide tables and code blocks scroll sideways in their own box, as they do in Obsidian.
 
-<p><img src="docs/images/demo-phone.webp" alt="Recording on an iPhone: flicks glide down through older days; a search for Mara is typed and stepped through; a jump goes to an older date; and a tap on the title glides back to the newest note" width="300"></p>
+<p><img src="docs/images/demo-phone.webp" alt="Recording on an iPhone: flicks glide down through older days, a search for Mara is typed and stepped through, a jump goes to an older date, and a tap on the title glides back to the newest note" width="300"></p>
 
 <details>
 <summary>Phone layout</summary>
@@ -155,14 +155,14 @@ The stream follows Obsidian's theme, light or dark.
 1. In Obsidian, open **Settings → Community plugins** and turn off **Restricted mode** if it's on.
 2. Select **Browse**, search for **Daily notes stream**, and select **Install**.
 3. Select **Enable**.
-4. Open the stream from the ribbon or the command palette; see [Open the stream](#open-the-stream).
+4. Open the stream from the ribbon or the command palette. See [Open the stream](#open-the-stream).
 
 You can also open the plugin's [page in the Obsidian plugin directory](https://community.obsidian.md/plugins/daily-notes-stream) and install it from there. This works the same on a phone or tablet.
 
 ### Install by hand
 
-1. From the [latest release](https://github.com/madhurya27/daily-notes-stream/releases/latest), download `main.js`, `manifest.json` and `styles.css`.
-2. Put them in `<Vault>/.obsidian/plugins/daily-notes-stream/`. Create the folder if it doesn't exist; `.obsidian` is hidden in most file browsers.
+1. From the [latest release](https://github.com/madhurya27/daily-notes-stream/releases/latest), download `main.js`, `manifest.json`, and `styles.css`.
+2. Put them in `<Vault>/.obsidian/plugins/daily-notes-stream/`. Create the folder if it doesn't exist. Most file browsers hide `.obsidian`.
 3. Reload Obsidian.
 4. Enable **Daily notes stream** in **Settings → Community plugins**.
 
