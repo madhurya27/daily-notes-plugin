@@ -8,9 +8,9 @@
 ## Context
 
 ADR 0007 banned scroll containers inside the stream: on iOS one ends a glide
-early once notes unload. The stall is WebKit's, and desktop has none. There,
-cards and fitted columns traded a table the reader can scroll for one that is
-cropped or reshaped, with nothing gained.
+early once notes unload. The stall is WebKit's, and desktop has none. On
+desktop, cards and fitted columns replaced a table the reader could scroll with
+one that is cropped or reshaped, and gained nothing.
 
 ## Decision
 

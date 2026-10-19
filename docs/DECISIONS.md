@@ -17,7 +17,8 @@ the Markdown ourselves.
 
 **Rejected:** inline editors per note, as
 [Daily Notes Editor](https://github.com/Quorafind/Obsidian-Daily-Notes-Editor)
-does — four prototype patches, and why its view cannot react to vault events.
+does — it needs four prototype patches, which is also why its view cannot react
+to vault events.
 
 **Rejected:** no edit affordance at all — a spotted typo has nowhere to go.
 
@@ -100,16 +101,16 @@ the same negative margin, padding and chevron offset — and collapsing hides th
 box outright. Obsidian's own rules do the rest: the chevron hidden until the row
 is hovered, and the row toggling on click.
 
-**Why:** one column of headings down the note, one of chevrons beside it.
-Obsidian's offsets assume the margin its editor pane keeps clear and its own
-icon size, so kept they set the panel a step in from the note and its chevron a
-hair from the word.
+**Why:** down the note, the headings form one column and their chevrons another
+beside it. Obsidian's offsets assume the margin its editor pane keeps clear and
+its own icon size; with them kept, the panel sat a step in from the note, and
+its chevron a hair away from the word.
 
 **Rejected:** restating Obsidian's sizing (`font-size`, row padding, key width,
 icon size) — the panel drifted to 13px text in rows built for a 28px field.
 
-**Rejected:** a gutter of its own (`margin-left: var(--size-4-6)`) — it lands
-Obsidian's geometry inside the note, indented past every heading around it.
+**Rejected:** a gutter of its own (`margin-left: var(--size-4-6)`) — it puts
+Obsidian's layout inside the note, indented past every heading around it.
 
 **Rejected:** the heading inside the box — it reads as one more property row,
 and Obsidian puts it above.
@@ -128,8 +129,8 @@ those files, and reloads the plugin by disabling and re-enabling it over the
 `--remote-debugging-port` `pnpm run open` already exposes.
 
 **Why:** `seed` installs copies, so a rebuild never reached the vault, and
-Obsidian reads a plugin's files once, at load. Links and a reload close the two
-halves of that.
+Obsidian reads a plugin's files once, at load. Linking the files fixes the
+first; reloading the plugin fixes the second.
 
 **Rejected:** the Hot Reload community plugin — the same thing from inside, at
 the price of a second plugin in the vault.
@@ -156,12 +157,12 @@ relaunching — 1.6s against 3s, for one more script to learn and maintain.
 ## D-010 — The e2e window is hidden from inside Obsidian (2026-09-21)
 
 **Decision:** the harness installs `show` and `focus` listeners on the window
-through Electron's remote bridge, hiding the app from its own renderer. Hidden
-no longer stays hidden: D-124 shows the window again, transparent.
+through Electron's remote bridge, hiding the app from its own renderer. The
+window no longer stays hidden: D-124 shows it again, transparent.
 
 **Why:** Obsidian activates itself at first paint, when the vault opens, and on
-the `emulateMobile` reload. Hidden and frontmost are separate states, so a run
-stole the keyboard for about a second at a time on a one-screen machine.
+the `emulateMobile` reload. A hidden app can still be frontmost, so a run stole
+the keyboard for about a second at a time on a one-screen machine.
 
 **Rejected:** the AppleScript watcher this replaces — resolving the process by
 unix id blocked 1.3s, long past the first grab; watching the frontmost process
@@ -202,8 +203,8 @@ from 3rem.
 **Why:** at 3rem the stream read as a stack rather than a sequence of days. 4rem
 is the widest spacing that still fits two notes on a phone screen.
 
-**Rejected:** whitespace alone — the rule is what carries a note ending
-mid-thought.
+**Rejected:** whitespace alone — the rule is what marks where a note ends when
+it ends mid-thought.
 
 **Rejected:** 4rem/6rem, better on the desktop — on a phone the 6rem pushes the
 next note under the floating navbar.
@@ -243,14 +244,14 @@ frontmatter wants it off.
 ## D-015 — A jump lands on the nearest older note (2026-09-22)
 
 **Decision:** `jumpToDate` loads batches until the target is in the stream, then
-scrolls to it. No note that day lands on the newest one before it; nothing that
-old raises a notice and moves nothing.
+scrolls to it. If that day has no note, it lands on the newest note before it;
+if no note is that old, it shows a notice and doesn't move.
 
 **Why:** a continuous feed has to leave the reader somewhere real, and the
 common case is a half-remembered date. Batches are cheap under
 [ADR 0006](adr/0006-unload-off-screen-notes.md): what is passed over stays
-placeholders. The suggester above makes the fallback visible before it happens;
-this stays the behavior behind it.
+placeholders. The date suggester shows the fallback before it happens; this
+stays the behavior behind it.
 
 **Rejected:** an error rather than the older note.
 
@@ -266,13 +267,13 @@ centers a match the same way (`scrollIntoPlace`).
 
 **Why:** a note above it outgrows its placeholder estimate and pushes it down.
 One `scrollIntoView` left the target 1600–1850px short in e2e, desktop and
-mobile. The jump-sized answer to the `scrollTop`-correction item in
-[`TODO.md`](TODO.md), which stays open for scrolling in general.
+mobile. This answers the `scrollTop`-correction item in [`TODO.md`](TODO.md) for
+jumps; the item stays open for scrolling in general.
 
 **Rejected:** stopping once the target stops moving — it is at the top the
 instant it is scrolled to, and the renders that displace it land after. Waiting
-a frame on a stuck scroll — the hidden e2e phone window draws none when nothing
-changed, and the search hung on it.
+a frame on a stuck scroll — the hidden e2e phone window draws no frame when
+nothing changed, and the search hung waiting for one.
 
 ## D-017 — Property icons come from Obsidian's type manager (2026-09-22)
 
@@ -306,14 +307,14 @@ code that calls moment.
 the vault's own daily-note format, with `YYYY-MM-DD` as a second haystack. A
 query that parses as a date no note carries is offered as one entry that says it
 will land on the nearest older note. A calendar icon opens the platform's date
-wheel: the date input itself lies unseen over it, since iOS opens its wheel only
-for a tap on the input and does nothing on `showPicker()`; a click also calls
-`showPicker()`, which desktop needs.
+wheel. The date input itself lies invisibly over the icon, since iOS opens its
+wheel only for a tap on the input and does nothing on `showPicker()`; a click
+also calls `showPicker()`, which desktop needs.
 
 **Why:** a date field accepts days the vault has nothing for, so the nearest-
 older fallback happened silently and the reader could not tell a jump from a
-miss. Suggesting the real dates makes the common case a pick, and leaves the
-fallback something chosen. The format is read per vault because filenames are: a
+miss. Suggesting the real dates makes the common case a pick, and makes the
+fallback a visible choice. The format is read per vault because filenames are: a
 `DD-MM-YYYY` reader should not be offered ISO.
 
 **Rejected:** a date field with the fallback left silent — what this replaces.
@@ -327,8 +328,8 @@ paths to hold in step before the mobile pass has said either is needed.
 
 **Decision:** no "create today's note" action in the view.
 
-**Why:** core Daily Notes already creates it from its ribbon icon and command; a
-read-only stream missing today is showing the vault as it is.
+**Why:** core Daily Notes already creates it from its ribbon icon and command.
+If today's note is missing, a read-only stream is showing the vault as it is.
 
 **Rejected:** a create button above the stream when today is missing — a
 duplicate of core, plus state to keep in sync across create, delete and
@@ -340,7 +341,8 @@ midnight.
 settings, collapse state and the pointer before every test.
 
 **Why:** 3.7 min → 1.2 min. Each worker already owns its instance and vault;
-only state left by earlier tests in the same instance broke under reordering.
+only state that earlier tests left in the same instance broke when the tests
+were reordered.
 
 **Rejected:** whole-file parallelism — `stream.spec.ts` holds most tests, so it
 only reached 2.3 min. More workers — the instances starve for CPU and timing
@@ -357,22 +359,24 @@ highlight API) note to note. Typing marks the topmost match on screen and never
 scrolls.
 
 **Why:** off-screen notes hold no DOM (ADR 0006), so find-in-page sees a few
-days. Source and rendered text differ, so only a per-note count holds. Obsidian
-searches hidden frontmatter too (checked 2026-09-23).
+days. A note's source and its rendered text differ, so only a count of notes
+stays accurate. Obsidian searches hidden frontmatter too (checked 2026-09-23).
 
 **Rejected:**
 
 - Per-match count — drifts from what is highlighted.
 - `<mark>` wrappers — change the DOM collapsing walks.
-- Hardcoded Mod+F, or a command of our own — ignores a rebind; a second hotkey.
+- Hardcoded Mod+F, or a command of our own — the first ignores a rebind; the
+  second adds a hotkey.
 - Jumping to the first match as you type — a half-typed word lands years away.
 - A longer typing pause — 1095 notes search in 1–3 ms.
 - Skipping frontmatter when properties are off — disagrees with Obsidian.
 - A tag/header filter — core search does it.
 - Matching the "Properties" label, as reading view does — it is in no note's
   source, and "prop" would hit every note with frontmatter.
-- Highlighting what a Base, an embed or linked mentions show — another file's
-  text, or Obsidian's, counted in no note: "No results" over a highlight.
+- Highlighting what a Base, an embed or linked mentions show — that text belongs
+  to another file or to Obsidian, so no note counts it, and the bar would say
+  "No results" over a highlight.
 
 ## D-023 — Kebab-case files, grouped into folders (2026-09-23)
 
@@ -427,7 +431,7 @@ through the format, as a live create does.
 
 **Why:** `getAllDailyNotes()` keys by date whatever the extension, so
 `2024-01-01.png` could evict that day's note, and it admits subfolders a create
-rejects. It was also all `initialize()` could throw from.
+rejects. It was also the only thing in `initialize()` that could throw.
 
 **Rejected:** filtering its result — an evicted note is already gone.
 
@@ -437,7 +441,8 @@ rejects. It was also all `initialize()` could throw from.
 once its `mtime` is 24 hours old. The properties key is kept.
 
 **Why:** daily notes are rarely renamed or deleted, so that cleanup never ran. A
-day spans retyping a heading; `mtime` needs no timer.
+day is long enough to cover retyping a heading, and checking `mtime` needs no
+timer.
 
 **Rejected:**
 
@@ -470,8 +475,8 @@ from the stream, replace it in its tab, as they do the graph.
 
 **Why:** Obsidian takes a non-navigable view for a sidebar and keeps the last
 note active behind it, so the status bar showed that note's word count and
-backlinks. Navigable, the stream has no active file, and every per-note item
-clears, other plugins' included.
+backlinks. As a navigable view, the stream has no active file, so every per-note
+status bar item clears, other plugins' included.
 
 **Rejected:**
 
@@ -488,9 +493,9 @@ Back returns to the note the stream was scrolled to. Mod-click keeps the stream
 and opens a new tab.
 
 **Why:** the stream is a navigable view, and Obsidian's other navigable views
-navigate on click. Keeping it open took a flag flipped around an Obsidian call
-that happened to pick its tab synchronously, and a tab-reuse rule the rest of
-the app lacks.
+navigate on click. Keeping the stream open had needed a flag set around an
+Obsidian call that happened to pick its tab synchronously, and a tab-reuse rule
+the rest of the app lacks.
 
 **Rejected:**
 
@@ -512,8 +517,8 @@ ms instead of 52 (10-year vault, 5,000 other notes).
 
 - One plugin-wide list — each view's queue must own its list's changes, or
   pagination breaks (.claude/rules/invariants.md).
-- A plugin-wide list kept current by vault listeners, copied per view — work
-  while no stream is open, and state nothing displays.
+- A plugin-wide list kept current by vault listeners, copied per view — it does
+  work while no stream is open, and keeps state that nothing displays.
 
 ## D-032 — Unloading waits for the scroll to stop (2026-09-23)
 
@@ -589,12 +594,12 @@ closing view is not laid out, and a Base left mid-fill keeps the height it had.
 The heights, and which Bases were too wide, are kept across sessions in
 `LayoutMemory` ([ADR 0010](adr/0010-layout-memory.md)): Back rebuilds the view,
 which forgot them. They follow the notes' rule: the 4 layouts used most
-recently, a rename carrying them along, a delete taking them. A cap of 500 Bases
-kept an eighth of a vault whose template embeds one in every note, and whole
-`.base` files in the keys ran to kilobytes each.
+recently, a rename carrying them along, a delete taking them. An earlier cap of
+500 Bases kept only an eighth of a vault whose template embeds one in every
+note, and keys holding whole `.base` files ran to kilobytes each.
 
 **Why:** Bases fills a view after it is drawn. A note coming back into view, or
-a table redrawn as cards, dropped by the Bases' height for a few frames and grew
+a table redrawn as cards, shrank by the Base's height for a few frames and grew
 back; iOS has no scroll anchoring, so the text jumped and returned.
 
 **Rejected:**
@@ -616,16 +621,17 @@ wholly above the pane: first as a `transform` on the stream, then, once the
 scroll is still, as `scrollTop` in the same frame.
 
 **Why:** a note above the reader rendering past its placeholder estimate pushed
-the text down; e2e mobile, anchoring off, measured 2673px. Chromium absorbs it.
-iOS WebKit answers `CSS.supports` yes and anchors nothing: a phone's Web
-Inspector trace showed the anchor never switched on. Tried on a phone, the shift
-held the place and plain `scrollTop` writes mid-glide still jumped.
+the text down; e2e mobile, anchoring off, measured 2673px. Chromium's native
+anchoring absorbs it. iOS WebKit answers `CSS.supports` yes and anchors nothing:
+a phone's Web Inspector trace showed the anchor never switched on. Tried on a
+phone, the shift held the place and plain `scrollTop` writes mid-glide still
+jumped.
 
 **Rejected:** writing `scrollTop` mid-glide — jumped on a phone. Correcting only
-once the scroll stops — the jump shows first. Blocks reaching into the pane — a
-chevron tapped there grows the note below the reader's place, and moving the
-scroll would carry it off. Anchoring everywhere — doubles Chromium's own
-correction.
+once the scroll stops — the jump shows first. Offsetting blocks that reach into
+the pane too — a chevron tapped there grows the note below the reader's place,
+and moving the scroll would carry that place away. Anchoring everywhere —
+doubles Chromium's own correction.
 
 ## D-037 — A tap on the header title glides to the top, on mobile (2026-09-24)
 
@@ -634,8 +640,8 @@ stream to its top. `ScrollAnchor` is told first, and a glide that arrives at the
 top drops what it owes instead of handing it to the scroll.
 
 **Why:** iOS apps scroll to the top on a tap of the title bar. Notes above the
-reader render on the way up; handed over, their growth stopped the glide
-23,386px short in e2e.
+reader render on the way up; handing their growth over to the scroll stopped the
+glide 23,386px short in e2e.
 
 **Rejected:**
 
@@ -651,7 +657,7 @@ a block — a list item's words above its sub-list — is wrapped in
 **Why:** WebKit paints no CSS highlight on such text, and no layout of the
 parent changes that; iOS search marked nothing on list items with children. The
 wrap happens once per render, so collapsing, keys (`textContent`) and search see
-one DOM from the start — unlike the per-search `<mark>` wrappers rejected above.
+one DOM from the start — unlike the per-search `<mark>` wrappers D-022 rejects.
 
 **Rejected:**
 
@@ -676,8 +682,9 @@ alone.
 ## D-040 — The stream opens in the current tab (2026-09-25)
 
 **Decision:** the ribbon icon and `Open stream` open the stream in the current
-tab, even when another tab holds one; a mod-click on the icon opens the pane it
-asks for. Run from a stream, the command keeps that stream as it was.
+tab, even when another tab holds one; a mod-click on the icon opens it in the
+kind of pane the modifier asks for. Run from a stream, the command keeps that
+stream as it was.
 
 **Why:** the graph and canvas do exactly this, measured in the app, so the
 stream opens like Obsidian's other views.
@@ -731,7 +738,8 @@ Jump to date does, would do nothing useful.
 notes are seeded by their date; `seed` stays the test vault.
 
 **Why:** `seed`'s notes are shaped around edge cases the checklist names, and
-photograph as scaffolding. Seeding by date lets a recording be retaken.
+look like scaffolding in screenshots. Seeding by date lets a recording be
+retaken.
 
 **Rejected:**
 
@@ -748,8 +756,8 @@ writes the APNG chunks itself, each frame only the rectangle that changed.
 
 **Why:** an animated PNG keeps every color, so text stays crisp, and plays in
 GitHub's image tags. ImageIO ships with macOS: nothing to install. Its own APNG
-writer stores whole frames — typing a sentence cost 8 MB, changed rectangles
-2.5.
+writer stores whole frames: a recording of typing a sentence took 8 MB that way,
+and 2.5 MB as changed rectangles.
 
 **Rejected:**
 
@@ -786,8 +794,8 @@ run on the previous build.
 
 - A setting or command showing the version — the manifest version is the same
   across every test build.
-- The branch, commit and time — read on a phone, compared character by
-  character.
+- The branch, commit and time — on a phone, they would have to be compared
+  character by character.
 
 ## D-048 — Back returns to its place in one scroll (2026-09-25)
 
@@ -795,9 +803,9 @@ run on the previous build.
 pane and its offset. The rebuilt view's placeholders reserve what `LayoutMemory`
 remembers ([ADR 0010](adr/0010-layout-memory.md)). Back scrolls once, before the
 first frame. The iOS scroll anchor is then told the place is set, so growth the
-scroll already holds, reported a frame late, is not added again. It loads past
-the place until the pane can scroll there: a place near the end of what was
-loaded otherwise stops short.
+scroll already includes, reported a frame late, is not added again. Back loads
+notes past the place until the pane can scroll to it; otherwise a place near the
+end of what was loaded stops short.
 
 **Why:** Back rebuilds the view from scratch. At estimated heights, each render
 pushed the place and each correction was drawn: the newest note flashed on
@@ -820,8 +828,9 @@ desktop, older ones on a phone.
 it has resized for 300ms, as a Base's does. An unload reserves what the note
 measures then, remembering it only if it had settled.
 
-**Why:** a Base filling or an image loading measures short until done; saved,
-that height is next session's placeholder, and the growth an owed scroll.
+**Why:** a Base filling or an image loading measures short until done. If that
+short height were saved, it would be the next session's placeholder, and the
+growth would become a scroll the anchor owes.
 
 **Rejected:** saving on scroll stop, Back and refresh — each measured whatever
 was on screen, mid-fill included.
@@ -849,8 +858,8 @@ Obsidian's reading view (2026-10-05).
 **Rejected:**
 
 - The old 420 × 800 — no phone's screen.
-- A Pro Max's 440 — rejected for fitting two cards, on the reading corrected
-  below.
+- A Pro Max's 440 — rejected at the time for fitting two cards, based on the
+  reading corrected below.
 
 Corrected 2026-10-05: this said a phone shows one card per row. It shows two, in
 Obsidian's reading view and in the stream.
@@ -874,36 +883,39 @@ so the equation fits inside the padding.
 
 ## D-053 — The scroll anchor is the element at the pane's top (2026-09-26)
 
-**Decision:** where `ScrollAnchor` runs, it offsets however far the element at
-the pane's top moved. It re-picks that element on each scroll and hand-over:
-`elementsFromPoint`, walked up to its block; halving the blocks when nothing of
-the stream is there.
+**Decision:** where `ScrollAnchor` runs, it offsets the stream by however far
+the element at the pane's top moved. It picks that element again on each scroll
+and each hand-over, with `elementsFromPoint`, walking up to the element's block;
+when no part of the stream is at that point, it finds the block by halving the
+list of blocks.
 
-- It stops at anything held — a held note's text is not yet where Back measured
-  the place.
-- It owes what moved before every re-pick — a note rendering between frames
-  reaches the scroll event before its resize report.
-- A replaced element falls back to its block.
+- The walk stops at anything held — a held note's text is not yet where Back
+  measured the place.
+- Before each new pick, it records what moved as owed — a note rendering between
+  frames reaches the scroll event before its resize report.
+- If the element is replaced, the anchor falls back to its block.
 
-**Why:** a Base filling above the pane, in a note reaching into it, pushed the
-text down: only notes wholly above were offset. Nothing above the pane's top is
-the reader's doing; a chevron tapped on screen changes only what is below.
+**Why:** a Base filling in above the pane, in a note that reaches into the pane,
+pushed the text down: only notes wholly above the pane were offset. Nothing
+above the pane's top is the reader's doing; a chevron tapped on screen changes
+only what is below.
 
 **Rejected:**
 
-- Holding a Base's growth — the same move, later, rows clipped.
-- Walking down the note — every paragraph read each scroll frame.
-- `IntersectionObserver` — a frame late.
+- Holding a Base's growth — the same move happens later, with rows cut off
+  meanwhile.
+- Walking down the note — reads every paragraph on each scroll frame.
+- `IntersectionObserver` — reports a frame late.
 
 ## D-054 — Notes and Bases are held until they settle (2026-09-26)
 
 **Decision:** each is held at `min-height` until nothing in it resizes for
 300ms, and 2s at most:
 
-- a rendered note at a height it measured before — remembered, or shown before a
-  re-render; never a guess. A touch lets it go, so a collapse shows at once.
-- a Base at what it showed, when redrawn or when it shrinks by itself (a live
-  Bases refresh). It grows unheld.
+- a rendered note at a height it measured before (remembered, or shown before a
+  re-render), never a guess. A touch releases it, so a collapse shows at once.
+- a Base at the height it showed, when it is redrawn or when it shrinks by
+  itself (a live Bases refresh). It grows without a hold.
 
 Base heights are no longer stored: a Base coming back is held by its note.
 
@@ -926,43 +938,48 @@ The scroll anchor survives the margins' rebuild.
 
 **Why:** shrinking placeholders shortens the stream under the scroll. The
 browser clamps the scroll at once, `ScrollAnchor` counts the clamp as the
-reader's, and a phone turned mid-stream landed notes away. An anchor rebuilt
-with the margins has no place to hold while the notes on screen reflow: the
-place moved 120 px.
+reader's own scroll, and a phone turned mid-stream landed several notes away. An
+anchor rebuilt along with the margins has no place to hold while the notes on
+screen reflow: the reader's place moved 120 px.
 
 **Rejected:**
 
 - Re-reserving every unloaded note — the clamp above.
-- Only those above the pane — clamps once they shrink by more than lies below.
+- Only those above the pane — the browser clamps once they shrink by more than
+  the content below the pane.
 
 ## D-056 — A Base redrawn under the pane's top keeps the reader's fraction (2026-09-27)
 
-**Decision:** when the pane's top crosses a Base, `ScrollAnchor` holds it as far
-through the Base as it was, not at the Base's top — through what the Base draws,
-not the box held open for it. A scroll pulled back to the stream's end is a
-clamp, not the reader's.
+**Decision:** when the pane's top crosses a Base, `ScrollAnchor` keeps the
+reader the same fraction of the way through the Base, not at the Base's top. The
+fraction is of what the Base draws, not of the box held open for it. A scroll
+pulled back to the stream's end is a clamp, not the reader's own scroll.
 
-**Why:** a turned phone redraws cards as a table: the entry read is gone, and
-held at its top the reader landed anywhere. Cards and rows keep one order. Below
-a note jumped to, the stream shrank by more than lay below the pane, and the
-clamp was undone as a scroll.
+**Why:** a turned phone redraws cards as a table: the entry being read is gone,
+and held at the Base's top the reader landed anywhere. Cards and rows share one
+order, so the fraction carries over. Below a note the reader had jumped to, the
+stream shrank by more than the content below the pane, and the anchor undid the
+clamp as if the reader had scrolled.
 
 **Rejected:**
 
-- The same entry, card to row — Bases fills the table after drawing it.
-- The Base's top at the pane's — the reader loses their place in it.
-- Through the held box — the table fills its top, and the reader sat in the
-  blank below until the hold let go.
+- Holding the same entry, from card to row — Bases fills the table after drawing
+  it.
+- Holding the Base's top at the pane's top — the reader loses their place in the
+  Base.
+- A fraction of the held box — the table fills the box's top, and the reader sat
+  in the blank below until the hold was released.
 
 ## D-057 — A reflow holds the block starting in the pane (2026-09-27)
 
 **Decision:** once the pane's width changes, `ScrollAnchor` holds the first
-block starting inside the pane below the text crossing its top — climbing past
-inline text, anything beside it, anything taking no space — until the shift is
-handed to the scroll. Otherwise it holds the text crossing the top, as before. A
-Base crossing the top is held by its fraction either way, never by what it
-draws. The place is the one read before the width changed, measured again but
-not re-read until handed over.
+block that starts inside the pane, below the text crossing the pane's top, until
+the shift is handed to the scroll. It skips inline text, anything beside that
+text, and anything that takes no space. Otherwise it holds the text crossing the
+top, as before. A Base crossing the top is held by its fraction either way,
+never by what it draws. The anchor keeps the place it read before the width
+changed: it measures that place again each frame, but picks no new place until
+the shift is handed over.
 
 **Why:** a turned phone reflows the text crossing the top, and holding its top
 moved a title just below it out of view. Native anchoring prefers what is fully
@@ -970,14 +987,17 @@ visible for the same reason.
 
 **Rejected:**
 
-- Always the block starting in the pane — a chevron tapped there scrolls away.
-- The next element in document order — a span in the reflowing text, and dozens
-  of reads in a highlighted code block.
-- Only the first report after the width changes — the text reflows over frames.
+- Always holding the block that starts in the pane — a chevron tapped in the
+  text above it would scroll away.
+- The next element in document order — often a span in the reflowing text, and
+  dozens of reads in a highlighted code block.
+- Only the first report after the width changes — the text reflows over several
+  frames.
 - A card, or a heading below a Base — on a phone the cards re-flow before the
   Base is redrawn, and a card's place says nothing of the reader's.
-- Re-reading the place each frame — mid-turn it was a Base emptied for its
-  redraw, then its note, whose top never moved as the Base shrank.
+- Re-reading the place each frame — mid-turn, the place read was a Base emptied
+  for its redraw, then the Base's note, whose top never moved as the Base
+  shrank.
 
 ## D-058 — A search holds its match while the Bases around it fill in (2026-09-27)
 
@@ -987,17 +1007,18 @@ or the reader touches or wheels the pane (`keepInPlace`,
 `src/stream/scroll-position.ts`). A note remembered at its height is held there,
 so a Base filling in inside it resizes nothing outside it.
 
-**Why:** Bases fill in after the note renders, uncounted by `scrollIntoPlace`;
-one above the match pushed it off screen, leaving the reader on the Base.
+**Why:** Bases fill in after the note renders, which `scrollIntoPlace` does not
+count; a Base above the match pushed the match off screen, leaving the reader on
+the Base.
 
 **Rejected:**
 
 - Counting Base fills as layout changes — `scrollIntoPlace` would wait on them,
   and every step with it.
 - Scroll anchoring — it holds the note's top, not the match.
-- Checking the match's place each frame — a change made after the frame's
-  `requestAnimationFrame` paints a frame off screen; a resize reports before
-  paint.
+- Checking the match's place each frame — a change made after that frame's
+  `requestAnimationFrame` callback is painted with the match off screen for a
+  frame; a resize report comes before paint.
 
 ## D-059 — A Base's header and summaries scroll with it, on mobile (2026-09-27)
 
@@ -1018,8 +1039,8 @@ they pinned to the stream's instead and floated over the notes.
 express, `manifest.json` included; `tests/repo/compliance.test.ts` keeps only
 the rest (file names, the license, an error's prefix, sentence case).
 
-**Why:** a rule reads the syntax, where a test's regex matched comments too, and
-the editor shows it as it is typed.
+**Why:** a lint rule reads the syntax, whereas a test's regex matched comments
+too, and the editor shows a lint error as it is typed.
 
 **Rejected:**
 
@@ -1087,8 +1108,8 @@ with the seed script and the date.
 
 **Rejected:**
 
-- Seeding only when the seed script or the date changed — a fingerprint to
-  protect notes nobody keeps.
+- Seeding only when the seed script or the date changed — it would need a
+  fingerprint, only to protect notes nobody keeps.
 - Keeping `dev:vault`, `open` and `reload` beside it — four commands for one
   loop.
 
@@ -1116,10 +1137,11 @@ right under the header; one icon for two searches reads as a duplicate.
 
 **Rejected:**
 
-- Search in the ⋯ menu, where Obsidian keeps Find — a second tap on the phone.
+- Search in the ⋯ menu, where Obsidian keeps Find — it costs a second tap on the
+  phone.
 - `text-search` on mobile only — a platform branch for an icon.
-- `scan-search`, a magnifier in a viewfinder — reads as search faster, but says
-  less about what it searches.
+- `scan-search`, a magnifier in a viewfinder — is recognized as search faster,
+  but says less about what it searches.
 
 ## D-067 — Search reads through `cachedRead`, with no cache of its own (2026-09-28)
 
@@ -1134,7 +1156,8 @@ docs promise only "better performance", so the timing test is the guard.
 **Rejected:**
 
 - A source cache per path, invalidated on `modify` — duplicates Obsidian's.
-- Dropping a search a newer one replaced — at 5 ms there is nothing to save.
+- Dropping a search once a newer one replaces it — at 5 ms there is nothing to
+  save.
 
 ## D-068 — Bases and wide content stay in the render (2026-09-28)
 
@@ -1149,8 +1172,8 @@ all, about 7 ms a note. The spec's budgets are about twice these.
 
 **Rejected:**
 
-- Bases off the queue, held by a `HeightHold` — 16 ms a Base, for a hold per
-  Base.
+- Bases off the queue, held by a `HeightHold` — saves 16 ms a Base, at the cost
+  of a hold per Base.
 - Batching width reads in one `requestAnimationFrame` — at most 1 ms of layout a
   note (2026-10): with them stubbed out, the plugin forced 80 ms less over 40
   notes but all layout fell by only 40 ms, the rest moving to the next frame.
@@ -1161,8 +1184,8 @@ all, about 7 ms a note. The spec's budgets are about twice these.
 
 **Why:** over 4,096 files, 1,095 of them daily notes, with the CPU slowed 4x to
 a phone's (`pnpm run test:memory`): the cold parse takes 17–20 ms, 30–36 ms with
-no daily-notes folder set; open to the first note, 50–88 ms. Under the 50 ms of
-a long task.
+no daily-notes folder set; from open to the first note, 50–88 ms. The parse is
+under the 50 ms that makes a task long.
 
 **Rejected:**
 
@@ -1194,11 +1217,13 @@ state that does not parse counts as none, a list that fails to build lists
 nothing until the next refresh. Only a failed jump raises a Notice.
 
 **Why:** a stream is many notes; one bad one, or a full localStorage, must not
-blank the rest. Failing open shows too much, never hides writing.
+blank the rest. Failing open may show too much, but never hides anything
+written.
 
 **Rejected:**
 
-- A Notice per failure — a full localStorage refuses every save after.
+- A Notice per failure — a full localStorage refuses every later save, so the
+  notices would never stop.
 - Failing closed (hiding what could not be checked) — writing vanishes silently.
 
 ## D-072 — Empty-note verdicts are cached per device, trusted by mtime (2026-09-28)
@@ -1208,14 +1233,14 @@ blank the rest. Failing open shows too much, never hides writing.
 Only notes no bigger than the template plus 1 KB are read. It saves, in the
 vault's localStorage on this device, the template it checked against, when its
 last check of every note began, and each empty note's `mtime`. The next session
-trusts a note unchanged since: empty if saved with that `mtime`, else written. A
-note that fails to read shows and is read on the next check; a check with one
-unread saves nothing.
+trusts any note unchanged since that check: empty if it was saved with that
+`mtime`, otherwise written. A note that fails to read shows, and is read again
+on the next check; a check that left any note unread saves nothing.
 
-**Why:** a first open reads only candidates, a later one only what changed. A
-written note costs nothing to save, an empty one about 40 bytes. A note emptied
-on another device, synced with an `mtime` older than the last check, shows until
-it next changes.
+**Why:** a first open reads only the candidates, and a later open only what
+changed. A written note costs nothing to save, an empty one about 40 bytes. A
+note emptied on another device, synced with an `mtime` older than the last
+check, shows until it next changes.
 
 **Rejected:**
 
@@ -1234,9 +1259,9 @@ daily-notes folder on every `resolve` and, once `resolved`, has each view
 re-check the notes that gained or lost one (ADR 0011: a linked empty note
 shows).
 
-**Why:** a link made or removed shows or hides its target without an open. A
-stream open at launch hides a linked empty note until the links resolve, then
-shows it.
+**Why:** a link made or removed shows or hides its target without reopening the
+stream. A stream open at launch hides a linked empty note until the links
+resolve, then shows it.
 
 **Rejected:**
 
@@ -1280,18 +1305,22 @@ list did not say so.
 
 Superseded by D-092.
 
-**Decision:** a note with no height stored at the layout reserves, first that
-applies: its height at the nearest width of the same text size, plus its wrapped
-lines' difference × line height; else the template's measured height here, plus
-its lines past the template's × a per-line rate learned from text-only notes,
-plus its embeds × a per-embed height learned at this layout (the pane's height
-until one is); else the layout's median. Lines come from the metadata cache, so
-adding a block stays synchronous. Benchmark: `e2e-tests/estimates.spec.ts`,
-scored by `scripts/score-estimates.mjs`.
+**Decision:** a note with no height stored at the layout reserves the first of
+these that applies:
+
+- its height at the nearest width of the same text size, plus the change in its
+  wrapped lines × line height;
+- else the template's measured height here, plus its lines beyond the template's
+  × a per-line rate learned from text-only notes, plus its embeds × a per-embed
+  height learned at this layout (the pane's height until one is learned);
+- else the layout's median. Lines come from the metadata cache, so adding a
+  block stays synchronous. Benchmark: `e2e-tests/estimates.spec.ts`, scored by
+  `scripts/score-estimates.mjs`.
 
 **Why:** a turn changes a text note only by re-wrapping it, and every note is
-its template plus writing (ADR 0011). Mean error for text notes falls from 85px
-(the other width's height) to 18px, and from ~330px (400px) to ~50px.
+its template plus writing (ADR 0011). After a turn, mean error for text notes
+falls from 85px (the other width's height) to 18px; for notes never measured,
+from ~330px (a fixed 400px) to ~50px.
 
 **Rejected:**
 
@@ -1307,8 +1336,8 @@ Superseded by D-092.
 
 **Decision:** a note estimated from its height at another width (D-079) adds,
 per Base it embeds, the median change per Base, beyond re-wrapped text, of other
-notes embedding that Base and measured at both widths. None measured at both: no
-change.
+notes embedding that Base and measured at both widths. If no such note is
+measured at both widths, it adds nothing.
 
 **Why:** only a Base switching between table and cards changes much on a turn
 (up to ~1400px), and the same Base switches the same way in every note. Embed
@@ -1316,8 +1345,8 @@ error after a turn: 378px → 35px.
 
 **Rejected:**
 
-- One change per embed, or per Base — images barely change, and Bases differ:
-  the median is near zero, or half of a switching Base's change.
+- One change per embed, or per Base — images barely change, and Bases differ: a
+  single median comes out near zero, or half of what a switching Base changes.
 - Adjusting only Bases flagged too wide (`BaseMeasurements`) — known per note
   only once drawn at the new width; learning per Base gets there without it.
 
@@ -1327,7 +1356,8 @@ Superseded by D-092.
 
 **Decision:** a note measured only at a narrower width, embedding a Base whose
 change D-080 has not learned, is estimated from the template and its lines
-(D-079's fallback) once the template is measured here; before, as D-080.
+(D-079's fallback) once the template has been measured at this layout; until
+then, as D-080 says.
 
 **Why:** cards at the narrower width may be a table here, up to ~1,400px
 shorter, and until a note with that Base settles at both widths nothing says so.
@@ -1348,16 +1378,16 @@ queries (`is-loading` cleared, a frame on, at most `BASES_LOAD_LIMIT_MS`), then
 the scroll goes once: a jump to its top, a step to the match (`basesLoaded`,
 `NoteStream.ready`).
 
-**Why:** scrolled to first, a Base showed "0 results", then filled in, on
-screen; a step also painted the note's top for two frames before centering.
+**Why:** when the scroll came first, a Base showed "0 results", then filled in,
+on screen; a step also painted the note's top for two frames before centering.
 
 **Rejected:**
 
 - Hiding a Base until it fills — blank space, then cards popping in.
 - Remembering each Base's height — the space is right, the "0 results" bar still
   shows.
-- Readying the notes around it too — the match's own note is where its Bases
-  sit; the neighbours render as they do on any scroll.
+- Readying the notes around it too — the Bases that matter sit in the match's
+  own note; the neighbours render as they do on any scroll.
 
 ## D-083 — On mobile a PDF embed is its first page, opened by a tap (2026-10-01)
 
@@ -1366,9 +1396,9 @@ hidden, and a tap anywhere on it opens the PDF at the embed's page, through the
 link handlers (`NoteRenderer.linkAt`). An iframe is capped at the note's width,
 everywhere.
 
-**Why:** clipped, Obsidian's viewer shows page 1 and its toolbar can reach no
-other page; a pasted video embed's fixed width scrolled the page sideways on a
-phone.
+**Why:** once clipped, Obsidian's viewer shows page 1, and its toolbar can reach
+no other page; a pasted video embed's fixed width scrolled the page sideways on
+a phone.
 
 **Rejected:**
 
@@ -1405,8 +1435,8 @@ guard caught it at rest.
 in the stream, undoing MathJax 3's WebKit-only `will-change: opacity`.
 
 **Why:** with the layers, an iPhone stopped 34 of 58 flicks dead within 0.4 s,
-math in a table or a line alike; without them, 0 of 30, as with no math at all.
-MathJax added the rule for a 2020 pinch-zoom flicker
+whether the math sat in a table or in a line of text; without them, 0 of 30, as
+with no math at all. MathJax added the rule for a 2020 pinch-zoom flicker
 ([MathJax#2435](https://github.com/mathjax/MathJax/issues/2435)) and dropped it
 in v4 as unneeded; Obsidian ships v3.
 
@@ -1414,7 +1444,7 @@ in v4 as unneeded; Obsidian ships v3.
 
 - Keeping MathJax's fonts in use — the fonts were never dropped; 28 of 54 still
   stopped.
-- Override at MathJax's own specificity — its stylesheet comes later and wins.
+- Overriding at MathJax's own specificity — its stylesheet comes later and wins.
 
 Superseded 2026-10-07: Obsidian 1.14 ships MathJax 4, which sets no
 `will-change`, and the plugin needs 1.14 (D-100). The rule is gone; the WebKit
@@ -1431,9 +1461,9 @@ phone for them left it never locking if they forgot `pnpm run ios:release`.
 
 **Rejected:**
 
-- Setting Never through the Settings app, held until `pnpm run ios:release` —
-  navigated pages holding Delete buttons, failed under Low Power Mode and on an
-  iPad, and cost ~18 s a session.
+- Setting Never through the Settings app, held until `pnpm run ios:release` — it
+  navigated Settings pages that hold Delete buttons, failed under Low Power Mode
+  and on an iPad, and cost ~18 s a session.
 
 ## D-087 — On mobile a frame loads its page once the scroll is still (2026-10-03)
 
@@ -1469,17 +1499,19 @@ thumbnail is an image: 0 of 20 flicks stopped over it.
 **Rejected:**
 
 - The grey placeholder, then the player once still — the player fails anyway.
-- A wrapper labelled over the held frame — more DOM, still a player that fails.
+- A labelled wrapper over the held frame — more DOM, and still a player that
+  fails.
 - A still with YouTube's button drawn in — YouTube serves none; its stills and
   oEmbed are plain.
-- The 480 px thumbnail alone — 2.2x upscaled across a phone at 3x, blurred.
+- The 480 px thumbnail alone — stretched 2.2x across a phone's 3x screen, it
+  looks blurred.
 
 ## D-089 — On mobile a Base's cards and header line up with the note's text (2026-10-03)
 
 **Decision:** under `.is-mobile`, a cards view keeps 1px of
-`--bases-view-padding` each side, for the cards' ring, and the header gives back
-its own padding and its first button's: card borders and the first icon sit on
-the text's edges.
+`--bases-view-padding` each side, for the cards' ring, and the header cancels
+its own padding and its first button's, so card borders and the first icon line
+up with the text's edges.
 
 **Why:** Bases insets cards 12px and the icon 6px inside a note's text column,
 which reads as a stray margin under a heading.
@@ -1491,62 +1523,68 @@ which reads as a stray margin under a heading.
 
 ## D-090 — A glide's bounce at the top hands over as it ends (2026-10-03)
 
-**Decision:** `ScrollAnchor.onScroll` hands what it owes to the scroll in the
-first scroll back at or below the top after one past it, not once the scroll has
-been still for `SCROLL_IDLE_MS`.
+**Decision:** after the scroll goes past the top, `ScrollAnchor.onScroll` hands
+what it owes to the scroll at the first scroll event back at or below the top,
+instead of waiting for the scroll to be still for `SCROLL_IDLE_MS`.
 
-**Why:** a glide up past notes rendering taller than reserved runs out of scroll
-first and bounces at the top owing them (ADR 0010). On a phone the hand-over
-came 328 ms after the bounce; a flick meanwhile hit the same top, and put the
-hand-over off again. A bounce ends the glide, so the write ends none.
+**Why:** a glide up past notes that render taller than reserved runs out of
+scroll first, and bounces at the top still owing their growth (ADR 0010). On a
+phone the hand-over came 328 ms after the bounce; a flick made meanwhile hit the
+same top and put the hand-over off again. A bounce ends the glide anyway, so the
+scroll write cuts no glide short.
 
 **Rejected:**
 
 - Handing over as the glide reaches the top — iOS undid the write the next
   frame, mid-bounce: the stream jumped 3,000 px.
 
-## D-091 — A glide reaching the stream's top drawn lower stops there (2026-10-03)
+## D-091 — A glide stops at the stream's top while the stream is drawn shifted (2026-10-03)
 
 **Decision:** while `ScrollAnchor` owes a shrink, a scroll that will bring the
-stream's top into the pane within two more of its last step writes the scroll to
-the top and drops the shift, the pane frozen for that frame (`is-scroll-frozen`,
-`overflow: hidden`): the glide stops with the newest note at the top. A clamp to
-the stream's end is no step.
+stream's top into the pane within two more steps the size of its last one writes
+the scroll to the top and drops the shift, freezing the pane for that frame
+(`is-scroll-frozen`, `overflow: hidden`): the glide stops with the newest note
+at the top. A clamp to the stream's end does not count as a step.
 
-**Why:** notes above rendering shorter than reserved leave more scroll than lies
-above. The glide reached the newest note with that to spare and went on into
-blank: 1.7–4.6k px in the iPhone harness. iOS carries a glide on from a write,
-undoing it the next frame; with nothing to scroll, the glide ends. Merged first
-without the freeze, the newest note jumped 1.5–1.7k px back after the write; its
-test checked only for blank. Stopped on arrival, a recording showed it drawn ~65
-px past for a frame, then back: iOS draws a frame before the page hears it. One
-step ahead still went 43 px past when a dropped frame doubled the step.
+**Why:** when notes above render shorter than reserved, the scroll has more room
+left than there is content above. The glide reached the newest note with room to
+spare and went on into blank: 1.7–4.6k px in the iPhone harness. iOS carries a
+glide on past a scroll write, undoing the write the next frame; with nothing
+left to scroll, the glide ends. The first version, merged without the freeze,
+let the newest note jump 1.5–1.7k px back after the write; its test checked only
+for blank. Stopping only on arrival, a recording showed the top drawn ~65 px too
+far for a frame, then back: iOS draws a frame before the page hears of the
+scroll. Stopping one step ahead still went 43 px too far when a dropped frame
+doubled the step.
 
 **Rejected:**
 
-- The write alone — undone the next frame, whatever it wrote: 0, mid-range, or
-  with the shift added or dropped.
+- The write alone — iOS undid it the next frame, whatever it wrote: 0, a value
+  mid-range, or with the shift added or dropped.
 - Handing over once still — the blank is on screen until then.
 
 ## D-092 — A note never measured reserves the 0.9 quantile of those measured (2026-10-04)
 
 **Decision:** a note with no height stored at the layout reserves the 0.9
-quantile of the heights stored there. Where nothing is, it keeps what it
-reserves: just turned, its old width's height; never measured, two panes. A
-height kept schedules the re-reserve at the next rest (ADR 0014), so after a
-turn or on opening, the notes on screen set the rest within moments. It replaces
-D-079–D-081's estimates from each note's text, template and Bases.
+quantile of the heights stored there. Where nothing is stored, it keeps what it
+already reserves: after a turn, its height at the old width; if never measured,
+two panes. Storing a height schedules the re-reserve at the next rest (ADR
+0014), so after a turn or on opening, the notes on screen supply the heights
+within moments. It replaces D-079–D-081's estimates from each note's text,
+template and Bases.
 
-**Why:** an estimate shows only off the common path, after a jump, search, Back
-or turn, gliding up through notes not yet drawn; scrolling down from the top
-measures every note before it is passed. There, too tall is safe, as D-091 stops
-the glide on the newest note; too short costs one more flick (D-090). Its only
-input is the vault's own notes, so nothing is fitted to a journal we made up.
+**Why:** an estimate matters only off the common path: after a jump, search,
+Back or turn, when gliding up through notes not yet drawn; scrolling down from
+the top measures every note before it is passed. There, too tall is safe, as
+D-091 stops the glide on the newest note; too short costs one more flick
+(D-090). Its only input is the vault's own notes, so nothing is fitted to a
+journal we made up.
 
 **Rejected:**
 
 - D-079–D-081's per-note estimates, made to err tall — each rule, per Base and
-  per embed kind, held on our generated journals and nowhere tested beyond them.
+  per kind of embed, held only on our generated journals and was never tested
+  beyond them.
 - The upper quartile — on those journals, a third to half of a week's runs of
   notes came out short in portrait.
 - A buffer above the newest note — room above can change only at rest: a scroll
@@ -1564,13 +1602,13 @@ actions.
 
 **Why:** iOS fires no `contextmenu` on a long-press; Obsidian synthesizes one
 only for elements its drag manager handles. The menu adds a shortcut, not an
-action, and a touch listener on the stream sits in the path of glides, what
-breaks most on iOS.
+action, and a touch listener on the stream sits in the path of glides, which are
+what breaks most often on iOS.
 
 **Rejected:**
 
-- Our own long-press: a timer that must tell a press from a flick's start, and
-  the title's selection suppressed.
+- Our own long-press — a timer that must tell a press from the start of a flick,
+  and the title's text selection suppressed.
 - Registering titles with Obsidian's drag manager — private API.
 
 ## D-094 — One width observer per view; the anchor keeps its own (2026-10-05)
@@ -1587,8 +1625,9 @@ would need counts of who watches what.
 
 **Rejected:**
 
-- One observer for the pin and the anchor — saves one observer per view, at a
-  rewrite of the anchor's tests and shared bookkeeping in ADR 0013's code.
+- One observer for the pin and the anchor — saves one observer per view, at the
+  cost of rewriting the anchor's tests and sharing bookkeeping in ADR 0013's
+  code.
 
 ## D-095 — ResizeObserver callbacks never resize what was observed (2026-10-05)
 
@@ -1628,8 +1667,8 @@ turned. The late size report did no harm; the logged error was the only cost.
 Android stays supported, held to the iOS rules (ADR 0008).
 
 **Why:** Android's WebView is Chromium, the engine both e2e projects run. What
-e2e cannot see is a native widget, such as the date wheel, and that is
-Android's.
+e2e cannot see is a native widget, such as the date wheel, and those are
+Android's own.
 
 **Rejected:**
 
@@ -1646,16 +1685,16 @@ and result count shrink to an ellipsis as in Obsidian, which the stream's
 **Why:** a Base in the stream is the text's width, 354px on a phone against
 Obsidian's 402px edge to edge (D-089), so the toolbar overran by up to 41px: New
 was cut off, and shrinking alone left "Resized" as "R…". Without New it reads
-"Resiz…", and a short name, such as "Books", is whole with its count. It creates
-`Untitled.md` on one tap, with no prompt: easy to hit mid-scroll. The note or
-`.base` file keeps it.
+"Resiz…", and a short name, such as "Books", shows whole with its count. New
+creates `Untitled.md` on one tap, with no prompt, which is easy to hit
+mid-scroll. Opening the note or the `.base` file still shows it.
 
 **Rejected:**
 
 - Keeping New, names shortened — the view name tells views apart.
 - Hiding it on desktop too — desktop has the room; Sort, Filter and Properties
   edit the `.base` file anyway.
-- Wrapping the toolbar to two lines — a row of height on every Base.
+- Wrapping the toolbar to two lines — adds a row's height to every Base.
 
 ## D-098 — On mobile a web page in a frame is a preview, a link to the page (2026-10-05)
 
@@ -1671,11 +1710,11 @@ the page was at its top. The scroll box guard cannot reach a frame's page (ADR
 
 **Rejected:**
 
-- A preview a tap does nothing on — it looks like a link.
-- A link in the frame's place — loses the preview, the point of a map or a
-  calendar.
-- Leaving the page live — any frame taller than the screen can trap a flick;
-  D-087's "a page that can work in place" gave way to that.
+- A preview that does nothing when tapped — it looks like a link.
+- A link in the frame's place — loses the preview, which is the point of a map
+  or a calendar.
+- Leaving the page live — any frame taller than the screen can trap a flick,
+  which outweighs D-087's reason, "a page that can work in place".
 
 ## D-099 — An iOS glitch of a frame is fixed only once a recording shows it (2026-10-05)
 
@@ -1683,8 +1722,8 @@ the page was at its top. The scroll box guard cannot reach a frame's page (ADR
 unfixed:
 
 - A Base's table draws rows blank for a frame as a note above it renders
-  mid-glide: Bases re-picks rows only after the paint. Traced by `src/probe.ts`
-  in commit `d9cdb4f`.
+  mid-glide: Bases picks its visible rows again only after the paint. Traced by
+  `src/probe.ts` in commit `d9cdb4f`.
 - An image loading inside the note the pane's top crosses may jump a frame (ADR
   0013's consequences). Never seen: notes render a screen ahead, so their images
   have usually loaded.
@@ -1692,16 +1731,16 @@ unfixed:
   note. The harness only flicks.
 
 **Why:** each lasts one frame, mid-motion. A fix leans on undocumented Bases or
-iOS behavior, and only a phone recording can confirm it: the harness samples
-before the re-pin.
+iOS behavior, and only a phone recording can confirm it: the harness takes its
+samples before the re-pin.
 
 **Rejected:**
 
 - Dispatching `scroll` on each Base near the screen in `repin`'s task — relies
   on undocumented Bases behavior, and every other listener hears it.
-- Measuring never-measured notes in a hidden probe while still — ~16 ms a Base,
-  1,095 notes in a three-year vault, no `requestIdleCallback` on iOS; Bases and
-  images size again where they are drawn (ADR 0010).
+- Measuring never-measured notes in a hidden probe while still — about 16 ms a
+  Base, across 1,095 notes in a three-year vault, with no `requestIdleCallback`
+  on iOS; Bases and images size again where they are drawn (ADR 0010).
 
 ## D-100 — Before 1.0 the plugin needs the latest Obsidian (2026-10-07)
 
@@ -1718,17 +1757,18 @@ would point at a draft nobody can download.
 **Rejected:**
 
 - Keeping 1.8.7 — carries rules like D-085's for readers who do not exist.
-- Publishing the `0.x` drafts — releases nobody outside ran.
+- Publishing the `0.x` drafts — releases nobody outside the project ever ran.
 
 ## D-101 — A turn's scroll change is never the reader's (2026-10-07)
 
-**Decision:** once the pane's width changes, `ScrollAnchor` re-reads the scroll
-the place was read at: whatever moved the place since is owed.
+**Decision:** once the pane's width changes, `ScrollAnchor` reads again the
+scroll position the place was read at, so whatever moved the place since then is
+owed.
 
 **Why:** a turn upright makes the pane taller, and near the stream's end the
 browser clamps the scroll. On a phone, the stream had grown 62px by the time the
-clamp's scroll was read, `clamped()` read false, and the 873px clamp passed for
-the reader's scroll: about one turn in three lost the place.
+clamp's scroll was read, `clamped()` read false, and the 873px clamp was taken
+for the reader's own scroll: about one turn in three lost the place.
 
 **Rejected:**
 
@@ -1743,8 +1783,9 @@ the reader's scroll: about one turn in three lost the place.
 scroll before reading the reader's place.
 
 **Why:** while owed, the stream is drawn shifted, not where the scroll puts it.
-At the stream's end, a clamp held as a shift drew every note above the pane:
-`place()` found none, and hiding empty notes there reloaded at the top.
+At the stream's end, a clamp held as a shift drew every note above the pane, so
+`place()` found no note in the pane, and hiding empty notes there reloaded at
+the top.
 
 **Rejected:**
 
@@ -1788,10 +1829,10 @@ lay out in, not to whole pixels.
 
 **Why:** a placeholder reserved a whole-pixel height and its note rendered up to
 half a pixel off. The anchor owed the difference, and a scroll up by hand
-settled 1px short of the top. Exact, a note unchanged since it was measured owes
-nothing; an edited one is estimated (ADR 0017), and a changed embed is owed
-whatever it changed, either way. Keeping sizes as measured is the norm: browsers
-add up sub-pixel anchoring adjustments (web-platform-tests'
+settled 1px short of the top. With exact heights, a note unchanged since it was
+measured owes nothing; an edited one is estimated (ADR 0017), and a changed
+embed is owed whatever it changed, either way. Keeping sizes as measured is the
+norm: browsers add up sub-pixel anchoring adjustments (web-platform-tests'
 `device-pixel-adjustment.html`), and TanStack Virtual keeps
 `getBoundingClientRect()` sizes unrounded.
 
@@ -1813,7 +1854,8 @@ The box grows with the text, so the first line starts left of the rest: 3px at
 
 **Rejected:**
 
-- Matching reading view — copies a gap that grows with the text, as D-104.
+- Matching reading view — copies a gap that grows with the text, the same
+  problem as D-104.
 
 ## D-107 — On mobile a kanban Base too wide for its note draws as cards (2026-10-07)
 
@@ -1825,17 +1867,20 @@ and none of the rest.
 
 **Rejected:**
 
-- A tap opens the `.base` file, as a PDF (D-083) — hides a board cards can show.
+- Opening the `.base` file on a tap, as for a PDF (D-083) — hides a board that
+  cards can show.
 - Stacking the columns in CSS — Bases positions them absolutely, as D-033 found
   for tables.
 - Cards for every kanban, unmeasured — a one-column board fits.
 
 ## D-108 — A Base's own height changes re-pin its note in the same task (2026-10-08)
 
+Superseded in part by D-159: each Base slot now has a fixed height.
+
 **Decision:** a Base slot tells its note, by a synchronous `BASE_RESIZED` event,
-when its hold lets go or a measured draw fits; the note re-pins and the anchor
-shifts in that task (ADR 0013). A Base redrawn as written over cards, to be
-measured, is clipped at the cards' height until measured.
+when its hold is released or a measured draw turns out to fit; the note re-pins
+and the anchor shifts in that task (ADR 0013). A Base redrawn as written over
+cards, to be measured, is clipped at the cards' height until measured.
 
 **Why:** both changes reached the note by a `ResizeObserver` report, which iOS
 paints a frame after, so text below a Base in the same note jumped and returned:
@@ -1844,7 +1889,8 @@ paints a frame after, so text below a Base in the same note jumped and returned:
 **Rejected:**
 
 - Pinning every slot as notes are pinned — also clips Bases' own live growth for
-  a frame; a larger change to the hold (D-035, D-054) than these two needed.
+  a frame; a larger change to the hold (D-035, D-054) than these two cases
+  needed.
 - A callback from `NoteBases` into `NoteWindowManager` — wires the renderer to
   the stream it is made before; the event needs no reference.
 
@@ -1873,8 +1919,8 @@ stream's own class rather than taking Obsidian's.
 
 **Why:** on an iPhone, a flick begun on a `.clickable-icon` never scrolled:
 Obsidian's mobile tap handling for the class swallows the pan, with no
-`preventDefault` or `touch-action` to see. The pencil on every title in the
-editing spike (ADR 0018) failed four `e2e-tests/ios/` glides.
+`preventDefault` or `touch-action` that we could see. The pencil on every title
+in the editing spike (ADR 0018) failed four `e2e-tests/ios/` glides.
 
 **Rejected:**
 
@@ -1892,15 +1938,15 @@ the tab holds no rendering, saving or redraw code.
 
 **Rejected:**
 
-- `SettingGroup` cards, drawn by the tab — the same cards, out of the search,
-  with D-078's redraw kept.
+- `SettingGroup` cards, drawn by the tab — the same cards, but missing from the
+  settings search, and keeping D-078's redraw.
 
 ## D-115 — Release notes are written by hand at release (2026-10-09)
 
 **Decision:** each release's notes are a summary written into the draft's body
 before publishing, from `git log --first-parent` since the last release tag:
-what a reader notices, in plain words; internal work left out. From the first
-public release: 1.0.0.
+what a reader notices, in plain words; internal work left out. This starts with
+the first public release, 1.0.0.
 
 **Why:** the first-parent log holds every change, merged or fast-forwarded; a
 reader wants what changed for them, which takes judgment no script has.
@@ -1919,11 +1965,11 @@ lossless, the phone lossy at quality 80 and 30 frames a second. The phone's
 screen is captured over USB as QuickTime does (`scripts/capture-iphone.swift`),
 600 px wide, trimmed to the scene.
 
-**Why:** WebP stores the desktop recording's exact pixels in 1.3 MB, an APNG's
-3.0. On the phone a glide changes the whole screen every frame: lossless took 8
-MB for the glides alone, an APNG 20 MB in all, lossy 5.3 MB; at ten frames a
-second, glides stutter and key bubbles drop out. USB capture draws a clean
-status bar, the same in every take.
+**Why:** WebP stores the desktop recording's exact pixels in 1.3 MB, against 3.0
+MB as an APNG. On the phone a glide changes the whole screen every frame:
+lossless took 8 MB for the glides alone, an APNG 20 MB in all, lossy 5.3 MB; at
+ten frames a second, glides stutter and key bubbles drop out. USB capture draws
+a clean status bar, the same in every take.
 
 **Rejected:**
 
@@ -1948,8 +1994,9 @@ clutter; one wrongly hidden is lost writing.
 
 - Fingerprints of what Templater wrote, from its `templater:overwrite-file`
   event, kept in plugin data — catches multi-line output, but not notes made
-  before install, where hiding matters most; an undocumented event and a synced
-  record per note. Revisit if users ask (`docs/TODO.md`).
+  before install, where hiding matters most; it also relies on an undocumented
+  event and keeps a synced record per note. Revisit if users ask
+  (`docs/TODO.md`).
 
 ## D-118 — The service counts the stream's notes (2026-10-11)
 
@@ -1958,18 +2005,18 @@ first, the stream has loaded. `insertSorted`/`removeSorted` move it, a rebuild
 empties it; `NoteStream` keeps no list of its own.
 
 **Why:** `StreamState` copied the list's first notes, and every list change had
-to repeat itself there or pagination skipped and repeated notes (ADR 0004). Kept
-beside the list, the count moves with it.
+to be repeated there or pagination skipped and repeated notes (ADR 0004). Kept
+in the service beside the list, the count moves with it.
 
 **Rejected:**
 
-- The count in `NoteStream` — each insert and remove must still repeat itself
-  there.
+- The count in `NoteStream` — each insert and remove would still have to be
+  repeated there.
 
 ## D-119 — Lookups over the notes stay linear (2026-10-11)
 
-**Decision:** `DailyNoteService.indexOf` scans, and `refresh` maps every date to
-read one.
+**Decision:** `DailyNoteService.indexOf` scans the list, and `refresh` maps
+every date in order to read one.
 
 **Why:** each runs once per event, refresh or Back, never per note: over 1,095
 notes, microseconds.
@@ -1983,7 +2030,7 @@ notes, microseconds.
 
 **Decision:** `DailyNoteService` keeps the daily-notes format of its last build
 and parses, formats and inserts by it; only `refreshIfSettingsChanged` reads the
-settings, on each config write (D-002). The jump modal spells each choice's
+settings, on each config write (D-002). The jump modal formats each choice's
 label and ISO date once per open.
 
 **Why:** a note made between a format change and the refresh was parsed by the
@@ -2003,14 +2050,15 @@ at layout ready, as the layout memory is. The old `collapse:*` and
 `collapse-idx:*` keys are never read; a device build's "Forget collapse state"
 command deletes them with the rest.
 
-**Why:** a key per section could not be listed, so a note deleted unheard left
-its keys forever, unprefixed beside other plugins'. Each heading of each render
-read and parsed one.
+**Why:** keys stored one per section could not be listed, so a note deleted
+while the plugin wasn't listening left its keys forever, unprefixed beside other
+plugins'. Every heading in every render read and parsed one key.
 
 **Rejected:**
 
 - Migrating the old keys — they cannot be listed, only read per path, so the
-  reader stays for good. Unpublished: only test devices hold any.
+  code to read them would stay for good. The plugin was unpublished then, so
+  only test devices hold any.
 
 ## D-122 — The backlink index re-inverts the cache on each `resolved` (2026-10-11)
 
@@ -2019,15 +2067,15 @@ its first lookup after a `resolved`; `LinkChanges` keeps its own per-source
 diff.
 
 **Why:** 5 ms per inversion at 10,000 notes and 100,000 links on a 2026 Mac,
-once per save that a drawn footer hears. A full re-read is right whatever events
-Obsidian sent.
+once per save that a drawn footer is told of. A full re-read is right whatever
+events Obsidian sent.
 
 **Rejected:**
 
 - One incremental index for both — correct only if Obsidian fires `resolve` for
   every source whose links change, renames and deletes of targets included.
-  `e2e-tests/linked-mentions.spec.ts` guards the delete and rename cases for a
-  retry.
+  `e2e-tests/linked-mentions.spec.ts` guards the delete and rename cases, in
+  case this is tried again.
 
 ## D-123 — The day's turn waits for the stream's next change, or midnight (2026-10-11)
 
@@ -2036,7 +2084,7 @@ stream asks the service whether the day turned since it last looked; if so, it
 rechecks the last day's note and one made ahead for the new day. One timer per
 view also catches up a minute past midnight, once the reader has stopped
 scrolling, touching and wheeling. The reader's own loads, renders and jumps
-never do.
+never trigger the check.
 
 **Why:** yesterday's note showing until something happens costs the reader
 nothing, but a note made ahead for today would stay hidden in an idle stream.
@@ -2045,8 +2093,8 @@ Waiting for stillness keeps the pane from moving under the reader.
 **Rejected:**
 
 - A check each minute — a timer firing all day for one moment a day.
-- Exempting the newest note instead of today's — skip days and an untouched note
-  stays shown until the next is made.
+- Exempting the newest note instead of today's — after a skipped day, an
+  untouched note stays shown until the next note is made.
 
 ## D-124 — The e2e window stays on screen, transparent (2026-10-12)
 
@@ -2055,8 +2103,8 @@ mouse, instead of hiding the app, and without the phone layout's vsync flags.
 Before each test it lays the page out at the project's size again, from one
 session that never detaches.
 
-**Why:** hidden, a window whose viewport was set again drew a frame or two a
-second once a tab opened, until its worker restarted, timing out whichever
+**Why:** while hidden, a window whose viewport was set again drew a frame or two
+a second once a tab opened, until its worker restarted, timing out whichever
 frame-bound test came next. On screen it draws normally, takes screenshots, and
 the phone layout glides. A detached session takes its viewport with it, and the
 page falls back to its 300x200 window at its next layout, as when settings open
@@ -2068,8 +2116,8 @@ in their own window.
   then failed a menu or settings test.
 - Skipping the one desktop test that resizes — it checks real behavior, and the
   stall outlives it.
-- A visible window behind others — still the user's to see, and macOS throttles
-  a covered one.
+- A visible window behind others — the user can still see it, and macOS
+  throttles a covered window.
 
 ## D-125 — History rewritten once, before the repo goes public (2026-10-12)
 
@@ -2083,7 +2131,8 @@ new tags, and no reader ran a `0.x` draft.
 **Rejected:**
 
 - One fresh commit — loses the messages that hold each change's why (ADR 0001).
-- Recreating the `0.x` tags — they would mark releases nobody outside ran.
+- Recreating the `0.x` tags — they would mark releases nobody outside the
+  project ran.
 
 ## D-126 — The README's desktop stills crop to the note column (2026-10-12)
 
@@ -2091,10 +2140,10 @@ new tags, and no reader ran a `0.x` draft.
 under the view's header, with a 32 px margin and a 1 px border, shown 800 px
 wide, as the recording above them is.
 
-**Why:** the whole 1024 px window at 440 px showed its text at 43%, too small to
-read; cropped, it shows at 105%, and the stills line up with the recording. The
-recording above them already shows the window. Without the border, a light still
-runs into GitHub's white page.
+**Why:** the whole 1024 px window, shown 440 px wide, put its text at 43% of its
+size, too small to read; cropped, it shows at 105%, and the stills line up with
+the recording. The recording above them already shows the window. Without the
+border, a light still runs into GitHub's white page.
 
 **Rejected:**
 
@@ -2141,14 +2190,16 @@ is up to 366 notes, and the old single limit of 50 cut it off in November.
 element under the one it was set on: the whole note at each re-pin, the whole
 stream at each shift. Re-pinning a 10,000-line note took 140 ms on an M5, 570 ms
 with the CPU slowed 4x; 2–3 ms not inherited. A save of that note at phone speed
-froze 4.9 s, now 1.8 s; a 200-line note's, 55 ms, now under a long task. A note
-drawn inside its reserved height (ADR 0020) dropped it once done: inherited, one
-more restyle of the whole note, ~520 ms at phone speed.
+froze 4.9 s, now 1.8 s; a 200-line note's save froze 55 ms, now under the 50 ms
+of a long task. A note drawn inside its reserved height (ADR 0020) drops that
+height once done; while the property inherited, that cost one more restyle of
+the whole note, ~520 ms at phone speed.
 
 **Rejected:**
 
 - Resetting them on the children, as `--daily-note-held-height` is — as fast (2
-  ms), but a rule per property at every level that must stop it.
+  ms), but it needs a rule per property at every level where inheritance must
+  stop.
 
 ## D-130 — Every saved note renders by section, whatever its length (2026-10-13)
 
@@ -2157,14 +2208,14 @@ sections a save changed from then on (ADR 0019).
 
 **Why:** at phone speed (CPU slowed 4x, `e2e-tests/edit-cost.spec.ts`), a
 200-line note's first save by section holds one 61–96 ms task, against none
-rendered whole; each save after costs nothing, against 35 ms. A limit set the
-path's use by an M5's speed, and left it to the few with long notes, where its
-faults would surface late.
+rendered whole; each save after costs nothing, against 35 ms. A length limit
+tied who uses this path to an M5's speed, and left the path to the few readers
+with long notes, where its faults would surface late.
 
 **Rejected:**
 
 - From 8,000 characters, where a whole re-render first held a 50 ms task — the
-  number holds for one machine, and the path ran for few readers.
+  number holds on one machine only, and the path ran for few readers.
 
 ## D-131 — Specs time a laptop slowed below every supported iPhone (2026-10-13)
 
@@ -2201,8 +2252,8 @@ more notes measured, nothing changes.
 
 - A cap at a multiple of the median — a constant fitted to no vault, and with
   two notes measured the median is half the outlier.
-- A cap in panes — a vault of long notes would come out short everywhere, what
-  D-092 rejected the upper quartile for.
+- A cap in panes — a vault of long notes would come out short everywhere, the
+  reason D-092 rejected the upper quartile.
 
 ## D-133 — A frontmatter change draws only the properties again (2026-10-14)
 
@@ -2210,10 +2261,10 @@ more notes measured, nothing changes.
 box and updates its body in place (ADR 0019); on mobile, a note holding a Base
 still renders whole.
 
-**Why:** rendered whole, a long note lost the elements the anchor holds the
-reader by: on the iPhone, a reader at a 5,000-line note's end saw 10 blank
-frames and the text moved 125 px for good. No section's render reads the
-frontmatter; a Base's formulas may, through `this`.
+**Why:** when rendered whole, a long note lost the elements the anchor uses to
+hold the reader's place: on the iPhone, a reader at a 5,000-line note's end saw
+10 blank frames and the text moved 125 px for good. No section's render reads
+the frontmatter; a Base's formulas may, through `this`.
 
 **Rejected:**
 
@@ -2226,9 +2277,10 @@ frontmatter; a Base's formulas may, through `this`.
 started with; a save swaps sections inside their run, and shows only the runs
 holding what it removes and those either side of what it inserts.
 
-**Why:** grouped by length afresh, a save that lengthened one section regrouped
-every run above it, so a save showed every run first: on the iPhone, one 140–590
-ms task per save to a 5,000–10,000-line note, wherever the edit.
+**Why:** when runs were regrouped by length on each save, lengthening one
+section regrouped every run above it, so the save had to show every run first:
+on the iPhone, one 140–590 ms task per save to a 5,000–10,000-line note,
+wherever the edit.
 
 **Rejected:**
 
@@ -2242,27 +2294,29 @@ quantile and its file's bytes × the most pixels per byte any note measured
 there, the latter never below what a note reserves before anything is measured
 (two panes).
 
-**Why:** D-132 still let the first note measured set every estimate. Heights
-forgotten, a jump to a 10,000-line note had each note below reserve its
-234,000px; a glide down outran the drawing through that empty space, and sprang
-back as the notes drew short. Too tall is not safe below the reader. The densest
-rate errs tall, as a Base, tall from few bytes, loosens the cap; the floor keeps
-a note of a few bytes, all title and frame, from coming out short.
+**Why:** D-132 still let the first note measured set every estimate. With
+heights forgotten, a jump to a 10,000-line note had each note below it reserve
+its 234,000px; a glide down outran the drawing through that empty space, and
+sprang back as the notes drew short. Too tall is not safe below the reader. The
+densest rate errs tall, since a Base, tall from few bytes, loosens the cap; the
+floor keeps a note of a few bytes, all title and frame, from coming out short.
 
 **Rejected:**
 
-- No estimate until ten notes are measured — two long notes among them, and the
+- No estimate until ten notes are measured — with two long notes among them, the
   quantile is long again.
-- The median rate — a note denser than it, as any Base is, comes out short.
-- The shortest note measured as the floor — measured alone, the long note is the
-  shortest.
+- The median rate — a note denser than the median, as any Base is, comes out
+  short.
+- The shortest note measured as the floor — when the long note is the only one
+  measured, it is also the shortest.
 
 ## D-136 — A section's collapse key names the heading above it (2026-10-14)
 
 **Decision:** a heading or nested list item is keyed as `{heading}/{own key}`,
-`{heading}` the slug of the nearest heading above that outranks it (`h1` over
-`h2`), or of any level for a list item; one above every heading keeps the bare
-key. Repeats are numbered among the same full key.
+where `{heading}` is the slug of the nearest heading above that outranks it
+(`h1` over `h2`), or of a heading of any level for a list item; a section above
+every heading keeps the bare key. Repeated keys are numbered among sections with
+the same full key.
 
 **Why:** repeats were numbered across the note, so deleting the first `Errands`
 handed its saved state to the next, under another heading. Only repeats beside
@@ -2273,8 +2327,8 @@ directly under it; renamed back within a day, they fold again (D-027).
 
 - The full heading path — renaming a top heading would reopen every section
   beneath it.
-- Migrating saved keys — unpublished before `1.0.0`; a section saved under a
-  heading reopens once.
+- Migrating saved keys — the plugin was unpublished before `1.0.0`, and a
+  section saved under a heading just reopens once.
 
 ## D-137 — A note window's flags stay apart, and `FarRuns` stays the collapser's (2026-10-14)
 
@@ -2305,7 +2359,8 @@ stacks. A note with no table yet gets one as it is typed.
 
 - Watching only notes with a table or a Dataview block — a table typed into
   today's note would scroll sideways.
-- One observer for the stream — the same work per mutation, a few objects fewer.
+- One observer for the stream — the same work per mutation, saving only a few
+  objects.
 
 ## D-139 — A far run stays watched at both edges (2026-10-15)
 
@@ -2313,8 +2368,8 @@ stacks. A note with no table yet gets one as it is typed.
 shown.
 
 **Why:** measured on an iPhone 16 Pro, flicking past a 10,000-line note both
-ways: at most 10 edges are watched at once. One edge a run saves four targets,
-with no frame time to gain.
+ways: at most 10 edges are watched at once. Watching one edge per run would save
+four targets, with no frame time to gain.
 
 **Rejected:**
 
@@ -2323,9 +2378,9 @@ with no frame time to gain.
 
 ## D-140 — A glide stops at the stream's drawn end once every note is loaded (2026-10-15)
 
-**Decision:** `ScrollAnchor` stops a glide two steps before the stream's end,
-drawn higher than its scroll, comes into the pane, as it stops one at the top,
-only once every note is loaded.
+**Decision:** once every note is loaded, `ScrollAnchor` stops a glide two steps
+before the stream's end comes into the pane, while the end is drawn higher than
+the scroll puts it. It is the same stop D-091 makes at the top.
 
 **Why:** a shift owed for notes above that grew draws the end early: an iPhone
 glide to the oldest note showed a blank pane for 1.8 s, until the scroll was
@@ -2345,8 +2400,8 @@ still.
 whose code changed. Its results and report stay in `reports/`, gitignored. Not a
 quality gate. Stryker cannot see which file a vitest test is in, so it misses a
 test change: after one, rerun only the source file it covers,
-`--force --mutate <file>`. A full run, a bare `--force`, only after a change to
-Stryker, vitest or the Stryker config, which can change every result. Bail is
+`--force --mutate <file>`. Do a full run (a bare `--force`) only after a change
+to Stryker, vitest or the Stryker config, which can change every result. Bail is
 off: with it, mutants that fail tests at once were reported as survived, a
 different few each run. A survivor the JSON report marks `static` may be false:
 one in `note-window.ts` failed its test when applied by hand.
@@ -2371,23 +2426,23 @@ workers and keeps the fans at full speed.
 **Decision:** `phone.openStream()` closes the stream and opens it again, at its
 top, as a reader reopens it.
 
-**Why:** it wrote the scroll to the top of the stream left open, as nothing in
-the app does. The anchor still held a place from below: over a long newest note,
-the stream drew it from its end and landed some 250,000 px down.
+**Why:** it used to write the scroll to the top of a stream left open, which
+nothing in the app does. The anchor still held a place from below: over a long
+newest note, the stream drew it from its end and landed some 250,000 px down.
 
 **Rejected:**
 
 - The app's scroll to the top, a title tap's glide — notes drawn on the way
   changed what three specs started from.
 - A jump to the newest note — it lands its title at the pane's top, 8 px below
-  the stream's: specs comparing with a title tap's top differ.
+  the stream's top, so specs comparing against a title tap's top would differ.
 
 ## D-143 — A glide up owing growth stops before its scroll runs out (2026-10-15)
 
 **Decision:** `ScrollAnchor` stops a glide up two steps before its scroll runs
 out while the stream is drawn higher than its scroll, writing what it owes, as
-D-140 does at the end. Not a scroll headed for the top, as a title tap's: it
-lands there, owing nothing.
+D-140 does at the end. This doesn't apply to a scroll headed for the top, such
+as a title tap's: it lands there owing nothing.
 
 **Why:** notes above that grew mid-glide left the stream's top above the pane at
 scroll 0: the glide bounced short of the newest note's top, and a pull on the
@@ -2420,15 +2475,16 @@ switches and 30 lines after an error lost it; patched, it was caught.
 
 ## D-145 — A scroll re-pins the note at the pane's top if its content moved (2026-10-16)
 
-**Decision:** `NoteWindowManager.onScroll` first compares where the pinned note
-at the pane's top ends its content, below its top, with where it did when
-pinned. If that moved, the note re-pins before the anchor reads its place.
+**Decision:** `NoteWindowManager.onScroll` first measures where the content of
+the pinned note at the pane's top ends, relative to the note's top, and compares
+it with where it ended when the note was pinned. If that moved, the note re-pins
+before the anchor reads its place.
 
 **Why:** Bases fills a view in a task of its own, moving the text below it
-inside the pin. A scroll before the `ResizeObserver` report let the anchor read
-its place in the moved text, so the re-pin owed nothing and the next note
-dropped by the growth: 603 px in about 1 flick in 5 (D-108 covers only a Base's
-own holds).
+inside the pin. When a scroll came before the `ResizeObserver` report, the
+anchor read its place in the already-moved text, so the later re-pin owed
+nothing, and the next note dropped by the growth: 603 px in about 1 flick in 5
+(D-108 covers only a Base's own holds).
 
 **Rejected:**
 
@@ -2436,21 +2492,23 @@ own holds).
   change.
 - Re-pinning every drawn note each scroll — a forced layout per note per frame
   (ADR 0023).
-- Notes marked on screen by the `IntersectionObserver` — lags: a note ending at
-  the pane's top is not yet on it as the scroll lands.
+- Notes marked on screen by the `IntersectionObserver` — it lags: a note ending
+  at the pane's top is not yet marked when the scroll lands.
 
-## D-146 — A glide stopped short of its scroll's end stops a step on (2026-10-16)
+## D-146 — A glide stopped early is stopped one step further on (2026-10-16)
 
-**Decision:** D-140's and D-143's stops write the scroll a glide's last step
-past the one it reported, plus what is owed.
+**Decision:** D-140's and D-143's stops write the scroll one glide step beyond
+the position the page last heard, plus what is owed.
 
-**Why:** iOS draws a step past the scroll the page hears. Stopped where heard,
-the text moved back 40–52 px against the glide in every stop recorded on an
-iPhone; a step on, 1 stop in 25 did, by 88 px.
+**Why:** iOS has already drawn one step beyond the scroll position the page
+hears. Stopped at the heard position, the text moved back 40–52 px against the
+glide in every stop recorded on an iPhone; stopped one step further, 1 stop in
+25 moved back, by 88 px.
 
 **Rejected:**
 
-- Two steps on — a stop only moves forward, but by a frame more than the glide.
+- Two steps further — no stop moves back, but each moves forward a frame more
+  than the glide would.
 - Stopping without a write, by freezing the scroll alone — what is owed is
   handed over on the next frame, a jump of its own.
 
@@ -2493,20 +2551,21 @@ shows says so, naming the e2e spec that covers it (ADR 0002). Directives attach
 to the next node's leading comment: a `catch` block takes a `disable`/`restore`
 pair around its `try`.
 
-**Why:** a clean run makes a new survivor the only one, and so read.
+**Why:** after a clean run, a new survivor is the only one, so it gets read.
 
 **Rejected:**
 
 - `mutator.excludedMutations` in the config — drops a mutator everywhere, hiding
   real gaps with the equivalent ones.
-- Tests asserting what nothing depends on, a zoom of 1 or a field's first value,
-  overwritten before it is read — pass the metric, guard nothing.
+- Tests asserting what nothing depends on, such as a zoom of 1 or a field's
+  first value overwritten before it is read — they pass the metric and guard
+  nothing.
 
 ## D-150 — End-to-end tests live in `e2e-tests/` (2026-10-17)
 
 **Decision:** the Playwright suite moves from `e2e/` to `e2e-tests/`.
-`tests/repo/compliance.test.ts` keeps every TypeScript folder but `src/` under a
-path the directory's review scanner skips.
+`tests/repo/compliance.test.ts` checks that every TypeScript folder except
+`src/` sits under a path the directory's review scanner skips.
 
 **Why:** the scanner skips `e2e-tests/**` and `*.spec.*`, not `e2e/`, so it
 linted the harness as plugin code: the 1.0.0 review's three errors and most of
@@ -2525,8 +2584,8 @@ its warnings
 Rules guarding the app's runtime — popout windows, mobile, the config folder —
 are off for `scripts/` and `tests/`, which run in Node.
 
-**Why:** the scanner reports most rules as warnings; a warning lint lets pass
-reaches the review.
+**Why:** the scanner reports most rules as warnings; any warning lint lets
+through shows up in the review.
 
 **Rejected:**
 
@@ -2535,13 +2594,14 @@ reaches the review.
 ## D-152 — Moment is typed locally (2026-10-18)
 
 **Decision:** `src/notes/moment.ts` types the moment methods the plugin calls
-and is the only importer of Obsidian's `moment`; lint enforces it. Another
-moment is passed as its milliseconds. A test holds the real moment to the type.
+and is the only importer of Obsidian's `moment`; lint enforces it. A moment from
+anywhere else is passed in as its milliseconds. A test holds the real moment to
+the type.
 
 **Why:** the directory's scorecard lints without moment's types, which
 `obsidian.d.ts` imports from its own dependency, so every moment call scored a
-warning: 91 on 1.0.2, rating its Review "Caution". Hiding moment locally
-reproduces them; with this, none.
+warning: 91 on 1.0.2, rating its Review "Caution". Hiding moment's types locally
+reproduces them; with this change, there are none.
 
 **Rejected:**
 
@@ -2552,9 +2612,9 @@ reproduces them; with this, none.
 
 ## D-153 — styles.css avoids what the scorecard flags (2026-10-18)
 
-**Decision:** no `:has`, no custom element selected by tag, and one
-`!important`: the clip on Dataview's blocks and the scroll box guard's finds.
-`tests/repo/styles.test.ts` holds all three.
+**Decision:** no `:has`, no custom element selected by tag, and only one
+`!important`, on the clip for Dataview's blocks and for the elements the scroll
+box guard finds. `tests/repo/styles.test.ts` holds all three.
 
 **Why:** the directory's scorecard warns on each. Dataview and Obsidian set
 `overflow-x` inline, which only `!important` outranks; every other override wins
@@ -2571,8 +2631,9 @@ on specificity, or, for Bases' sticky summaries, on their inset.
 WebKit's layout unit (`src/stream/scroll-anchor.ts`).
 
 **Why:** the debt sums fractional moves, which can cancel to a remainder such as
-`2.8e-14`. Owed still, the stream stayed shifted and the hand-over wrote the
-scroll, which stops a glide; `e2e-tests/ios/jump.spec.ts` failed 1 run in 3.
+`2.8e-14`. While that remainder counted as owed, the stream stayed shifted, and
+the hand-over wrote the scroll, which stops a glide;
+`e2e-tests/ios/jump.spec.ts` failed 1 run in 3.
 
 **Rejected:**
 
@@ -2605,10 +2666,11 @@ as a bug. Hiding stays one toggle away.
 
 ## D-157 — One card per row is a setting (2026-10-19)
 
-**Decision:** **One card per row** (off by default) gives the cards a too-wide
-Base draws as (D-033) `cardSize: 800`, Bases' largest: one card fills any row. A
-view written as cards keeps its own size. A flip leaves remembered heights stale
-until each note redraws, as Show note properties does.
+**Decision:** **One card per row** (off by default) sets `cardSize: 800`, Bases'
+largest, on the cards a too-wide Base is drawn as (D-033), so one card fills any
+row. A view written as cards keeps its own size. Turning the setting on or off
+leaves remembered heights stale until each note redraws, as toggling Show note
+properties does.
 
 **Why:** on a phone Bases fits two cards to a row, cutting each card's values
 short.
@@ -2616,11 +2678,12 @@ short.
 **Rejected:**
 
 - A card size slider — how many fit a row still depends on the screen.
-- Cards per row, 1–3 — a size worked out from each width, redrawn as it changes.
+- Cards per row, 1–3 — needs a size worked out from each width, and a redraw
+  whenever the width changes.
 - Resizing cards the note wrote — the note chose that size.
 - The setting in the layout key — a second set of heights for one setting.
-- Forgetting every height on a flip — most notes, holding no Base, lose a right
-  height.
+- Forgetting every height when the setting changes — most notes hold no Base,
+  and would lose a correct height.
 
 ## D-158 — The iPhone suite runs on five years by choice (2026-10-19)
 
@@ -2638,8 +2701,8 @@ measured that (`pnpm run test:memory`), the phone did not.
 - Five years always — each run reseeds the phone's vault, ~1,800 writes.
 - Bases listing every file — a note a million pixels tall tests a Base's size,
   not the stream's length; tracked in `docs/TODO.md`.
-- Trips through every note — 11.5 min down, ~23 down and back, to check what 21
-  notes check.
+- Trips through every note — 11.5 min one way, ~23 min there and back, to check
+  what a 21-note trip checks.
 
 ## D-159 — A Base is held at a fixed height (2026-10-19)
 

@@ -9,11 +9,12 @@
 ADR 0014 put off a re-reserve that would shrink the stream by more than lies
 below the pane. After a turn near the end, a scroll up with no rest never
 retried: the notes above rendered at the old width's heights, and a phone
-reached the top owing 5.5k px, notes short of the newest.
+reached the top of its scroll still owing 5.5k px, several notes short of the
+newest.
 
 WebKit and Chromium keep a shifted stream's scroll range. The clamp came from
-`reserve()`'s order: it shrank the placeholders, then the anchor read the
-layout, shortened and not yet shifted.
+`reserve()`'s order: it shrank the placeholders first, so the anchor then read a
+layout that was already shorter but not yet shifted.
 
 ## Decision
 
@@ -21,15 +22,17 @@ layout, shortened and not yet shifted.
 `ScrollAnchor.anticipate()` draws that shift before any placeholder changes. The
 anchor's next read finds nothing more owed, and the scroll takes the shift in
 the same task: `reserve()` runs only once the scroll is still, so the write ends
-no glide. Only a shrink below the pane's top larger than what lies below still
-waits.
+no glide. Only a shrink below the pane's top that is larger than the content
+below the pane still waits.
 
 ## Consequences
 
 - A turn re-reserves at its first rest, wherever the reader is.
-- Whatever was owed before, such as a Base redrawn late, goes with it.
+- Any shift already owed, such as for a Base redrawn late, is handed over with
+  it.
 - Each re-reserve reads the rect of every placeholder it changes.
-- A note crossing the pane's top counts as below; unloaded there, it is rare.
+- A note that crosses the pane's top counts as below it; such a note is rarely
+  unloaded.
 
 ## Rejected alternatives
 

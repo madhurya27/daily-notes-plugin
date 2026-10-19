@@ -29,13 +29,13 @@ title; the stream redraws it on the save (ADR 0003).
 
 ## Rejected alternatives
 
-- **Today's note as an editor in the stream** — the embed's tap, not the
-  stream's, and today's note drawn unlike the rest.
+- **Today's note as an editor in the stream** — a tap would go to the embed, not
+  the stream, and today's note would look unlike the rest.
 - **A pencil opening any note's editor in place** — the lost corrections above.
 - **The open note in a box as tall as the pane, scrolling itself** — the editor
   keeps the place, but a box in the stream needs its own keyboard handling, an
   edge to show and a place to sit.
-- **A pop-up editor** — on a phone a full-screen sheet, as opening the note is,
-  through the same internal embed.
+- **A pop-up editor** — on a phone it would be a full-screen sheet, which is
+  what opening the note already gives, and it uses the same internal embed.
 - **A hidden workspace leaf per note, as Daily Notes Editor does** — workspace
   patches and a faked hover popover.

@@ -55,13 +55,13 @@ retake shows the same content; `pnpm run seed` alone takes `--days N` and
 ### iPhone: `pnpm run test:ios`
 
 Real touches on Obsidian on an iPhone plugged into the Mac, in a vault the
-harness seeds, `Stream E2E`, stored on the phone. It ends a run where it began:
-Obsidian back in the vault it had open, then closed, on the Home Screen. The
-keyboard's autocorrection and predictive text, which WebDriverAgent turns off,
-end on; `IOS_KEYBOARD_AUTOCORRECT=off` or `IOS_KEYBOARD_PREDICTION=off` leaves
-one off (D-112), on the command line or in a gitignored `e2e-tests/ios/.env`.
-`IOS_SEED_DAYS=1825` seeds five years of journal in place of 21 days (D-158).
-Once per Mac and phone:
+harness seeds, `Stream E2E`, stored on the phone. A run leaves the phone as it
+found it: Obsidian reopens the vault it had open, then closes, back to the Home
+Screen. WebDriverAgent turns off the keyboard's autocorrection and predictive
+text; the run turns both back on at the end. To leave one off, set
+`IOS_KEYBOARD_AUTOCORRECT=off` or `IOS_KEYBOARD_PREDICTION=off` (D-112), on the
+command line or in a gitignored `e2e-tests/ios/.env`. `IOS_SEED_DAYS=1825` seeds
+five years of journal in place of 21 days (D-158). Once per Mac and phone:
 
 1. Install Xcode, open it once, and add an Apple ID under Settings → Accounts.
    Then Manage Certificates → + → Apple Development. A free account is enough.
@@ -78,10 +78,11 @@ Once per Mac and phone:
 
 Each run:
 
-- **Before:** plug the phone in and unlock it. Auto-Lock must outlast a run,
-  under a minute: a locked phone fails the run at once, and one that locks
-  mid-run fails every test after. Low Power Mode holds Auto-Lock at 30 seconds.
-- **For many runs in a row**, as an agent's session makes: Settings → Display &
+- **Before:** plug the phone in and unlock it. Auto-Lock must be longer than the
+  pauses in a run, which last under a minute: a locked phone fails the run at
+  once, and one that locks mid-run fails every test after. Low Power Mode holds
+  Auto-Lock at 30 seconds.
+- **For many runs in a row**, as in an agent's session: Settings → Display &
   Brightness → Auto-Lock → Never, or the phone locks between them.
 - **After:** set Auto-Lock back. At Never the phone does not lock.
 
@@ -107,8 +108,9 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e-tests/` hold the rest.
 - On iOS, scroll through the stream, quit Obsidian, reopen it and jump to an old
   date; scroll back up by hand: the glide stops on the newest note, and nothing
   jumps once it stops. **[e2e]** with anchoring off; **[ios]**. The harness
-  hears a scroll after iOS draws it, so a frame drawn past the newest note shows
-  only on a screen recording (D-091): any change to the stop needs one.
+  learns of a scroll only after iOS has drawn it, so a frame drawn past the
+  newest note shows up only in a screen recording (D-091). Any change to where
+  the glide stops needs one.
 - On iOS, flicks glide to a natural stop, however far the stream has scrolled.
   **[e2e]** for the wait; **[ios]**.
 
@@ -116,9 +118,9 @@ What `pnpm run test:e2e` cannot check; the specs in `e2e-tests/` hold the rest.
 
 - On a phone the suggester opens with the keyboard down; a tap on the query
   raises it. **[e2e]** for focus; **[ios]**.
-- The calendar button's date wheel: the e2e mobile project is desktop Chromium,
-  which opens a picker iOS never would, and checks only that a tap on the icon
-  lands on the date input. **[ios]**
+- The calendar button opens iOS's date wheel. The e2e mobile project runs
+  desktop Chromium, which opens a picker iOS never would, so it checks only that
+  a tap on the icon lands on the date input. **[ios]**
 
 ### Mobile
 
@@ -147,8 +149,8 @@ Checks:
   ellipsis. **[e2e]** **[ios]**
 - A kanban wider than the note draws as cards, every column a group, upright and
   on its side. **[e2e]** **[ios]**
-- With **One card per row** on, each card a wide Base draws as fills the note's
-  width; a Base written as cards keeps its own size. **[e2e]**
+- With **One card per row** on, each card of a wide Base drawn as cards fills
+  the note's width; a Base written as cards keeps its own size. **[e2e]**
 - A PDF shows its first page without a toolbar; a tap opens the PDF. **[e2e]**
   **[ios]**
 - A web page in a frame shows; a flick over it scrolls the stream, and a tap
@@ -161,14 +163,14 @@ Checks:
 - Turn the phone both ways with a title just below the screen's top, then with
   the top on a Base's last card and a heading below: what was at the top stays
   there, and no note is skipped. **[e2e]** with anchoring off, but Chromium
-  redraws a Base in another order: only the device proves it. **[ios]** for text
-  and a Base at the top, turned to landscape and back, and for a heading in a
-  tall note with Bases above the screen's top.
+  redraws a Base in a different order, so only the device proves it. **[ios]**
+  for text and a Base at the top, turned to landscape and back, and for a
+  heading in a tall note with Bases above the screen's top.
 - Scroll through a Base table with summaries: its header and summary row move
-  with it, never floating over the page. **[e2e]** **[ios]**, on its side:
-  upright, a phone draws every Base as cards.
-- Scroll far, pause, flick both ways past Bases and tables: each flick glides
-  out. **[ios]** for Bases.
+  with it, never floating over the page. **[e2e]** **[ios]**, in landscape,
+  since in portrait a phone draws every Base as cards.
+- Scroll far, pause, flick both ways past Bases and tables: each flick glides to
+  its natural end. **[ios]** for Bases.
 - A Base on screen gains a row from another pane: the text below never jumps and
   returns. **[ios]**
 - A kanban just above the screen's top redraws from a board to cards: the next
@@ -190,14 +192,15 @@ Checks:
 - Chevrons on headers, list items and the properties row are tappable without
   zooming, and a tap on heading _text_ still selects. **[ios]**
 - Flick hard down a 10,000-line note and back: the screen never goes blank.
-  **[ios]** checks no spacer of a hidden run reaches the screen; only a capture
-  (`scripts/capture-iphone.swift`) shows a blank (ADR 0021).
+  **[ios]** checks that no hidden run's spacer reaches the screen; only a screen
+  capture (`scripts/capture-iphone.swift`) shows a blank (ADR 0021).
 - Flick hard past a 10,000-line note to the oldest note: the glide stops at it,
   with nothing blank below but iOS's bounce (D-140). **[unit]**; only the phone
   shows the blank.
 - Jump to a day below a long note not seen yet, then flick up into it: its end
   shows at once, under no title, and what shows stays put as the note finishes.
-  **[e2e]**; the screen staying filled only a capture shows (ADR 0022).
+  **[e2e]**; only a screen capture shows that the screen stays filled (ADR
+  0022).
 - A hard flick to the bottom loads the next batch without duplicates or a stall;
   repeated flicks keep loading. **[ios]**
 - Backgrounding and returning keeps position and keeps scrolling. **[ios]**

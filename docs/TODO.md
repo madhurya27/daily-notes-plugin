@@ -24,9 +24,9 @@ Measured and accepted. Reopened if a reader notices.
       note waits its turn in the render queue (ADR 0004) while the glide moves
       200–800 px a frame. On 2026-10-16, 4-stroke flicks showed an undrawn note
       for 1–4 frames, up to 293 px: in 6 of 6 glides with heights remembered, 3
-      of 6 with them forgotten. A render margin of 3 panes was no clearly
-      better. The other blanks, over drawn text, Obsidian's reading view shows
-      too (up to 185 ms).
+      of 6 with them forgotten. A render margin of 3 panes was not clearly
+      better. The other blanks are over text already drawn, and Obsidian's
+      reading view shows those too (up to 185 ms).
 
 ## Features
 
@@ -41,7 +41,7 @@ priority.
 - [ ] On this day — one calendar date across years: a `NoteFilter`, like hiding
       empty notes.
       [Journal Review](https://github.com/Kageetai/obsidian-plugin-journal-review)
-      shows ~200-char excerpts; ours is the full note. Better, not new.
+      shows ~200-char excerpts; ours would show the full note. Better, not new.
 - [ ] Keep the place across a restart. `StreamPlace` lives only in ephemeral
       state, so Back finds it but a restored tab opens at the newest note.
       Persist it in `getState`; a stream opened fresh still starts at today.
@@ -55,10 +55,10 @@ priority.
 - [ ] Land on a day from the
       [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) plugin:
       with the stream open, a click on a day scrolls it there through the jump's
-      path (D-082), not a new tab. An overview of which days have notes, without
-      a calendar of our own. Calendar opens the file itself: check first whether
-      the click can be caught (its API, or `file-open`). Desktop only in
-      practice; a phone's sidebar is a drawer.
+      path (D-082), not a new tab. That gives an overview of which days have
+      notes, without a calendar of our own. Calendar opens the file itself:
+      check first whether the click can be caught (its API, or `file-open`).
+      Desktop only in practice; a phone's sidebar is a drawer.
 - [ ] Labels on the title line: the weekday (`2026-03-14 · Saturday`, or
       "Yesterday") and the gap since the note before ("12 days later"). Decide
       first: from the file name, or a label the reader configures. Creating or
@@ -70,8 +70,8 @@ priority.
       section's (`CollapsibleManager`).
 - [ ] Notes as `article` landmarks labelled with their date, so a screen reader
       steps note to note.
-- [ ] Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. Nothing
-      external reaches inside a view.
+- [ ] Keyboard navigation — `j`/`k` between notes, `g`/`G` for ends. No other
+      plugin can add keys inside our view.
 - [ ] Jump by month or relative date: the prompt takes `2025-03`, `last week`,
       `a year ago`, landing on the nearest older note (D-015).
 - [ ] Month and year dividers — a heading inside the header of a month's newest
@@ -81,10 +81,10 @@ priority.
       hiding empty notes, for days not to show when the screen is shared.
 - [ ] Say under **Hide empty notes** whether the daily-notes template can be
       matched, naming the block that stops it (`if`, loops, `tp.web.*`,
-      `tp.user.*`). A `tp.user.*` script may write one line or several: "may
-      always show".
+      `tp.user.*`). A `tp.user.*` script may write one line or several, so for
+      one the setting would say the note "may always show".
 - [ ] Match `tp.file.include` by inlining the included file into the template
-      pattern (D-117), its own blocks read the same way. Wait for a user who
+      pattern (D-117), reading its blocks the same way. Wait for a user who
       includes a file in their daily template.
 
 Out of scope:

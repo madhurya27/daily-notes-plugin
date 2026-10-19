@@ -10,35 +10,36 @@ and file map: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Path-scoped rules in
 pnpm install
 pnpm run dev            # watch mode → main.js
 pnpm run build          # type-check + production build (esbuild → CJS main.js, `obsidian` external)
-pnpm run build:device   # the same, named on load by a notice (two words, from the code): for a phone test
+pnpm run build:device   # the same, plus a notice on load naming the build in two words from the code, to tell builds apart on a phone
 pnpm run install:vault <vault>   # build:device, then copy it into <vault>'s plugin folder; notes and settings untouched
 pnpm run lint           # ESLint
-pnpm run format         # Prettier --write; format:check verifies. Markdown wraps at 80; README.md never (D-155), AGENTS.md aside.
+pnpm run format         # Prettier --write; format:check verifies. Markdown wraps at 80 columns, except README.md (never wrapped, D-155) and AGENTS.md.
 pnpm test               # typecheck tests/ (tests/tsconfig.json), then vitest run
 pnpm run test:coverage  # the same, 100% coverage required
-pnpm run test:mutation  # Stryker over src/, incremental; results in reports/ (D-141); no survivor left (D-149). After a test change, `--force --mutate <its src file>`; a bare `--force` almost never
-                        # once per change, once its tests settle. To compare survivors, copy reports/ first; never re-run on main
+pnpm run test:mutation  # Stryker over src/, incremental; results in reports/ (D-141); no surviving mutant (D-149)
+                        # Run it once per change, after its tests settle. After a test change: --force --mutate <the src file it tests>; a bare --force almost never.
+                        # To compare survivors, copy reports/ first. Never re-run on main.
 pnpm run test:e2e       # build + typecheck e2e + playwright against real Obsidian; fetches Dataview into .dev/ once
 pnpm exec playwright install webkit   # once, for e2e-tests/webkit.spec.ts
 pnpm run test:ios       # build + e2e-tests/ios/ on a plugged-in, unlocked iPhone (ADR 0016); setup in docs/TESTING.md
-IOS_SEED_DAYS=1825 pnpm run test:ios   # the same on five years of journal (D-158); ~7 min, as on 21 days
+IOS_SEED_DAYS=1825 pnpm run test:ios   # the same on five years of journal (D-158); ~7 min, the same as on 21 days
 xcrun devicectl list devices   # is the iPhone connected? Not system_profiler, which misses it
 pnpm run test:memory    # memory, render-cost and edit-cost specs on a seeded five-year vault (E2E_SEED_DAYS)
-# Every test run stops at its first failure; a full report: --max-failures=0 (Playwright), --bail=0 (vitest)
+# Every test run stops at its first failure; for a full report: --max-failures=0 (Playwright), --bail=0 (vitest)
 
 pnpm run demo                     # open .dev/demo-vault/ (gitignored), reload the plugin on every save; Ctrl-C closes it
                                   # reseeds each run, builds if missing; --desktop, --ipad; --help lists the flags
 pnpm run build && pnpm run seed   # reseed .dev/demo-vault/, a realistic journal, and install the build into it
-# --test on demo and seed: .dev/vault/ instead, the edge cases docs/TESTING.md is written against
+# --test on demo and seed: use .dev/vault/ instead, the edge-case vault docs/TESTING.md is written against
 ```
 
 ## Releases
 
 Bump with `pnpm version`, merge, push the tag: the workflow drafts the release
 with its assets. pnpm tags `v1.0.0`, ignoring `.npmrc`; the workflow wants
-`1.0.0`, so retag before pushing. From `1.0.0`, write its notes from
-`git log --first-parent <last tag>..` — what a reader notices, in plain words —
-then publish (D-115).
+`1.0.0`, so retag before pushing. From `1.0.0` on, write each release's notes
+from `git log --first-parent <last tag>..` — what a reader notices, in plain
+words — then publish (D-115).
 
 To clear scorecard warnings, the user first runs the listing's **Review branch →
 Run preview scan** on the branch or tag. Once published, **... → Check for new
@@ -49,9 +50,9 @@ releases** picks the release up at once.
 `pnpm run test:e2e` runs in full only when what ships or what every spec shares
 changes: `src/`, `styles.css`, `manifest.json`, the build (`esbuild.config.mjs`,
 `tsconfig.json`, dependencies), `e2e-tests/obsidian.ts`,
-`e2e-tests/global-setup.ts`, `playwright.config.ts`. Other e2e code runs the
-specs that use it. Anything else needs the other gates, plus a run of whatever
-the change touches.
+`e2e-tests/global-setup.ts`, `playwright.config.ts`. A change to other e2e code
+runs the specs that use it. Any other change needs the other gates, plus a run
+of whatever it touches.
 
 CI (`.github/workflows/ci.yml`) runs every gate but e2e, on Linux; e2e is run
 locally (D-148).

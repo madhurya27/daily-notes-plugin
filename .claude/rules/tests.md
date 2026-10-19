@@ -19,6 +19,7 @@ paths:
   engine paints or computes differently is checked in
   `e2e-tests/webkit.spec.ts`, on a snapshot of the mobile run
   ([ADR 0009](../../docs/adr/0009-webkit-render-checks.md)).
-- A mutation run leaves no survivor (D-149): kill it with a test, or, when no
-  test can tell it apart, a `// Stryker disable next-line <mutator>: <why>` on
-  it, its reason checked against the code.
+- A mutation run leaves no surviving mutant (D-149). Kill each one with a test.
+  If no test can tell the mutant from the original, disable it with
+  `// Stryker disable next-line <mutator>: <why>`, and check that the reason is
+  true of the code.

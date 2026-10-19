@@ -37,10 +37,11 @@ DOM per note, which is what keeps a jump to a distant date cheap.
   at ten notes and at a thousand.
 - Anything that scrolls to a note may land on a placeholder. That works — the
   observer fills it in — but only because the block always exists.
-- A flick can carry a block through both margins between frames. An observer
-  reports changes, so that unload is the only one the block gets until it
-  returns: a render in flight records it and honors it on landing, and a render
-  still queued is skipped outright rather than holding the queue.
+- A flick can carry a block past both margins between two frames. An
+  IntersectionObserver reports only changes, so the block gets one report, the
+  unload, and no other until it comes back. A render already under way records
+  the unload and carries it out when it finishes; a render still queued is
+  skipped instead of holding up the queue.
 - jsdom lays nothing out, so unloading is provable only in `e2e-tests/` (ADR
   0002).
 

@@ -33,10 +33,11 @@ Traps that span files, so no single file's comments can hold them.
 - **A rendered block's height changes only in `NoteWindowManager.repin`**
   ([ADR 0013](../../docs/adr/0013-pin-rendered-note-heights.md)), which tells
   the anchor in the same task. Anything that changes a block's height another
-  way jumps the screen a frame on iOS. A Base sets its own height only where it
-  dispatches `BASE_RESIZED`, which re-pins its note there (D-108).
+  way makes the screen jump for a frame on iOS. A Base sets its own height only
+  where it dispatches `BASE_RESIZED`, whose handler re-pins its note in the same
+  task (D-108).
 - **No scroll containers inside a note on mobile**
-  ([ADR 0008](../../docs/adr/0008-nothing-scrolls-on-mobile.md)): one ends iOS
-  glides early. Under `.is-mobile`, clip with `overflow: clip`, never `hidden`
-  or `auto`; `e2e-tests/scroll-boxes.spec.ts` enforces it. Desktop keeps
-  Obsidian's scroll bars.
+  ([ADR 0008](../../docs/adr/0008-nothing-scrolls-on-mobile.md)): a scroll
+  container inside a note ends iOS glides early. Under `.is-mobile`, clip with
+  `overflow: clip`, never `hidden` or `auto`; `e2e-tests/scroll-boxes.spec.ts`
+  enforces it. Desktop keeps Obsidian's scroll bars.

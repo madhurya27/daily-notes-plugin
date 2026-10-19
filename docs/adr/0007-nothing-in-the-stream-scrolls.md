@@ -10,12 +10,12 @@ On iOS, once notes unload (ADR 0006), a flick stops 0.1–0.4 s after the finger
 lifts. Obsidian's own notes do too: the cause is WebKit. Found by elimination
 over ~15 phone builds:
 
-| Build                      | Result                          |
-| -------------------------- | ------------------------------- |
-| Unloading off              | No stalls; stutters after sleep |
-| Base embeds hidden         | No stalls                       |
-| Every scroll box removed   | No stalls, bar inline math      |
-| Only `.bases-view` clipped | Fewer, not none                 |
+| Build                      | Result                            |
+| -------------------------- | --------------------------------- |
+| Unloading off              | No stalls; stutters after sleep   |
+| Base embeds hidden         | No stalls                         |
+| Every scroll box removed   | No stalls except over inline math |
+| Only `.bases-view` clipped | Fewer, not none                   |
 
 The trigger is any scroll container inside the scroller, `overflow: hidden`
 included.
@@ -39,8 +39,10 @@ No element inside the stream is a scroll container.
 
 ## Rejected alternatives
 
-- **Keep notes loaded** — memory stutters after sleep.
-- **Clip Bases only mid-glide** — a swipe starting on a Base broke.
+- **Keep notes loaded** — with every note in memory, scrolling stutters after
+  the phone wakes from sleep.
+- **Clip Bases only mid-glide** — a swipe that started on a Base no longer
+  worked.
 - **Fit `.bases-view` alone** — other boxes still stalled.
 - **Stable re-render heights, deferred Bases, guarded Bases scroll writes, an
   inner scroller** — still stalled.

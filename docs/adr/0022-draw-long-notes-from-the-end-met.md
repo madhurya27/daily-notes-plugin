@@ -13,43 +13,48 @@ the scroll stopped (ADR 0021), so the glide stalled after.
 
 ## Decision
 
-`NoteWindowManager` draws a note whose middle is above the pane's from its end:
-`NoteRenderer` renders its runs, or sections, last first, each before the one
-drawn before it. Meanwhile the block, still at its reserved height, lays out
-from its bottom (`is-drawing-from-end`), so what is drawn sits where the reader
-is, and its title and properties stay unseen. Before it lands, the scroll anchor
-reads its place over what was drawn: nothing scrolled or resized while it drew.
-Landing re-pins it, and the anchor holds that text through the height the note
-truly takes. Where a glide brought its top into the pane meanwhile, the anchor
-holds whichever of it and the note above is at the pane's middle, what the
-reader reads; the other moves off to make room. With the scroll at the top,
-there is no note above: the stream's top is held, as a tap on the title brings
-it. Where the pane's top falls in a gap in a note's content, the anchor holds
-the text below it, never the content: its top rises with each slice drawn above.
+When a note's middle is above the pane's middle, `NoteWindowManager` draws it
+from its end: `NoteRenderer` renders its runs, or sections, last first, each
+inserted before the one drawn before it. Meanwhile the block, still at its
+reserved height, lays out from its bottom (`is-drawing-from-end`), so what is
+drawn sits where the reader is, and the note's title and properties stay out of
+view. Before the note lands, the scroll anchor reads the reader's place in what
+was drawn; nothing scrolled or resized while it drew, so nothing else would have
+told it. Landing re-pins the block, and the anchor keeps that text in place as
+the note takes its real height.
 
-Only what is near the reader stays in the layout while it draws: between slices,
-the stream hides each run drawn past the unload margin (ADR 0021), all but the
-topmost, which may grow yet. Runs are grouped from a note's end, so those drawn
-keep their bounds as it grows at its top. It hides the rest as it lands, after
-the re-pin: far is measured from where the anchor put the reader.
+If a glide brought the note's top into the pane meanwhile, the anchor holds
+whichever of this note and the note above is at the pane's middle, since that is
+what the reader is reading; the other moves away to make room. With the scroll
+at the top there is no note above, so the stream's top is held, as a tap on the
+title would leave it. If the pane's top falls in a gap in the note's content,
+the anchor holds the text below the gap, never the content element, whose top
+rises with each slice drawn above.
+
+Only content near the reader stays in the layout while the note draws. Between
+slices, the stream hides each run drawn past the unload margin (ADR 0021),
+except the topmost, which may still grow. Runs are grouped from the note's end,
+so runs already drawn keep their bounds as the note grows at its top. The stream
+hides the remaining far runs when the note lands, after the re-pin, since how
+far a run is depends on where the anchor put the reader.
 
 ## Consequences
 
-- Text under a reader who comes up into a never-drawn 3,000-line note shows
-  before it lands, from its last tenth, and stays within a pixel as it lands
-  (`e2e-tests/long-note-from-end.spec.ts`).
+- When a reader comes up into a never-drawn 3,000-line note, the text under
+  them, in the note's last tenth, shows before the note lands, and moves less
+  than a pixel when it lands (`e2e-tests/long-note-from-end.spec.ts`).
 - At phone speed, under 10% of a 10,000-line note is laid out at any frame of
   its draw, against 98% hiding only once it lands.
-- iPhone: see the merge's measurements.
+- The iPhone measurements are in the merge commit.
 - A note met from above, or by a jump, draws from its top as before.
 - A save that redraws a long note whole still draws from its top.
 
 ## Rejected alternatives
 
-- **Keep a left long note drawn, its runs all hidden** — instant to return to,
-  but no help for one never drawn, the case met after a jump; memory grows with
-  each long note passed, a turn shows every run at once (ADR 0021), and its
-  embeds and queries keep running off screen.
+- **Keep a long note drawn after the reader leaves it, with all its runs
+  hidden** — instant to return to, but no help for one never drawn, the case met
+  after a jump; memory grows with each long note passed, a turn shows every run
+  at once (ADR 0021), and its embeds and queries keep running off screen.
 - **Draw only the runs near the reader** — needs space held for the rest,
-  collapsing over undrawn parts, and a search into them: the larger change, for
-  the same white screen.
+  collapsing sections that span undrawn parts, and search into them: a larger
+  change, for the same white screen.
