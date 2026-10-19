@@ -33,6 +33,8 @@ export async function prepareDemo(page: Page): Promise<void> {
         await new Promise((r) => setTimeout(r, 1000));
     }, files);
     await page.evaluate(() => window.app.workspace.leftSplit?.collapse?.());
+    // Sync's status icon shows red in a vault with no account.
+    await page.evaluate(() => window.app.internalPlugins.getPluginById("sync")?.disable(false));
     await showLightTheme(page);
     mkdirSync(OUT, { recursive: true });
 }
