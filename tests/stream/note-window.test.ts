@@ -1004,6 +1004,31 @@ describe("NoteWindowManager after the pane's width changes", () => {
         expect(reservedAtHandOver).toEqual(["500px"]);
     });
 
+    // A phone's log: due as the phone turned, a hand-over then ended the hold on
+    // the place read before the turn, and a Base redrawn mid-turn lost it.
+    it("re-reserves once the anchor has handed over a reflow, not during it", async () => {
+        let estimated = 900;
+        const { manager, learn } = makeResizable({ estimate: () => estimated });
+        const block = manager.add(new TFile("b.md"));
+        document.body.appendChild(block);
+        let reflowing = true;
+        vi.spyOn(ScrollAnchor.prototype, "holdsReflow").mockImplementation(() => reflowing);
+        const handedOver = vi.spyOn(ScrollAnchor.prototype, "handOver").mockImplementation(() => {});
+        onTestFinished(() => void vi.restoreAllMocks());
+
+        estimated = 500;
+        learn();
+        manager.onScroll();
+        await still();
+        expect(handedOver).not.toHaveBeenCalled();
+        expect(placeholderHeight(block)).toBe("900px");
+
+        reflowing = false;
+        await still();
+        expect(handedOver).toHaveBeenCalledOnce();
+        expect(placeholderHeight(block)).toBe("500px");
+    });
+
     it("holds nothing on a note never measured at the new width", async () => {
         const { manager, narrow } = makeResizable();
         const block = manager.add(FILE);

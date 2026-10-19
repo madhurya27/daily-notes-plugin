@@ -181,6 +181,16 @@ export class ScrollAnchor {
         this.settleOnceStill();
     }
 
+    /**
+     * The place read before the width changed is held, until the anchor hands
+     * it over itself (D-057). A width change no resize has reported yet starts
+     * the hold.
+     */
+    holdsReflow(): boolean {
+        if (this.scrollRoot) this.hold();
+        return this.reflowing;
+    }
+
     fingerDown(): void {
         this.touching = true;
     }

@@ -2728,3 +2728,20 @@ late.
   it.
 - Calling Bases' `onResize` ourselves, outside a callback — it is an Obsidian
   internal, and Bases' own observer still fires.
+
+## D-160 — Notes are re-reserved only after a turn is handed over (2026-10-19)
+
+**Decision:** while `ScrollAnchor` holds the place it read before the pane's
+width changed (D-057), `NoteWindowManager` puts off re-reserving unloaded notes
+(ADR 0014) until the next time the scroll is still. Asking whether the anchor
+holds one also reads the width, so a turn no resize has reported yet counts.
+
+**Why:** re-reserving ends with a hand-over, which also ends the hold. On a
+phone, a re-reservation due as the phone turned ran in the turn's first frames;
+the anchor then re-read its place each frame, landed on a Base emptied for its
+redraw, and the reader ended up 409px below their place: 5 turns in 60.
+
+**Rejected:**
+
+- A hand-over that keeps holding the reflow — changes what every caller of
+  `handOver` gets, to fix one.

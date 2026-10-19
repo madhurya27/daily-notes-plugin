@@ -125,7 +125,8 @@ in, an image loads. Three mechanisms keep the reader's place.
   it re-reserves unloaded notes at the heights they are now expected to have
   (`reservations.ts`, [ADR 0014](adr/0014-re-reserve-placeholders-at-rest.md)),
   first drawing the move of the notes above as a shift
-  ([ADR 0015](adr/0015-shift-before-shrinking-above.md)).
+  ([ADR 0015](adr/0015-shift-before-shrinking-above.md)). After a turn, it waits
+  until the anchor has handed the turn over (D-160).
 - `ScrollAnchor` undoes shifts caused above the reader, on platforms that don't
   do it themselves: Chromium anchors the scroll natively, iOS WebKit does not.
 

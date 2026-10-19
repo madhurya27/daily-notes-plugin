@@ -747,6 +747,33 @@ describe("ScrollAnchor", () => {
             expect(shift(content)).toBe(0);
         });
 
+        it("says a reflow is held from the width's change until the scroll is still", () => {
+            const { blocks, turn } = watch([[400, 400, 400], 400], 500);
+            expect(anchor.holdsReflow()).toBe(false);
+
+            turn();
+            observer().resized(blocks[0]!);
+            expect(anchor.holdsReflow()).toBe(true);
+
+            vi.advanceTimersByTime(SCROLL_IDLE_MS);
+            expect(anchor.holdsReflow()).toBe(false);
+        });
+
+        // A phone's log: a re-reservation due as the phone turned ran before
+        // any resize was reported, and its hand-over ended the reflow it began.
+        it("holds a reflow from the width's change before any resize is reported", () => {
+            const { blocks, resize, turn } = watch([[400, 400, 400], 400], 500);
+
+            turn();
+            expect(anchor.holdsReflow()).toBe(true);
+            resize(blocks[0]!.children[1]!, 200);
+            observer().resized(blocks[0]!);
+            expect(blocks[0]!.children[2]!.getBoundingClientRect().top).toBe(300);
+
+            vi.advanceTimersByTime(SCROLL_IDLE_MS);
+            expect(anchor.holdsReflow()).toBe(false);
+        });
+
         it("ends a reflow that moved nothing once the scroll is still", () => {
             const { content, blocks, resize, turn } = watch([[400, 400, 400], 400], 500);
 

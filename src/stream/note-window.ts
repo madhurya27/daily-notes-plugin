@@ -630,6 +630,12 @@ export class NoteWindowManager {
     private reserve(): void {
         const root = this.scrollRoot;
         if (!root) return;
+        // Its hand-over would end the hold on the place read before a turn,
+        // while what the turn redraws still moves (D-160).
+        if (this.anchor.holdsReflow()) {
+            this.reserveOnceStill();
+            return;
+        }
         const unloaded = [...this.windows].filter(([, window]) => !window.component && !window.rendering);
         const plan = this.reservations.plan(
             unloaded,
