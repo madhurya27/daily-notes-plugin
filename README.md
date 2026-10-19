@@ -181,6 +181,10 @@ The stream follows Obsidian's theme, light or dark.
 | A note you expected is missing | Either it holds only its template (see [Empty notes](#empty-notes)), or its name doesn't match the date format. |
 | After installing by hand, the plugin isn't listed under Community plugins | Make sure the three files sit directly in `daily-notes-stream/`, not in a subfolder, then reload Obsidian. |
 
+## Support
+
+If you find the plugin useful, please [star it on GitHub](https://github.com/madhurya27/daily-notes-stream). It's a quick way to say thanks, and it helps others find it.
+
 ## Development
 
 ```bash
