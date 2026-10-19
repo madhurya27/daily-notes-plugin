@@ -47,6 +47,13 @@ priority.
 - [ ] Show in stream: a command and a file-menu item on a daily note that open
       the stream at it, through the jump's path (D-082). From a note, only Back
       reaches the stream now.
+- [ ] Land on a day from the
+      [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) plugin:
+      with the stream open, a click on a day scrolls it there through the jump's
+      path (D-082), not a new tab. An overview of which days have notes, without
+      a calendar of our own. Calendar opens the file itself: check first whether
+      the click can be caught (its API, or `file-open`). Desktop only in
+      practice; a phone's sidebar is a drawer.
 - [ ] Labels on the title line: the weekday (`2026-03-14 · Saturday`, or
       "Yesterday") and the gap since the note before ("12 days later"). Decide
       first: from the file name, or a label the reader configures. Creating or
