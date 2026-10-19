@@ -132,6 +132,17 @@ describe("SearchHighlighter", () => {
         expect(highlighted("daily-notes-search-match")).toEqual(["bread"]);
     });
 
+    it("drops the current mark when the query changes", () => {
+        const { block, component } = renderedBlock("<p>milk and bread</p>");
+        highlighter.setQuery("milk");
+        highlighter.track(block, component);
+        highlighter.setCurrent(highlighter.rangesIn(block)[0]!);
+
+        highlighter.setQuery("bread");
+
+        expect(highlighted("daily-notes-search-current")).toEqual([]);
+    });
+
     it("clears every highlight for a blank query", () => {
         const { block, component } = renderedBlock("<p>milk</p>");
         highlighter.setQuery("milk");

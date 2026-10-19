@@ -65,7 +65,6 @@ export class StreamSearch {
             this.current = -1;
             // Stryker disable next-line UnaryOperator: read only once a step has entered a note, which sets it.
             this.range = -1;
-            this.highlighter.setCurrent(null);
             this.highlighter.setQuery(query);
             this.matches = await this.find();
             this.markFirstOnScreen();

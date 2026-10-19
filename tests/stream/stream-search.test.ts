@@ -110,6 +110,16 @@ describe("StreamSearch", () => {
         expect(centered).toEqual([]);
     });
 
+    it("keeps no match marked from the search before when none is on screen", async () => {
+        await search.search("milk");
+        await search.next();
+        expect(current()).toHaveLength(1);
+
+        await search.search("bread");
+
+        expect(current()).toEqual([]);
+    });
+
     it("steps on from the match it marked", async () => {
         onScreen = (range) => blocks.get(notes[2]!)!.contains(range.startContainer);
         await search.search("milk");
