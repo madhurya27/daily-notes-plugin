@@ -195,7 +195,7 @@ test("the Scroll to top command glides back to the newest note", async ({ obsidi
     await scrollToOldest(page, container);
 
     await page.evaluate(() => window.app.commands.executeCommandById("command-palette:open"));
-    await page.locator(".prompt input.prompt-input").fill("Daily notes stream: Scroll to top");
+    await page.locator(".prompt input.prompt-input").fill("Daily Notes Stream: Scroll to top");
     await page.keyboard.press("Enter");
 
     await expect.poll(() => pane(container).evaluate((el) => el.scrollTop)).toBe(0);
@@ -211,7 +211,7 @@ test("the Scroll to top command is not offered while a note has the focus", asyn
     try {
         await page.evaluate(() => window.app.commands.executeCommandById("command-palette:open"));
         const prompt = page.locator(".prompt");
-        await prompt.locator("input.prompt-input").fill("Daily notes stream:");
+        await prompt.locator("input.prompt-input").fill("Daily Notes Stream:");
 
         await expect(prompt.locator(".suggestion-item").first()).toBeVisible();
         await expect(prompt.locator(".suggestion-item", { hasText: "Scroll to top" })).toHaveCount(0);

@@ -39,6 +39,16 @@ export default tseslint.config(
         files: ["package.json"],
         rules: { "depend/ban-dependencies": ["error", { allowed: ["moment"] }] },
     },
+    // The plugin's name is a proper noun, title case as the manifest has it (D-162).
+    {
+        files: ["src/**/*.ts"],
+        rules: {
+            "obsidianmd/ui/sentence-case": [
+                "warn",
+                { enforceCamelCaseLower: true, ignoreRegex: ["^Daily Notes Stream$"] },
+            ],
+        },
+    },
     // Submission rules the recommended config leaves out, for the shipped code.
     {
         files: ["src/**/*.ts"],

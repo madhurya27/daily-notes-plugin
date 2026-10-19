@@ -2764,3 +2764,19 @@ the image. A headline names the feature the picture shows. The mobile slots are
 - Bare phone captures cropped to 9:16 — cuts off the phone's own bars.
 - White text on black beside the window — reads as a copy of other listings.
 - A serif headline — looked out of place next to Obsidian's interface.
+
+## D-162 — The plugin's name is title case (2026-10-19)
+
+**Decision:** the plugin is named "Daily Notes Stream" in the manifest, and the
+same wherever the interface names the plugin: its tab, Page preview's settings.
+Commands, settings and buttons stay in sentence case.
+
+**Why:** Obsidian's guidelines ask for sentence case in the interface but
+capitalize proper nouns, and a plugin's name is one. The listing's popular
+plugins are title case, and Obsidian prefixes each command with the name.
+
+**Rejected:**
+
+- Sentence case everywhere — reads as a description, not a name, in the listing.
+- Title case for the name only, sentence case in the tab — two spellings of one
+  name.

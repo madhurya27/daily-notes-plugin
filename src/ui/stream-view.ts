@@ -108,7 +108,7 @@ export class DailyNotesStreamView extends ItemView implements HoverParent {
         return VIEW_TYPE_DAILY_NOTES_STREAM;
     }
     getDisplayText(): string {
-        return "Daily notes stream";
+        return "Daily Notes Stream";
     }
     getIcon(): string {
         return "gallery-vertical-end";

@@ -1,4 +1,4 @@
-# Daily notes stream
+# Daily Notes Stream
 
 Read your daily notes as one continuous timeline. Every day appears on one page, with the newest at the top and older days loading as you scroll. The stream is for reading; to edit a note, click its date.
 
@@ -38,7 +38,7 @@ If you want to edit notes directly inside the feed, try [Daily Notes Editor](htt
 
 ### Open the stream
 
-Click the ribbon icon (a stack of cards), or run `Daily notes stream: Open stream` from the command palette (Ctrl/Cmd+P). It opens in the current tab. To open it in a new tab, Ctrl/Cmd-click the icon.
+Click the ribbon icon (a stack of cards), or run `Daily Notes Stream: Open stream` from the command palette (Ctrl/Cmd+P). It opens in the current tab. To open it in a new tab, Ctrl/Cmd-click the icon.
 
 On a phone, tap the menu button (☰) at the right of the bottom bar, then **Open daily notes stream**. The same menu has **Open command palette**.
 
@@ -61,8 +61,8 @@ Templates made with the core Templates plugin or with Templater both work. A pla
 | To | Do |
 | --- | --- |
 | Load older notes | Scroll down |
-| Go back to the newest | Click the arrow icon at the top, or run `Daily notes stream: Scroll to top`. On mobile, tap the title at the top |
-| Go to a date | Click the calendar icon at the top, or run `Daily notes stream: Jump to date` |
+| Go back to the newest | Click the arrow icon at the top, or run `Daily Notes Stream: Scroll to top`. On mobile, tap the title at the top |
+| Go to a date | Click the calendar icon at the top, or run `Daily Notes Stream: Jump to date` |
 
 The jump list opens on your 62 newest notes, about two months. Type to search the rest: a year, such as `2025`, lists every day of it that has a note. You can type a date in your daily-note format or as `YYYY-MM-DD`. If that day has no note, you go to the closest earlier day that does. The calendar button in the list opens your device's date picker.
 
@@ -105,7 +105,7 @@ Note dates, links inside notes, and the notes and links in linked mentions all o
 | Ctrl/Cmd+Alt-click | Side by side, in a split |
 | Right-click | The file menu |
 
-Click a tag to search for it, or Ctrl/Cmd-click it to search in a new tab. Hold Ctrl/Cmd while hovering over a link to preview it. To preview without holding the key, open **Settings → Page preview** and turn off the switch for "Daily notes stream".
+Click a tag to search for it, or Ctrl/Cmd-click it to search in a new tab. Hold Ctrl/Cmd while hovering over a link to preview it. To preview without holding the key, open **Settings → Page preview** and turn off the switch for "Daily Notes Stream".
 
 ### Phone and tablet
 
@@ -155,7 +155,7 @@ The stream follows Obsidian's theme, light or dark.
 ## Install
 
 1. In Obsidian, open **Settings → Community plugins** and turn off **Restricted mode** if it's on.
-2. Select **Browse**, search for **Daily notes stream**, and select **Install**.
+2. Select **Browse**, search for **Daily Notes Stream**, and select **Install**.
 3. Select **Enable**.
 4. Open the stream from the ribbon or the command palette. See [Open the stream](#open-the-stream).
 
@@ -166,7 +166,7 @@ You can also open the plugin's [page in the Obsidian plugin directory](https://c
 1. From the [latest release](https://github.com/madhurya27/daily-notes-stream/releases/latest), download `main.js`, `manifest.json`, and `styles.css`.
 2. Put them in `<Vault>/.obsidian/plugins/daily-notes-stream/`. Create the folder if it doesn't exist. Most file browsers hide `.obsidian`.
 3. Reload Obsidian.
-4. Enable **Daily notes stream** in **Settings → Community plugins**.
+4. Enable **Daily Notes Stream** in **Settings → Community plugins**.
 
 On a phone or tablet, install the plugin on a computer first and let your sync service copy the plugin folder to the device. Then enable it there.
 

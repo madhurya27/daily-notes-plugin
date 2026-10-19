@@ -23,8 +23,8 @@ describe("DailyNotesStreamView — view API", () => {
         expect(view.getViewType()).toBe("daily-notes-stream-view");
     });
 
-    it("getDisplayText returns 'Daily notes stream'", () => {
-        expect(view.getDisplayText()).toBe("Daily notes stream");
+    it("getDisplayText returns 'Daily Notes Stream'", () => {
+        expect(view.getDisplayText()).toBe("Daily Notes Stream");
     });
 
     it("is navigable, so the status bar stops describing the last note while the stream has focus", () => {

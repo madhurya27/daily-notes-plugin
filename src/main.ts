@@ -33,7 +33,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
     linkChanges!: LinkChanges;
 
     async onload() {
-        if (buildLabel()) new Notice(`Daily notes stream: ${buildLabel()}`);
+        if (buildLabel()) new Notice(`Daily Notes Stream: ${buildLabel()}`);
         await this.loadSettings();
 
         this.rememberCollapse();
@@ -58,7 +58,7 @@ export default class DailyNotesStreamPlugin extends Plugin {
         );
 
         this.registerHoverLinkSource(VIEW_TYPE_DAILY_NOTES_STREAM, {
-            display: "Daily notes stream",
+            display: "Daily Notes Stream",
             defaultMod: true,
         });
 

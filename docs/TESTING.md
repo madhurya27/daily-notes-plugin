@@ -179,7 +179,7 @@ Checks:
   as the notes above render, and the glide is not cut short. **[ios]**
 - A Base filling just above the screen's top leaves the text below still.
   **[e2e]** with anchoring off; **[ios]**.
-- Jump to an old date, then tap "Daily notes stream" in the header: it glides to
+- Jump to an old date, then tap "Daily Notes Stream" in the header: it glides to
   the newest note and stays at the very top. Tapping the search or jump action
   does not scroll. **[e2e]** **[ios]**
 - Tap a note's title, then Back: the stream comes back at the same place and

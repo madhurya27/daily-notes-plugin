@@ -128,7 +128,7 @@ describe("DailyNotesStreamPlugin — onload", () => {
         const { plugin } = await loadPlugin();
 
         expect(plugin.hoverLinkSources[VIEW_TYPE_DAILY_NOTES_STREAM]).toEqual({
-            display: "Daily notes stream",
+            display: "Daily Notes Stream",
             defaultMod: true,
         });
     });
@@ -449,7 +449,7 @@ describe("DailyNotesStreamPlugin — build label", () => {
 
         await loadPlugin();
 
-        expect(Notice.shown).toEqual(["Daily notes stream: amber otter"]);
+        expect(Notice.shown).toEqual(["Daily Notes Stream: amber otter"]);
     });
 
     it("says nothing on load in a release build", async () => {

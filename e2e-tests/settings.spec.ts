@@ -118,7 +118,7 @@ test.describe("The plugin's settings tab", () => {
 
         const ours = settings
             .locator(".setting-search-result-group")
-            .filter({ has: settings.locator(".setting-search-result-tab-label", { hasText: "Daily notes stream" }) });
+            .filter({ has: settings.locator(".setting-search-result-tab-label", { hasText: "Daily Notes Stream" }) });
         await expect(ours.locator(".setting-search-result-item")).toHaveText([
             "Show linked mentions",
             "Collapse linked mentions by default",

@@ -188,7 +188,7 @@ test.describe("links in a note", () => {
             });
             return (await settings)
                 .locator(".vertical-tab-content .setting-item")
-                .filter({ hasText: "Daily notes stream" })
+                .filter({ hasText: "Daily Notes Stream" })
                 .locator(".checkbox-container");
         };
         let toggle = await needsMod();

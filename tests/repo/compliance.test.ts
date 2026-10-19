@@ -31,7 +31,8 @@ describe("plugin submission compliance", () => {
 
     it("names Obsidian's daily notes plugin in sentence case in user-facing copy", () => {
         for (const { name, text } of sources) {
-            expect(text, name).not.toMatch(/Daily Notes/);
+            // The plugin's own name is title case (D-162).
+            expect(text, name).not.toMatch(/Daily Notes(?! Stream)/);
         }
     });
 
