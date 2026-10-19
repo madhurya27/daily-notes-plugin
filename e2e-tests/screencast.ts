@@ -17,7 +17,7 @@ export async function record(page: Page, output: string, scene: () => Promise<vo
         void cdp.send("Page.screencastFrameAck", { sessionId: event.sessionId });
     });
     await showPointer(page, pointers.get(page));
-    await cdp.send("Page.startScreencast", { format: "png", maxWidth: 800, maxHeight: 800 });
+    await cdp.send("Page.startScreencast", { format: "png", maxWidth: 1600, maxHeight: 1600 });
     try {
         await scene();
     } finally {
@@ -32,7 +32,7 @@ export async function record(page: Page, output: string, scene: () => Promise<vo
             writeFileSync(path, Buffer.from(data, "base64"));
             return { timestamp, path };
         });
-        writeWebp(files, output);
+        writeWebp(files, output, { minInterval: 1 / 30 });
     } finally {
         rmSync(dir, { recursive: true, force: true });
     }

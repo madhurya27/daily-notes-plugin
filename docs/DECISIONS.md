@@ -2780,3 +2780,17 @@ plugins are title case, and Obsidian prefixes each command with the name.
 - Sentence case everywhere — reads as a description, not a name, in the listing.
 - Title case for the name only, sentence case in the tab — two spellings of one
   name.
+
+## D-163 — The desktop recording is captured at 2x and 30 frames a second (2026-10-19)
+
+**Decision:** the desktop recording's frames are 1600 px wide, the window at the
+display's 2x scale, and the README shows it 800 px wide. Motion keeps up to 30
+frames a second, as the phone's does (D-116). Still lossless.
+
+**Why:** at 1x a Retina screen doubled each pixel, and the text read soft; at
+ten frames a second a scroll stepped. The file grows from 1.3 MB to 5.6 MB.
+
+**Rejected:**
+
+- Lossy at 2x — not needed at this size, and it trades away the exact pixels
+  D-116 kept lossless for.
