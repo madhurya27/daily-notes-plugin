@@ -110,18 +110,22 @@
     display: none;
 }
 
-/* A note or Base held at an earlier height while it refills
+/* A note held at an earlier height while it refills
    (src/stream/height-hold.ts). */
-.daily-note-block,
-.daily-note-base {
+.daily-note-block {
     min-height: var(--daily-note-held-height, 0);
 }
 
+/* A Base's box has a fixed height, so rows Bases adds inside its own
+   ResizeObserver callback cannot resize the note (D-159). */
+.daily-note-base {
+    height: var(--daily-note-held-height, auto);
+    overflow-y: clip;
+}
+
 /* A Base drawn as written to be measured, likely to be redrawn as cards:
-   clipped at the height it held, so its note's text never moves for it
-   (src/render/bases/note-bases.ts). */
+   clipped sideways too, as it may overrun the note. */
 .daily-note-base.is-measuring {
-    height: var(--daily-note-held-height);
     overflow: clip;
 }
 

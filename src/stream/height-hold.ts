@@ -14,8 +14,8 @@ export class HeightHold {
     private held = true;
 
     /**
-     * styles.css turns the property into a `min-height`, for notes and Bases
-     * alike. `released` runs once it lets go.
+     * styles.css turns the property into a note's `min-height`. `released`
+     * runs once it lets go.
      */
     constructor(
         private readonly el: HTMLElement,

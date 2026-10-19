@@ -1590,28 +1590,37 @@ would need counts of who watches what.
 - One observer for the pin and the anchor — saves one observer per view, at a
   rewrite of the anchor's tests and shared bookkeeping in ADR 0013's code.
 
-## D-095 — No ResizeObserver callback resizes what was reported (2026-10-05)
+## D-095 — ResizeObserver callbacks never resize what was observed (2026-10-05)
 
 **Decision:**
 
-- Nothing watches a pinned block's size: it changes only in `repin`, which tells
-  the anchor (ADR 0013). The anchor watches a block while it is unpinned.
-- A Base is held at the tallest it laid out at from its first layout, not on
-  hearing it shrank; its callback only raises the hold. It lets go once still,
-  or at `HOLD_LIMIT_MS`, in a timer.
-- A Base redrawn for a width change or Bases' layout is redrawn a task later.
+- A pinned block is not observed. A pinned block is a rendered note held at a
+  fixed height (ADR 0013); its height changes only in `repin`, which tells the
+  scroll anchor directly. The anchor observes a block only while it is unpinned.
+- A Base is held at the tallest height it has had since it was first laid out. A
+  shrink is then already covered by the hold, so nothing has to be resized in a
+  callback. The Base's callback only raises the hold. A timer releases the hold
+  once the Base stops changing, or after `HOLD_LIMIT_MS`.
+- When a Base must be redrawn because its width changed or Bases reported its
+  layout, it is redrawn in the next task, not in the callback.
+
+Superseded in part by D-159: a Base's box now has a fixed height, and grows in
+the next task instead of in its callback.
 
 **Why:** WebKit logs "ResizeObserver loop completed with undelivered
-notifications" as an error when a callback resizes an element no deeper than the
-shallowest one reported that round. Each of these did, on a flick or a turn. The
-late report itself was harmless; the error was the cost.
+notifications" as an error when a ResizeObserver callback resizes an element
+that is no deeper in the page than the shallowest element already reported in
+that round. Each of the cases above did that, on a flick or when the phone
+turned. The late size report did no harm; the logged error was the only cost.
 
 **Rejected:**
 
-- Ignoring the notice in the iPhone check: it is ours, and on every scroll.
-- Re-pinning a frame later: breaks ADR 0013.
-- `requestAnimationFrame` for the redraws: it never runs in the hidden e2e
-  window.
+- Ignoring the error in the iPhone tests' console check — the error is the
+  plugin's own, and it came on every scroll.
+- Re-pinning a frame later — the block's height would change without the anchor
+  being told in the same task, which breaks ADR 0013.
+- `requestAnimationFrame` for the redraws — it never runs in the e2e tests'
+  hidden window.
 
 ## D-096 — No Android pass before a release (2026-10-05)
 
@@ -2631,3 +2640,28 @@ measured that (`pnpm run test:memory`), the phone did not.
   not the stream's length; tracked in `docs/TODO.md`.
 - Trips through every note — 11.5 min down, ~23 down and back, to check what 21
   notes check.
+
+## D-159 — A Base is held at a fixed height (2026-10-19)
+
+**Decision:** the box each Base is drawn in has a fixed height: the tallest the
+Base has been since it last settled. Anything taller is cut off. When the Base
+grows, the box grows to match in the next task, and tells its note, which then
+updates its pinned height (ADR 0013). A Base drawn as a table to measure whether
+it fits grows the same way once that is decided.
+
+**Why:** Bases adds a table's rows from inside its own ResizeObserver callback.
+This happens when a note hidden far off screen (ADR 0023) is shown again after
+its Base's data arrived while it was hidden. ResizeObserver had already reported
+the note's size that frame, so the note growing there made WebKit log the D-095
+error. With a fixed-height box, the rows grow inside the box, and the note
+changes size only in the next task. The cost: a Base's growth shows one frame
+late.
+
+**Rejected:**
+
+- A `min-height` hold raised from the callback (D-095) — growth inside Bases'
+  own callback goes past it.
+- Not observing the note's content — the scroll anchor and the width refits need
+  it.
+- Calling Bases' `onResize` ourselves, outside a callback — it is an Obsidian
+  internal, and Bases' own observer still fires.

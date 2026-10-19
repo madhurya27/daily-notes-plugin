@@ -100,13 +100,14 @@ export class NoteBases {
         }
         const width = laidOutWidth(view);
         if (Number.isNaN(width)) return; // not laid out yet: keep measuring
-        // Bases lays out inside a resize report: emptied there, the Base
-        // resizes the note a round late, which WebKit logs as an error.
-        if (width > view.clientWidth)
-            window.setTimeout(() => {
-                if (!slot.gone && slot.mode === "table") void this.showCards(slot, slot.contentWidth);
-            });
-        else slot.letOut();
+        // Bases reports its layout from inside its ResizeObserver callback. A
+        // Base redrawn or grown there resizes the note too late for that
+        // round, and WebKit logs an error.
+        window.setTimeout(() => {
+            if (slot.gone || slot.mode !== "table") return;
+            if (width > view.clientWidth) void this.showCards(slot, slot.contentWidth);
+            else slot.letOut();
+        });
     }
 
     private async recheck(slot: BaseSlot, width: number): Promise<void> {
@@ -185,11 +186,13 @@ class BaseSlot {
     private readonly letGoOnceStill: Debouncer<[], void>;
     /** Lets go of a Base that never holds still, counted from its first resize since it last let go. */
     private limit = 0;
+    /** The timer that grows the box in the next task, once Bases' content grew. */
+    private growing = 0;
     /**
-     * The height it is held at, the tallest it laid out at since it last let
-     * go: a shrink, Bases refilling, waits until it settles. Held before the
-     * shrink, not on hearing of it: inside the report, that resizes the note
-     * a round late, which WebKit logs as an error.
+     * The box's fixed height: the tallest the Base has been since it last
+     * settled. A shrink waits until it settles; a growth waits for the next
+     * task. Bases adds rows inside its own ResizeObserver callback, and the
+     * note must not change size there, or WebKit logs an error (D-159).
      */
     private laidOut = 0;
 
@@ -214,6 +217,7 @@ class BaseSlot {
             this.resizes.disconnect();
             this.letGoOnceStill.cancel();
             window.clearTimeout(this.limit);
+            window.clearTimeout(this.growing);
             this.placeholder.style.removeProperty("--daily-note-held-height");
         });
     }
@@ -252,6 +256,7 @@ class BaseSlot {
         const component = (this.component = this.noteComponent.addChild(new Component()));
         const markdown = mode === "cards" ? this.cards! : this.source.markdown;
         await MarkdownRenderer.render(this.app, markdown, this.placeholder, this.file.path, component);
+        if (!this.measuring) this.rise();
         const drawn = this.placeholder.lastElementChild;
         if (drawn) this.resizes.observe(drawn);
     }
@@ -260,6 +265,7 @@ class BaseSlot {
     letOut(): void {
         if (!this.measuring) return;
         this.measure(false);
+        this.rise();
         this.told();
     }
 
@@ -273,12 +279,24 @@ class BaseSlot {
         this.placeholder.dispatchEvent(new Event(BASE_RESIZED, { bubbles: true }));
     }
 
-    /** Taller, it is held there: the hold only rises here, which resizes nothing. Clipped, it shows no taller. */
+    /** Any size change restarts the wait to settle, and asks to grow the box in the next task. */
     private resized(): void {
-        const height = this.height();
-        // Stryker disable next-line EqualityOperator: held again at the same height, nothing changes.
-        if (height > this.laidOut && !this.measuring) this.holdAt(height);
+        this.growing ||= window.setTimeout(() => this.grow());
         this.waitForStill();
+    }
+
+    /** Grows the box if the Base grew, and tells the note. Not while it is measured: it stays cut off. */
+    private grow(): void {
+        this.growing = 0;
+        if (!this.measuring && this.rise()) this.told();
+    }
+
+    /** Grows the box to the Base's own height if that is taller; returns whether it did. */
+    private rise(): boolean {
+        const height = this.unheldHeight();
+        if (height <= this.laidOut) return false;
+        this.holdAt(height);
+        return true;
     }
 
     private waitForStill(): void {
@@ -297,7 +315,7 @@ class BaseSlot {
         this.told();
     }
 
-    /** styles.css turns the property into a `min-height`. */
+    /** styles.css turns the property into its `height`. */
     private holdAt(height: number): void {
         this.laidOut = height;
         if (height > 0) this.placeholder.style.setProperty("--daily-note-held-height", `${height}px`);
@@ -305,6 +323,14 @@ class BaseSlot {
 
     private height(): number {
         return this.placeholder.getBoundingClientRect().height;
+    }
+
+    /** The Base's own height: the fixed height is lifted for the measurement and put back at once. */
+    private unheldHeight(): number {
+        this.placeholder.style.removeProperty("--daily-note-held-height");
+        const height = this.height();
+        this.holdAt(this.laidOut);
+        return height;
     }
 }
 

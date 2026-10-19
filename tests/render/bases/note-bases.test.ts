@@ -628,10 +628,11 @@ describe("NoteBases holding a Base while it refills", () => {
         slot.getBoundingClientRect = () => ({ height }) as DOMRect;
     };
     const resized = () => FakeResizeObserver.instances.forEach((observer) => observer.resized());
-    /** `slot` lays out at `height`, and the observers say so. */
+    /** `slot` lays out at `height`, the observers report it, then the next task runs. */
     const layOutAt = (slot: Element, height: number) => {
         tall(slot, height);
         resized();
+        vi.advanceTimersByTime(0);
     };
 
     // Draws an element, as the real renderer does, for the hold to watch.
@@ -680,6 +681,33 @@ describe("NoteBases holding a Base while it refills", () => {
         layOutAt(slotOf(content), 500);
 
         expect(held(slotOf(content))).toBe("500px");
+    });
+
+    // Bases adds rows inside its own ResizeObserver callback. A Base grown
+    // there would resize its note too late for that round, and WebKit logs
+    // an error.
+    it("holds a Base at what it drew, as the draw ends", async () => {
+        render.mockImplementation(async (_app, _markdown, el) => {
+            el.createDiv();
+            tall(el, 76);
+        });
+
+        const content = await renderNote(BLOCK);
+
+        expect(held(slotOf(content))).toBe("76px");
+    });
+
+    it("grows to what it lays out at unheld, not at its hold", async () => {
+        const content = await renderNote(BLOCK);
+        const slot = slotOf(content) as HTMLElement;
+        layOutAt(slot, 300);
+        // As in styles.css: while held, it lays out at its hold.
+        slot.getBoundingClientRect = () => ({ height: held(slot) ? 300 : 500 }) as DOMRect;
+
+        resized();
+        vi.advanceTimersByTime(0);
+
+        expect(held(slot)).toBe("500px");
     });
 
     it("watches the placeholder, which a hold stops resizing", async () => {
@@ -818,6 +846,7 @@ describe("NoteBases changing a Base's height in a pinned note", () => {
     const layOutAt = (slot: Element, height: number) => {
         tall(slot, height);
         resized();
+        vi.advanceTimersByTime(0);
     };
     const held = (slot: Element) => (slot as HTMLElement).style.getPropertyValue("--daily-note-held-height");
     const measuring = (slot: Element) => slot.classList.contains("is-measuring");
@@ -847,6 +876,21 @@ describe("NoteBases changing a Base's height in a pinned note", () => {
     });
     afterEach(() => vi.useRealTimers());
 
+    it("grows a task after hearing what it drew grew, telling its note then", async () => {
+        const content = await renderNote(BLOCK);
+        layOutAt(slotOf(content), 300);
+        const heard = told(slotOf(content));
+
+        tall(slotOf(content), 500);
+        resized();
+        const inReport = { held: held(slotOf(content)), told: heard.count };
+        vi.advanceTimersByTime(0);
+
+        expect(inReport).toEqual({ held: "300px", told: 0 });
+        expect(held(slotOf(content))).toBe("500px");
+        expect(heard.count).toBe(1);
+    });
+
     it("tells its note as it lets go", async () => {
         const content = await renderNote(BLOCK);
         layOutAt(slotOf(content), 300);
@@ -871,9 +915,10 @@ describe("NoteBases changing a Base's height in a pinned note", () => {
 
     it("tells its note once as the limit lets go, not again once still", async () => {
         const content = await renderNote(BLOCK);
+        layOutAt(slotOf(content), 300);
         const heard = told(slotOf(content));
         for (let t = 0; t < HOLD_LIMIT_MS; t += SETTLE_MS / 2) {
-            layOutAt(slotOf(content), 300 + t);
+            resized();
             vi.advanceTimersByTime(SETTLE_MS / 2);
         }
         const atLimit = heard.count;
@@ -892,6 +937,21 @@ describe("NoteBases changing a Base's height in a pinned note", () => {
 
         component.unload();
         vi.advanceTimersByTime(HOLD_LIMIT_MS);
+
+        expect(heard.count).toBe(0);
+        expect(held(slotOf(content))).toBe("");
+    });
+
+    it("grows nothing and tells its note nothing once unloaded with a growth heard", async () => {
+        const component = loaded();
+        const content = await renderNote(BLOCK, component);
+        layOutAt(slotOf(content), 300);
+        const heard = told(slotOf(content));
+        tall(slotOf(content), 500);
+        resized();
+
+        component.unload();
+        vi.advanceTimersByTime(0);
 
         expect(heard.count).toBe(0);
         expect(held(slotOf(content))).toBe("");
@@ -916,6 +976,17 @@ describe("NoteBases changing a Base's height in a pinned note", () => {
         expect(held(slot)).toBe("300px");
     });
 
+    it("draws it as written at that height, however tall it draws", async () => {
+        render.mockImplementation(async (_app, markdown, el) => {
+            el.createDiv();
+            if (markdown === BLOCK) tall(el, 800);
+        });
+
+        const slot = await redrawnAsWritten();
+
+        expect(held(slot)).toBe("300px");
+    });
+
     it("keeps that height while what it measures grows", async () => {
         const slot = await redrawnAsWritten();
 
@@ -927,6 +998,8 @@ describe("NoteBases changing a Base's height in a pinned note", () => {
     it("draws it as cards at that height once measured too wide", async () => {
         const slot = await redrawnAsWritten();
         layOutAt(slot, 800);
+        // Just drawn, the cards are shorter than the table until they fill in.
+        tall(slot, 120);
 
         reportLayout(layOut(slot, 900, 800));
         await vi.advanceTimersByTimeAsync(0);
@@ -944,6 +1017,17 @@ describe("NoteBases changing a Base's height in a pinned note", () => {
 
         expect(measuring(slot)).toBe(false);
         expect(heard.count).toBe(1);
+    });
+
+    it("lets it out at the height it draws at", async () => {
+        const slot = await redrawnAsWritten();
+        tall(slot, 600);
+        const before = held(slot);
+
+        reportLayout(layOut(slot, 600, 800));
+
+        expect(before).toBe("300px");
+        expect(held(slot)).toBe("600px");
     });
 
     it("keeps measuring a Base not laid out yet", async () => {
