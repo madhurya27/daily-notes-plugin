@@ -105,11 +105,10 @@ Out of scope:
 - A gutter timeline — scrubbing writes the scroll, which iOS drops or undoes
   mid-glide (ADR 0013); the jump modal reaches any date.
 - Journals support, or Periodic Notes' weekly and monthly notes — a second note
-  source behind `DailyNoteService`. Revisit if users ask once it is published.
-  Periodic Notes' daily settings already work
-  (`e2e-tests/periodic-notes.spec.ts`).
+  source behind `DailyNoteService`. Revisit if users ask. Periodic Notes' daily
+  settings already work (`e2e-tests/periodic-notes.spec.ts`).
 - Hiding untouched notes whose Templater blocks write several lines — D-117's
-  rejected fingerprints. Revisit if users ask once it is published.
+  rejected fingerprints. Revisit if users ask.
 - Period scope — newest-first already opens on this week; the jump modal reaches
   past ones.
 - Range export, a stats header — niche; core Word count and heatmap plugins
