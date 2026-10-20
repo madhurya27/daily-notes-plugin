@@ -2830,8 +2830,8 @@ undrawn and logged nothing; an error is already logged.
 `manifest.json` and `package.json` to the short one, and both to the listing's
 limits: 200 and 1000 characters.
 
-**Why:** the listing keeps no history, and the manifest's description is what
-Obsidian's in-app plugin browser searches, so the two must not drift apart.
+**Why:** the listing keeps no history. The manifest's description is what users
+see in their installed plugins, and Obsidian expects it to match the listing's.
 
 **Rejected:**
 
