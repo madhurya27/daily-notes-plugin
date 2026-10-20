@@ -3,7 +3,7 @@
     "name": "Daily Notes Stream",
     "version": "1.2.0",
     "minAppVersion": "1.14.4",
-    "description": "Read all your daily notes as one continuous, read-only journal timeline with infinite scroll. Search every entry, jump to any date, and review past days on desktop or mobile.",
+    "description": "Read your existing daily notes as a read-only journal timeline with infinite scroll, on desktop and mobile. Uses your Daily notes or Periodic Notes settings. Search all notes or jump to a date.",
     "author": "Madhurya",
     "authorUrl": "https://github.com/madhurya27",
     "isDesktopOnly": false
