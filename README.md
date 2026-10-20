@@ -131,7 +131,11 @@ On desktop, wide tables and code blocks scroll sideways in their own box, as the
 <details>
 <summary>Phone layout</summary>
 
-<p><img src="docs/images/stream-phone.png" alt="The stream in Obsidian's phone layout" width="150"> <img src="docs/images/search-phone.png" alt="Search in the phone layout" width="150"> <img src="docs/images/jump-phone.png" alt="Jump to date in the phone layout" width="150"> <img src="docs/images/collapse-phone.png" alt="Collapsed sections in the phone layout" width="150"> <img src="docs/images/mentions-phone.png" alt="Linked mentions in the phone layout" width="150"> <img src="docs/images/bases-phone.png" alt="A Base drawn as cards in the phone layout" width="150"> <img src="docs/images/stream-dark-phone.png" alt="The stream in the dark theme, phone layout" width="150"></p>
+<p><img src="docs/images/stream-phone.png" alt="The stream in Obsidian's phone layout" width="260"> <img src="docs/images/search-phone.png" alt="Search in the phone layout" width="260"> <img src="docs/images/jump-phone.png" alt="Jump to date in the phone layout" width="260"></p>
+
+<p><img src="docs/images/collapse-phone.png" alt="Collapsed sections in the phone layout" width="260"> <img src="docs/images/mentions-phone.png" alt="Linked mentions in the phone layout" width="260"> <img src="docs/images/bases-phone.png" alt="A Base drawn as cards in the phone layout" width="260"></p>
+
+<p><img src="docs/images/stream-dark-phone.png" alt="The stream in the dark theme, phone layout" width="260"></p>
 
 </details>
 
