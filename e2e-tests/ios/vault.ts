@@ -8,6 +8,7 @@ import { DEMO as README_DEMO } from "../demo";
 import { testVault } from "../../scripts/seed-test-vault.mjs";
 import type { Phone } from "./phone";
 import { PLUGIN_ID, vaultConfig } from "./vault-config";
+import { recordingAsked } from "../recording-asked";
 
 /**
  * The harness's own vault on the phone, stored on it rather than in iCloud,
@@ -17,7 +18,7 @@ import { PLUGIN_ID, vaultConfig } from "./vault-config";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 /** The README recording's run: the desktop recording's journal, nothing shaped for a test. */
-const RECORDING = process.env.CAPTURE_RECORDING === "1";
+const RECORDING = recordingAsked();
 export const VAULT = process.env.IOS_VAULT ?? (RECORDING ? "Stream Demo" : "Stream E2E");
 /** Days of journal, 21 unless IOS_SEED_DAYS says otherwise: 1825 for five years. */
 const DEMO: Record<string, string> = demoVault({

@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { oneConsoleListener } from "./console-listener";
 import { keyboardAfterRun } from "./keyboard";
 import { loadLocalEnv } from "./local-env";
+import { recordingAsked } from "../recording-asked";
 import { writeWebp } from "../../scripts/recording.mjs";
 import { FRAMES, startScreenCapture, type Scene } from "./screen-capture";
 import { APPIUM_PORT } from "./session";
@@ -153,7 +154,7 @@ export default async function startAppium(): Promise<() => Promise<void>> {
     process.env.IOS_UDID = connectedPhone(process.env);
     // First, before WebDriverAgent connects: starting a capture drops its connection.
     let stopCapture = async () => {};
-    if (process.env.CAPTURE_RECORDING === "1") {
+    if (recordingAsked()) {
         rmSync(FRAMES, { recursive: true, force: true });
         stopCapture = await startScreenCapture(FRAMES, 600);
     }
@@ -175,7 +176,8 @@ export default async function startAppium(): Promise<() => Promise<void>> {
     return async () => {
         stopAppium(appium);
         await stopCapture();
-        encodeScene();
+        // A capture's scene.json stays among the frames: re-encoding it on a plain run rewrote the README's.
+        if (recordingAsked()) encodeScene();
     };
 }
 

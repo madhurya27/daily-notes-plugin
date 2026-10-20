@@ -1,6 +1,7 @@
 import { test, expect, openStream } from "./obsidian";
 import { join } from "path";
 import { OUT, prepareDemo } from "./demo";
+import { recordingAsked } from "./recording-asked";
 import { clickAt, clickLikeAPerson, driftOff, flick, glideTo, record, restAt, typeLikeAPerson } from "./screencast";
 
 /**
@@ -10,7 +11,7 @@ import { clickAt, clickLikeAPerson, driftOff, flick, glideTo, record, restAt, ty
  * be retaken alone.
  */
 test.describe("README recording", () => {
-    test.skip(process.env.CAPTURE_RECORDING !== "1", "set CAPTURE_RECORDING=1 to record");
+    test.skip(!recordingAsked(), "set CAPTURE_RECORDING=1 to record");
 
     test.beforeAll(async ({ obsidian }) => {
         await prepareDemo(obsidian.page);
