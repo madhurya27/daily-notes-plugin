@@ -4,6 +4,15 @@
 
 Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
+- [ ] On the iPad, which Obsidian counts as mobile, so it gets the phone layout:
+    - [ ] Show the scroll-to-top button, as on desktop: the header has room for
+          it. Like every header button there, it takes two taps (see Known
+          limits). Decide whether the title tap then stops scrolling to the top.
+          Amends D-147.
+    - [ ] Fit the search bar to its contents: the field sits on the left and the
+          close button on the right, with an empty gap between them.
+    - [ ] A swipe that starts on a Base shown as a table doesn't scroll the
+          stream, or scrolls a little and stalls.
 - [ ] Make typing a search mark only a match the reader can see (D-022):
       `isOnScreen` checks the whole pane, so on a phone it marks one under the
       floating header or bottom bar, or under the open keyboard. Enter then
@@ -27,6 +36,9 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
 
 Measured and accepted. Reopened if a reader notices.
 
+- [ ] On the iPad, in landscape, the first tap on a view's header only expands
+      it to show the note's path; the second reaches the button or title.
+      Obsidian's behaviour, in every view, not the stream's.
 - [ ] A hard flick up the stream on the iPhone outruns the drawing of notes: a
       note waits its turn in the render queue (ADR 0004) while the glide moves
       200–800 px a frame. On 2026-10-16, 4-stroke flicks showed an undrawn note
