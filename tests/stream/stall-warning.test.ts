@@ -32,14 +32,14 @@ describe("warnIfStalled", () => {
         expect(logged).not.toHaveBeenCalled();
     });
 
-    it("logs once a task has run for the stall time, naming it", async () => {
+    it("logs once a task has run for 5 seconds, naming it", async () => {
         const { task } = pending();
         void warnIfStalled("Drawing Notes/2026-03-14.md", task);
-        await vi.advanceTimersByTimeAsync(STALL_MS);
+        await vi.advanceTimersByTimeAsync(5_000);
 
         expect(logged).toHaveBeenCalledOnce();
         expect(logged).toHaveBeenCalledWith(
-            "DailyNotesStream: Drawing Notes/2026-03-14.md has run for 10 s; no note draws until it ends"
+            "DailyNotesStream: Drawing Notes/2026-03-14.md has run for 5 s; no note draws until it ends"
         );
     });
 
@@ -68,6 +68,6 @@ describe("warnIfStalled", () => {
         await vi.advanceTimersByTimeAsync(STALL_MS);
         await failed;
 
-        expect(logged).toHaveBeenLastCalledWith("DailyNotesStream: Loading more notes ended after 10 s");
+        expect(logged).toHaveBeenLastCalledWith("DailyNotesStream: Loading more notes ended after 5 s");
     });
 });
