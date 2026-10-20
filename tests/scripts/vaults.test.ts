@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { join, resolve } from "path";
-import { mkdtempSync, readFileSync, writeFileSync } from "fs";
+import { lstatSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import {
     DEMO_VAULT,
@@ -102,5 +102,39 @@ describe("installBuild", () => {
             "Build first — missing main.js, styles.css. Run: pnpm run build"
         );
         expect(() => readFileSync(join(vault, ".obsidian", "plugins", PLUGIN_ID, "manifest.json"))).toThrow();
+    });
+
+    /** A vault whose plugin folder links each build file to `target(asset)`, as an older demo run left it. */
+    function linkedTo(target: (asset: string) => string) {
+        const vault = mkdtempSync(join(tmpdir(), "vault-"));
+        const pluginDir = join(vault, ".obsidian", "plugins", PLUGIN_ID);
+        mkdirSync(pluginDir, { recursive: true });
+        for (const asset of assets) symlinkSync(target(asset), join(pluginDir, asset));
+        return vault;
+    }
+
+    it("replaces a link to a folder that is gone, such as the repo's old name", () => {
+        const vault = linkedTo((asset) => join(tmpdir(), "renamed-away", asset));
+
+        installBuild(vault, built(assets));
+
+        for (const asset of assets) {
+            const installed = join(vault, ".obsidian", "plugins", PLUGIN_ID, asset);
+            expect(lstatSync(installed).isFile()).toBe(true);
+            expect(readFileSync(installed, "utf8")).toBe(asset);
+        }
+    });
+
+    it("replaces a link to another checkout's build, leaving that build as it was", () => {
+        const other = mkdtempSync(join(tmpdir(), "other-"));
+        for (const asset of assets) writeFileSync(join(other, asset), "the other build");
+        const vault = linkedTo((asset) => join(other, asset));
+
+        installBuild(vault, built(assets));
+
+        for (const asset of assets) {
+            expect(readFileSync(join(vault, ".obsidian", "plugins", PLUGIN_ID, asset), "utf8")).toBe(asset);
+            expect(readFileSync(join(other, asset), "utf8")).toBe("the other build");
+        }
     });
 });

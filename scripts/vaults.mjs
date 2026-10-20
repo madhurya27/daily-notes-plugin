@@ -5,7 +5,7 @@
  * that opens them.
  */
 import { execFileSync } from "child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
@@ -33,7 +33,9 @@ const BUILD = ["main.js", "manifest.json", "styles.css"];
 
 /**
  * Copies the build in `repo` into the vault's plugin folder. Throws, copying
- * nothing, when a file of it is missing.
+ * nothing, when a file of it is missing. A link left there by `pnpm run demo`
+ * is replaced, never copied through: it may point at another checkout, or at
+ * a folder that is gone.
  * @param {string} vault
  * @param {string} repo
  */
@@ -42,7 +44,10 @@ export function installBuild(vault, repo = REPO) {
     if (missing.length > 0) throw new Error(`Build first — missing ${missing.join(", ")}. Run: pnpm run build`);
     const pluginDir = join(vault, ".obsidian", "plugins", PLUGIN_ID);
     mkdirSync(pluginDir, { recursive: true });
-    for (const file of BUILD) copyFileSync(join(repo, file), join(pluginDir, file));
+    for (const file of BUILD) {
+        rmSync(join(pluginDir, file), { force: true });
+        copyFileSync(join(repo, file), join(pluginDir, file));
+    }
 }
 
 /** The dev instance's own config, apart from your real Obsidian's. */
