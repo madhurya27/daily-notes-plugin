@@ -25,6 +25,8 @@ pnpm run test:ios       # build + e2e-tests/ios/ on a plugged-in, unlocked iPhon
 IOS_SEED_DAYS=1825 pnpm run test:ios   # the same on five years of journal (D-158); ~7 min, the same as on 21 days
 xcrun devicectl list devices   # is the iPhone connected? Not system_profiler, which misses it
 pnpm run test:memory    # memory, render-cost and edit-cost specs on a seeded five-year vault (E2E_SEED_DAYS)
+SCROLL_COST=1 E2E_SEED_DAYS=365 pnpm exec playwright test scroll-cost --project=desktop
+                        # a real wheel over a slowed CPU; RATES, SPEEDS, DOWN_UP=1, SCREEN=4k175 vary it
 # Every test run stops at its first failure; for a full report: --max-failures=0 (Playwright), --bail=0 (vitest)
 
 pnpm run demo                     # open .dev/demo-vault/ (gitignored), reload the plugin on every save; Ctrl-C closes it
