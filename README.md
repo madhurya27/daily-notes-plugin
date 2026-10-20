@@ -1,8 +1,10 @@
 # Daily Notes Stream
 
-Read your daily notes as one continuous timeline. Every day appears on one page, with the newest at the top and older days loading as you scroll. The stream is for reading; to edit a note, click its date.
+Read your daily notes as one continuous journal timeline. Every day appears on one page, with the newest at the top and older days loading as you scroll. The stream is for reading; to edit a note, click its date.
 
 It works with the daily notes you already have. There's no new folder, format, or template to set up, and it never changes your notes. Scrolling stays smooth and fast, even through years of notes.
+
+**You'll need daily notes set up already:** Obsidian's core **Daily notes** plugin, or Periodic Notes with daily notes turned on, and at least one note. The stream shows the notes in that folder whose names match its date format.
 
 [Get it from the Obsidian plugin directory](https://community.obsidian.md/plugins/daily-notes-stream), or see [Install](#install).
 
@@ -182,7 +184,7 @@ To build from source instead, run `pnpm run build` and copy the same three files
 
 | You see | What to do |
 | --- | --- |
-| "No daily notes found" | Make sure the folder and date format in **Settings → Daily notes** match where your notes are and how they're named. |
+| "No daily notes found" | Make sure **Daily notes** is on in **Settings → Core plugins** (or Periodic Notes, if you use it), and that the folder and date format in **Settings → Daily notes** match where your notes are and how they're named. |
 | "Every daily note is hidden" | Every daily note holds only its template, so all of them are hidden. Write in one, or turn off **Hide empty notes**. |
 | A note you expected is missing | Either **Hide empty notes** is on and it holds only its template (see [Empty notes](#empty-notes)), or its name doesn't match the date format. |
 | After installing by hand, the plugin isn't listed under Community plugins | Make sure the three files sit directly in `daily-notes-stream/`, not in a subfolder, then reload Obsidian. |

@@ -2822,3 +2822,18 @@ undrawn and logged nothing; an error is already logged.
 - 10 seconds — a reader may give up and reopen the tab before then. The slowest
   job the e2e specs allow, the first search, runs 1.5 s; 5 s leaves room for a
   slow laptop.
+
+## D-165 — The listing's descriptions are kept in docs/LISTING.md (2026-10-20)
+
+**Decision:** the directory listing's short and long descriptions live in
+`docs/LISTING.md`, and are pasted into the listing by hand. A test holds
+`manifest.json` and `package.json` to the short one, and both to the listing's
+limits: 200 and 1000 characters.
+
+**Why:** the listing keeps no history, and the manifest's description is what
+Obsidian's in-app plugin browser searches, so the two must not drift apart.
+
+**Rejected:**
+
+- Only the listing — no record of past wording.
+- A copy in the README — readers would see it twice.
