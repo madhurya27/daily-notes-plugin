@@ -2134,22 +2134,28 @@ new tags, and no reader ran a `0.x` draft.
 - Recreating the `0.x` tags — they would mark releases nobody outside the
   project ran.
 
-## D-126 — The README's desktop stills crop to the note column (2026-10-12)
+## D-126 — The README's desktop stills show the stream's window (2026-10-12, reframed 2026-10-19)
 
-**Decision:** each desktop still is the top 520 px of the note column, from
-under the view's header, with a 32 px margin and a 1 px border, shown 800 px
-wide, as the recording above them is.
+**Decision:** each desktop still is the stream's pane, tab bar and header
+included, in a 904 px window as the listing's cards use, 960 px tall, shown as a
+window: rounded corners, a hairline edge, a soft shadow
+(`scripts/window-still.mjs`). Each runs from a note's date to the end of what it
+shows; below its last whole line, the page's background is painted. The first
+still is the stream itself: one whole note, the divider, the next note's date.
 
-**Why:** the whole 1024 px window, shown 440 px wide, put its text at 43% of its
-size, too small to read; cropped, it shows at 105%, and the stills line up with
-the recording. The recording above them already shows the window. Without the
-border, a light still runs into GitHub's white page.
+**Why:** the README is there to win readers over. A window reads as Obsidian at
+a glance, and a still that starts on a date and holds its feature whole reads as
+a daily note, not a fragment. One height lines the stills up; 960 px fits the
+longest, linked mentions. Shown 800 px wide, text is at 88%.
 
 **Rejected:**
 
-- The whole window, shown wider — 78% text needs 800 px, and six stills that
-  tall double the README's length.
-- A smaller window — Obsidian's narrow layout, not the one readers see.
+- The note column alone — reads as a fragment, not the app.
+- A 1024 px window — at 800 px wide its text shrinks to 78%.
+- 520 px, the top of the column — cut the date off most stills and lines in
+  half.
+- A height per still — the stills stop lining up.
+- A Base as the first still — a reader sees a feature few use, not the stream.
 
 ## D-127 — The daily-notes settings are read without a library (2026-10-12)
 

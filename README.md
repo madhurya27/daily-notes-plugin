@@ -46,7 +46,7 @@ To find the stream waiting each time you start Obsidian, pin its tab: right-clic
 
 Each note is shown in full, as it looks in Obsidian's reading view, with its properties, images, tables, embeds, links, tasks, and Bases. The stream is read-only, so clicking a task's checkbox doesn't tick it. Open the note to edit it. Some content is reshaped so the stream scrolls smoothly, mostly on a phone or tablet. See [Phone and tablet](#phone-and-tablet).
 
-<img src="docs/images/bases-desktop.png" alt="A weekly review embedding a reading-list Base" width="800">
+<img src="docs/images/stream-desktop.png" alt="The end of one daily note and the start of the next, its date and properties, in the stream" width="800">
 
 ### Empty notes
 
