@@ -661,13 +661,13 @@ describe("NoteRenderer, a note by section", () => {
             document.body.append(block);
             const seen: string[][] = [];
             const goOn = async (drawing: Component) => {
-                for (const run of renderer.runsOf(drawing).slice(1)) seen.push(run.map((el) => el.textContent!));
+                for (const run of renderer.runsOf(drawing).slice(1)) seen.push(run.map((el) => el.textContent));
                 return true;
             };
 
             ({ component } = (await renderer.renderInto(block, file, goOn, "from-end"))!);
 
-            const final = renderer.runsOf(component).map((run) => run.map((el) => el.textContent!));
+            const final = renderer.runsOf(component).map((run) => run.map((el) => el.textContent));
             expect(seen.length).toBeGreaterThan(0);
             for (const run of seen) expect(final).toContainEqual(run);
         });
@@ -703,7 +703,7 @@ describe("NoteRenderer, a note by section", () => {
             renderer = makeRenderer(today);
             await open(days(400));
             const before = renderer.runsOf(component).map((run) => run.length);
-            const third = renderer.runsOf(component)[2]![0]!.textContent!;
+            const third = renderer.runsOf(component)[2]![0]!.textContent;
             const at = days(400).findIndex((d) => d.startsWith(third));
             const changed = days(400);
             changed.splice(at, 2, `Day X.${FILLER}`, `Day Y.${FILLER}`);
@@ -802,7 +802,7 @@ describe("NoteRenderer, a note by section", () => {
 
             it("show the runs either side of sections inserted between two", async () => {
                 const runs = await openHidden();
-                const firstOfThird = runs[2]![0]!.textContent!;
+                const firstOfThird = runs[2]![0]!.textContent;
                 const at = days(400).findIndex((d) => d.startsWith(firstOfThird));
                 const changed = days(400);
                 changed.splice(at, 0, `Day N.${FILLER}`);
@@ -816,7 +816,7 @@ describe("NoteRenderer, a note by section", () => {
 
             it("lose a run whose sections a save took away", async () => {
                 const runs = await openHidden();
-                const second = runs[1]!.map((el) => el.textContent!);
+                const second = runs[1]!.map((el) => el.textContent);
                 const changed = days(400).filter((d) => !second.includes(d.slice(0, 12)));
 
                 expect(await save(changed)).toBe(true);

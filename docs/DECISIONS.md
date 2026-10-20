@@ -2837,3 +2837,20 @@ see in their installed plugins, and Obsidian expects it to match the listing's.
 
 - Only the listing — no record of past wording.
 - A copy in the README — readers would see it twice.
+
+## D-166 — Overrides lift dev dependencies past security advisories (2026-10-20)
+
+**Decision:** `pnpm-workspace.yaml` overrides set a minimum version for each
+transitive dev dependency with an advisory that its parent's range already
+allows a fix for, or that `@appium/support` pins (`shell-quote`). An entry goes
+once its parent requires the fixed version itself. `esbuild` 0.27 (low, used
+only by vitest's internal server) and `extract-zip` (no fix released) stay open.
+
+**Why:** pnpm keeps an installed version while it satisfies the range, so
+`pnpm update --depth Infinity` left most of them in place. None of them ships;
+the plugin bundles no dependencies.
+
+**Rejected:**
+
+- Deleting the lockfile — re-resolves every package to fix a dozen.
+- Forcing `esbuild` 0.28 — outside the range vite 7 asks for, for a low alert.

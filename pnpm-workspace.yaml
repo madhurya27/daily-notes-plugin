@@ -3,3 +3,14 @@ allowBuilds:
     edgedriver: false
     esbuild: true
     geckodriver: false
+# Lifts transitive dev dependencies past security advisories (D-166). Drop an
+# entry once the package that pulls it in requires the fixed version itself.
+overrides:
+    "basic-ftp@<6.2.1": ^6.2.1
+    "nanoid@<3.3.18": ^3.3.18
+    "postcss@<8.5.23": ^8.5.23
+    "qs@>=6.11.1 <6.16.0": ^6.16.0
+    "rollup@>=4.0.0 <4.59.0": ^4.59.0
+    "shell-quote@<1.11.0": ^1.11.0
+    "vite@>=7.0.0 <7.3.5": ^7.3.5
+    "yaml@>=2.0.0 <2.8.3": ^2.8.3

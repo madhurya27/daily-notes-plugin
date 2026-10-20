@@ -50,8 +50,8 @@
         "@playwright/test": "1.62.1",
         "@stryker-mutator/core": "^10.0.0",
         "@stryker-mutator/vitest-runner": "^10.0.0",
-        "@types/node": "^20.0.0",
-        "@vitest/coverage-v8": "^4.0.18",
+        "@types/node": "^20.19.43",
+        "@vitest/coverage-v8": "^4.1.12",
         "appium": "^3.8.0",
         "esbuild": "0.25.5",
         "eslint": "9.39.1",
@@ -60,13 +60,13 @@
         "globals": "14.0.0",
         "jiti": "2.6.1",
         "jsdom": "^28.1.0",
-        "moment": "2.29.4",
+        "moment": "2.31.0",
         "obsidian": "1.14.4",
         "prettier": "3.9.6",
-        "typescript": "^5.8.3",
+        "typescript": "^5.9.3",
         "typescript-eslint": "8.71.2",
-        "vitest": "^4.0.18",
+        "vitest": "^4.1.12",
         "webdriverio": "^9.32.0",
-        "yaml": "2.8.1"
+        "yaml": "2.9.1"
     }
 }

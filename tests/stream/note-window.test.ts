@@ -3427,7 +3427,7 @@ describe("NoteWindowManager hides a long note's far runs", () => {
             await goOn!(component);
             farMidDraw = paragraphs()
                 .filter((p) => p.hasClass("is-far"))
-                .map((p) => p.textContent!);
+                .map((p) => p.textContent);
             return { component, footer: Promise.resolve() };
         });
         const root = makeScrollRoot(800);
