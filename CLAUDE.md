@@ -22,6 +22,7 @@ pnpm run test:mutation  # Stryker over src/, incremental; results in reports/ (D
 pnpm run test:e2e       # build + typecheck e2e + playwright against real Obsidian; fetches Dataview into .dev/ once
 pnpm exec playwright install webkit   # once, for e2e-tests/webkit.spec.ts
 pnpm run test:ios       # build + e2e-tests/ios/ on a plugged-in, unlocked iPhone (ADR 0016); setup in docs/TESTING.md
+pnpm run test:ipados    # the same on a plugged-in iPad, its keyboard detached (D-169)
 IOS_SEED_DAYS=1825 pnpm run test:ios   # the same on five years of journal (D-158); ~7 min, the same as on 21 days
 xcrun devicectl list devices   # is the iPhone connected? Not system_profiler, which misses it
 pnpm run test:memory    # memory, render-cost and edit-cost specs on a seeded five-year vault (E2E_SEED_DAYS)
@@ -63,7 +64,8 @@ locally (D-148).
 
 - `e2e-tests/ios/` drives Obsidian on a real iPhone: real touches, real glides,
   real turns ([ADR 0016](docs/adr/0016-drive-a-real-iphone.md)). Run it, with a
-  phone plugged in, for any change to how the stream scrolls, loads or turns.
+  phone plugged in, for any change to how the stream scrolls, loads or turns;
+  run `test:ipados` too for a change to the harness's touches.
 - **Look at a UI change before handing it over.** Screenshot it from the e2e
   harness, desktop and mobile, and inspect the image: measurements prove a rule
   was matched, not that the result looks right.

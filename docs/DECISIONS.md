@@ -2896,3 +2896,19 @@ size or upright start fail on it; `docs/TODO.md` tracks them.
 
 - Skipping those specs on an iPad — some failures may be real iPad bugs.
 - A separate iPad suite — the same touches and checks, twice.
+
+## D-169 — `test:ios` drives the iPhone, `test:ipados` the iPad (2026-10-21)
+
+**Decision:** Each command drives the device of its type on the cable, so both
+stay plugged in. A spec that holds only on a phone asks which one it drives
+(`drivesIPad`), and the harness strokes below an iPad's header, which sits above
+the stream's pane. Amends D-168, whose phone assumptions are now sorted.
+
+**Why:** Driving the first device found meant unplugging the other before every
+run.
+
+**Rejected:**
+
+- A separate iPadOS suite — the same touches and checks, twice (D-168).
+- One command, the device named by a flag — a command per device is what a
+  reader of `package.json` finds.

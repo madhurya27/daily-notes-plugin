@@ -31,8 +31,8 @@ is inspectable, answers what the stream did. The harness:
   setup by hand (`docs/TESTING.md`). Not in CI.
 - A free Apple ID's profile lasts a week; each run's setup rebuilds and re-signs
   WebDriverAgent when it lapses.
-- Written and checked against iPhones. An iPad runs it too, with specs that
-  assume a phone (D-168).
+- Written against iPhones. An iPad runs it too, through `test:ipados`; a spec
+  that holds only on a phone asks which device it drives (D-168, D-169).
 - A lock screen on Obsidian (Face ID, Touch ID) stops a run: no touch gets past
   it.
 - Judges what the reader sees: a turn reflows a note, so a check follows the

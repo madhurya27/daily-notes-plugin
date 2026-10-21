@@ -72,8 +72,10 @@ for (const [what, target, depth] of [
         await phone.placeAt(target, depth);
         const seen = await phone.seen();
 
-        await phone.turn("LANDSCAPE");
-        await phone.turn("PORTRAIT");
+        // An iPad starts on its side.
+        const found = await phone.orientation();
+        await phone.turn(found === "PORTRAIT" ? "LANDSCAPE" : "PORTRAIT");
+        await phone.turn(found);
 
         // As e2e-tests/turn.spec.ts allows: a pixel's rounding is not a jump.
         const now = await phone.topOf(seen);

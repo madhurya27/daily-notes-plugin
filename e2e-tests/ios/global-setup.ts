@@ -4,6 +4,7 @@ import { mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync }
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import { oneConsoleListener } from "./console-listener";
+import { deviceToDrive } from "./device";
 import { keyboardAfterRun } from "./keyboard";
 import { loadLocalEnv } from "./local-env";
 import { recordingAsked } from "../recording-asked";
@@ -12,7 +13,7 @@ import { FRAMES, startScreenCapture, type Scene } from "./screen-capture";
 import { APPIUM_PORT } from "./session";
 
 /**
- * Readies a USB-connected iPhone for `phone.ts`: the XCUITest driver, a
+ * Readies a USB-connected iPhone or iPad for `phone.ts`: the XCUITest driver, a
  * WebDriverAgent signed by this Mac's Apple Development certificate, and an
  * Appium server (ADR 0016).
  */
@@ -42,15 +43,9 @@ function devicectl(env: NodeJS.ProcessEnv, ...args: string[]): any {
     return JSON.parse(readFileSync(out, "utf8")).result;
 }
 
-/** The iPhone on the cable, unlocked: a locked one leaves WebDriverAgent waiting out the test's timeout. */
+/** The iPhone or iPad on the cable, unlocked: a locked one leaves WebDriverAgent waiting out the test's timeout. */
 function connectedPhone(env: NodeJS.ProcessEnv): string {
-    const phone = (devicectl(env, "list", "devices").devices as any[]).find(
-        (d) => d.connectionProperties.transportType === "wired" && d.hardwareProperties.reality === "physical"
-    );
-    if (!phone) throw new Error("No iPhone or iPad on USB.");
-    // Written against an iPhone; an iPad runs it too, though some specs assume a phone.
-    if (!["iPhone", "iPad"].includes(phone.hardwareProperties.deviceType))
-        throw new Error(`${phone.deviceProperties.name} is not an iPhone or iPad: the harness drives only those.`);
+    const phone = deviceToDrive(devicectl(env, "list", "devices").devices, env);
     const { udid } = phone.hardwareProperties;
     if (devicectl(env, "device", "info", "lockState", "--device", udid).passcodeRequired)
         throw new Error(`Unlock ${phone.deviceProperties.name}.`);

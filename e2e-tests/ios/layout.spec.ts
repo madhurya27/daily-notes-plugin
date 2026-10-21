@@ -1,3 +1,4 @@
+import { drivesIPad } from "./device";
 import { test, expect, type Phone } from "./phone";
 import { EMBEDS_NOTE, FREE_DAYS, KANBAN } from "./vault";
 
@@ -107,24 +108,36 @@ test("nothing in the note of every embed scrolls sideways, reaches past its text
     }
 });
 
-test("a turn flips a wide Base between cards and a table, and fits the equation to the note", async ({ phone }) => {
+// An iPad's note is the readable line length either way up, narrower than
+// a phone on its side: the Base stays a table, the equation as wide.
+const DEVICE = drivesIPad(process.env) ? { upright: "table", widens: false } : { upright: "cards", widens: true };
+
+test("a turn flips a wide Base between cards and a table on a phone, and fits the equation to the note", async ({
+    phone,
+}) => {
     await phone.openStream();
-    const upright = await drawn(phone);
-    expect(upright.base).toBe("cards");
-    expect(upright.equation).toBeLessThanOrEqual(upright.text);
-
-    const place = await mathTop(phone);
-    await phone.turn("LANDSCAPE");
-    expect(Math.abs((await mathTop(phone)) - place), "the place, on a turn").toBeLessThanOrEqual(REWRAP_PX);
-    expect(await kanbanAsCards(phone), "a kanban wider than the phone on its side").toBe(true);
-    const onItsSide = await drawn(phone);
-    expect(onItsSide.base).toBe("table");
-    expect(onItsSide.equation).toBeGreaterThan(upright.equation);
-    expect(onItsSide.equation).toBeLessThanOrEqual(onItsSide.text);
-
+    const found = await phone.orientation();
     await phone.turn("PORTRAIT");
-    expect(Math.abs((await mathTop(phone)) - place), "the place, on the turn back").toBeLessThanOrEqual(REWRAP_PX);
-    expect((await drawn(phone)).base).toBe("cards");
+    try {
+        const upright = await drawn(phone);
+        expect(upright.base).toBe(DEVICE.upright);
+        expect(upright.equation).toBeLessThanOrEqual(upright.text);
+
+        const place = await mathTop(phone);
+        await phone.turn("LANDSCAPE");
+        expect(Math.abs((await mathTop(phone)) - place), "the place, on a turn").toBeLessThanOrEqual(REWRAP_PX);
+        expect(await kanbanAsCards(phone), "a kanban wider than the phone on its side").toBe(true);
+        const onItsSide = await drawn(phone);
+        expect(onItsSide.base).toBe("table");
+        expect(onItsSide.equation > upright.equation, "the equation wider on its side").toBe(DEVICE.widens);
+        expect(onItsSide.equation).toBeLessThanOrEqual(onItsSide.text);
+
+        await phone.turn("PORTRAIT");
+        expect(Math.abs((await mathTop(phone)) - place), "the place, on the turn back").toBeLessThanOrEqual(REWRAP_PX);
+        expect((await drawn(phone)).base).toBe(DEVICE.upright);
+    } finally {
+        await phone.turn(found);
+    }
 });
 
 /** Sets Obsidian's text size on the phone, or back to the default with null. */

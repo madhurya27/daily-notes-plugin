@@ -52,7 +52,7 @@ and project logs linking the newest days. Each note is seeded by its date, so a
 retake shows the same content; `pnpm run seed` alone takes `--days N` and
 `--until YYYY-MM-DD`. Screenshots and recordings come from it.
 
-### iPhone or iPad: `pnpm run test:ios`
+### iPhone or iPad: `pnpm run test:ios`, `pnpm run test:ipados`
 
 Real touches on Obsidian on an iPhone or iPad plugged into the Mac, in a vault
 the harness seeds, `Stream E2E`, stored on the phone. A run leaves the phone as
@@ -61,9 +61,10 @@ Home Screen. WebDriverAgent turns off the keyboard's autocorrection and
 predictive text; the run turns both back on at the end. To leave one off, set
 `IOS_KEYBOARD_AUTOCORRECT=off` or `IOS_KEYBOARD_PREDICTION=off` (D-112), on the
 command line or in a gitignored `e2e-tests/ios/.env`. `IOS_SEED_DAYS=1825` seeds
-five years of journal in place of 21 days (D-158). The run drives the first
-device it finds, so plug in only the one to test. An iPad runs in the
-orientation it was found in; some specs assume a phone and fail there (D-168).
+five years of journal in place of 21 days (D-158). `test:ios` drives the iPhone
+on the cable, `test:ipados` the iPad, so both can stay plugged in (D-169). An
+iPad runs in the orientation it was found in, with its keyboard detached: iOS
+hides its on-screen keyboard while one is attached, and the specs type on it.
 Once per Mac and device; "phone" below means either:
 
 1. Install Xcode, open it once, and add an Apple ID under Settings → Accounts.

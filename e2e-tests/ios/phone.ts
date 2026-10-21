@@ -11,7 +11,7 @@ import { returnToTestersVault, useVault } from "./vault";
 
 const STREAM = ".daily-notes-stream-container";
 
-type Orientation = "PORTRAIT" | "LANDSCAPE";
+export type Orientation = "PORTRAIT" | "LANDSCAPE";
 type Layer = "letters" | "numbers";
 /** What a key's name escapes in the screen's XML, `&amp;` last. */
 const XML_ENTITIES = [
@@ -34,6 +34,8 @@ export type Place = { path: string; offset: number };
  * returns: WebDriverAgent's own cost, measured 540 ms.
  */
 const LIFT_TO_NEXT_STROKE_MS = 500;
+/** How far inside the pane's top a stroke stays, clear of the header above it. */
+const PANE_EDGE = 20;
 
 /** How far `placeAt` looks: past the first two batches of the harness's notes, some 20 screens each. */
 const SCREENS = 60;
@@ -72,6 +74,8 @@ const OBSIDIANS_SANDBOX_NOTICE =
 export class Phone {
     /** WebDriverAgent takes up to half a second to answer, more during a glide; it changes only on a turn. */
     private screen: { width: number; height: number } | undefined;
+    /** Where the stream's pane starts on the screen; changes only on a turn. */
+    private pane: number | undefined;
     /** Each touch sent since `logTouches`, or none kept. */
     private sent: SentTouch[] | null = null;
     /** Where the keyboard's keys are, by layout; changes only on a turn. */
@@ -143,10 +147,15 @@ export class Phone {
         await this.driver.execute("mobile: activateApp", { bundleId: OBSIDIAN });
     }
 
-    /** Whether iOS shows its on-screen keyboard. */
+    /**
+     * Whether iOS shows its on-screen keyboard. With a hardware keyboard
+     * attached, iOS reports it shown, below the screen.
+     */
     async keyboardShown(): Promise<boolean> {
         await this.native();
-        return this.driver.isKeyboardShown();
+        if (!(await this.driver.isKeyboardShown())) return false;
+        const { y } = await this.driver.$("-ios class chain:**/XCUIElementTypeKeyboard").getLocation();
+        return y < (await this.windowSize()).height;
     }
 
     /**
@@ -688,15 +697,22 @@ export class Phone {
         await this.rest();
     }
 
-    /** A thumb stroke `share` of the screen tall over `duration` ms, centred; returns as the finger lifts. */
+    /**
+     * A thumb stroke `share` of the screen tall over `duration` ms, centred;
+     * returns as the finger lifts. Moved down onto the stream's pane if it
+     * would start or end above it: an iPad's header sits there, where a
+     * stroke scrolls nothing.
+     */
     private async stroke(direction: "up" | "down", share: number, duration: number): Promise<void> {
+        const top = await this.paneTop();
         await this.native();
         const { width, height } = await this.windowSize();
         const [from, to] = direction === "up" ? [0.5 + share / 2, 0.5 - share / 2] : [0.5 - share / 2, 0.5 + share / 2];
+        const below = Math.max(0, top + PANE_EDGE - height * Math.min(from, to));
         const x = Math.round(width / 2);
         const [start, end] = [
-            { x, y: Math.round(height * from) },
-            { x, y: Math.round(height * to) },
+            { x, y: Math.round(height * from + below) },
+            { x, y: Math.round(height * to + below) },
         ];
         // One command per stroke: within one, WebDriverAgent drags the finger
         // back to the start between strokes, scrolling the stream back.
@@ -721,6 +737,19 @@ export class Phone {
 
     private async windowSize(): Promise<{ width: number; height: number }> {
         return (this.screen ??= await this.driver.getWindowSize());
+    }
+
+    /** The top of the stream's pane, in the screen's points: read before a glide, whose web view runs no script. */
+    private async paneTop(): Promise<number> {
+        if (this.pane !== undefined) return this.pane;
+        const { top, viewport } = await this.run(
+            (s: string) => ({
+                top: document.querySelector(s)!.parentElement!.getBoundingClientRect().top,
+                viewport: window.innerWidth,
+            }),
+            STREAM
+        );
+        return (this.pane = top * ((await this.windowSize()).width / viewport));
     }
 
     /** Fails if iOS holds Obsidian behind Face ID or Touch ID: no touch reaches the app until someone unlocks it. */
@@ -898,13 +927,23 @@ export class Phone {
         }, STREAM);
     }
 
-    /** Returns once the pane has its new width and holds still: a turn starts some frames after it is asked for. */
+    async orientation(): Promise<Orientation> {
+        await this.native();
+        return (await this.driver.getOrientation()) as Orientation;
+    }
+
+    /**
+     * Returns once the pane has its new width and holds still: a turn starts
+     * some frames after it is asked for. Already so turned, it does nothing.
+     */
     async turn(orientation: Orientation): Promise<void> {
+        if ((await this.orientation()) === orientation) return;
         const width = () => this.run((s: string) => document.querySelector(s)!.parentElement!.clientWidth, STREAM);
         const before = await width();
         await this.native();
         await this.driver.setOrientation(orientation);
         this.screen = undefined;
+        this.pane = undefined;
         this.keyboards.clear();
         await expect.poll(width).not.toBe(before);
         await this.rest();

@@ -71,6 +71,7 @@ const scrollPast = (phone: Phone, edge: "top" | "bottom") =>
 // Bases pins both to its own scroll box; clipped on a phone, they would pin to the stream's.
 test("a Base table's header and summary row stay on it as the stream scrolls past", async ({ phone }) => {
     await phone.openStream();
+    const found = await phone.orientation();
     await phone.turn("LANDSCAPE");
     try {
         await phone.placeAt(SUMMED, -40);
@@ -82,7 +83,7 @@ test("a Base table's header and summary row stay on it as the stream scrolls pas
         expect(bottom.past).toBeGreaterThan(50);
         expect(bottom.after.footer).toBe(bottom.before.footer);
     } finally {
-        await phone.turn("PORTRAIT");
+        await phone.turn(found);
     }
 });
 

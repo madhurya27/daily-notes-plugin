@@ -12,7 +12,11 @@ async function search(phone: Phone, query: string): Promise<void> {
     await phone.type(query);
     expect(await phone.run((bar: string) => document.querySelector<HTMLInputElement>(bar)!.value, BAR)).toBe(query);
     await phone.run((bar: string) => document.querySelector<HTMLInputElement>(bar)!.blur(), BAR);
-    await expect.poll(() => phone.run((name: string) => CSS.highlights.get(name)?.size ?? 0, CURRENT)).toBe(1);
+    // An iPad's pane shrinks above its keyboard, so typing marks no match
+    // below it (D-022): the reader steps to one.
+    const current = () => phone.run((name: string) => CSS.highlights.get(name)?.size ?? 0, CURRENT);
+    if ((await current()) === 0) await phone.tap('.daily-notes-search [aria-label="Next"]');
+    await expect.poll(current).toBe(1);
     await phone.rest();
 }
 
