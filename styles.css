@@ -496,6 +496,13 @@
     background-color: var(--background-secondary);
 }
 
+/* What a touch changes in a note changes at once, never fades (D-167): a fade
+   starting under the finger, a link dimming or a button showing, can stop iOS
+   from scrolling the stream. */
+.is-mobile .daily-notes-stream-container * {
+    transition: none;
+}
+
 /* On mobile a web page in a frame is a preview, a link to the page (D-098):
    a touch on the page would scroll it, not the stream. The link is the frame's
    box, without the arrow Obsidian puts after a web link. */

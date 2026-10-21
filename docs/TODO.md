@@ -14,8 +14,6 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
     - [ ] Sort the 14 iOS specs that fail on the iPad (D-168) into real bugs and
           assumptions of a phone: glides that end where they began, turns that
           start in landscape, a Base drawn as a table, not cards.
-    - [ ] A swipe that starts on a Base shown as a table doesn't scroll the
-          stream, or scrolls a little and stalls.
 - [ ] Make typing a search mark only a match the reader can see (D-022):
       `isOnScreen` checks the whole pane, so on a phone it marks one under the
       floating header or bottom bar, or under the open keyboard. Enter then

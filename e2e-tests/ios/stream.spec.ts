@@ -94,6 +94,26 @@ for (const direction of ["up", "down"] as const)
         }
     });
 
+// A touch dims a link, or shows a date's daily-note button, and Obsidian
+// fades the change in: started under the finger, with a blended callout
+// further down (the vault has one), the fade held the stream still (D-167).
+for (const [what, target] of [
+    ["a link in a Base", ".daily-note-base .bases-rendered-value .internal-link"],
+    ["a date in a Base", '.daily-note-base [data-property-type="date"] input'],
+    ["a date's daily-note button", '.daily-note-base [data-property-type="date"] .clickable-icon'],
+    ["a link to a day in a Base", ".daily-note-base .metadata-link-inner"],
+    ["a link in a note's text", ".daily-note-content > p .internal-link"],
+] as const)
+    test(`a swipe that starts on ${what} scrolls the stream`, async ({ phone }) => {
+        await phone.openStream();
+        await phone.placeAt(target, -300);
+        const before = await phone.scrollTop();
+
+        await phone.swipeFrom(target);
+
+        expect(await phone.scrollTop()).toBeGreaterThan(before + 100);
+    });
+
 /** A web page taller than its frame, so it could scroll inside it, in a note deep in the stream. */
 const PAGE = "Pages/Tall page.html";
 const FRAMED = FREE_DAYS[0];

@@ -2855,6 +2855,34 @@ the plugin bundles no dependencies.
 - Deleting the lockfile — re-resolves every package to fix a dozen.
 - Forcing `esbuild` 0.28 — outside the range vite 7 asks for, for a low alert.
 
+## D-167 — Nothing in the stream fades on mobile (2026-10-20)
+
+**Decision:** on mobile, nothing in the stream has a `transition`. What a touch
+changes there changes at once: Obsidian still dims a touched link (`mobile-tap`)
+and shows a date's daily-note button.
+
+**Why:** a fade that starts under the finger can stop iOS from scrolling. On an
+iPad, a swipe from a link, a date in a Base, its daily-note button or a link to
+a day moved the stream 0 px; without the fade, about 620 px. The fading element
+gets its own layer, and since the pane is not a stacking context, WebKit then
+composites every positioned element after it. Among them is a callout, which
+dark themes blend (`mix-blend-mode: lighten`). If that lands before iOS starts
+the pan, about 1 ms after the touch, the touch never scrolls. Reading view does
+the same with a blended callout after the link; it only seemed immune because it
+renders few sections at once.
+
+**Rejected:**
+
+- No transition on links only — a date's button fades too.
+- Opacity 1 on a touched link — drops Obsidian's feedback, and leaves the
+  button.
+- Dropping `mobile-tap` from Obsidian's touch handler — patches Obsidian, and
+  leaves the button.
+- `isolation: isolate` on the pane — stops the composited cascade, but a swipe
+  still stalled once in 15.
+- No blending on callouts — changes how they look, and any other blended element
+  would stall a swipe again.
+
 ## D-168 — The iOS harness drives an iPad too (2026-10-20)
 
 **Decision:** `pnpm run test:ios` accepts an iPad as well as an iPhone, and

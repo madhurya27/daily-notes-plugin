@@ -41,6 +41,10 @@ const STALLERS = [
     "",
     "![[Reading.base]]",
     "",
+    "![[Names.base]]",
+    "",
+    "![[Days.base]]",
+    "",
     "```",
     "const pace = splits.map((split) => split.seconds / split.metres).reduce((sum, each) => sum + each, 0);",
     "```",
@@ -94,11 +98,37 @@ const EMBEDS = {
     "Attachments/Manual.pdf": TEST["Attachments/Manual.pdf"]!,
     "Reading list.md": TEST["Reading list.md"]!,
 };
+/** A table of `columns` over the notes in Days/; narrow, so a phone draws it as a table, not cards (D-033). */
+const daysTable = (columns: string[]) =>
+    [
+        "filters:",
+        "  and:",
+        '    - file.inFolder("Days")',
+        "views:",
+        "  - type: table",
+        "    name: Days",
+        "    order:",
+        ...columns.map((column) => `      - ${column}`),
+        "",
+    ].join("\n");
+/** A link, a date and a link to a day in a Base: a touch on any once held the stream still (D-167). */
+const DAYS = {
+    "Names.base": daysTable(["file.name"]),
+    "Days.base": daysTable(["when", "day"]),
+    ...Object.fromEntries(
+        [
+            ["One", "2026-09-20"],
+            ["Two", "2026-09-21"],
+            ["Three", "2026-09-22"],
+        ].map(([name, day]) => [`Days/${name}.md`, `---\nwhen: ${day}\nday: "[[${day}]]"\n---\n`])
+    ),
+};
 /** Days the journal leaves out, for a test to write a note of its own on and delete. */
 export const FREE_DAYS = ["Journal/2026-09-05.md", "Journal/2026-09-06.md"] as const;
 const TEST_NOTES = {
     ...Object.fromEntries(Object.entries(DEMO).filter(([path]) => !(FREE_DAYS as readonly string[]).includes(path))),
     ...EMBEDS,
+    ...DAYS,
     ...Object.fromEntries(
         NEWEST.map((path) => [path, DEMO[path]!.replace(/^(---\n[\s\S]*?\n---\n\n)/, `$1${STALLERS.join("\n")}`)])
     ),

@@ -655,6 +655,39 @@ export class Phone {
         );
     }
 
+    /**
+     * An unhurried thumb stroke up a third of the screen, starting on the
+     * middle of the first `selector` a finger could reach; returns once the
+     * stream holds still.
+     */
+    async swipeFrom(selector: string): Promise<void> {
+        const at = await this.reach(selector);
+        await this.native();
+        const { width, height } = await this.windowSize();
+        const scale = width / at.viewport;
+        const start = { x: Math.round(at.x * scale), y: Math.round(at.y * scale) };
+        const end = { x: start.x, y: Math.max(0, start.y - Math.round(height / 3)) };
+        const ms = 300;
+        await this.perform(
+            [
+                {
+                    type: "pointer",
+                    id: "thumb",
+                    parameters: { pointerType: "touch" },
+                    actions: [
+                        { type: "pointerMove", duration: 0, ...start },
+                        { type: "pointerDown", button: 0 },
+                        { type: "pointerMove", duration: ms, ...end },
+                        { type: "pointerUp", button: 0 },
+                    ],
+                },
+            ],
+            ms,
+            [{ from: start, to: end, after: 0, ms }]
+        );
+        await this.rest();
+    }
+
     /** A thumb stroke `share` of the screen tall over `duration` ms, centred; returns as the finger lifts. */
     private async stroke(direction: "up" | "down", share: number, duration: number): Promise<void> {
         await this.native();
