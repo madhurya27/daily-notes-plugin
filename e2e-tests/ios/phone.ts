@@ -1040,13 +1040,15 @@ export const test = base.extend<{ quietConsole: void }, { phone: Phone }>({
             // to end, 15 s in Obsidian; rest() waits for the stream instead.
             await driver.updateSettings({ animationCoolOffTimeout: 0, waitForIdleTimeout: 0 });
             const phone = new Phone(driver);
+            // An iPad is read in landscape, an iPhone upright: the run leaves it as it found it.
+            const found = (await driver.getOrientation()) as Orientation;
             try {
                 await phone.assertUnlocked();
                 await useVault(phone);
                 expect(await phone.consoleErrors(), "errors in Obsidian's console, opening the vault").toEqual([]);
                 await use(phone);
             } finally {
-                await driver.setOrientation("PORTRAIT");
+                await driver.setOrientation(found);
                 // The phone as the tester left it: their vault, Obsidian closed, the Home Screen.
                 await returnToTestersVault(phone);
                 await driver.execute("mobile: terminateApp", { bundleId: OBSIDIAN });

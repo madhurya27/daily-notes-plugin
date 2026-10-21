@@ -47,10 +47,10 @@ function connectedPhone(env: NodeJS.ProcessEnv): string {
     const phone = (devicectl(env, "list", "devices").devices as any[]).find(
         (d) => d.connectionProperties.transportType === "wired" && d.hardwareProperties.reality === "physical"
     );
-    if (!phone) throw new Error("No iPhone on USB.");
-    // Written and checked against iPhones only.
-    if (phone.hardwareProperties.deviceType !== "iPhone")
-        throw new Error(`${phone.deviceProperties.name} is not an iPhone: the harness drives iPhones only.`);
+    if (!phone) throw new Error("No iPhone or iPad on USB.");
+    // Written against an iPhone; an iPad runs it too, though some specs assume a phone.
+    if (!["iPhone", "iPad"].includes(phone.hardwareProperties.deviceType))
+        throw new Error(`${phone.deviceProperties.name} is not an iPhone or iPad: the harness drives only those.`);
     const { udid } = phone.hardwareProperties;
     if (devicectl(env, "device", "info", "lockState", "--device", udid).passcodeRequired)
         throw new Error(`Unlock ${phone.deviceProperties.name}.`);

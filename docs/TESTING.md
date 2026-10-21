@@ -7,7 +7,7 @@ pnpm test                            # unit
 pnpm run test:e2e                    # every spec twice, desktop and mobile
 pnpm run test:e2e --project=mobile   # one project
 pnpm run test:e2e webkit.spec.ts     # the phone layout in iOS's engine (ADR 0009)
-pnpm run test:ios                    # Obsidian on a plugged-in iPhone (ADR 0016)
+pnpm run test:ios                    # Obsidian on a plugged-in iPhone or iPad (ADR 0016)
 pnpm run demo --test                 # the test vault, below; --help lists every option
 ```
 
@@ -52,16 +52,19 @@ and project logs linking the newest days. Each note is seeded by its date, so a
 retake shows the same content; `pnpm run seed` alone takes `--days N` and
 `--until YYYY-MM-DD`. Screenshots and recordings come from it.
 
-### iPhone: `pnpm run test:ios`
+### iPhone or iPad: `pnpm run test:ios`
 
-Real touches on Obsidian on an iPhone plugged into the Mac, in a vault the
-harness seeds, `Stream E2E`, stored on the phone. A run leaves the phone as it
-found it: Obsidian reopens the vault it had open, then closes, back to the Home
-Screen. WebDriverAgent turns off the keyboard's autocorrection and predictive
-text; the run turns both back on at the end. To leave one off, set
+Real touches on Obsidian on an iPhone or iPad plugged into the Mac, in a vault
+the harness seeds, `Stream E2E`, stored on the phone. A run leaves the phone as
+it found it: Obsidian reopens the vault it had open, then closes, back to the
+Home Screen. WebDriverAgent turns off the keyboard's autocorrection and
+predictive text; the run turns both back on at the end. To leave one off, set
 `IOS_KEYBOARD_AUTOCORRECT=off` or `IOS_KEYBOARD_PREDICTION=off` (D-112), on the
 command line or in a gitignored `e2e-tests/ios/.env`. `IOS_SEED_DAYS=1825` seeds
-five years of journal in place of 21 days (D-158). Once per Mac and phone:
+five years of journal in place of 21 days (D-158). The run drives the first
+device it finds, so plug in only the one to test. An iPad runs in the
+orientation it was found in; some specs assume a phone and fail there (D-168).
+Once per Mac and device; "phone" below means either:
 
 1. Install Xcode, open it once, and add an Apple ID under Settings → Accounts.
    Then Manage Certificates → + → Apple Development. A free account is enough.

@@ -2854,3 +2854,17 @@ the plugin bundles no dependencies.
 
 - Deleting the lockfile — re-resolves every package to fix a dozen.
 - Forcing `esbuild` 0.28 — outside the range vite 7 asks for, for a low alert.
+
+## D-168 — The iOS harness drives an iPad too (2026-10-20)
+
+**Decision:** `pnpm run test:ios` accepts an iPad as well as an iPhone, and
+leaves either in the orientation it found it in, rather than upright.
+
+**Why:** iPad bugs, such as a swipe that stalls on a Base, need a real iPad to
+reproduce, and an iPad is read mostly in landscape. Specs that assume a phone's
+size or upright start fail on it; `docs/TODO.md` tracks them.
+
+**Rejected:**
+
+- Skipping those specs on an iPad — some failures may be real iPad bugs.
+- A separate iPad suite — the same touches and checks, twice.

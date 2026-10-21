@@ -11,6 +11,9 @@ Ordered by priority. Frame-level iOS glitches wait on a recording (D-099).
           Amends D-147.
     - [ ] Fit the search bar to its contents: the field sits on the left and the
           close button on the right, with an empty gap between them.
+    - [ ] Sort the 14 iOS specs that fail on the iPad (D-168) into real bugs and
+          assumptions of a phone: glides that end where they began, turns that
+          start in landscape, a Base drawn as a table, not cards.
     - [ ] A swipe that starts on a Base shown as a table doesn't scroll the
           stream, or scrolls a little and stalls.
 - [ ] Make typing a search mark only a match the reader can see (D-022):
